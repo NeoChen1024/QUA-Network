@@ -1392,8 +1392,12 @@ anything is decided on them.
    PHY.
 3. Separate LoRa traffic by destination tocall.
 4. Parse the corpus into semantic records, taking APRS12c (Appendix D) as
-   the reference for intended meaning. Record the true parse-failure rate
-   and the distribution of comment length.
+   the reference for intended meaning. The reading of APRS12c that the
+   parser follows is written down first, in `docs/legacy/`. Then a strict
+   tokenizer records every field's position on the raw bytes, and a field
+   inventory counts presence, sizes and co-occurrence as input to the TLV
+   tag table (5.2). Record the true parse-failure rate and the distribution
+   of comment length.
 5. Train a zstd dictionary on the corpus and record per-packet compressed
    size as an approximate lower bound for any candidate encoding.
 6. Draft the header and TLV tag table. Re-encode the corpus. Report, per
@@ -1499,7 +1503,7 @@ Wolf): <https://github.com/wb2osz/aprsspec>
 | Document | Use for QUA Network |
 |---|---|
 | `APRS12c.pdf` | Unofficial compilation of the 1.0.1 reference and the updates since 2000. The working reference for what existing packets are meant to say. Draft, with known issues. |
-| `APRS101.pdf` | The original 1.0.1 reference. Obsolete; kept for comparison only. |
+| `APRS101.pdf` | Since aprsspec commit `029684a` a one-page notice that 1.0.1 is obsolete, not the reference itself. The original 1.0.1 (TAPR, 29 August 2000, 128 pages) is linked below; it shows which defects of APRS12c are inherited from it. |
 | `Understanding-APRS-Packets.pdf` | Explains real packets and lists common mistakes. A starting list for the divergence catalogue. |
 | `APRS-Digipeater-Algorithm.pdf` | A written digipeater algorithm, filling a gap the original working group left. Input to section 8.1. |
 | `Minimizing-APRS-Collisions.pdf` | Input to section 9. |
@@ -1510,9 +1514,18 @@ Also referenced there: the AX.25 2.2 specification, the 1.1 addendum and the
 1.2 proposal pages on aprs.org, and an IGate operation guide in the Dire Wolf
 documentation.
 
+The original APRS 1.0.1 reference is not in the repository. It is linked,
+with the hash of the copy consulted, in the
+[documentation index](../README.md#external-references).
+
 Local Markdown copies of these PDFs and of the AX.25 2.2 specification are
 made with `qua-spec-extract` (Appendix C). They are working copies for
 search; the PDF stays the reference, and a citation gives its page.
+
+APRS12c leaves many points open and contradicts itself in places. How this
+project reads it, field by field, including every point where it had to
+choose and the errors it found in the document, is recorded in
+[`docs/legacy/`](../legacy/README.md).
 
 ## Appendix E. Divergence catalogue
 
@@ -1532,6 +1545,11 @@ for explaining a difference once it has been found.
 3. Compare. Every packet on which parsers disagree, or which some accept and
    others reject, becomes a catalogue entry.
 4. Read the relevant code to find the cause, and record it.
+
+The reading in `docs/legacy/` already cites, for each ambiguity of APRS12c,
+what several of these decoders do as read in their source. That is a
+starting point for step 4, not a substitute for steps 1 to 3: it shows what
+the code does, not how often it matters.
 
 This finds the differences that occur in real traffic and attaches a
 frequency to each, so they can be ranked. Reading code alone finds many

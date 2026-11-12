@@ -20,6 +20,10 @@ not put "APRS" into a name of anything in this project.
   references.
 - `docs/spec/`: specification drafts, one numbered file per topic. A topic
   that has a file there is specified there and nowhere else.
+- `docs/legacy/`: this project's reading of the legacy APRS documents. The
+  legacy tokenizer follows it; when the code and the reading disagree, fix
+  the reading first. Decoder behaviour cited there was read in source, at
+  the commits its README lists.
 - `vectors/`: machine-readable conformance vectors. Tables in the documents
   are copies; when they disagree, the vector file is authoritative.
 - `3rdparty/`: pinned upstream references.

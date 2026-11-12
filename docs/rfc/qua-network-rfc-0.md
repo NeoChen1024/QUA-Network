@@ -6,7 +6,7 @@ An open specification attempt at modernizing APRS.
 |---|---|
 | Document | RFC draft 0 (design notes, not yet a wire specification) |
 | Date | 2026-11-11 |
-| Status | Exploratory. Nothing here is frozen. Sections 5.8 and the icon of 5.6 have moved to `docs/spec/`; this document keeps their summary and rationale. |
+| Status | Exploratory. Nothing here is frozen. Sections 5.2, 5.8 and the icon of 5.6 have moved to `docs/spec/`; this document keeps their summary and rationale. |
 | Name | "QUA Network" is a working name and may be replaced by a better one. Earlier drafts used "APRS-next". |
 | Author | Kelei Chen <chenkolei@gmail.com> |
 
@@ -208,15 +208,19 @@ substantial share of the mean frame (section 13).
   payload length. Everything else is a TLV.
 - **[proposed]** The header never changes in transit. It carries the hop
   limit chosen by the source, not a count that relays decrement; the number
-  of hops used is read from the hop trace (5.9). The payload length counts
-  up to and including the integrity check and excludes the hop trace.
+  of hops used is read from the trailer (5.9). The payload length counts
+  the header, the TLVs and any authentication tag, and excludes the
+  trailer and the checksum.
 - **[agreed]** The PDU carries its own frame checksum, CRC-32C (Castagnoli),
-  independent of any link-level check.
+  independent of any link-level check. There is one checksum, at the very
+  end of the frame.
   - Parameters: polynomial `0x1EDC6F41` (reflected `0x82F63B78`), initial
     value `0xFFFFFFFF`, input and output reflected, final XOR `0xFFFFFFFF`.
     The check value for the ASCII string `123456789` is `0xE3069283`.
-  - It covers what the source wrote, the header and all TLVs, and not the
-    hop trace (5.9).
+  - It covers everything before it: what the source wrote and the trailer
+    of 5.9. A relay, which changes the trailer, recomputes it. An earlier
+    version covered only what the source wrote and was never recomputed;
+    5.9 records why that was dropped.
   - A CRC is kept, in preference to a truncated hash, because it detects
     every error burst of 32 bits or less with certainty and every small
     number of scattered bit errors at these frame lengths. A truncated hash
@@ -243,11 +247,36 @@ substantial share of the mean frame (section 13).
   and MUST preserve it when relaying or logging.
 - **[agreed]** TLV order is canonical. Two encodings of the same content
   MUST NOT both be valid.
-- **[open]** Custom TLV or a strict subset of CBOR with deterministic encoding
-  (RFC 8949 section 4.2). A custom format saves bytes and excludes unwanted
-  features (indefinite lengths, floats, tags). A CBOR subset gets existing
-  parsers. The preference so far is a custom format designed so that it is
-  also a valid CBOR subset.
+- **[agreed]** The container follows the option format of CoAP (RFC 7252
+  section 3.1): the first byte of a TLV holds the difference between its
+  tag and the tag before it in four bits and the length in the other four,
+  with extension bytes for larger values. It is specified in
+  [`docs/spec/03-tlv.md`](../spec/03-tlv.md).
+- **[agreed]** A tag may repeat, for example for several values of one
+  telemetry item.
+
+Why this container:
+
+- Tags can only be written in increasing order, so the canonical order is a
+  property of the format and not a rule a decoder has to check.
+- A TLV whose tag is close to the one before and whose value is 12 bytes or
+  less costs one byte of overhead. What matters for size is therefore not
+  how large a tag is but how far it is from its neighbours in the same PDU,
+  which is a question for the tag table.
+- The container is byte oriented: a TLV is skipped by adding to an index,
+  and an unknown TLV has a value that the text form can show in hexadecimal
+  (5.4). Dense bit-level encodings belong inside a value, as in 5.6 and
+  5.8.
+
+Dropped: a strict subset of CBOR with deterministic encoding (RFC 8949
+section 4.2), and a custom format that would also be valid CBOR, which was
+the earlier preference. A CBOR map with integer keys costs about two bytes a
+field plus one for the map, against about one byte here. Its advantage is
+existing parsers, but a general parser accepts encodings outside the subset
+and so does not enforce the single encoding this design needs; a conforming
+decoder would be written for the subset anyway. The statements about CoAP
+and CBOR in this section were written from recollection of the two RFCs and
+are to be checked against them.
 
 ### 5.3 Numeric and text rules
 
@@ -674,17 +703,16 @@ or separator, which needed several rejection rules to be canonical.
 
 ### 5.9 Hop trace
 
-Each station that relays a PDU records itself in a trace at the end of the
-frame.
+Each station that relays a PDU records itself in a trailer near the end of
+the frame.
 
 ```
-| header | TLVs | integrity check / auth tag | hop trace |
-  written by the source, never changed         appended by relays
+| header | TLVs | auth tag | control | entry, entry, ... | CRC-32C |
+  written by the source      the trailer, written by relays  recomputed by relays
 ```
 
-- **[agreed]** The hop trace is a TLV at the very end of the frame. A relay
-  appends one entry to it. Nothing is reserved in advance, so a PDU that is
-  never relayed carries no trace at all.
+- **[agreed]** A relay appends one entry. No entry is reserved in advance,
+  so a PDU that is never relayed carries a trailer of one byte.
 - **[agreed]** An entry is a 24-bit hash of the relay's identifier: the first
   3 bytes of BLAKE3 over the 8-byte identifier of 5.8 in big-endian order.
 - **[agreed]** A hash is sufficient identification because every relay also
@@ -697,33 +725,130 @@ frame.
 - With about 100 relays in range, the chance that any two share a 24-bit
   hash is about 0.03%.
 
-Rules that make appending work, all **[proposed]**:
+The trailer:
 
-- The trace comes after the integrity check and authentication tag. What
-  the source wrote ends there, and everything after it is trace. A relay
-  recomputes nothing, and a receiver needs no list of fields to skip when
-  verifying.
-- Hops used is the number of entries. Remaining hops is the header's hop
-  limit minus that number. A relay does not forward a PDU whose trace is
-  full.
-- A source leaves room for its own hop limit: the size of the PDU as sent,
-  plus the trace for that many hops, MUST NOT exceed the MTU of 6.1. At 3
-  bytes per hop plus 2 for the TLV tag and length, a limit of 7 hops
-  reserves 23 bytes. Any relay on the path can then always append.
-- A relay that finds its own hash in the trace does not forward the PDU.
-  This is a second guard against loops, after deduplication.
+- **[agreed]** The trailer has a fixed layout and is not a TLV: one control
+  byte, then the entries of 3 bytes each in the order of the hops. Every
+  frame has a trailer; the source writes the control byte. It
+  replaces an earlier design in which the trace was a TLV at the end of the
+  frame, outside the checksum and protected only by whatever check the
+  link had.
+- **[agreed]** The trailer is covered by the one checksum of the frame
+  (5.1), which comes after it. A link cannot be assumed to have a check of
+  its own: a PDU sent as the bare payload of a LoRa or FSK packet has only
+  what this format gives it.
+- **[agreed]** The control byte, from the most significant bit down:
+
+  | Bits | Field |
+  |---|---|
+  | 1 | Set if the PDU has crossed a path that is not radio. |
+  | 1 | Reserved. |
+  | 3 | Entry count: the number of entries in this trailer. |
+  | 3 | Hops remaining. |
+
+- **[agreed]** The entries may be fewer than the hops taken. When a trailer
+  no longer fits, the oldest entries are dropped and the trailer keeps the
+  identity of the most recent hops only.
+- **[agreed]** The entry count is always the number of entries present,
+  whether or not any were dropped. The trailer is 1 byte plus 3 for each
+  entry, so a frame can be taken apart without knowing its length from the
+  link. The hops taken are the hop limit of the header minus the hops
+  remaining, and the trace is truncated when the entry count is less than
+  that.
+- **[proposed]** A source writes a control byte with the hops remaining
+  equal to its hop limit and every other bit 0.
+- **[proposed]** A frame is invalid if the hops remaining are more than the
+  hop limit, or the entry count is more than the hops taken.
+- **[proposed]** With 3 bits of hops remaining, the hop limit is at most 7.
+- **[proposed]** A relay copies the reserved bit, and a receiver ignores
+  it.
+- **[agreed]** A station sets the first bit when it transmits on radio a
+  PDU that it received over a path that is not radio. **[proposed]** It
+  acts as a relay in doing so and adds its entry. No station clears the
+  bit.
+- **[agreed]** A gateway that carries a PDU from radio to the Internet does
+  not touch the frame. What it knows about the reception belongs to
+  gateway provenance (8.3).
+
+Relaying, all **[proposed]**:
+
+- A relay forwards a PDU only if the checksum is good, the trailer is
+  valid, at least one hop remains, and its own hash is not among the
+  entries. The last condition is a second guard against loops,
+  after deduplication.
+- To forward, it appends its entry, lowers the hops remaining by one and
+  recomputes the checksum. It changes nothing before the trailer.
+- If the frame with the new entry would exceed the MTU of 6.1, the relay
+  first drops entries from the front of the trace, oldest first, and only
+  as many as are needed. It MUST NOT drop entries for any other reason.
+- A source that sets a hop limit above 0 MUST leave room for one entry:
+  the size of the PDU as sent plus 3 bytes MUST NOT exceed the MTU of 6.1.
+  It SHOULD leave room for the whole path, 3 bytes for each hop of its
+  limit, which is 21 bytes at a limit of 7. Any relay on
+  the path can then always forward, and none has to truncate.
 
 Properties to keep in mind:
 
-- The trace is outside authentication. Anyone can forge or delete entries,
-  so it is diagnostic information and never a basis for trust. Deleting
-  entries lets a PDU travel further than its source intended; deduplication
-  on `(source, sequence number)` limits the effect.
-- The trace is protected hop by hop by the link's own error detection.
+- The checksum is recomputed at every hop, so it shows that a frame arrived
+  as the last transmitter sent it, and not that it is what the source
+  wrote. A relay that damages a PDU in its own memory, between checking it
+  and sending it on, sends the damage out under a good checksum. AX.25
+  digipeating has the same property: a digipeater changes the address field
+  and so recomputes the frame check sequence. Only authentication
+  (section 10) covers a PDU from end to end.
+- The trailer is outside authentication, and a CRC is not authentication.
+  Anyone can forge or delete entries, so the trace is diagnostic
+  information and never a basis for trust. Raising the hops remaining or
+  deleting entries lets a PDU travel further than its source intended;
+  deduplication on `(source, sequence number)` limits the effect. In a PDU
+  that is not authenticated the same holds for the hop limit and for
+  everything else.
+- The hop limit stays in the header although relays decide on the hops
+  remaining. In the header it is covered by the source's signature or MAC
+  (section 10), so in an authenticated PDU a changed hop limit is found
+  when the PDU is verified. Because hops remaining above the hop limit are
+  invalid, the limit also bounds what tampering with the control byte can
+  gain: the hops remaining can be put back up to the source's limit and no
+  further. Verification can come after forwarding (10.4), so this exposes
+  tampering more than it prevents it. The header's hop limit is also what
+  gives the hops taken and shows that a trace was truncated.
+- A truncated trace has lost its oldest entries, and with them the relay
+  that heard the source directly. What it keeps, the most recent hops, is
+  what the loop guard above needs most: a PDU bouncing between neighbours
+  finds its last relays still listed.
 - In canonical text the trace is written as the hash values, not as
   resolved callsigns. Resolution belongs to the display. The same PDU
   therefore has a different text form after each hop, differing only in
   the trace.
+
+Dropped:
+
+- Two checksums: one written by the source over its own part and never
+  changed, and a second over the trailer, recomputed by relays. It kept an
+  end-to-end check on the content and let a station use a PDU whose trailer
+  alone was damaged. Dropped by the author in favour of a single checksum:
+  4 bytes less on every relayed frame, and one rule for what the checksum
+  covers.
+- A trailer that exists only once a PDU has been relayed, and so always
+  has at least one entry. It saved the 4 bytes of a second checksum on
+  frames that were never relayed. With one checksum it saves one byte, and
+  costs a dependence on the link for the length of the frame, to tell a
+  frame with a trailer from one without.
+- Taking the hop limit out of the header once every frame had a control
+  byte, since relays only need the hops remaining. Kept, for the reasons
+  above.
+- A second TLV area for what relays add. It would cost one more byte for
+  each hop, and nothing but the trace is added in transit.
+- A copy of the hop limit in the control byte. The same value in two
+  places needed a rule for when they differ.
+- Four bits of hops remaining with four reserved bits, and the number of
+  entries derived as the hop limit minus the hops remaining. It could not
+  express a truncated trace, so a source had to reserve room for every hop
+  of its limit or the PDU could not be relayed that far.
+
+**[open]** The use of the reserved bit. One candidate, not adopted, is a
+flag set when the PDU has passed between radio links of different kinds,
+for example from a LoRa channel to a 1200 baud one.
 
 Test vectors:
 
@@ -766,8 +891,8 @@ it.
 ### 6.2 Gateways do not modify packets
 
 - **[agreed]** A gateway MUST NOT remove TLVs, shorten values, or otherwise
-  alter a PDU. The only thing a relay does to a frame is append to the hop
-  trace (5.9).
+  alter a PDU. The only part of a frame a relay changes is the trailer that
+  holds the hop trace (5.9).
 - **[agreed]** Access links never fragment. On a half-duplex broadcast channel
   one lost fragment loses the packet, there is no retransmission, and every
   receiver must hold reassembly state.
@@ -1214,7 +1339,8 @@ anything is decided on them.
 
 ## 14. Open questions
 
-1. TLV container: custom, or a strict CBOR subset (5.2).
+1. TLV container: the size of the tag space, whether tag bits tell a
+   receiver what to do with an unknown TLV, and the tag table (5.2).
 2. The exact PDU limit below 255 bytes, given the link envelope (6.1).
 3. The airtime budget: its value, its window, and how it is expressed per PHY
    (6.3).
@@ -1248,8 +1374,9 @@ anything is decided on them.
 18. In the optional AX.25 encapsulation, what the address fields hold,
     especially for an identifier that does not fit an AX.25 address (5.8,
     7.2).
-19. Hop trace details: the tag and length encoding of the trailing TLV, and
-    the maximum hop limit (5.9).
+19. Hop trace details: the use of the reserved bit of the control byte,
+    and how the trailer, including a truncated one, appears in canonical
+    text (5.9).
 20. Whether identification through the PDU source alone satisfies local
     regulations where QUA Network is deployed.
 21. The icon TLV: the order of its fields and how often it is repeated

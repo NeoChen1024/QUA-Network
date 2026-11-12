@@ -3,7 +3,7 @@
 | Question | Where |
 |---|---|
 | Why is it designed this way? What was dropped? What is still open? | [`rfc/qua-network-rfc-0.md`](rfc/qua-network-rfc-0.md) |
-| What exactly goes on the wire? | `spec/`, one numbered file per topic. A topic moves there from the RFC when it is ready to be worked on as specification text; until then the RFC is the only description. So far: [station identifier](spec/01-station-identifier.md), [icon](spec/02-icon.md). |
+| What exactly goes on the wire? | `spec/`, one numbered file per topic. A topic moves there from the RFC when it is ready to be worked on as specification text; until then the RFC is the only description. So far: [station identifier](spec/01-station-identifier.md), [icon](spec/02-icon.md), [TLV container](spec/03-tlv.md). |
 | Where does a figure come from? | Regenerate it from the corpus with the tools; RFC section 13 gives the method and caveats. The RFC quotes no corpus statistics. `research/` is for a report that fixes a result at a stated capture window. Not started. |
 | How does deployed APRS software actually behave? | `divergence/`, one file per catalogue entry (RFC Appendix E). Not started. |
 | What are the conformance values? | [`../vectors/`](../vectors/), checked by `qua-check-vectors`. |

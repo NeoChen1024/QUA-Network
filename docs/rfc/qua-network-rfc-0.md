@@ -1485,6 +1485,11 @@ commands.
 - `qua-icon-encode`: encodes a 16 by 16 picture as an icon bitmap field,
   and produces the icon bitmap vectors by a path independent of the
   encoder that `qua-check-vectors` checks.
+- `qua-spec-extract`: extracts the reference PDFs of Appendix D to
+  Markdown for reading and search, keeping what their typography means
+  (Courier for literal data, highlight for literal characters, shading for
+  optional fields). The output stays under `work/`, because the documents'
+  terms do not allow their text into this repository.
 
 ## Appendix D. Reference documents
 
@@ -1504,6 +1509,10 @@ Wolf): <https://github.com/wb2osz/aprsspec>
 Also referenced there: the AX.25 2.2 specification, the 1.1 addendum and the
 1.2 proposal pages on aprs.org, and an IGate operation guide in the Dire Wolf
 documentation.
+
+Local Markdown copies of these PDFs and of the AX.25 2.2 specification are
+made with `qua-spec-extract` (Appendix C). They are working copies for
+search; the PDF stays the reference, and a citation gives its page.
 
 ## Appendix E. Divergence catalogue
 

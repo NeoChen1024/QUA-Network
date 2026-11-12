@@ -31,3 +31,7 @@ Third-party material is referenced, not copied into this repository.
 The AX.25 document is linked rather than stored because it is copyrighted by
 TAPR and ARRL. The copy consulted is 2,842,014 bytes, 135 pages, SHA-256
 `5a4aac0bc10a69c5c983c35d5a84cc47ff204fa785a765fa1d2d6dd620131350`.
+
+Searchable Markdown copies of the APRS documents and the AX.25 PDF are made
+locally with `qua-spec-extract`, into `work/refs/text/` by default. They are
+never committed.

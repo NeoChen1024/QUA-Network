@@ -25,6 +25,7 @@ Third-party material is referenced, not copied into this repository.
 | aprs-deviceid | submodule `3rdparty/aprs-deviceid` | Destination callsign to software and device, for `qua-tocall-stats`. CC BY-SA 2.0. |
 | GNU Unifont | <https://unifoundry.com/unifont/> | A 16-pixel bitmap Unicode font with CJK coverage, suggested as a starting point for embedded designs (RFC 5.6). |
 | Fusion Pixel Font | submodule `3rdparty/fusion-pixel-font` | Bitmap fonts with CJK coverage at 8, 10 and 12 pixels, suggested likewise (RFC 5.6). Fonts under OFL 1.1, build tools under MIT. |
+| u8g2 | <https://github.com/olikraus/u8g2>, `tools/font/bdf/` | BDF sources of icon fonts (Open Iconic, Siji) and of Unifont, as test sets for `qua-icon-stats` (RFC 5.6). Read at commit `ab9e48b2`. Each font carries its own licence. |
 | AX.25 Link Access Protocol v2.2, July 1998 | <https://www.ax25.net/AX25.2.2-Jul%2098-2.pdf> | Legacy framing: the address field layout behind the first-byte rule (RFC 5.1) and the optional encapsulation (RFC 7.2). |
 
 The AX.25 document is linked rather than stored because it is copyrighted by

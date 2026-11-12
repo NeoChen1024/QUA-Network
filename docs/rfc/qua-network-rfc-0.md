@@ -360,7 +360,8 @@ section keeps the summary and the reasons.
 
 A station can also send a small picture of its own: a 16 by 16 one-bit
 bitmap with a foreground and a background colour of one byte each, in an
-optional TLV beside the symbol. It does not replace the symbol. The icon is
+optional TLV beside the symbol. The bitmap is sent plain, or as run lengths
+when that is shorter. It does not replace the symbol. The icon is
 bound to the symbol it is sent with, a receiver holds at most one icon per
 station, and a station withdraws its icon by sending a different symbol
 without one.
@@ -389,32 +390,62 @@ Why it is built this way:
 - Arbitrary pictures will appear on public maps, which is why a gateway or
   display service is allowed to decline to show them.
 
-**[open]** Whether the bitmap is compressed, and how. Uncompressed it is 32
-bytes. A first, one-off measurement on the 16 by 16 glyphs of GNU Unifont
-18.0.01 gives the scale:
+**[agreed]** The bitmap has two forms and no more: plain, at 32 bytes, or
+each row XORed with the one above and the resulting bit stream coded as
+alternating run lengths in Elias gamma. The rules of 5.7 apply: the
+run-length form if and only if it is strictly shorter, one exactly specified
+encoder, test vectors, and a decoder that rejects a non-canonical encoding.
+The details of the bit stream are in the specification file.
 
-| Test set | Glyphs | Row XOR, then run lengths | Context-model bound |
+`qua-icon-stats` measures the forms on the glyphs of bitmap fonts, each
+centred in the 16 by 16 cell. The fonts are the BDF sources kept in the
+u8g2 repository (commit `ab9e48b2`, 2026-06-27; run on 2026-11-12). Open
+Iconic at 16 pixels is the closest to what a station would draw. Sizes are
+mean bytes; "used" is the share of glyphs for which the run-length form is
+shorter than 32 bytes.
+
+| Test set | Glyphs | Run-length form | Used |
 |---|---|---|---|
-| Symbols and dingbats, U+2600 to U+27BF | 321 | 22 bytes mean | 20 bytes mean |
-| Arrows, technical and shapes | 596 | 20 bytes mean | 17 bytes mean |
-| Emoji blocks, U+1F300 to U+1F64F, U+1F680 to U+1F6FF, U+1F900 to U+1FAFF | 1,477 | 23 bytes mean | 21 bytes mean |
-| of which emoticons, U+1F600 to U+1F64F | 80 | 28 bytes mean | 26 bytes mean |
-| CJK ideographs | 20,992 | 29 bytes mean | 26 bytes mean |
+| Open Iconic, 16 by 16 (`open_iconic_all_2x`) | 223 | 19.6 | 97.3% |
+| Siji, 12 by 12 (`siji`) | 624 | 13.2 | 100% |
+| Unifont symbols and dingbats, U+2600 to U+27BF | 448 | 20.1 | 96.9% |
+| Unifont emoji blocks, U+1F300 to U+1F64F, U+1F680 to U+1F6FF, U+1F900 to U+1FAFF | 1,316 | 22.7 | 98.6% |
+| of which emoticons, U+1F600 to U+1F64F | 80 | 28.3 | 97.5% |
+| Unifont CJK ideographs, U+4E00 to U+9FFF | 20,991 | 28.7 | 73.6% |
 
-"Row XOR, then run lengths" is each row XORed with the one above, then the
-bit stream coded as alternating run lengths in Elias gamma. The bound is the
-ideal code length of an adaptive arithmetic coder with a seven-pixel causal
-context, which a real coder approaches but does not reach. Deflate was worse
-than no compression on a third or more of the symbols and emoji. So a
-simple scheme saves a little under a third on pictorial glyphs, a much
-heavier one saves two or three bytes more, and glyphs that fill the cell,
-such as faces and ideographs, hardly compress.
+Drawn icons come to a little under two thirds of the plain size, small ones
+to under half, and glyphs that fill the cell, such as faces and ideographs,
+hardly compress. Without the row XOR the Open Iconic set comes to 23.8
+bytes.
 
-If the icon is compressed, the rules of 5.7 apply: compressed if and only if
-strictly shorter, one exactly specified encoder, test vectors, and a decoder
-that rejects a non-canonical encoding.
+Dropped alternatives:
 
-A bitmap with more than two colours was considered and dropped. A one-off
+- Leaving out the last run, which a decoder can infer because the bitmap
+  always has 256 pixels. It measured about one byte shorter on every test
+  set. Dropped as too particular a rule for that gain: the decoder would
+  end on "all remaining bits are zero" in place of a pixel count.
+- Cropping to the bounding box and sending the pixels inside it. A
+  hand-drawn icon is expected to fill nearly the whole 16 by 16 cell, so
+  there is little to crop. In the first one-off measurement, on font
+  glyphs, it came out about the same as the run-length form.
+- An adaptive arithmetic coder with a causal pixel context. Its ideal code
+  length in the first one-off measurement was two or three bytes below the
+  run-length form, which a real coder approaches but does not reach. A
+  picture of 256 pixels is too short for the model to adapt, and a fixed
+  probability table would write one font's statistics into the format.
+- Deflate, which was longer than the plain bitmap on a third or more of the
+  symbols and emoji in the same measurement.
+
+The first one-off measurement used the 16 by 16 glyphs of GNU Unifont
+18.0.01 and a script that was not kept; its figures are not reproducible
+and are quoted here only for the dropped alternatives.
+
+**[agreed]** 16 by 16 pixels at one bit each is the only size of the icon.
+A larger icon or one with more colours is not ruled out for a later
+version, as a separate TLV; none is designed here.
+
+A bitmap with more than two colours was considered and dropped for this
+icon. A one-off
 test reduced the roughly 1,200 glyphs of Noto Color Emoji to 16 by 16 and
 coded them with run lengths: three colours plus transparency came to about
 50 bytes with its palette, seven colours to about 80, and fifteen to well
@@ -1186,9 +1217,8 @@ anything is decided on them.
     the maximum hop limit (5.9).
 20. Whether identification through the PDU source alone satisfies local
     regulations where QUA Network is deployed.
-21. The icon TLV: whether it is compressed and by what method, how often it
-    is repeated, whether 16 by 16 is the only size, and the choice of
-    colour palette (5.6).
+21. The icon TLV: the order of its fields and how often it is repeated
+    (5.6).
 22. The final name ("QUA Network" is a working name), its check against
     existing trademarks, and the rule for its use by modified versions of
     the specification (11).
@@ -1224,10 +1254,10 @@ anything is decided on them.
     byte has the low bit set through Dire Wolf and through hardware KISS
     TNCs, and confirm that they are transmitted and received intact, and
     that legacy APRS software on the channel ignores them.
-13. Repeat the icon compression measurement of 5.6 with a tool kept in the
-    repository, and extend it to the APRS symbol table drawn at 16 by 16.
-    Count how many icons fall back to the uncompressed form, and decide
-    whether the saving justifies a second canonical encoder.
+13. Implement the icon's run-length form (5.6) and add test vectors
+    computed by an independent path, including
+    bitmaps a decoder must reject. Extend the measurement of 5.6 to the
+    APRS symbol table drawn at 16 by 16.
 
 ## Appendix A. Transceiver packet limits
 
@@ -1288,7 +1318,10 @@ commands.
 - `qua-corpus-import`: converts the raw hourly files to Parquet without
   loss, for faster repeated measurement.
 - `qua-check-vectors`: recomputes the test vectors of 5.1 and 5.9 and of
-  the station identifier specification from `vectors/` and compares.
+  the station identifier and icon specifications from `vectors/` and
+  compares.
+- `qua-icon-stats`: size of the candidate icon bitmap forms on the glyphs
+  of BDF fonts.
 
 ## Appendix D. Reference documents
 

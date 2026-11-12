@@ -34,6 +34,7 @@ uv pip install --python .venv/bin/python -e .
 | `qua-corpus-import` | Convert raw corpus files to Parquet, losslessly. |
 | `qua-length-stats` | Payload and frame length statistics over the corpus. |
 | `qua-check-vectors` | Recompute the conformance vectors and compare. |
+| `qua-icon-stats` | Size of the candidate icon bitmap forms on BDF font glyphs. |
 
 Each command documents its options under `--help`. The raw corpus lives in
 `corpus/` and derived products in `work/`; neither is in Git.

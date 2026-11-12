@@ -19,17 +19,71 @@ from it.
 
 ## 2. Content
 
-- **[proposed]** A bitmap of 16 by 16 pixels, one bit per pixel.
-- **[proposed]** Pixels are ordered by row from top to bottom and, within a
+- **[agreed]** A bitmap of 16 by 16 pixels, one bit per pixel. This is the
+  only size and depth of this TLV. A larger or a multi-colour icon is not
+  defined; one added later would be a separate TLV.
+- **[agreed]** Pixels are ordered by row from top to bottom and, within a
   row, from left to right. The leftmost pixel of a row is the most
-  significant bit of its first byte. Uncompressed, the bitmap is 32 bytes.
+  significant bit of its first byte. In the plain form (section 3) the
+  bitmap is 32 bytes.
 - **[agreed]** Two colours of one byte each, foreground and background. A
   set bit is drawn in the foreground colour and a clear bit in the
   background colour.
 - **[agreed]** A display with one colour ignores both colour bytes and draws
   set bits.
 
-## 3. Colour values
+## 3. Bitmap forms
+
+**[agreed]** The bitmap is sent in one of two forms: plain, or row XOR
+followed by run lengths. There is no other form.
+
+**[agreed]** The length of the bitmap field tells the forms apart: 32
+bytes is the plain form and 1 to 31 bytes is the run-length form. A decoder
+MUST reject any other length.
+
+**[agreed]** A sender MUST use the run-length form when it is shorter than
+32 bytes, and the plain form otherwise.
+
+### 3.1 Plain form
+
+**[agreed]** The 256 pixels in the order of section 2, as 32 bytes.
+
+### 3.2 Run-length form
+
+**[agreed]** The encoder works on 256 bits `t[0]` to `t[255]`, derived
+from the pixels `p[0]` to `p[255]` in the order of section 2:
+
+- `t[i] = p[i]` for `i` from 0 to 15 (the top row);
+- `t[i] = p[i] XOR p[i - 16]` for `i` from 16 to 255.
+
+A run is a maximal sequence of consecutive equal bits of `t`. The output is
+a bit string, written into bytes from the most significant bit down:
+
+1. One bit: the value of `t[0]`.
+2. The length of every run, in order, each as an Elias gamma code.
+3. Zero bits up to the next byte boundary. None if the string already ends
+   on one.
+
+The Elias gamma code of a length `n` from 1 to 256 is the binary form of `n`
+without leading zeros, preceded by one zero bit for each of its bits except
+the first. The codes of 1, 2, 3, 4 and 256 are `1`, `010`, `011`, `00100`
+and `00000000100000000`.
+
+**[agreed]** A decoder reads the first bit and then reads run lengths
+until they add up to 256. The runs alternate in value, starting with the
+value of the first bit. It MUST reject the bitmap if:
+
+- the field ends before the run lengths add up to 256;
+- the run lengths add up to more than 256;
+- a bit after the last run length is not zero;
+- eight or more bits remain after the last run length.
+
+It then recovers the pixels row by row from the top.
+
+The smallest bitmap in this form is the empty one, the three bytes
+`00 40 00`.
+
+## 4. Colour values
 
 **[agreed]** A colour byte takes its values from the part of the xterm
 256-colour palette that has fixed values.
@@ -59,14 +113,14 @@ lists the RGB value of each of the 240 colours. It was extracted from
 the generator `256colres.pl` in the same source. The values are fixed here:
 a later change in xterm does not change this specification.
 
-## 4. Relation to the symbol
+## 5. Relation to the symbol
 
 - **[agreed]** A PDU that carries an icon also carries a symbol, in the
   classic or the Unicode form. The icon is bound to that symbol.
 - **[agreed]** A receiver that does not support icons, or holds no icon for
   the station, shows the symbol.
 
-## 5. Receiver state
+## 6. Receiver state
 
 A receiver that supports icons holds, for each station identifier, at most
 one icon together with the symbol it is bound to.
@@ -85,7 +139,7 @@ one icon together with the symbol it is bound to.
 A receiver's storage for icons is therefore bounded by the number of
 stations it tracks.
 
-## 6. Sending
+## 7. Sending
 
 - **[proposed]** A sender SHOULD NOT include the icon in every beacon. It
   sends the icon every Nth beacon and only the symbol in between. **[open]**
@@ -95,22 +149,18 @@ stations it tracks.
 - **[proposed]** To withdraw its icon, a station sends a different symbol
   without an icon.
 
-## 7. Text form
+## 8. Text form
 
 **[proposed]** In canonical text the icon is written in hexadecimal.
 
-## 8. Gateways and display services
+## 9. Gateways and display services
 
 **[proposed]** A gateway or a display service MAY decline to show icons. It
 MUST NOT alter or remove the TLV when forwarding (RFC 6.2).
 
-## 9. Open items
+## 10. Open items
 
-- Whether the bitmap is compressed, and by what method. If it is, the
-  encoding is canonical in the manner of RFC 5.7: compressed if and only if
-  strictly shorter, one exactly specified encoder, and a decoder that
-  rejects any other encoding.
-- The order of the fields inside the TLV, and its tag.
-- The repeat interval N of section 6.
-- Whether 16 by 16 is the only size.
+- The order of the fields inside the TLV, and its tag. Section 3 assumes
+  that the length of the bitmap field follows from the length of the TLV.
+- The repeat interval N of section 7.
 - Test vectors for the bitmap and for icons that a decoder must reject.

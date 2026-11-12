@@ -3,15 +3,16 @@
 | Question | Where |
 |---|---|
 | Why is it designed this way? What was dropped? What is still open? | [`rfc/qua-network-rfc-0.md`](rfc/qua-network-rfc-0.md) |
-| What exactly goes on the wire? | `spec/`, one numbered file per topic. Not started: a section moves there from the RFC once it is settled. |
+| What exactly goes on the wire? | `spec/`, one numbered file per topic. A topic moves there from the RFC when it is ready to be worked on as specification text; until then the RFC is the only description. So far: [station identifier](spec/01-station-identifier.md), [icon](spec/02-icon.md). |
 | Where does a figure come from? | Regenerate it from the corpus with the tools; RFC section 13 gives the method and caveats. The RFC quotes no corpus statistics. `research/` is for a report that fixes a result at a stated capture window. Not started. |
 | How does deployed APRS software actually behave? | `divergence/`, one file per catalogue entry (RFC Appendix E). Not started. |
 | What are the conformance values? | [`../vectors/`](../vectors/), checked by `qua-check-vectors`. |
 
 The RFC records direction and rationale and carries a status label on every
 item. A specification file states only what an implementer needs and carries
-no rationale. When the two disagree about a settled item, the specification
-file is authoritative and the RFC is corrected.
+no rationale; while it is a draft its items keep their status labels. Once
+a topic has a specification file, that file is authoritative for it, and the
+RFC keeps only a summary and the reasons.
 
 ## External references
 

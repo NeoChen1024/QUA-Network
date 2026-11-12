@@ -1,8 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 """Recompute the conformance vectors and compare them with the stored values.
 
-The stored values in vectors/ were produced during the design discussion,
-independently of this package, so agreement is evidence about both.
+The stored values in vectors/ were produced independently of this package
+(during the design discussion, or extracted from a third-party source), so
+agreement is evidence about both.
 """
 
 import json
@@ -10,7 +11,7 @@ from pathlib import Path
 
 import click
 
-from qua_network import identifier
+from qua_network import icon, identifier
 
 
 def crc32c(data):
@@ -47,10 +48,16 @@ def check_crc32c(v):
     return None if got == int(v["crc"], 16) else f"crc is 0x{got:08X}"
 
 
+def check_icon_colour(v):
+    got = "%02X%02X%02X" % icon.colour_rgb(v["value"])
+    return None if got == v["rgb"] else f"rgb is {got}"
+
+
 CHECKS = {
     "identifier.json": check_identifier,
     "hop-hash.json": check_hop_hash,
     "crc32c.json": check_crc32c,
+    "icon-colour.json": check_icon_colour,
 }
 
 

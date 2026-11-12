@@ -18,6 +18,8 @@ not put "APRS" into a name of anything in this project.
 - [RFC draft](docs/rfc/qua-network-rfc-0.md): design direction, rationale,
   dropped alternatives, open questions. Its Appendix D lists the legacy APRS
   references.
+- `docs/spec/`: specification drafts, one numbered file per topic. A topic
+  that has a file there is specified there and nowhere else.
 - `vectors/`: machine-readable conformance vectors. Tables in the documents
   are copies; when they disagree, the vector file is authoritative.
 - `3rdparty/`: pinned upstream references.
@@ -45,6 +47,20 @@ changes; link to it instead of restating formats, constants or figures here.
 - Section 10 (authentication) is unreviewed. Do not describe any part of it
   as secure or sound.
 
+## RFC and specification files
+
+- When a topic has a file in `docs/spec/`, change the rules there. The RFC
+  section keeps a short summary, the reasons and the dropped alternatives,
+  and links to the file. Do not restate formats, tables or rules in both.
+- A specification file states what an implementer must do and carries no
+  rationale. Reasons go in the RFC section it links to.
+- Items in a specification draft keep their status labels until the file is
+  frozen. The rules under "Decision status" apply to them unchanged.
+- A specification file lists its own open items. A cross-cutting question
+  also stays in the RFC's open-questions list.
+- Moving a topic out of the RFC keeps its section number in place, so that
+  existing references stay valid.
+
 ## Numbers and claims
 
 - The RFC is a reference for design direction and is not kept in step with
@@ -71,7 +87,7 @@ changes; link to it instead of restating formats, constants or figures here.
   is a format change and needs the author's decision; adding vectors is not.
 - Round-trip agreement between an encoder and its own decoder is not
   evidence that either is correct.
-- Run `qua-check-vectors` after touching `vectors/`, `identifier.py`, or
+- Run `qua-check-vectors` after touching `vectors/`, `identifier.py`, `icon.py`, or
   any document table that quotes a vector.
 
 ## Data safety
@@ -110,7 +126,8 @@ changes; link to it instead of restating formats, constants or figures here.
   across files (per-station history, deduplication) runs sequentially.
 - Search the package for an existing parser or counter before writing
   another. Corpus files and TNC2 line splitting belong to `tnc2.py`;
-  identifier encoding and hop hashes belong to `identifier.py`.
+  identifier encoding and hop hashes belong to `identifier.py`; icon colour
+  values belong to `icon.py`.
 - A measurement tool prints the input file range and the packet count
   alongside its results, so a figure can be traced to a run.
 

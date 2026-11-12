@@ -6,7 +6,7 @@ An open specification attempt at modernizing APRS.
 |---|---|
 | Document | RFC draft 0 (design notes, not yet a wire specification) |
 | Date | 2026-11-11 |
-| Status | Exploratory. Nothing here is frozen. |
+| Status | Exploratory. Nothing here is frozen. Sections 5.8 and the icon of 5.6 have moved to `docs/spec/`; this document keeps their summary and rationale. |
 | Name | "QUA Network" is a working name and may be replaced by a better one. Earlier drafts used "APRS-next". |
 | Author | Kelei Chen <chenkolei@gmail.com> |
 
@@ -355,61 +355,39 @@ A station's symbol is one field with two forms. A PDU carries one of them.
 
 #### Icon
 
-A station can also send a small picture of its own. The items here are
-**[proposed]** unless marked otherwise.
+The icon is specified in [`docs/spec/02-icon.md`](../spec/02-icon.md). This
+section keeps the summary and the reasons.
 
-- The icon is an optional TLV, separate from the symbol. It holds a 16 by 16
-  one-bit bitmap.
-- **[agreed]** The icon also holds two colours, foreground and background,
-  of one byte each. A set bit is drawn in the foreground colour.
-- **[agreed]** A colour byte is an index into the xterm 256-colour palette,
-  restricted to the part of it that has fixed values:
-  - 16 to 231 is the colour cube with six levels per channel:
-    `index = 16 + 36 * r + 6 * g + b`, each of `r`, `g`, `b` from 0 to 5,
-    with channel values 0, 95, 135, 175, 215 and 255 for the six levels.
-  - 232 to 255 is a grey ramp of 24 steps: the channel value is
-    `8 + 10 * (index - 232)`, from 8 to 238.
-  - 0 as the foreground colour means the device default. 0 as the
-    background colour means transparent.
-  - 1 to 15 are invalid. In xterm these and 0 are the terminal's sixteen
-    system colours, whose actual values differ between terminals, so they
-    cannot name a colour here.
-  A device needs no table beyond the six cube levels.
-- **[agreed]** A one-colour display ignores the colours and draws the
-  bitmap as it is.
-- **[agreed]** It does not replace the symbol. A PDU that carries an icon
-  also carries a symbol in one of the two forms above, and the icon is bound
-  to that symbol. The symbol is what a receiver shows when it does not
-  support icons or has not yet received one.
-- It is display only, under the same rule as the symbol: software MUST NOT
-  derive behaviour from it.
-- A sender SHOULD NOT include the icon in every beacon. It is sent every
-  Nth beacon, like unchanged comment text (5.7); the beacons in between
-  carry only the symbol. A receiver remembers the last icon heard from a
-  station together with the symbol it came with, for display only. Every
-  packet remains fully decodable without it.
-- **[agreed]** A station identifier (5.8) has at most one icon at a time.
-  A newly received icon replaces the one held for that identifier; a
-  receiver never keeps more than one per station. Its memory for icons is
-  therefore bounded by the number of stations it tracks, and does not grow
-  with the number of icons a station has sent.
-- **[agreed]** The icon is kept while the station goes on sending the
-  symbol it is bound to. A PDU from that identifier that carries no icon
-  and whose symbol differs from the bound one, in form or in any byte,
-  drops the icon. This is how a station withdraws its icon; no separate
-  message exists for it. A PDU with no symbol field has no effect.
-- A station that wants a different symbol and the same icon sends the icon
-  again with the new symbol.
-- **[agreed]** An icon has no lifetime of its own. Unless it is replaced or
-  dropped as above, it is kept as long as the receiver's record of the
-  station and is discarded together with it.
-- In canonical text the icon is written as hexadecimal. It is the one part
-  of a station's appearance that is not practical to type by hand.
+A station can also send a small picture of its own: a 16 by 16 one-bit
+bitmap with a foreground and a background colour of one byte each, in an
+optional TLV beside the symbol. It does not replace the symbol. The icon is
+bound to the symbol it is sent with, a receiver holds at most one icon per
+station, and a station withdraws its icon by sending a different symbol
+without one.
+
+Why it is built this way:
+
 - An icon needs no font on the receiver and looks the same everywhere. In
-  exchange it has no meaning a program can search or filter on, and it
-  cannot be redrawn at a higher resolution.
-- Arbitrary pictures will appear on public maps. A gateway or display
-  service MAY decline to show icons.
+  exchange it has no meaning a program can search or filter on, it cannot
+  be redrawn at a higher resolution, and in canonical text it is the one
+  part of a station's appearance that is not practical to type by hand.
+  That is why the symbol stays beside it.
+- Binding the icon to the symbol gives a way to withdraw it without a
+  separate message, and keeps a meaningful fallback for receivers that do
+  not support icons or have not yet received one. An earlier version made
+  the symbol field a bare placeholder while an icon was in use; it was
+  dropped because such receivers would then have nothing to show.
+- One icon per station, replaced by the next, keeps a receiver's memory
+  bounded by the number of stations it tracks.
+- The colours use the part of the xterm 256-colour palette that has fixed
+  values. The first sixteen entries are a terminal's system colours and
+  differ between terminals, so they cannot name a colour; the value 0 is
+  reused for "device default" and "transparent" and the other fifteen are
+  invalid. A device needs no table beyond the six cube levels.
+- The icon is not sent in every beacon, for the same reason as unchanged
+  comment text (5.7). Every packet remains fully decodable without it.
+- Arbitrary pictures will appear on public maps, which is why a gateway or
+  display service is allowed to decline to show them.
 
 **[open]** Whether the bitmap is compressed, and how. Uncompressed it is 32
 bytes. A first, one-off measurement on the 16 by 16 glyphs of GNU Unifont
@@ -584,113 +562,49 @@ remembers the last comment does so for display only.
 
 ### 5.8 Callsign encoding
 
+The encoding is specified in
+[`docs/spec/01-station-identifier.md`](../spec/01-station-identifier.md).
+This section keeps the summary and the reasons.
+
 A station identifier, callsign and SSID together, is a fixed 64-bit value.
 It is used wherever a station is named: the source in the header, a message
-addressee, a path entry.
+addressee, a path entry. The low 63 bits hold 12 base-37 digits. The SSID
+is the last digit or the last two, the top bit says which, and the callsign
+takes the remaining 11 or 10 digits. One digit table serves both parts: 0
+is padding, `/` or "no SSID" depending on position, 1 to 10 are `0` to `9`,
+and 11 to 36 are `A` to `Z`.
 
-```
-MSB                                                        LSB
- 63  62                                                    0
-+---+------------------------------------------------------+
-| F | 12 digits, base 37, 63 bits                          |
-+---+------------------------------------------------------+
+Why it is built this way:
 
-F = 0:  | callsign, 11 digits               | SSID, 1 digit  |
-F = 1:  | callsign, 10 digits          | SSID, 2 digits      |
-```
-
-#### Layout
-
-- **[agreed]** The low 63 bits hold 12 base-37 digits, first digit most
-  significant. The SSID occupies a fixed position at the end. The top bit
-  says how many digits that is: 0 for one, 1 for two.
-- **[agreed]** One digit table is used everywhere:
-
-  | Digit | In the callsign | In the SSID |
-  |---|---|---|
-  | 0 | padding when leading, `/` otherwise | NUL (no character) |
-  | 1 to 10 | `0` to `9` | `0` to `9` |
-  | 11 to 36 | `A` to `Z` | `A` to `Z` |
-
-- **[agreed]** Digit 0 does double duty. A callsign never begins with `/`, so
-  leading zeros in the callsign part are padding and every other zero is a
-  `/`. The callsign needs no separate padding symbol, and its value is the
-  callsign read as an ordinary base-37 number.
-- **[agreed]** With F = 0 the callsign has 11 digits, the same length as the
+- Digit 0 does double duty in the callsign. A callsign never begins with
+  `/`, so leading zeros are padding and every other zero is a `/`. The
+  callsign needs no separate padding symbol, its value is the callsign read
+  as an ordinary base-37 number, and every digit pattern decodes to a
+  different string. Nothing has to be rejected there except the empty
+  callsign.
+- With a one-digit SSID the callsign has 11 digits, the same length as the
   FT8 non-standard callsign. Every real callsign FT8 can express is
   representable, with no SSID or a one-character SSID. Only an 11-character
   callsign with a two-character SSID cannot be expressed.
-- **[agreed]** "No SSID" is F = 0 with SSID digit 0.
-- 37^12 is 6,582,952,005,840,035,281, which is below 2^63, so 12 digits fit
-  in 63 bits.
-- **[agreed]** In the text form callsign and SSID are joined by a dash:
-  `N0CALL-7`. There is no dash among the digits, so this is unambiguous.
-
-**[agreed]** FT8 is a reference for this design, not a compatibility target.
-The alphabet is FT8's without the space. FT8 packs the callsign in base 38
-with a space for padding (`pack77_4` in WSJT-X `lib/77bit/packjt77.f90`);
-values here are not numerically equal to FT8's, and need not be.
-
-This covers every identifier that is legal on APRS-IS, where the SSID may be
-one or two alphanumeric characters and the total is at most nine characters.
-SSIDs outside the AX.25 range are in real use there (section 13).
-
-#### What is unique by construction
-
-In the callsign part every digit pattern decodes to a different string, and
-every string that does not begin with `/` has exactly one pattern. Nothing
-has to be rejected there except the empty callsign.
-
-#### Remaining rules
-
-- **[agreed]** The callsign part is not all zeros. The all-zero identifier is
-  reserved.
-- **[proposed]** With F = 1, neither SSID digit is 0. A one-character SSID is always
-  written with F = 0. (73 of the 1,369 two-digit patterns are excluded.)
-- **[proposed]** The one-character SSID `0` is invalid: AX.25 cannot distinguish SSID 0 from
-  no SSID, and APRS-IS forbids writing `-0`. A two-character SSID is an
-  opaque string, so `07` and `7` are different identifiers.
-- **[proposed]** Low 63 bits from 37^12 upward are invalid.
-
-**[agreed]** The encoding does not judge whether a string is a valid
-callsign. A callsign ending in `/`, or one too short to be real, is
-representable. Callsign validity is a separate, semantic matter.
-
-**[open]** The two SSID rules can also be made structural by using base 36
-in the SSID positions, with a table that simply lacks the excluded symbol
-(NUL, `1` to `9`, `A` to `Z` for one character; `0` to `9`, `A` to `Z` for
-two). The cost is a mixed radix instead of base 37 throughout.
-
-#### Test vectors
-
-| Text form | F | Value (hex, 64 bits) |
-|---|---|---|
-| `N0CALL` | 0 | `0x0000000E5BEBEB3D` |
-| `N0CALL-7` | 0 | `0x0000000E5BEBEB45` |
-| `N0CALL-G` | 0 | `0x0000000E5BEBEB4E` |
-| `N0CALL-15` | 1 | `0x8000021349190021` |
-| `BV5AB-33` | 1 | `0x80000007B01E3AF5` |
-| `PJ4/KA1ABC` | 0 | `0x01C577F1F48964A5` |
-| `PJ4/KA1ABC-15` | 1 | `0xC18A55F857DB8C29` |
-| `YW18FIFA/MM` | 0 | `0x589FF5E2D11F745B` |
-| `YW18FIFA/MM-A` | 0 | `0x589FF5E2D11F7466` |
-
-Each value was checked by decoding it back to its text form.
+- **[agreed]** FT8 is a reference for this design, not a compatibility
+  target. The alphabet is FT8's without the space. FT8 packs the callsign
+  in base 38 with a space for padding (`pack77_4` in WSJT-X
+  `lib/77bit/packjt77.f90`); values here are not numerically equal to
+  FT8's, and need not be.
+- The format covers every identifier that is legal on APRS-IS, where the
+  SSID may be one or two alphanumeric characters and the total is at most
+  nine characters. SSIDs outside the AX.25 range are in real use there
+  (section 13).
+- The one-character SSID `0` is excluded because AX.25 cannot distinguish
+  SSID 0 from no SSID, and APRS-IS forbids writing `-0`.
+- An identifier that does not fit an AX.25 address matters only for
+  gateways to legacy APRS and for the optional AX.25 encapsulation (7.2).
+  APRS itself has the same limit: such stations exist only on APRS-IS and
+  reach RF, if at all, as text inside third-party packets.
 
 Two earlier layouts were dropped: a separate 6-bit SSID field, which could
 not hold two-character SSIDs, and base-38 packing with a space as padding
 or separator, which needed several rejection rules to be canonical.
-
-#### Legacy gateways
-
-- An identifier maps to an AX.25 address only if the callsign is at most six
-  characters without `/` and the SSID is absent or is the decimal string `1`
-  to `15`. AX.25 SSID 0 maps to "no SSID".
-- Any other identifier cannot be written in an AX.25 address field. This
-  matters only for gateways to legacy APRS and for the optional AX.25
-  encapsulation (7.2), which needs a rule for that case.
-  APRS itself has the same limit: such stations exist only on APRS-IS and
-  reach RF, if at all, as text inside third-party packets.
 
 ### 5.9 Hop trace
 
@@ -1373,8 +1287,8 @@ commands.
   callsign, resolved against the aprs-deviceid database.
 - `qua-corpus-import`: converts the raw hourly files to Parquet without
   loss, for faster repeated measurement.
-- `qua-check-vectors`: recomputes the test vectors of 5.1, 5.8 and 5.9
-  from `vectors/` and compares.
+- `qua-check-vectors`: recomputes the test vectors of 5.1 and 5.9 and of
+  the station identifier specification from `vectors/` and compares.
 
 ## Appendix D. Reference documents
 

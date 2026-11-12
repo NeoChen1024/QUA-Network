@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Station identifier encoding and hop hash, as drafted in RFC 5.8 and 5.9.
+"""Station identifier encoding (docs/spec/01-station-identifier.md) and hop hash (RFC 5.9).
 
-This follows the draft, including its [proposed] rejection rules. It is a
+This follows the drafts, including their [proposed] rejection rules. It is a
 research aid for checking vectors and measuring the corpus, not a reference
 implementation.
 """

@@ -1,0 +1,13 @@
+# Raw corpus and derived products stay outside Git.
+# Match the directory or a symlink to external storage.
+/corpus
+/work
+*.parquet
+
+# Local environments and caches.
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+build/
+dist/

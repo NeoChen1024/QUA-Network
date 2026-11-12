@@ -1,0 +1,37 @@
+[project]
+name = "qua-network"
+version = "0.0.0a0"
+description = "Research tools for the QUA Network protocol specification"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+license-files = ["LICENSE.md", "LICENSES/Apache-2.0.txt"]
+authors = [{ name = "Neo_Chen" }]
+dynamic = ["dependencies"]
+
+[project.scripts]
+qua-is-logger = "qua_network.aprsis_logger:cli"
+qua-length-stats = "qua_network.length_stats:cli"
+qua-corpus-import = "qua_network.corpus_import:cli"
+qua-tocall-stats = "qua_network.tocall_stats:cli"
+qua-check-vectors = "qua_network.check_vectors:cli"
+
+[build-system]
+requires = ["setuptools>=77.0.3"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.dynamic]
+dependencies = { file = ["requirements.txt"] }
+
+[tool.setuptools.packages.find]
+where = ["pysrc"]
+
+[tool.black]
+line-length = 132
+target-version = ['py311']
+extend-exclude = '/3rdparty/'
+
+[tool.isort]
+profile = "black"
+extend_skip = ["3rdparty"]
+known_first_party = ["qua_network"]

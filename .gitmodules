@@ -1,0 +1,12 @@
+[submodule "3rdparty/aprsspec"]
+	path = 3rdparty/aprsspec
+	url = https://github.com/wb2osz/aprsspec
+[submodule "3rdparty/Unishox2"]
+	path = 3rdparty/Unishox2
+	url = https://github.com/siara-cc/Unishox2
+[submodule "3rdparty/aprs-deviceid"]
+	path = 3rdparty/aprs-deviceid
+	url = https://github.com/aprsorg/aprs-deviceid
+[submodule "3rdparty/fusion-pixel-font"]
+	path = 3rdparty/fusion-pixel-font
+	url = https://github.com/TakWolf/fusion-pixel-font.git

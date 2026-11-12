@@ -48,6 +48,9 @@ otherwise:
 |---|---|---|---|---|---|---|
 | Channel value | 0 | 95 | 135 | 175 | 215 | 255 |
 
+Black is value 16 and white is value 231, both in the colour cube. The grey
+ramp contains neither.
+
 A decoder MUST reject an icon with a colour byte from 1 to 15.
 
 These are the default colours 16 to 255 of xterm. `vectors/icon-colour.json`

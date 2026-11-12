@@ -16,6 +16,7 @@ qua-corpus-import = "qua_network.corpus_import:cli"
 qua-tocall-stats = "qua_network.tocall_stats:cli"
 qua-check-vectors = "qua_network.check_vectors:cli"
 qua-icon-stats = "qua_network.icon_stats:cli"
+qua-icon-encode = "qua_network.icon_encode:cli"
 
 [build-system]
 requires = ["setuptools>=77.0.3"]

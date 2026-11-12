@@ -53,11 +53,34 @@ def check_icon_colour(v):
     return None if got == v["rgb"] else f"rgb is {got}"
 
 
+def check_icon_bitmap(v):
+    field = bytes.fromhex(v["field"])
+    if "reject" in v:
+        try:
+            icon.decode_bitmap(field)
+        except icon.IconError:
+            return None
+        return "decoder accepts it"
+    pixels = bytes.fromhex(v["pixels"])
+    got = icon.encode_bitmap(pixels)
+    if v.get("decode_only"):
+        if got == field:
+            return "marked decode_only, but it is what the encoder gives"
+    elif got != field:
+        return f"encode gives {got.hex().upper()}"
+    try:
+        back = icon.decode_bitmap(field)
+    except icon.IconError as e:
+        return f"decoder rejects it: {e}"
+    return None if back == pixels else f"decode gives {back.hex().upper()}"
+
+
 CHECKS = {
     "identifier.json": check_identifier,
     "hop-hash.json": check_hop_hash,
     "crc32c.json": check_crc32c,
     "icon-colour.json": check_icon_colour,
+    "icon-bitmap.json": check_icon_bitmap,
 }
 
 

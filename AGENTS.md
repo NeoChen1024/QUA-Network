@@ -89,6 +89,8 @@ changes; link to it instead of restating formats, constants or figures here.
   evidence that either is correct.
 - Run `qua-check-vectors` after touching `vectors/`, `identifier.py`, `icon.py`, or
   any document table that quotes a vector.
+- `icon_encode.py` produces `vectors/icon-bitmap.json` and is the path
+  independent of `icon.py`. Neither imports the other.
 
 ## Data safety
 

@@ -35,6 +35,7 @@ uv pip install --python .venv/bin/python -e .
 | `qua-length-stats` | Payload and frame length statistics over the corpus. |
 | `qua-check-vectors` | Recompute the conformance vectors and compare. |
 | `qua-icon-stats` | Size of the candidate icon bitmap forms on BDF font glyphs. |
+| `qua-icon-encode` | Encode a 16 by 16 picture as an icon bitmap field; produce the icon bitmap vectors. |
 
 Each command documents its options under `--help`. The raw corpus lives in
 `corpus/` and derived products in `work/`; neither is in Git.

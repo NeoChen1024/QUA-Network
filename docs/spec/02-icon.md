@@ -4,7 +4,7 @@
 |---|---|
 | Status | Draft. Not frozen. Items carry the labels **[agreed]**, **[proposed]** and **[open]** with the meaning given in the RFC. |
 | Rationale | [RFC draft 0, section 5.6](../rfc/qua-network-rfc-0.md#56-symbols) |
-| Vectors | [`vectors/icon-colour.json`](../../vectors/icon-colour.json) for the colour values. None yet for the bitmap. |
+| Vectors | [`vectors/icon-bitmap.json`](../../vectors/icon-bitmap.json) for the bitmap forms, [`vectors/icon-colour.json`](../../vectors/icon-colour.json) for the colour values. |
 
 The key words MUST, MUST NOT, SHOULD, SHOULD NOT and MAY are used as in
 RFC 2119.
@@ -35,20 +35,23 @@ from it.
 ## 3. Bitmap forms
 
 **[agreed]** The bitmap is sent in one of two forms: plain, or row XOR
-followed by run lengths. There is no other form.
+followed by gap lengths. There is no other form.
 
 **[agreed]** The length of the bitmap field tells the forms apart: 32
-bytes is the plain form and 1 to 31 bytes is the run-length form. A decoder
-MUST reject any other length.
+bytes is the plain form and 1 to 31 bytes is the gap form. A decoder MUST
+reject any other length.
 
-**[agreed]** A sender MUST use the run-length form when it is shorter than
-32 bytes, and the plain form otherwise.
+**[agreed]** A sender MUST use the gap form when it is shorter than 32
+bytes, and the plain form otherwise.
 
 ### 3.1 Plain form
 
 **[agreed]** The 256 pixels in the order of section 2, as 32 bytes.
 
-### 3.2 Run-length form
+**[agreed]** A decoder accepts a plain form whether or not its bitmap would
+be shorter in the gap form.
+
+### 3.2 Gap form
 
 **[agreed]** The encoder works on 256 bits `t[0]` to `t[255]`, derived
 from the pixels `p[0]` to `p[255]` in the order of section 2:
@@ -56,32 +59,71 @@ from the pixels `p[0]` to `p[255]` in the order of section 2:
 - `t[i] = p[i]` for `i` from 0 to 15 (the top row);
 - `t[i] = p[i] XOR p[i - 16]` for `i` from 16 to 255.
 
-A run is a maximal sequence of consecutive equal bits of `t`. The output is
-a bit string, written into bytes from the most significant bit down:
+Let `s[1]` to `s[k]` be the indices of the set bits of `t` in increasing
+order, and let `s[0] = -1` and `s[k+1] = 256`. The gaps are the `k + 1`
+differences `s[j] - s[j-1]` for `j` from 1 to `k + 1`. Each is at least 1
+and they add up to 257.
 
-1. One bit: the value of `t[0]`.
-2. The length of every run, in order, each as an Elias gamma code.
-3. Zero bits up to the next byte boundary. None if the string already ends
+The output is a bit string, written into bytes from the most significant
+bit down:
+
+1. Every gap, in order, each as an Elias gamma code.
+2. Zero bits up to the next byte boundary. None if the string already ends
    on one.
 
-The Elias gamma code of a length `n` from 1 to 256 is the binary form of `n`
+The Elias gamma code of a gap `n` from 1 to 257 is the binary form of `n`
 without leading zeros, preceded by one zero bit for each of its bits except
-the first. The codes of 1, 2, 3, 4 and 256 are `1`, `010`, `011`, `00100`
-and `00000000100000000`.
+the first. The codes of 1, 2, 3, 4 and 257 are `1`, `010`, `011`, `00100`
+and `00000000100000001`.
 
-**[agreed]** A decoder reads the first bit and then reads run lengths
-until they add up to 256. The runs alternate in value, starting with the
-value of the first bit. It MUST reject the bitmap if:
+**[agreed]** A decoder starts with every bit of `t` clear and a position of
+-1. It reads a gap and adds it to the position. If the position is then
+less than 256 it sets that bit of `t` and reads the next gap; if it is 256
+the gaps are complete. It MUST reject the bitmap if:
 
-- the field ends before the run lengths add up to 256;
-- the run lengths add up to more than 256;
-- a bit after the last run length is not zero;
-- eight or more bits remain after the last run length.
+- the field ends before the position reaches 256;
+- the position passes 256;
+- a bit after the last gap is not zero;
+- eight or more bits remain after the last gap.
 
-It then recovers the pixels row by row from the top.
+It then recovers the pixels row by row from the top:
+`p[i] = t[i] XOR p[i - 16]`.
 
 The smallest bitmap in this form is the empty one, the three bytes
-`00 40 00`.
+`00 80 80`.
+
+### 3.3 Test vectors
+
+`vectors/icon-bitmap.json` is authoritative. An entry with `pixels` gives 32
+bytes of pixels in the plain order and the `field` a sender produces for
+them; a decoder returns the same pixels for that field. An entry marked
+`decode_only` gives a `field` that a sender does not produce and a decoder
+accepts. An entry with `reject` gives a `field` that a decoder rejects.
+
+| Bitmap | Field |
+|---|---|
+| Empty | `008080` |
+| Every pixel set | `FFFF01E2` |
+| Top left pixel only | `84007800` |
+| Bottom right pixel only | `008040` |
+| Left half set | `FF01F2` |
+| Vertical stripes | `A492480790` |
+
+| Rejected field | Reason |
+|---|---|
+| `0080` | Ends before the position reaches 256. |
+| `804040` | Gaps of 1 and 257 pass position 256. |
+| `008100` | A gap of 258 passes position 256. |
+| `008081` | A bit after the last gap is set. |
+| `00808000` | Eight bits remain after the last gap. |
+
+The file also holds drawn icons and bitmaps that stay in the plain form.
+
+The values are produced by `qua-icon-encode --vectors`. That encoder works
+on strings of `0` and `1`, was written from the text of this section, and
+shares no code with the encoder and decoder that `qua-check-vectors` runs
+against the file, which work on integers. The first three bitmaps of the
+table were also worked by hand.
 
 ## 4. Colour values
 
@@ -163,4 +205,5 @@ MUST NOT alter or remove the TLV when forwarding (RFC 6.2).
 - The order of the fields inside the TLV, and its tag. Section 3 assumes
   that the length of the bitmap field follows from the length of the TLV.
 - The repeat interval N of section 7.
-- Test vectors for the bitmap and for icons that a decoder must reject.
+- Test vectors for a whole icon TLV, including colour bytes a decoder must
+  reject, once the field order is settled.

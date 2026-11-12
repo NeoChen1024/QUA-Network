@@ -360,8 +360,8 @@ section keeps the summary and the reasons.
 
 A station can also send a small picture of its own: a 16 by 16 one-bit
 bitmap with a foreground and a background colour of one byte each, in an
-optional TLV beside the symbol. The bitmap is sent plain, or as run lengths
-when that is shorter. It does not replace the symbol. The icon is
+optional TLV beside the symbol. The bitmap is sent plain, or in a compressed
+form when that is shorter. It does not replace the symbol. The icon is
 bound to the symbol it is sent with, a receiver holds at most one icon per
 station, and a station withdraws its icon by sending a different symbol
 without one.
@@ -391,54 +391,89 @@ Why it is built this way:
   display service is allowed to decline to show them.
 
 **[agreed]** The bitmap has two forms and no more: plain, at 32 bytes, or
-each row XORed with the one above and the resulting bit stream coded as
-alternating run lengths in Elias gamma. The rules of 5.7 apply: the
-run-length form if and only if it is strictly shorter, one exactly specified
-encoder, test vectors, and a decoder that rejects a non-canonical encoding.
+each row XORed with the one above and the distances between the set bits
+of the result coded in Elias gamma (the gap form). The rules of 5.7 apply:
+the gap form if and only if it is strictly shorter, one exactly specified
+encoder, test vectors, and a decoder that rejects a malformed gap form.
 The details of the bit stream are in the specification file.
+
+**[agreed]** There is one exception to rejecting a non-canonical encoding:
+a decoder accepts a plain form that the gap form would have made shorter.
+Rejecting it was considered and dropped, because the decoder would have to
+compute the length of the gap form of every plain bitmap it receives.
+
+Rows of a drawn picture resemble their neighbours, so the row XOR leaves
+mostly zeros with single set bits where an outline moves, and a gap is one
+short code for each of those bits.
 
 `qua-icon-stats` measures the forms on the glyphs of bitmap fonts, each
 centred in the 16 by 16 cell. The fonts are the BDF sources kept in the
 u8g2 repository (commit `ab9e48b2`, 2026-06-27; run on 2026-11-12). Open
 Iconic at 16 pixels is the closest to what a station would draw. Sizes are
-mean bytes; "used" is the share of glyphs for which the run-length form is
-shorter than 32 bytes.
+mean bytes before the fallback to the plain form; "used" is the share of
+glyphs for which the gap form is shorter than 32 bytes.
 
-| Test set | Glyphs | Run-length form | Used |
-|---|---|---|---|
-| Open Iconic, 16 by 16 (`open_iconic_all_2x`) | 223 | 19.6 | 97.3% |
-| Siji, 12 by 12 (`siji`) | 624 | 13.2 | 100% |
-| Unifont symbols and dingbats, U+2600 to U+27BF | 448 | 20.1 | 96.9% |
-| Unifont emoji blocks, U+1F300 to U+1F64F, U+1F680 to U+1F6FF, U+1F900 to U+1FAFF | 1,316 | 22.7 | 98.6% |
-| of which emoticons, U+1F600 to U+1F64F | 80 | 28.3 | 97.5% |
-| Unifont CJK ideographs, U+4E00 to U+9FFF | 20,991 | 28.7 | 73.6% |
+| Test set | Glyphs | Gap form | Used | Alternating run lengths |
+|---|---|---|---|---|
+| Open Iconic, 16 by 16 (`open_iconic_all_2x`) | 223 | 18.2 | 100% | 19.6 |
+| Siji, 12 by 12 (`siji`) | 624 | 12.5 | 100% | 13.2 |
+| Unifont symbols and dingbats, U+2600 to U+27BF | 448 | 18.9 | 98.0% | 20.1 |
+| Unifont emoji blocks, U+1F300 to U+1F64F, U+1F680 to U+1F6FF, U+1F900 to U+1FAFF | 1,316 | 21.7 | 98.9% | 22.7 |
+| of which emoticons, U+1F600 to U+1F64F | 80 | 26.7 | 100% | 28.3 |
+| Unifont CJK ideographs, U+4E00 to U+9FFF | 20,991 | 27.9 | 80.1% | 28.7 |
 
-Drawn icons come to a little under two thirds of the plain size, small ones
-to under half, and glyphs that fill the cell, such as faces and ideographs,
-hardly compress. Without the row XOR the Open Iconic set comes to 23.8
-bytes.
+Drawn icons come to a little under three fifths of the plain size, small
+ones to about two fifths, and glyphs that fill the cell, such as faces and
+ideographs, hardly compress.
+
+The gap form is weak where the row XOR leaves long runs of set bits, which
+happens when whole rows alternate: horizontal stripes one pixel high and a
+checkerboard stay in the plain form, and stripes two pixels high come to 23
+bytes (these three are in `vectors/icon-bitmap.json`). Alternating run
+lengths code such patterns in a few bytes. The test sets hold few of them.
 
 Dropped alternatives:
 
-- Leaving out the last run, which a decoder can infer because the bitmap
-  always has 256 pixels. It measured about one byte shorter on every test
-  set. Dropped as too particular a rule for that gain: the decoder would
-  end on "all remaining bits are zero" in place of a pixel count.
+- Alternating run lengths in place of gaps: one bit for the first value,
+  then the length of every run of equal bits in Elias gamma. This was the
+  agreed form before the gap form replaced it. It is about one byte longer
+  on every test set (last column above), because a set bit standing alone
+  costs a code of its own, and its decoder carries the current value as
+  extra state.
+- Leaving out the last run of that form, which a decoder can infer because
+  the bitmap always has 256 pixels. It measured about one byte shorter.
+  Dropped as too particular a rule for that gain.
+- Other predictions in place of the row above, each with alternating run
+  lengths: the pixel to the left, the XOR of left, above and above-left, a
+  majority of those three, a column-wise or serpentine scan, and a header
+  that selects the best of four predictions for each icon. None was better
+  than the row above except the selectable one, by under one byte, for
+  four predictors in every decoder.
+- Simple LZ77 forms on bytes and on bits, with and without the row XOR,
+  each with an optimal parse. All were longer than alternating run lengths,
+  by one and a half bytes or more: 32 bytes are too few to build a history,
+  and a row that resembles the one above is not a copy of it.
+- Tokens in the manner of QOI (repeat the previous unit, refer to one seen
+  earlier, a small difference, a literal) with a row or a byte as the unit.
+  About equal to alternating run lengths with rows, longer with bytes.
 - Cropping to the bounding box and sending the pixels inside it. A
   hand-drawn icon is expected to fill nearly the whole 16 by 16 cell, so
   there is little to crop. In the first one-off measurement, on font
-  glyphs, it came out about the same as the run-length form.
+  glyphs, it came out about the same as alternating run lengths.
 - An adaptive arithmetic coder with a causal pixel context. Its ideal code
-  length in the first one-off measurement was two or three bytes below the
-  run-length form, which a real coder approaches but does not reach. A
+  length in the first one-off measurement was two or three bytes below
+  alternating run lengths, which a real coder approaches but does not reach. A
   picture of 256 pixels is too short for the model to adapt, and a fixed
   probability table would write one font's statistics into the format.
 - Deflate, which was longer than the plain bitmap on a third or more of the
   symbols and emoji in the same measurement.
 
 The first one-off measurement used the 16 by 16 glyphs of GNU Unifont
-18.0.01 and a script that was not kept; its figures are not reproducible
-and are quoted here only for the dropped alternatives.
+18.0.01 and a script that was not kept. The predictions, LZ77 forms and
+QOI-like tokens were measured on 2026-11-12 on the Open Iconic, Siji and
+Unifont symbol sets above, with one-off scripts that were not kept either.
+These figures are not reproducible and are quoted here only for the dropped
+alternatives.
 
 **[agreed]** 16 by 16 pixels at one bit each is the only size of the icon.
 A larger icon or one with more colours is not ruled out for a later
@@ -1254,10 +1289,8 @@ anything is decided on them.
     byte has the low bit set through Dire Wolf and through hardware KISS
     TNCs, and confirm that they are transmitted and received intact, and
     that legacy APRS software on the channel ignores them.
-13. Implement the icon's run-length form (5.6) and add test vectors
-    computed by an independent path, including
-    bitmaps a decoder must reject. Extend the measurement of 5.6 to the
-    APRS symbol table drawn at 16 by 16.
+13. Extend the icon measurement of 5.6 to the APRS symbol table drawn at
+    16 by 16.
 
 ## Appendix A. Transceiver packet limits
 
@@ -1322,6 +1355,9 @@ commands.
   compares.
 - `qua-icon-stats`: size of the candidate icon bitmap forms on the glyphs
   of BDF fonts.
+- `qua-icon-encode`: encodes a 16 by 16 picture as an icon bitmap field,
+  and produces the icon bitmap vectors by a path independent of the
+  encoder that `qua-check-vectors` checks.
 
 ## Appendix D. Reference documents
 

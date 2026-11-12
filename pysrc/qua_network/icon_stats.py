@@ -2,10 +2,10 @@
 """Size of the icon bitmap forms, measured on glyphs of BDF fonts.
 
 Each glyph whose bounding box fits the 16 by 16 icon is centred in it and
-its size is computed in the run-length form of docs/spec/02-icon.md
-("xor+rle") and, for comparison, with the same run lengths without the row
-XOR ("rle"). A glyph with no set pixel is skipped, and a bitmap that occurs
-more than once in a file is counted once.
+its size is computed in the gap form of docs/spec/02-icon.md ("xor+gap")
+and, for comparison, as alternating run lengths with and without the row
+XOR ("xor+rle", "rle"). A glyph with no set pixel is skipped, and a bitmap
+that occurs more than once in a file is counted once.
 
 These are sizes only: this tool counts bits and does not produce an
 encoding. A form is used when it is strictly shorter than the 32 bytes of
@@ -83,10 +83,21 @@ def rle_bits(bits):
     return 1 + sum(gamma_bits(n) for n in runs(bits))
 
 
-SPECIFIED = "xor+rle"
+def gap_bits(bits):
+    """The distance from each set bit to the next in Elias gamma, counting from before the first bit to after the last."""
+    total = 0
+    last = -1
+    for pos in [i for i, bit in enumerate(bits) if bit] + [len(bits)]:
+        total += gamma_bits(pos - last)
+        last = pos
+    return total
+
+
+SPECIFIED = "xor+gap"
 FORMS = {
     "rle": rle_bits,
-    SPECIFIED: lambda p: rle_bits(row_xor(p)),
+    "xor+rle": lambda p: rle_bits(row_xor(p)),
+    SPECIFIED: lambda p: gap_bits(row_xor(p)),
 }
 HISTOGRAM_WIDTH = 60
 

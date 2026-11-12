@@ -75,15 +75,13 @@ and stays comment text.
 
 Finding a block:
 
-- **[proposed]** Every block in the comment is recorded as a candidate
-  token; more than one gives an `ambiguous` finding, as for
-  [`cmt.dao`](02-fields.md#cmt.dao).
-- **[proposed]** A candidate followed by anything other than an optional
-  [`cmt.dao`](02-fields.md#cmt.dao) and, in Mic-E, the device suffix
-  [`mice.type.suffix`](04-mic-e.md#mice.type.suffix) gives an
-  `ambiguous` finding: the bytes can also be read as comment text, and a
-  DAO before the block is allowed by chapter 6 but not by chapter 13
-  ([amb.tlm.b91.order](#amb.tlm.b91.order)).
+- **[proposed]** A run that fits `tlm.b91` is a block only when nothing
+  follows it but an optional [`cmt.dao`](02-fields.md#cmt.dao) and, in
+  Mic-E, the device suffix
+  [`mice.type.suffix`](04-mic-e.md#mice.type.suffix). A run followed by
+  anything else is comment text, with no finding
+  ([amb.tlm.b91.order](#amb.tlm.b91.order)). At most one run in a
+  comment can be a block ([amb.tlm.b91.where](#amb.tlm.b91.where)).
 - In Mic-E, the device suffix is taken off first and only the bytes before
   it are searched ([04-mic-e.md](04-mic-e.md#amb.mice.pipe)).
 - **[proposed]** A block is one of the items found inside a comment of
@@ -181,6 +179,20 @@ the [README](README.md#4-decoders-consulted), not run.
   Readings (b) and (c) would accept some of these bytes, but the `value`
   or `syntax` finding alone is given, with no `ambiguous` beside it
   ([README section 3](README.md#3-tokenizer-model), Precedence).
+- **In the bytes.** **[proposed]** Reading (b) takes every sequence
+  that this reading accepts with the same bytes. Reading (c) does too,
+  except for `MIC` with no `','` after it: it would run the sequence on
+  to the first `','`, taking the first analog value with it, and so
+  read one analog field fewer. Under the test of README section 3 that
+  counts only where reading (c) still accepts the report: the first
+  value is all digits, and the comment starts with zero or more digits,
+  a `','` and eight bytes `'0'` or `'1'`, which reading (c) takes as
+  the end of the fifth value and the digital value. There an
+  `ambiguous` finding is given at offset 5, the byte after `MIC`. In
+  every other such report reading (c) fails, and there is no finding. A
+  `syntax` or `value` finding that both readings give on the same bytes
+  elsewhere in the report does not suppress the `ambiguous` finding. An
+  earlier draft withheld it wherever the report had such a finding.
 - **Decoders.**
 
   | Decoder | Reads | Where |
@@ -247,8 +259,11 @@ the [README](README.md#4-decoders-consulted), not run.
   comment whose first byte is `','` or SP, which reading (c) would take
   as a separator, gives an `ambiguous` finding at that byte. This meets
   the test of README section 3: reading (c) takes the rest as the
-  comment under the same rules, so it accepts every report that this
-  reading accepts.
+  comment under the same rules, so it accepts exactly the reports that
+  this reading accepts. **[proposed]** A `syntax` or `value` finding
+  elsewhere in the report is given by both readings and does not
+  suppress the `ambiguous` finding. An earlier draft gave the finding
+  only in a report with no such finding.
 - **Decoders.** FAP: up to five values, fewer accepted; the sixth field,
   if any, is the bits, padded with `'0'` to eight (`FAP.pm:2361-2387`).
   Dire Wolf: the eight bytes after the fifth comma are the bits and the
@@ -266,12 +281,26 @@ the [README](README.md#4-decoders-consulted), not run.
   position formats, and asks itself whether leaving out objects was
   intended (p. 88/68). How to find the block in a comment that holds
   other `'|'` bytes is not stated.
-- **Readings.** (a) Only the three named formats. (b) Any comment.
-  (c) The first block. (d) The last block. (e) Every block.
-- **Reading taken.** **[proposed]** (a), with candidates in object and
-  item comments recorded under an `unstated` finding; (e), as for
-  `!DAO!`, with `ambiguous` when there is more than one. Visible in the
-  bytes, as those findings.
+- **Readings.** (a) Only the three named formats. (b) Any comment. An
+  earlier draft also listed, for a comment with several runs between
+  bars, (c) the first block, (d) the last block and (e) every block,
+  and took (e) with an `ambiguous` finding on each of several
+  candidates. Chapter 13 places the block after the free text with
+  only a DAO or the Mic-E device code after it (p. 88/68), so a run
+  followed by anything else is not a block, and at most one run in a
+  comment meets that: a later run would stand in the bytes after an
+  earlier one, which may hold only a DAO. Choosing among several runs
+  therefore takes a run that p. 88/68 does not allow, and by
+  [README section 3](README.md#3-tokenizer-model) it is decoder
+  behaviour (Dire Wolf and aprslib take the first, FAP and pdn-aprs the
+  last, below), not a listed reading, and gives no finding.
+- **Reading taken.** **[proposed]** (a), with a block in an object or
+  item comment recorded under an `unstated` finding. Visible in the
+  bytes, as that finding.
+- **In the bytes.** **[proposed]** In an object or item comment the
+  block is a block token, as reading (b) would have it; the `unstated`
+  finding marks the place, and the readings do not divide the bytes
+  differently, so there is no `ambiguous` finding.
 - **Decoders.** FAP: in position, object and item comments and in Mic-E;
   the last block, 2 to 7 pairs (`_comments_to_decimal`, `FAP.pm:1199`;
   `FAP.pm:1859`; `_comment_telemetry`, `FAP.pm:1405`). Dire Wolf: in its
@@ -299,10 +328,25 @@ the [README](README.md#4-decoders-consulted), not run.
   (p. 35/21); chapter 13 puts the block after the free text and before any
   DAO (p. 88/68).
 - **Readings.** (a) Block, then DAO, then suffix, and nothing else after
-  the block. (b) Either order; text after the block allowed.
-- **Reading taken.** **[proposed]** (a), with a candidate in another
-  place giving `ambiguous`, since reading (b) and the comment-text reading
-  also fit the bytes. Visible in the bytes, as that finding.
+  the block. (b) Block and DAO in either order, as chapter 6 lets the
+  DAO stand anywhere. An earlier draft let reading (b) also allow text
+  after the block. Chapter 13 requires the block to come after the free
+  text (p. 88/68), so that part contradicts it, and by
+  [README section 3](README.md#3-tokenizer-model) it is decoder
+  behaviour (every decoder read, below), not a listed reading, and
+  gives no finding.
+- **Reading taken.** **[proposed]** (a). A run of block shape followed
+  by bytes other than an optional [`cmt.dao`](02-fields.md#cmt.dao)
+  and, in Mic-E, the device suffix is comment text, with no finding;
+  recognising a block followed by text is left to a deviation
+  recogniser.
+- **In the bytes.** **[proposed]** A DAO before a block that nothing
+  but the suffix follows is found where it stands under both readings
+  ([02-fields.md](02-fields.md#82-items-found-inside-a-comment) section
+  8.2), so the readings divide no bytes differently, and there is no
+  `ambiguous` finding. An earlier draft gave one at the first `'|'` of
+  a run followed by text, which only the dropped part of reading (b)
+  took as a block.
 - **Decoders.** All read accept either order and text after the block:
   FAP takes the block out first and then looks for a DAO in the rest
   (`FAP.pm:1199-1207`); Dire Wolf matches each anywhere
@@ -327,12 +371,14 @@ the [README](README.md#4-decoders-consulted), not run.
   **[proposed]** Under the test of
   [README section 3](README.md#3-tokenizer-model) the finding is given
   only when the rest of the text, read as that definition message, fits
-  section 4 with no `syntax` or `value` finding: for example `Bits.`
-  followed by eight `'0'` or `'1'` bytes. Text such as `bits. of the
-  plan` would fail as a `BITS.` message, so it gives no finding. An
-  earlier draft gave the finding for every such keyword. Whether the
-  addressee sends telemetry cannot be seen in the packet and gives no
-  finding.
+  section 4 with no `syntax` or `value` finding of reading (b)'s own:
+  for example `Bits.` followed by eight `'0'` or `'1'` bytes. Text such
+  as `bits. of the plan` would fail as a `BITS.` message, so it gives no
+  finding. A finding that both readings give, such as the length limit
+  of [`msg.text`](08-message.md#msg.text), does not suppress the
+  `ambiguous` finding. An earlier draft gave the finding for every such
+  keyword. Whether the addressee sends telemetry cannot be seen in the
+  packet and gives no finding.
 - **Decoders.** Dire Wolf: exact; the definitions are stored for the
   addressee (`decode_aprs.c:1935-1953`). aprslib: exact (`telemetry.py:46`).
   pdn-aprs: exact (`telemetry_metadata`, `message.rs:197-202`). FAP: any
@@ -399,6 +445,14 @@ the [README](README.md#4-decoders-consulted), not run.
   than 23 bytes, the `value` finding of `tlm.bits.title` alone is given,
   with no `ambiguous` beside it
   ([README section 3](README.md#3-tokenizer-model), Precedence).
+- **In the bytes.** **[proposed]** The finding is at that `','`, the
+  byte after the eighth bit. Readings (b) and (c) take the bytes after
+  it as the title, one byte shorter, and every other byte as this
+  reading does, so under the test of README section 3 they accept the
+  message wherever this reading does. A `syntax` or `value` finding
+  elsewhere in the message is given by every reading and does not
+  suppress the `ambiguous` finding. An earlier draft gave the finding
+  only where the message text had no such finding.
 - **Decoders.** Dire Wolf: skips one comma after the bits if present
   (`telemetry.c:878`). aprslib: requires the comma, and a title of at most
   23 bytes (`telemetry.py:88`). pdn-aprs: splits at the first comma and

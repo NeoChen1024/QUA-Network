@@ -148,7 +148,7 @@ The obsolete Mic-E telemetry takes the place of the prefix
 | <a id="mice.type.prefix"></a>`mice.type.prefix` | Device type prefix | One byte at offset 9: `'>'` (Kenwood handheld), `']'` (Kenwood mobile), 0x60 (other maker, messaging capable) or 0x27 (other maker, not messaging capable). | Optional | 1 byte | p. 73/55 |
 | <a id="mice.alt"></a>`mice.alt` | Altitude | Three [`b91.digit`](02-fields.md#b91.digit) bytes, then `'}'`. Value minus 10000 is metres. **[proposed]** Only directly after the prefix, or at offset 9 when there is none ([amb.mice.alt](#amb.mice.alt)). | Optional | The `'}'` | p. 74/56, p. 153/129, p. 154/130 |
 | <a id="mice.grid"></a>`mice.grid` | Maidenhead locator | [`grid.loc`](03-position.md#grid.loc): two letters `'A'`–`'R'`, two digits, optionally two letters `'A'`–`'X'` ([amb.grid.range](03-position.md#amb.grid.range)); then `'/'` `'G'`; then SP when free text follows, which belongs to this token. Lower-case letters give a `syntax` finding. **[proposed]** After the prefix and any altitude ([amb.mice.grid](#amb.mice.grid)). | Optional | The `'G'`, or the SP after it | p. 42/26, p. 73/55, p. 152/128 |
-| <a id="mice.type.suffix"></a>`mice.type.suffix` | Device type suffix | **[proposed]** After a `'>'` or `']'` prefix: a last byte `'='`, `'^'` or `'&'`. After a 0x60 or 0x27 prefix: the last two bytes. Raw bytes, nothing stripped first ([amb.mice.suffix](#amb.mice.suffix)). | Optional | End of information field | p. 73/55, p. 88/68 |
+| <a id="mice.type.suffix"></a>`mice.type.suffix` | Device type suffix | **[proposed]** After a `'>'` or `']'` prefix: a last byte `'='`, `'^'` or `'&'`. After a 0x60 or 0x27 prefix: the last two bytes. Raw bytes, nothing stripped first ([amb.mice.suffix](#amb.mice.suffix)). **[agreed]** After a 0x60 or 0x27 prefix, a single byte left where the two-byte suffix stands gives a `syntax` finding: a fixed-width field that does not fit ([amb.mice.pipe](#amb.mice.pipe)). | Optional | End of information field | p. 73/55, p. 88/68 |
 
 **[proposed]** Between these parts the status text is read as a position
 comment ([amb.mice.extension](#amb.mice.extension)):
@@ -192,20 +192,24 @@ the [README](README.md#4-decoders-consulted), not run.
 <a id="amb.mice.recognition"></a>
 ### amb.mice.recognition
 
-- **Open.** Chapter 10 does not say what makes a packet Mic-E: the data
-  type identifier, the shape of the destination, or both. Nor does it say
-  what a receiver does with a Mic-E identifier and a destination that
-  cannot be decoded (p. 60/42 to p. 64/46).
+- **Open.** The identifier table assigns 0x60 and 0x27 to Mic-E data
+  (p. 31/17). Chapter 10 does not say what a receiver does with a Mic-E
+  identifier and a destination that cannot be decoded (p. 60/42 to
+  p. 64/46).
 - **Readings.** (a) The identifier decides; a bad destination is an error
-  in a Mic-E packet. (b) Both are needed; otherwise the packet is not
-  Mic-E.
+  in a Mic-E packet. An earlier draft also listed (b): both the
+  identifier and a destination of Mic-E shape are needed, and otherwise
+  the packet is not Mic-E. Classing the packet by the shape of its
+  destination contradicts the identifier table, which makes these bytes
+  Mic-E by themselves, so by
+  [README section 3](README.md#3-tokenizer-model) it is decoder
+  behaviour, not a listed reading, and gives no finding. None of the
+  decoders read classes such a packet as another format: each decodes it
+  as Mic-E or refuses it (table below).
 - **Reading taken.** **[proposed]** (a), as every decoder read does it.
-  The destination is checked by section 3. Visible in the bytes: reading
-  (b) would class a packet with a bad destination as something other
-  than Mic-E, but this reading already reports those bytes as `syntax`
-  or `value` on the destination rules, and that finding alone is given,
-  with no `ambiguous` beside it
-  ([README section 3](README.md#3-tokenizer-model), Precedence).
+  The destination is checked by section 3, and bytes that do not fit it
+  give `syntax` or `value` on the destination rules. No other reading is
+  listed, so the question gives no `ambiguous` finding.
 - **Decoders.**
 
   | Decoder | Reads | Where |
@@ -231,15 +235,19 @@ the [README](README.md#4-decoders-consulted), not run.
   gives no action for other bytes, for lower case, for blanks that are not
   trailing or that fall in the degrees, or for a mixture of standard and
   custom bits beyond calling it unknown (p. 63/45).
-- **Readings.** (a) Strict: such bytes are errors. (b) Lenient: decode
-  what can be decoded.
+- **Readings.** (a) Strict: such bytes are errors. An earlier draft also
+  listed (b), decoding what can be decoded. That gives a byte outside the
+  table a value the table does not assign (p. 62/44), reads a blank where
+  the ambiguity rule places none (p. 40/24), and gives mixed bits a
+  meaning where p. 63/45 calls the result unknown. It contradicts those
+  statements, so by [README section 3](README.md#3-tokenizer-model) it
+  is decoder behaviour (Dire Wolf, aprslib, Xastir, aprsc, below), not a
+  listed reading, and gives no finding.
 - **Reading taken.** **[proposed]** (a). Bytes outside the set of their
   position, lower case included, give `syntax`. Blanks follow
   [`lat.amb`](02-fields.md#lat.amb). Mixed standard and custom bits give
-  `value`. Visible in the bytes: each case is a finding at the byte
-  concerned. Reading (b) would decode these bytes, but the `syntax` or
-  `value` finding alone is given, with no `ambiguous` beside it
-  ([README section 3](README.md#3-tokenizer-model), Precedence).
+  `value`. Each case is a finding at the byte concerned. No other
+  reading is listed, so there is no `ambiguous` finding.
 - **Decoders.** FAP: a set test that ignores case, followed by a
   translation that does not, so lower case is refused; blanks trailing and
   at most four (`FAP.pm:1642`, `FAP.pm:1686-1705`); mixed bits are kept as
@@ -290,9 +298,17 @@ the [README](README.md#4-decoders-consulted), not run.
   keep to one, is not stated.
 - **Readings.** (a) Any mixture. (b) One coding per packet.
 - **Reading taken.** **[proposed]** (a). The document calls both equally
-  valid and its decoding steps handle either. Decided by the reading:
-  every byte has one value under either coding, so there is nothing
-  ambiguous to report and no finding.
+  valid and its decoding steps handle either.
+- **In the bytes.** **[proposed]** Visible, but with no finding under
+  the test of [README section 3](README.md#3-tokenizer-model). A packet
+  can mix the codings only where `mice.sp` lies in 0x1C–0x2F or
+  0x6C–0x7F, the speeds with two codings. Reading (b) would refuse the
+  packets whose `mice.sp` and `mice.dc` bytes it takes to be of
+  different codings, and a reading that fails does not count; on the
+  packets it accepts it gives every byte the value this reading gives
+  it. An earlier draft called the question decided by the reading,
+  which the README keeps for a question that the bytes cannot narrow;
+  these bytes can show a mixture.
 - **Decoders.** All read compute speed and course with the same
   arithmetic for both codings (`FAP.pm:1800-1813`;
   `decode_aprs.c:1640-1646`; `mice.py:164-172`; `db.c:12470-12482`;
@@ -338,6 +354,18 @@ the [README](README.md#4-decoders-consulted), not run.
   reports `ambiguous`. Visible in the bytes, as that finding. A SP at
   offset 9, which UAP 2.2.1 attributes to the original Mic-E, is free
   text.
+- **In the bytes.** **[proposed]** The `ambiguous` finding is at offset
+  9. Under the test of [README section 3](README.md#3-tokenizer-model)
+  it is given only where reading (b) would accept the status text: four
+  hexadecimal digits follow 0x60, or ten follow 0x27, from offset 10,
+  and reading (b), taking the bytes after them as status text with no
+  prefix and so no suffix, gives no `syntax` or `value` finding of its
+  own. A finding that both readings give on the same bytes does not
+  count against (b) and does not suppress the `ambiguous` finding. Where
+  this reading reports the bytes that (b) takes as telemetry as `syntax`
+  or `value`, such as a lower-case locator from offset 10, that finding
+  alone is given (Precedence). An earlier draft also withheld the
+  finding wherever this reading reported any byte of the status text.
 - **Decoders.**
 
   | Decoder | Reads | Where |
@@ -365,22 +393,36 @@ the [README](README.md#4-decoders-consulted), not run.
 
 - **Open.** The suffix is the last one or two bytes, its length depends on
   the prefix, and the list of two-byte suffixes is deferred to an external
-  file (p. 73/55). A trailing CR or SP, or a run of 0xFF before the
-  suffix, breaks the rule that the suffix is last (UAP 2.2, UAP 5.10,
-  UAP 5.24, UAP 5.26). The Kenwood suffix bytes can also end ordinary
-  text.
+  file (p. 73/55). Chapter 13 requires the device code to stand at the
+  end of the packet (p. 88/68). A trailing CR or SP, or a run of 0xFF
+  before the suffix, breaks that rule (UAP 2.2, UAP 5.10, UAP 5.24,
+  UAP 5.26). The Kenwood suffix bytes can also end ordinary text.
 - **Readings.** (a) By shape, as in section 5. (b) By the external list.
-  (c) As (a) or (b) after stripping trailing CR, LF and SP.
+  An earlier draft also listed (c): (a) or (b) after stripping trailing
+  CR, LF and SP. Taking the suffix from bytes that are not the last
+  contradicts p. 88/68, so by
+  [README section 3](README.md#3-tokenizer-model) it is decoder
+  behaviour (Dire Wolf strips one trailing CR, below), not a listed
+  reading, and gives no finding.
 - **Reading taken.** **[proposed]** (a) on the raw bytes. When a 0x60 or
-  0x27 prefix leaves fewer than two bytes after the prefix and any
-  altitude, there is no suffix and the tokenizer reports `unstated`. When
-  the two bytes are not one of the five examples on p. 73/55, it reports
-  `unstated`, since the document gives no list. Trailing CR and SP, and
-  0xFF runs, are left to deviation recognisers. Whether a last `'='`,
-  `'^'` or `'&'` after a Kenwood prefix is a suffix or the end of the
-  text is an ambiguity that every Kenwood suffix carries and that the
-  bytes of one packet cannot narrow; the reading decides it, with no
-  finding ([README section 3](README.md#3-tokenizer-model)).
+  0x27 prefix leaves no byte after the prefix and any altitude, there is
+  no suffix and the tokenizer reports `unstated`. **[agreed]** When it
+  leaves one byte, that byte gives `syntax` on `mice.type.suffix`
+  (section 5). **[proposed]** When the two bytes are not one of the
+  five examples on p. 73/55, it reports `unstated`, since the document
+  gives no list. Trailing CR, LF and SP, and 0xFF runs, are left to
+  deviation recognisers. Whether a last `'='`, `'^'` or `'&'` after a
+  Kenwood prefix is a suffix or the end of the text is an ambiguity that
+  every Kenwood suffix carries and that the bytes of one packet cannot
+  narrow; the reading decides it, with no finding
+  ([README section 3](README.md#3-tokenizer-model)).
+- **In the bytes.** **[proposed]** Reading (b) cannot be applied to the
+  bytes until a version of the external list is chosen (section 9), so
+  it gives no finding; a pair outside the examples carries `unstated`
+  instead. A status text that ends in CR, LF or SP has its suffix taken
+  from its last bytes as they stand, with no `ambiguous` finding. An
+  earlier draft gave one where reading (c) would have taken the suffix
+  from the bytes before such a run.
 - **Decoders.** Dire Wolf strips one trailing CR, then matches prefix and
   suffix against its device table; prefix and suffix are removed only
   when an entry matches (`decode_aprs.c:1683-1696`,
@@ -406,15 +448,16 @@ the [README](README.md#4-decoders-consulted), not run.
   differently only when the bytes between the last `'|'` before the
   suffix and the suffix's own `'|'` fit
   [`tlm.b91`](07-telemetry.md#tlm.b91): pairing the bars first would
-  make them a block. Under the test of
-  [README section 3](README.md#3-tokenizer-model) reading (b) counts
-  only if it then accepts the status text, and it does not: a suffix
-  that starts with `'|'` follows a 0x60 or 0x27 prefix, which calls for
-  a two-byte suffix (section 5), and once the block has taken the
-  `'|'`, one byte is left where that suffix should be. Reading (b) fails
-  on every such packet, so the question gives no finding. An earlier
-  draft gave an `ambiguous` finding at the suffix's `'|'` in that case.
-  In every other case the two readings agree.
+  make them a block. In every other case the two readings agree.
+  **[agreed]** Reading (b) fails in that case, so no `ambiguous` finding
+  is given. A suffix that starts with `'|'` follows a 0x60 or 0x27
+  prefix, which calls for a two-byte suffix (section 5); once the block
+  has taken the `'|'`, one byte is left where that suffix stands, and
+  `mice.type.suffix` gives `syntax` on it. Reading (b) produces that
+  finding itself, so under the test of
+  [README section 3](README.md#3-tokenizer-model) it does not accept
+  the status text. An earlier draft gave an `ambiguous` finding at the
+  suffix's `'|'` in that case.
 - **Decoders.** Dire Wolf and pdn-aprs remove the suffix before looking
   for telemetry (`decode_aprs.c:1696-1716`; `mic_e.rs:206-208`,
   `mic_e.rs:275`). FAP and aprslib search the whole remainder with a
@@ -439,9 +482,13 @@ the [README](README.md#4-decoders-consulted), not run.
   would accept the match as the altitude: there is no altitude at the
   start, and the four bytes lie wholly in free text, not inside another
   part of section 5. Such a match gives an `ambiguous` finding at its
-  first byte. When an altitude stands at the start, both readings take
-  that one and a later match is text under both, with no finding. An
-  earlier draft gave the finding for every later match.
+  first byte. Reading (b) reads every other byte as this reading does,
+  so a `syntax` or `value` finding elsewhere in the status text is
+  given by both and does not suppress the `ambiguous` finding. When an
+  altitude stands at the start, both readings take that one and a later
+  match is text under both, with no finding. An earlier draft gave the
+  finding for every later match, and a later one withheld it wherever
+  the status text had a `syntax` or `value` finding.
 - **Decoders.** Dire Wolf: only at the start of what is left once a
   prefix and suffix found in its device table are removed; with an
   unlisted device the prefix stays and no altitude is read after it
@@ -475,11 +522,15 @@ the [README](README.md#4-decoders-consulted), not run.
   **[proposed]** Under the test of README section 3 this holds only
   where reading (c) would accept the locator: it stands where
   `mice.grid` may stand, after the prefix and any altitude, its letters
-  are upper case, and the symbol is followed by SP, by the end of the
-  status text, or by the telemetry, DAO or suffix that section 5 places
-  after the text. Otherwise (c) fails as well, and the bytes are free
-  text with no finding. An earlier draft did not state these
-  conditions.
+  are upper case, the two symbol bytes give no `syntax` or `value`
+  finding of their own, and the symbol is followed by SP, by the end of
+  the status text, or by the telemetry, DAO or suffix that section 5
+  places after the text. Otherwise (c) fails as well, and the bytes are
+  free text with no finding. A `syntax` or `value` finding elsewhere in
+  the status text, which reading (c) gives as well, does not suppress
+  the `ambiguous` finding. An earlier draft did not state these
+  conditions, and a later one also withheld the finding wherever the
+  status text had another `syntax` or `value` finding.
 - **Decoders.** Of those read, only pdn-aprs looks for a locator in the
   Mic-E status: four or six characters and `/G`, after the altitude, any
   case; text straight after it without a SP is a tolerated defect
@@ -512,8 +563,11 @@ the [README](README.md#4-decoders-consulted), not run.
   run matches those rules with no `syntax` or `value` finding of theirs,
   and that it lies wholly in free text, not inside another part of
   section 5 or an item found in the text; otherwise reading (b) or (d)
-  fails on it and there is no finding. An earlier draft did not state
-  these conditions.
+  fails on it and there is no finding. A `syntax` or `value` finding
+  elsewhere in the status text, which (b) or (d) gives as well, does
+  not suppress the `ambiguous` finding. An earlier draft did not state
+  these conditions, and a later one also withheld the finding wherever
+  the status text had another `syntax` or `value` finding.
 - **Decoders.** pdn-aprs reads a data extension at the start of the text
   (`mic_e.rs:238-243`). Dire Wolf passes the text to its comment parser,
   which has no PHG rule; PHG is read only by its data extension parser,
@@ -533,8 +587,12 @@ the [README](README.md#4-decoders-consulted), not run.
   cannot be detected, because SP is a valid value of `mice.lon.hun`,
   `mice.sp`, `mice.dc` and `mice.se`.
 - **Readings.** (a) Raw bytes on APRS-IS. (b) Some escape form.
-- **Reading taken.** **[proposed]** (a). No finding; a replaced byte is
-  not visible.
+- **Reading taken.** **[proposed]** (a).
+- **In the bytes.** **[proposed]** Decided by the reading, with no
+  finding ([README section 3](README.md#3-tokenizer-model)). Reading (b)
+  names no escape form, so it divides no packet's bytes differently,
+  and a byte replaced on the way is not visible: the question is
+  carried by every Mic-E packet, and its bytes cannot narrow it.
 - **Decoders.** aprsc, an APRS-IS server, checks the raw byte ranges
   including 0x1C–0x1F and 0x7F (`parse_aprs.c:631-639`). FAP has an
   option that repairs one known corruption, where non-printing bytes were
@@ -547,11 +605,11 @@ the [README](README.md#4-decoders-consulted), not run.
 <a id="err.mice.example"></a>
 ### err.mice.example
 
-The worked example on p. 71/53 subtracts 80 from the SP byte less 28, and
-4 from the DC remainder. The steps on p. 70/52 subtract 800 from the speed and
-400 from the course. Both give 20 knots and 251° for the example, but
-subtracting 4 fails for the DC coding whose remainders are 0 to 3. The
-reading follows p. 70/52.
+The worked example on p. 71/53 subtracts 80 from the SP byte less 28,
+and 4 from the DC remainder. The steps on p. 70/52 subtract 800 from the
+speed and 400 from the course. Both give 20 knots and 251° for the
+example, but subtracting 4 fails for the DC coding whose remainders are
+0 to 3. The reading follows p. 70/52.
 
 Origin: already in APRS 1.0.1, with the steps on PDF p. 62 (printed 52)
 and the worked example on PDF p. 63 (printed 53). 12b has it.

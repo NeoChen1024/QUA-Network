@@ -59,16 +59,23 @@ offset 0, from the `dti` rules of
 [01-frame.md](01-frame.md#7-data-type-identifier). See
 [amb.wx.status](#amb.wx.status).
 
-**[proposed]** A `'_'` report whose symbol table byte is neither `'/'`
-nor `'\'` gives an `ambiguous` finding against `wx.pos` or `wx.obj` at
-that table byte, unless the bytes after the position block give a
-`syntax` or `value` finding. See [amb.wx.symbol](#amb.wx.symbol).
+**[proposed]** A `'_'` report is weather whatever its symbol table
+byte, overlays included, and gets no finding for the table byte from
+this file. See [amb.wx.symbol](#amb.wx.symbol). The symbol decides: a
+report with another symbol code is never read as weather and gets no
+finding here, whatever follows its symbol.
 
 **[proposed]** The weather rules are not applied to items, to Mic-E
-reports or to any other format. Where such a report would read as
-weather, it gets an `ambiguous` finding; see
-[amb.wx.carriers](#amb.wx.carriers).
+reports or to any other format. Where such a report, read as weather,
+would give no `syntax` or `value` finding of its own, it gets an
+`ambiguous` finding; see [amb.wx.carriers](#amb.wx.carriers).
 Storm data (section 8) is read in items as well.
+
+A finding "of its own" is one that the other reading gives and this
+reading does not. A `syntax` or `value` finding that both readings give
+elsewhere in the packet does not stop an `ambiguous` finding
+([README section 3](README.md#3-tokenizer-model)). The same holds for
+every condition of this kind in this file.
 
 **[agreed]** A position report whose information field ends at the
 `'_'` symbol code does not match `wx.pos`. It is an ordinary position
@@ -254,6 +261,10 @@ length (reading: [amb.wx.tail](#amb.wx.tail)):
 | 3 or 4, first byte a digit or `'-'` | `wx.unit` of 3 or 4 bytes. | None. |
 | 5 | `wx.sw` + `wx.unit` of 4 bytes. | `unstated` when the first byte is a letter not in the software list; `syntax` when it is not a letter. |
 
+A tail can also get an `ambiguous` finding at its first byte where
+another reading would end the weather data at a different byte: see
+[amb.wx.width](#amb.wx.width) and [amb.wx.letters](#amb.wx.letters).
+
 ## 8. Storm data
 
 Storm data describes a tropical storm, hurricane or tropical depression.
@@ -273,8 +284,8 @@ code; the storm fields follow it, where the comment would begin.
 - the next byte is `'/'` and the two after it are `TS`, `HC` or `TD`.
 
 **[proposed]** Storm-shaped bytes that these conditions leave as
-comment get an `ambiguous` finding where another reading would take
-them as storm data ([amb.storm.placement](#amb.storm.placement)).
+comment stay comment text and give no finding
+([amb.storm.placement](#amb.storm.placement)).
 
 **[proposed]** With a symbol table byte other than `'/'` or `'\'` the
 storm data is still read, and the tokenizer reports `unstated` against
@@ -314,8 +325,20 @@ carrying format.
 - **Taken.** **[proposed]** (a). A second `'!'` cannot start a position
   (neither a latitude digit nor a valid symbol table byte), so reading (b)
   gives the same result for `!!`. A `'$'` field not followed by `ULTW` is
-  NMEA ([03-position.md](03-position.md)). Not visible in the bytes as an
-  alternative: decided silently, no `ambiguous` finding.
+  NMEA ([03-position.md](03-position.md)).
+- **In the bytes.** **[proposed]** Under the test of
+  [README section 3](README.md#3-tokenizer-model), visible in one case
+  only: a field that starts `$ULTW`, then a letter `'A'`-`'Z'` and a
+  `','`. Reading (b) would try NMEA first, and the five bytes after the
+  `'$'` are then a valid [`nmea.addr`](03-position.md#nmea.addr). Where
+  the whole field, read as NMEA by 03, would give no `syntax` or `value`
+  finding of its own, it gets an `ambiguous` finding against
+  `wx.raw.ultpkt` at offset 1. Every other field divides the same way
+  under both readings:
+  `!!` cannot start a position, and a `'$'` field without `ULTW` is NMEA
+  under both. A `'!'` or `'$'` field that fails as a position or as NMEA
+  would be raw weather under (b), but this reading already reports it as
+  `syntax`, and that finding alone is given (precedence).
 - **Decoders.**
 
   | Decoder | What it does | Where |
@@ -365,23 +388,25 @@ carrying format.
   with nothing after the symbol is (p. 85/65 asks raw and positionless
   stations to send their position separately).
 - **Readings.** (a) Code `'_'` with any table byte that
-  [`sym.table`](02-fields.md#sym.table) accepts. (b) Only `/_` and `\_`.
-  (c) Decide by content (a `g` and `t` at fixed places) rather than
-  symbol.
+  [`sym.table`](02-fields.md#sym.table) accepts. An earlier draft also
+  listed (b), only `/_` and `\_`. It was dropped because p. 140/116 lets
+  `\_` carry an overlay, and an overlay is written in the table byte, so
+  (b) contradicts the document
+  ([README section 3](README.md#3-tokenizer-model)).
+  An earlier draft also listed a third reading, deciding by content (a `g`
+  and a `t` at fixed places) rather than by symbol. It was dropped
+  because the document makes the weather symbol select the complete
+  report (p. 82/62); it is Xastir's behaviour, recorded under Decoders
+  ([README section 3](README.md#3-tokenizer-model)).
 - **Taken.** **[proposed]** (a), as most decoders do. A report whose
   information field ends at the symbol code is a plain position or
   object and gives no finding (section 2). A report with any bytes after
   the position block is weather. If those bytes are not weather data
   (for example a PHG extension and a comment), the tokenizer reports
-  `syntax`, and that finding alone is given, although reading (c) would
-  take the bytes as a plain position with a comment
-  ([README section 3](README.md#3-tokenizer-model), precedence).
-  Visible in the bytes: with an overlay or any other table byte that is
-  neither `'/'` nor `'\'`, reading (b) would take bytes that (a) accepts
-  as weather as a plain position or object with a comment. Such a report
-  gives an `ambiguous` finding against `wx.pos` or `wx.obj` at the
-  symbol table byte. With `'/'` or `'\'`, (a) and (b) agree and the
-  report gives no finding.
+  `syntax`.
+- **In the bytes.** Not visible: with (b) dropped, every `'_'` report
+  is read one way. A report with another symbol code is not weather and
+  gets no finding from this file, whatever follows its symbol.
 - **Decoders.**
 
   | Decoder | What it does | Where |
@@ -389,7 +414,7 @@ carrying format.
   | FAP | Symbol code `'_'`, any table, sends the rest to the weather parser instead of the comment parser. | `parseaprs`, FAP.pm:2624, 2641; `_object_to_decimal`, FAP.pm:1281 |
   | Dire Wolf | Symbol code `'_'`, any table, selects weather; it notes that a `'_'` report carrying PHG and text breaks the format. | `aprs_ll_pos`, decode_aprs.c:930, 974; `aprs_ll_pos_time`:1064, 1084; `aprs_object`:2175, 2193 |
   | aprslib | Symbol code `'_'`, any table. | `parse_position`, position.py:62 |
-  | Xastir | Decides by content: for `/` and `@`, a `'/'`, `g` and `t` at fixed offsets; in general, `g` and `t` (and `h`) found in the data. Symbol not checked. | `decode_info_field`, db.c:15029, 15080; `extract_weather`, db.c:3335-3387 |
+  | Xastir | Decides by content, the dropped third reading: for `/` and `@`, a `'/'`, `g` and `t` at fixed offsets; in general, `g` and `t` (and `h`) found in the data. Symbol not checked. | `decode_info_field`, db.c:15029, 15080; `extract_weather`, db.c:3335-3387 |
   | aprsc | Code `'_'` with any valid table byte, overlays included. | `pbuf_fill_pos`, parse_aprs.c:84 |
   | javAPRSlib | Code `'_'`, any table. | `Parser.java`:160, 191 |
   | pdn-aprs | Code `'_'`, any table. | `is_weather_symbol`, comment.rs:19 |
@@ -417,16 +442,17 @@ carrying format.
   block:
   - a compressed object with symbol code `'_'` and bytes after the
     block, which this reading reads as weather and reading (c) as an
-    object comment, when those bytes would be accepted as
-    [`obj.cmt`](05-object-item.md#obj.cmt) with no `syntax` or `value`
-    finding;
+    object comment, when the object, read with those bytes as
+    [`obj.cmt`](05-object-item.md#obj.cmt), would give no `syntax` or
+    `value` finding of its own;
   - an item with symbol code `'_'`, which this reading reads as an item
-    with a comment and reading (a) as weather, when the bytes after its
-    position would be accepted as weather data and tail by sections 5
-    to 7 with no `syntax` or `value` finding;
-  - a Mic-E report with symbol code `'_'`, likewise, when its status
-    text would be accepted as weather data and tail by sections 6 and
-    7; the finding is then at offset 9, where the status text starts.
+    with a comment and reading (a) as weather, when the item, read with
+    the bytes after its position as weather data and tail by sections 5
+    to 7, would give no `syntax` or `value` finding of its own;
+  - a Mic-E report with symbol code `'_'`, likewise, when the report,
+    read with its status text as weather data and tail by sections 6
+    and 7, would give no `syntax` or `value` finding of its own; the
+    finding is then at offset 9, where the status text starts.
 
   Where this reading itself gives a `syntax` or `value` finding on those
   bytes, that finding alone is given (Precedence). An earlier draft
@@ -467,6 +493,14 @@ carrying format.
   A repeated element is visible in the bytes; since no listed reading
   accepts those bytes with a different division, it is reported as
   `unstated` rather than `ambiguous`.
+- **In the bytes.** **[proposed]** Under the test of
+  [README section 3](README.md#3-tokenizer-model), no `ambiguous`
+  finding. In a positionless report that (a) accepts, the first `'s'` is
+  the leading wind speed under (b) too, and a later `'s'` is snowfall
+  under both. **[agreed]** In a complete report, reading (b) counts the
+  wind field as the wind speed (section 5), so an `'s'` element there is
+  snowfall under (b) as under (a). **[proposed]** The readings divide
+  the bytes the same way wherever (a) accepts them.
 - **Decoders.**
 
   | Decoder | What it does | Where |
@@ -504,14 +538,17 @@ carrying format.
   `c` and `s`, fits only the positionless form. Where (b) gives `syntax`
   for a positionless report, (a) does too; the readings differ only in
   complete reports, where (b) accepts more. Not visible; no `ambiguous`
-  finding.
+  finding. **[proposed]** Under the test of
+  [README section 3](README.md#3-tokenizer-model), a complete report
+  without `g` or `t` would give `syntax` under (a), so (a) does not
+  count there; where both accept a report they divide it the same way.
 - **Decoders.** Dire Wolf reports a missing gust or temperature and goes
   on (`weather_data`, decode_aprs.c:3130-3157). pdn-aprs treats a
   complete report without `g` and `t` as a defect (`fields`,
-  weather.rs:108). Xastir requires `g` and `t` to recognise weather at all
-  (`extract_weather`, db.c:3285-3389). FAP accepts a start with only one of them
-  (FAP.pm:2123-2129). aprslib requires all four only for positionless
-  (weather.py:66).
+  weather.rs:108). Xastir requires `g` and `t` to recognise weather at
+  all (`extract_weather`, db.c:3285-3389). FAP accepts a start with only
+  one of them (FAP.pm:2123-2129). aprslib requires all four only for
+  positionless (weather.py:66).
 - **Corpus.** Share of `'_'` reports with a wind field whose next
   elements are not `g` then `t`.
 
@@ -564,8 +601,27 @@ carrying format.
   (p. 84/64). A value of another width, or a decimal point outside
   snowfall, gives that `syntax` finding alone, although (b) or (d) would
   accept the bytes ([README section 3](README.md#3-tokenizer-model),
-  precedence). Where (a) and (c) accept the bytes, (b) and (d) divide
-  them the same way; no `ambiguous` finding.
+  precedence).
+- **In the bytes.** **[proposed]** Under the test of
+  [README section 3](README.md#3-tokenizer-model), visible where the
+  weather data is followed by a tail (section 7) and reading (b), which
+  takes the whole digit run after an element letter as its value, would
+  end the data at a different byte:
+  - the tail starts with a digit, and the last element has a value
+    written in digits, which (b) would extend with the digits at the
+    start of the tail; or
+  - the tail starts with a letter of section 6.1 followed by fewer
+    digits than its width, which (b) would read as that element.
+
+  Where the report read by (b), with the value or element it forms and
+  whatever bytes remain as a tail, would give no `syntax` or `value`
+  finding of its own, the tail gets an `ambiguous` finding at its first
+  byte,
+  against the ID of the element that (b) would lengthen or form. This
+  covers `wx.rawrain` as well ([amb.wx.rawrain](#amb.wx.rawrain)).
+  Elsewhere, where (a) and (c) accept the bytes, (b) and (d) divide
+  them the same way: each value is followed by an element letter or by
+  the end of the data, and a `'.'` cannot occur in a tail.
 - **Decoders.** FAP takes any run of digits, spaces and dots for `g` and
   `t` at the start (FAP.pm:2119), 1-3 digits for `r`, `p`, `P`, `h`, `L`,
   `l` and `s`, and 4-5 for `b` (FAP.pm:2146-2175). Dire Wolf uses fixed
@@ -591,13 +647,19 @@ carrying format.
   occur together. (d) `L` is an ordinary optional element.
 - **Taken.** **[proposed]** (a), with an `unstated` finding on every
   `wx.rawrain`, since its width is this reading's and not the
-  document's; and (d). Neither is visible as an alternative: where (a)
-  matches, (b) splits the bytes the same way, and (c) only rejects
-  packets that (d) accepts. A digit run longer than 3 after `'#'` ends
-  the data, and the `syntax` finding that follows is the only one,
-  although (b) would accept the bytes
-  ([README section 3](README.md#3-tokenizer-model), precedence). No
-  `ambiguous` finding.
+  document's; and (d). A digit run longer than 3 after `'#'` ends the
+  data, and where the bytes left do not form a tail, the `syntax`
+  finding that follows is the only one, although (b) would accept the
+  bytes ([README section 3](README.md#3-tokenizer-model), precedence).
+- **In the bytes.** **[proposed]** Under the test of
+  [README section 3](README.md#3-tokenizer-model): (c) only rejects
+  packets that (d) accepts, so it does not count, and no finding comes
+  from `L`. Where (a) matches, (b) splits the bytes the same way,
+  except where a `wx.rawrain` ends the data and the tail starts with a
+  digit, which (b) would add to the counter. That case is the one of
+  [amb.wx.width](#amb.wx.width) and gives its `ambiguous` finding, at
+  the first byte of the tail against `wx.rawrain`, under its condition;
+  this entry adds no second finding.
 - **Decoders.** Xastir reads `'#'` with 3 bytes (db.c:3493). aprslib and
   pdn-aprs give it 3 (weather.py:52; weather.rs:62). FAP takes any digit
   run (FAP.pm:2180). Dire Wolf's branch meant for `'#'` tests for `'s'`
@@ -621,9 +683,17 @@ carrying format.
   ([err.wx.unit-length](#err.wx.unit-length)), tails of 1, 2 and 5 bytes
   split only one way. Visible in the bytes: a tail of 3 or 4 bytes whose
   first byte is a letter splits two ways, as software code and unit or
-  as one unit, and readings (b) and (c) each take one of them. Such a
-  tail gives an `ambiguous` finding against `wx.sw` at its first byte,
-  also where the listed codes decide the split for (a), as in `wRSW`.
+  as one unit, and readings (b) and (c) each take one of them.
+  **[agreed]** Such a tail gives an `ambiguous` finding against `wx.sw`
+  at its first byte, also where the listed codes decide the split for
+  (a), as in `wRSW`. **[proposed]** The other split always passes the
+  test of [README section 3](README.md#3-tokenizer-model): a letter is a
+  software code with at most an `unstated` finding, and 2 to 4 letters,
+  digits or `'-'` are a unit code, so neither (b) nor (c) fails on such
+  a tail. A tail of 3 or 4 bytes that starts with a digit or `'-'` gives
+  no finding, since (b) would make that byte a software code, which
+  gives `syntax`. A `P` followed by 3 digits is an element under every
+  reading (section 6.1) and never reaches the tail.
   The order of the tests in section 7 only chooses the tokens. An
   earlier draft gave no finding where the listed codes decided the
   split; that was dropped because reading (c) still divides those bytes
@@ -650,8 +720,10 @@ carrying format.
 - **Taken.** **[proposed]** (a). They form a `residue` token named after
   `wx.unit` and give `syntax`. That finding alone is given, although (b)
   would accept the bytes as a comment
-  ([README section 3](README.md#3-tokenizer-model), precedence). DAO,
-  base-91 telemetry and altitude are not looked for in weather reports.
+  ([README section 3](README.md#3-tokenizer-model), precedence). Bytes
+  that form a valid tail are a tail under both readings, so no
+  `ambiguous` finding comes from this entry. DAO, base-91 telemetry and
+  altitude are not looked for in weather reports.
 - **Decoders.** FAP, Dire Wolf, aprslib and pdn-aprs keep the bytes as a
   comment (FAP.pm:2188-2191; decode_aprs.c:3293; position.py:70-71;
   `weather_tail`, comment.rs:161, which first lifts base-91 telemetry and
@@ -694,9 +766,19 @@ carrying format.
   letter on are read as a tail (section 7) or fail as one
   ([amb.wx.comment](#amb.wx.comment)); a `syntax` finding there is the
   only one given, although (b) would accept the bytes
-  ([README section 3](README.md#3-tokenizer-model), precedence). Where
-  they form a valid tail, any `ambiguous` finding is that of
-  [amb.wx.tail](#amb.wx.tail).
+  ([README section 3](README.md#3-tokenizer-model), precedence).
+- **In the bytes.** **[proposed]** Under the test of
+  [README section 3](README.md#3-tokenizer-model), visible where the
+  bytes from the undefined letter form a valid tail (section 7) and the
+  letter is followed by at least one digit. Reading (b) would read the
+  letter and its digits as an extra element and the bytes after them as
+  further elements or a tail. Where the report read that way would give
+  no `syntax` or `value` finding of its own, the tail gets an
+  `ambiguous` finding at its first byte, against the rule of its first
+  token (`wx.sw` or `wx.unit`). A tail of 3 or 4 bytes also gets the
+  finding of [amb.wx.tail](#amb.wx.tail) at that byte; the two are not
+  merged ([README section 3](README.md#3-tokenizer-model)). An undefined
+  letter not followed by a digit ends the data under both readings.
 - **Decoders.** Dire Wolf reads an `X` element (decode_aprs.c:3260).
   Xastir reads `F` and `f` (db.c:3495-3497). FAP strips a `v` element
   (FAP.pm:2171). pdn-aprs keeps any undefined letter followed by digits as
@@ -715,21 +797,22 @@ carrying format.
   told from other comment data beginning with `'/'`.
 - **Readings.** (a) Read storm data only with symbol code `'@'`, after an
   uncompressed position and a course/speed extension, and only when the
-  type is one of the three. (b) Read the pattern after any course/speed
-  extension. (c) Search for `/TS`, `/HC`, `/TD` anywhere.
+  type is one of the three. An earlier draft listed two more readings:
+  the storm pattern after a course/speed extension with any symbol, and
+  a search for `/TS`, `/HC` or `/TD` anywhere. Both were dropped because
+  they contradict the document, which names `\@` and `/@` as the
+  symbols of a storm report and places the storm fields directly after
+  the direction and speed (p. 87/67); they are Xastir's behaviour,
+  recorded under Decoders
+  ([README section 3](README.md#3-tokenizer-model)).
 - **Taken.** **[proposed]** (a), as in section 8. Bytes after the storm
   fields are the comment.
-- **In the bytes.** **[proposed]** Visible, under the test of
-  [README section 3](README.md#3-tokenizer-model), where reading (b) or
-  (c) would read storm data in bytes that this reading leaves as
-  comment: a `/TS`, `/HC` or `/TD` followed by every required storm
-  field of section 8 with no `syntax` finding, either directly after an
-  `ext.csespd` in a report whose symbol code is not `'@'` (reading (b)),
-  or anywhere else in a comment (reading (c)). Those bytes stay comment
-  text with an `ambiguous` finding at the `'/'` of the storm type. A
-  `/TS`, `/HC` or `/TD` that is not followed by the required fields gives
-  no finding, since (b) and (c) would fail there. An earlier draft
-  called the question not visible.
+- **In the bytes.** **[proposed]** No `ambiguous` finding. Storm-shaped
+  bytes after a course/speed extension with another symbol code, or
+  elsewhere in a comment, are comment text under the only listed
+  reading; recognising them is left to a deviation recogniser. An
+  earlier draft gave them an `ambiguous` finding at the `'/'` of the
+  storm type, under the two readings since dropped.
 - **Decoders.**
 
   | Decoder | What it does | Where |
@@ -737,7 +820,7 @@ carrying format.
   | FAP | Does not parse this. | - |
   | Dire Wolf | Does not parse this. | - |
   | aprslib | Does not parse this. | - |
-  | Xastir | Searches the data for `/TS`, `/TD`, `/HC` and three further types (`/TY`, `/ST`, `/SC`), then reads the 7 bytes before it as course/speed; no symbol check. | `extract_storm`, db.c:3567, 3606 |
+  | Xastir | Searches the data for `/TS`, `/TD`, `/HC` and three further types (`/TY`, `/ST`, `/SC`), then reads the 7 bytes before it as course/speed; no symbol check. This covers both dropped readings. | `extract_storm`, db.c:3567, 3606 |
   | aprsc | Marks `'@'` with any valid table as weather. | `pbuf_fill_pos`, parse_aprs.c:86 |
   | pdn-aprs | Symbol code `'@'`, any table; storm fields after the extension; the `%` field optional; all dots or spaces accepted as unknown. | `is_storm_symbol`, comment.rs:32; `storm`, comment.rs:479 |
 

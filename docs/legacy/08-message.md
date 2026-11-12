@@ -68,7 +68,7 @@ packet in this order and stops at the first that applies (reading:
    rejection, section 4.
 4. The text starts with `PARM.`, `UNIT.`, `EQNS.` or `BITS.`, in upper
    case: a telemetry definition message, read by
-   [07-telemetry.md section 4](07-telemetry.md#4-telemetry-definition-messages)
+   [07 section 4](07-telemetry.md#4-telemetry-definition-messages)
    (p. 90/70 to p. 92/72). Its text is still `msg.text` for the length
    limit, which a `PARM.` or `UNIT.` list at its stated field maxima
    exceeds by one byte (derived in 07).
@@ -78,7 +78,15 @@ packet in this order and stops at the first that applies (reading:
 6. Otherwise: a message, section 3.
 
 In cases 1 and 2 the text can get an `ambiguous` finding where it has
-the shape that case 3, 4 or 5 tests ([amb.msg.order](#amb.msg.order)).
+the shape that case 3, 4 or 5 tests and the packet, read as that kind,
+would give no `syntax` or `value` finding of its own
+([amb.msg.order](#amb.msg.order)).
+
+A finding "of its own" is one that the other reading gives and this
+reading does not. A `syntax` or `value` finding that both readings give
+elsewhere in the packet does not stop an `ambiguous` finding
+([README section 3](README.md#3-tokenizer-model)). The same holds for
+every condition of this kind in this file.
 
 The token of byte 0 carries the identifier rule of the kind decided:
 `bln.dti` in case 1, `nws.dti` in case 2, `msg.dti` in cases 3 and 6,
@@ -126,16 +134,15 @@ identifier rule of its own: the token of byte 0 carries
 exactly when it is `ack` or `rej` followed by a `msg.ack.num` and nothing
 else. Otherwise it is message text (section 3). The tokenizer reports
 `ambiguous` against `msg.text` at offset 11 when the text does not have
-that shape but another reading of [amb.msg.ack](#amb.msg.ack) would
-accept it as an acknowledgement or rejection: text that starts with
-lower-case `ack` or `rej`, such as `ack` followed by 6 or more letters
-or digits (an over-long number), a valid `msg.ack.num` followed by a
-message identifier (UAP 5.32), or `ack` starting a sentence; and text in
-another case that has the shape once its first three letters are
-folded to lower case, such as `ACK12`. Text such as `ACKNOWLEDGED`
-gives no finding. When the packet already gives a `syntax` or `value`
-finding for those bytes, such as a trailing CR or an over-long message
-number, that finding alone is given. Reading:
+that shape but has it once its first three letters are folded to lower
+case, such as `ACK12`, which the other reading of
+[amb.msg.ack](#amb.msg.ack) accepts as an acknowledgement or rejection.
+Other text that starts with `ack` or `rej`, such as `ack` followed by 6
+or more letters or digits, a valid `msg.ack.num` followed by a message
+identifier (UAP 5.32), `ack` starting a sentence, or `ACKNOWLEDGED`,
+is message text and gives no finding from this rule. When the packet
+already gives a `syntax` or `value` finding for those bytes, such as a
+trailing CR, that finding alone is given. Reading:
 [amb.msg.ack](#amb.msg.ack).
 
 ## 5. Group and special addressees
@@ -153,6 +160,9 @@ tokens; they are listed so that the tokenizer's reports can be grouped.
 - The addressee of a telemetry definition message is the station whose
   telemetry it describes (p. 90/70).
 - A directed query is addressed to the station being queried (p. 103/79).
+  A message answering `?APRSM` is an ordinary message, numbered and
+  acknowledged as usual
+  ([amb.qry.response](09-other.md#amb.qry.response)).
 
 **[proposed]** These addressees are tokenized as `msg.addr` with no
 further finding.
@@ -173,15 +183,16 @@ acknowledged.
 | [`msg.addr.pad`](#msg.addr.pad) | Padding | `SP` bytes to offset 9. | Required when the name part is shorter | Offset 9 | p. 96/74 |
 | [`msg.sep`](#msg.sep) | Separator | `':'` at offset 10. | Required | Fixed 1 byte | p. 96/74 |
 | <a id="bln.text"></a>`bln.text` | Bulletin text | From offset 11. Text bytes, `'{'` included. More than 67 bytes gives `value`. May be empty. | Required, 0 bytes allowed | End of information field, or `bln.ref` | p. 96/74, p. 97/75 |
-| <a id="bln.ref"></a>`bln.ref` | Reference identifier | `'{'` followed by 1-5 letters or digits at the very end of the field. The tokenizer reports `ambiguous` at the `'{'`: the bytes are also valid bulletin text. Reading: [amb.bln.ref](#amb.bln.ref). | Optional | End of information field | p. 97/75 |
+| <a id="bln.ref"></a>`bln.ref` | Reference identifier | `'{'` followed by 1-5 letters or digits at the very end of the field. The tokenizer reports `ambiguous` at the `'{'` when the bytes are also valid bulletin text: the text from offset 11, `bln.ref` included, is at most 67 bytes. Reading: [amb.bln.ref](#amb.bln.ref). | Optional | End of information field | p. 97/75 |
 
 **[proposed]** An addressee starting with `BLN` that fits none of the
 three forms (for example a letter followed by a group name, a lower-case
 letter or a punctuation byte at offset 4) is still read as a bulletin
 addressee. The tokenizer reports `unstated` against `bln.addr` and
 tokenizes the bytes after `BLN` as one depth-1 `bln.group`. It also
-gives the `ambiguous` finding of [amb.bln.forms](#amb.bln.forms) where
-the packet would be a valid message.
+gives the `ambiguous` finding of [amb.bln.forms](#amb.bln.forms), at
+offset 4, where the packet read as a message would give no `syntax` or
+`value` finding of its own.
 
 APRS12c also describes how a receiver files, replaces, clears and
 announces bulletins, keyed by sender and identifier, and how often
@@ -199,7 +210,7 @@ for repeated acknowledgements and their spacing (p. 94/72).
 | [`msg.addr.pad`](#msg.addr.pad) | Padding | `SP` bytes to offset 9. | Required when the word is shorter than 5 bytes | Offset 9 | p. 97/75 |
 | [`msg.sep`](#msg.sep) | Separator | `':'` at offset 10. | Required | Fixed 1 byte | p. 97/75 |
 | <a id="nws.text"></a>`nws.text` | Bulletin text | From offset 11. Text bytes, no length limit. Its inner structure is defined outside APRS12c and is not tokenized. | Required | End of information field, or `nws.ref` | p. 97/75 |
-| <a id="nws.ref"></a>`nws.ref` | Reference identifier | `'{'` followed by 1-5 letters or digits at the very end of the field; not to be acknowledged. The tokenizer reports `ambiguous` at the `'{'`: the bytes are also valid bulletin text. Reading: [amb.bln.ref](#amb.bln.ref). | Optional | End of information field | p. 97/75 |
+| <a id="nws.ref"></a>`nws.ref` | Reference identifier | `'{'` followed by 1-5 letters or digits at the very end of the field; not to be acknowledged. The tokenizer reports `ambiguous` at the `'{'`: the bytes are also valid bulletin text, which has no length limit. Reading: [amb.bln.ref](#amb.bln.ref). | Optional | End of information field | p. 97/75 |
 
 ## 8. NTS radiograms
 
@@ -252,16 +263,21 @@ as status reports (p. 98/76). APRS12c gives no layout for it.
   padding are not stated. UAP 2.5.2 says the rules are relaxed for
   Internet services: more than 6 characters and letters in the SSID.
 - **Readings.** (a) Exactly 9 bytes, separator at offset 10; name of
-  letters, digits and `'-'`. (b) The addressee ends at the first `':'`
-  after offset 1, trailing spaces trimmed. (c) Any 9 bytes.
+  letters, digits and `'-'`. (b) Any 9 bytes. An earlier draft listed a
+  further reading, in which the addressee ends at the first `':'` after
+  offset 1 with trailing spaces trimmed. It was dropped because the
+  document makes the addressee a fixed 9-byte field (p. 93/71).
+  javAPRSlib and aprs-parser-rs delimit the addressee at the first
+  `':'`, and pdn-aprs tolerates an earlier `':'` (see Decoders;
+  [README section 3](README.md#3-tokenizer-model)).
 - **Taken.** **[proposed]** (a), with other printable bytes in the name
   reported as `unstated` rather than `syntax`. Lower case is accepted.
   An interior space, a `':'` inside the 9 bytes, or a separator before
   offset 10 gives `syntax`, and that finding alone is given, although
-  (b) or (c) would accept the bytes
+  (b) may accept the bytes
   ([README section 3](README.md#3-tokenizer-model), precedence). Where
-  (a) accepts the bytes, (b) and (c) divide them the same way; no
-  `ambiguous` finding.
+  (a) accepts the bytes, (b) divides them the same way; no `ambiguous`
+  finding.
 - **Decoders.**
 
   | Decoder | What it does | Where |
@@ -318,17 +334,17 @@ as status reports (p. 98/76). APRS12c gives no layout for it.
   follow it, nor what to do with more than 5 bytes, other bytes, a
   trailing CR or space, or more than one `'{'`.
 - **Readings.** (a) The first `'{'` ends the text, since text excludes
-  `'{'`; the identifier runs to the end. (b) The last `'{'` starts the
-  identifier. (c) Only a valid identifier at the very end counts; any
-  other `'{'` is text.
-- **Taken.** **[proposed]** (a). With more than one `'{'` both (a) and
-  (b) find a fault, so the verdict does not depend on the choice; only
-  the token boundary does. A number that is too long or holds other
-  bytes gives `value` or `syntax`, and that finding alone is given,
-  although (c) would take the bytes as text
-  ([README section 3](README.md#3-tokenizer-model), precedence). Where
-  (a) accepts the bytes (one `'{'` and a valid number), (b) and (c)
-  divide them the same way. No `ambiguous` finding.
+  `'{'`; the identifier runs to the end. An earlier draft listed two
+  further readings: the last `'{'` starts the identifier, and only a
+  valid identifier at the very end counts, any other `'{'` being text.
+  Both were dropped because they differ from (a) only where they leave a
+  `'{'` in the text, which the document excludes (p. 93/71). Xastir,
+  aprsc and javAPRSlib take the last `'{'`, aprslib and pdn-aprs only a
+  valid identifier at the end (see Decoders;
+  [README section 3](README.md#3-tokenizer-model)).
+- **Taken.** **[proposed]** (a). With more than one `'{'` the number
+  holds a `'{'` and fails. A number that is too long or holds other
+  bytes gives `value` or `syntax`. No `ambiguous` finding.
 - **Decoders.**
 
   | Decoder | What it does | Where |
@@ -381,28 +397,36 @@ as status reports (p. 98/76). APRS12c gives no layout for it.
   carries its own message identifier (UAP 5.32), a trailing CR (UAP
   5.13), and text that starts with `ack` but is a sentence.
 - **Readings.** (a) Exactly `ack` or `rej` and a valid number, to the end
-  of the field. (b) Any text starting with `ack` or `rej`. (c) Case
-  folded.
+  of the field. (b) As (a), case folded. An earlier draft listed a
+  further reading that takes any text starting with `ack` or `rej` as an
+  acknowledgement or rejection. It was dropped because the document
+  gives the text as just the keyword followed by the number, which is
+  at most 5 letters or digits (p. 93/71, p. 94/72); Dire Wolf, Xastir,
+  aprsc and javAPRSlib read it so (see Decoders;
+  [README section 3](README.md#3-tokenizer-model)).
 - **Taken.** **[proposed]** (a), lower case only. Any other text that
   starts with `ack` or `rej`, in any case, is read as message text:
   among them `ack` with a valid number and then `{` and an identifier,
   read as a message whose text is the acknowledgement, and `ack` with 6
-  or more letters or digits. Reading (b) or (c) would take such text as
-  an acknowledgement or rejection, so it is visible and gives
-  `ambiguous` (section 4). **[proposed]** Under the test of
+  or more letters or digits. Reading (b) would take such text as an
+  acknowledgement or rejection where only the case differs, so that
+  case is visible and gives `ambiguous` (section 4).
+- **In the bytes.** **[proposed]** Under the test of
   [README section 3](README.md#3-tokenizer-model) a reading counts only
-  where it accepts the text. Reading (b) puts no condition on what
-  follows lower-case `ack` or `rej`, so it accepts every such text.
-  Reading (c) only folds the case and keeps the shape of (a), so it
-  counts only for text whose folded form has that shape: `ACK12` gives
-  the finding, `ACKNOWLEDGED` does not. An earlier draft gave the
-  finding for any text starting with the letters in any case. A
-  trailing CR makes the text a message with a
-  control byte: `syntax`, and that finding alone is given
-  ([README section 3](README.md#3-tokenizer-model), precedence). An
-  earlier draft gave `ambiguous` only for the identifier and over-long
-  number cases; it was widened because (b) and (c) divide the other
-  cases differently too.
+  where it accepts the text. Reading (b) only folds the case and keeps
+  the shape of (a), so it counts only for text whose folded form has
+  that shape: `ACK12` gives the finding, `ACKNOWLEDGED` does not. The
+  finding is `ambiguous` against `msg.text` at offset 11. A trailing CR
+  makes the text a message with a control byte: `syntax`, and that
+  finding alone is given
+  ([README section 3](README.md#3-tokenizer-model), precedence). Text
+  that has the shape of (a) is an acknowledgement or rejection under
+  both readings and gives no finding. Lower-case `ack` or `rej` followed
+  by anything else, an over-long number or an identifier of its own
+  included, gives no finding: the reading that accepted it was dropped.
+  An earlier draft gave the finding for any text starting with the
+  letters in any case; a later one gave it for any text starting with
+  lower-case `ack` or `rej`, under the dropped reading.
 - **Decoders.**
 
   | Decoder | What it does | Where |
@@ -437,16 +461,20 @@ as status reports (p. 98/76). APRS12c gives no layout for it.
   NWS bulletin whose text reading (b) would classify by its shape: text
   that has the exact shape of an acknowledgement or rejection
   (section 4), that starts with an upper-case telemetry keyword and fits
-  [07-telemetry.md section 4](07-telemetry.md#4-telemetry-definition-messages)
-  with no `syntax` or `value` finding, or that matches a directed query
-  ([09-other.md section 4.1](09-other.md#41-directed-queries)). That
-  text stays `bln.text` or `nws.text`, with an `ambiguous` finding at
-  offset 11, unless this reading already gives a `syntax` or `value`
-  finding on those bytes. Other text falls through the text tests of
-  (b) to the addressee, so both readings make it a bulletin and it gets
-  no finding here; a trailing `'{'` is covered by
-  [amb.bln.ref](#amb.bln.ref). An earlier draft called the question not
-  visible.
+  [07 section 4](07-telemetry.md#4-telemetry-definition-messages), or
+  that matches a directed query
+  ([09-other.md section 4.1](09-other.md#41-directed-queries)), where
+  the packet read as that kind, its addressee as `msg.addr` and its text
+  under the `msg.text` length limit included, would give no `syntax` or
+  `value` finding of its own. That text stays `bln.text` or `nws.text`,
+  with an `ambiguous` finding at offset 11, unless this reading already
+  gives a
+  `syntax` or `value` finding on those bytes. Other text falls through
+  the text tests of (b) to the addressee, so both readings make it a
+  bulletin and it gets no finding here; a trailing `'{'` is covered by
+  [amb.bln.ref](#amb.bln.ref). A packet whose addressee starts with
+  neither `BLN` nor `NWS-` is classified by its text under both
+  readings. An earlier draft called the question not visible.
 - **Decoders.** Dire Wolf tests `BLN`, `NWS`, other weather prefixes,
   telemetry keywords, `'?'`, then `ack`/`rej` (decode_aprs.c:1870-1996).
   pdn-aprs tests `ack`/`rej` first, then bulletins, telemetry and queries
@@ -473,7 +501,8 @@ as status reports (p. 98/76). APRS12c gives no layout for it.
   [README section 3](README.md#3-tokenizer-model): a `BLN` addressee that
   fits none of the three shapes is a bulletin here and a message under
   reading (c). Where the packet, read as a message by section 2.1 from
-  case 3 on, would give no `syntax` or `value` finding, it gets an
+  case 3 on, would give no `syntax` or `value` finding of its own, it
+  gets an
   `ambiguous` finding at offset 4, beside the `unstated` finding of
   section 6. That a general bulletin is also a group bulletin with an
   empty name, and that reading (b) would not divide the name part into
@@ -506,10 +535,22 @@ as status reports (p. 98/76). APRS12c gives no layout for it.
 - **Taken.** **[proposed]** (c). It is tokenized as `bln.ref` in
   bulletins and as `nws.ref` in NWS bulletins, following the example.
   Visible in the bytes: reading (b) takes the same bytes as text. Both
-  give an `ambiguous` finding at the `'{'`. An earlier draft gave none
-  in NWS bulletins, as decided by the document's own example; that was
-  dropped because the example does not stop reading (b) from dividing
-  the bytes differently.
+  give an `ambiguous` finding at the `'{'`, under the condition below.
+  An earlier draft gave none in NWS bulletins, as decided by the
+  document's own example; that was dropped because the example does not
+  stop reading (b) from dividing the bytes differently.
+- **In the bytes.** **[proposed]** Under the test of
+  [README section 3](README.md#3-tokenizer-model), reading (b) counts
+  only where it accepts the text with the `'{'` and its letters or
+  digits in it. NWS text has no length limit, so every `nws.ref` gives
+  the finding. Bulletin text has the 67-byte limit, which this reading
+  applies to `bln.text` without `bln.ref`; a `bln.ref` gives the finding
+  only where the text from offset 11, `bln.ref` included, is at most 67
+  bytes, and otherwise reading (b) would give `value`. Where `bln.text`
+  alone is over the limit, that `value` finding alone is given
+  (precedence). Reading (a) divides a trailing reference the same way as
+  (c), and fails on a `'{'` elsewhere, which (c) leaves as text; it adds
+  no finding.
 - **Decoders.** Xastir extracts an identifier after the last `'{'` before
   testing the addressee, so for bulletins too (db.c:13673). pdn-aprs
   splits a valid trailing identifier off bulletin text
@@ -535,7 +576,8 @@ as status reports (p. 98/76). APRS12c gives no layout for it.
   `NWS-` addressee whose word is not `ADVIS`, `WARN` or `WATCH` is an NWS
   bulletin here and a message under reading (b); where the packet, read
   as a message by section 2.1 from case 3 on, would give no `syntax` or
-  `value` finding, it gets an `ambiguous` finding at offset 5. An
+  `value` finding of its own, it gets an `ambiguous` finding at offset
+  5. An
   addressee starting with `NWS_`, `SKY`, `CWA` or `BOM` is a message
   here and an NWS bulletin under reading (c), which accepts any text
   bytes; it gets an `ambiguous` finding at offset 1, unless the packet
@@ -584,7 +626,11 @@ as status reports (p. 98/76). APRS12c gives no layout for it.
   it to the handling of unknown identifiers in 01.
 - **Taken.** **[proposed]** (a), as one token with an `obsolete` finding.
   Nothing inside is tokenized. Not visible as an alternative: decided
-  silently, no finding beyond `obsolete`.
+  silently, no finding beyond `obsolete`. **[proposed]** Under the test
+  of [README section 3](README.md#3-tokenizer-model), reading (b) would
+  give the `syntax` finding of a "do not use" identifier at byte 0
+  ([01-frame.md](01-frame.md#7-data-type-identifier)), so it does not
+  count.
 - **Decoders.** A search of the files read found no branch for an
   information field starting with `BLN` in any of the decoders; FAP,
   Dire Wolf, aprslib, Xastir and pdn-aprs dispatch on the first byte, and

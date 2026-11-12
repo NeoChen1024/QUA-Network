@@ -43,8 +43,8 @@ neither, then text. A report with a locator has no timestamp.
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|
 | <a id="stat.dti"></a>`stat.dti` | Identifier | `>`, 1 byte. | yes | 1 byte | p. 31/17; p. 104/80 |
-| <a id="stat.time"></a>`stat.time` | Timestamp | [`time.dhm`](02-fields.md#time.dhm) with the zulu suffix `z` only: 6 digits then `z`. Six digits followed by `/` or `h` are not a timestamp; they stay `stat.text`, with `ambiguous` at the first digit ([amb.stat.time](#amb.stat.time)). | no | 7 bytes | p. 38/22; p. 104/80 |
-| <a id="stat.grid"></a>`stat.grid` | Locator with symbol | Directly after `stat.dti`, never with `stat.time`: [`grid.loc`](03-position.md#grid.loc), then [`sym.table`](02-fields.md#sym.table), then [`sym.code`](02-fields.md#sym.code), then `SP` or the end of the field. The 6-byte locator is tried first, then the 4-byte one. Lower-case locator letters are recognised and give `syntax` ([amb.grid.case](03-position.md#amb.grid.case)). When a locator and symbol match but the next byte is not `SP`, the bytes are `stat.text`, with `ambiguous` at byte 1 ([amb.stat.grid](#amb.stat.grid)). | no | the byte before `SP` or end of field | p. 42/26; p. 105/81; p. 106/82 |
+| <a id="stat.time"></a>`stat.time` | Timestamp | [`time.dhm`](02-fields.md#time.dhm) with the zulu suffix `z` only: 6 digits then `z`. Six digits followed by `/` or `h` are not a timestamp; they stay `stat.text`, with `ambiguous` at the first digit where the report read with that timestamp would give no `syntax` or `value` finding of its own ([amb.stat.time](#amb.stat.time)). | no | 7 bytes | p. 38/22; p. 104/80 |
+| <a id="stat.grid"></a>`stat.grid` | Locator with symbol | Directly after `stat.dti`, never with `stat.time`: [`grid.loc`](03-position.md#grid.loc), then [`sym.table`](02-fields.md#sym.table), then [`sym.code`](02-fields.md#sym.code), then `SP` or the end of the field. The 6-byte locator is tried first, then the 4-byte one. The letter ranges are those of [amb.grid.range](03-position.md#amb.grid.range): a first-pair letter outside `A`–`R`, in either case, is recognised and gives `syntax` where the rest matches; a fifth or sixth byte outside `A`–`X`, in either case, means the locator has no subsquare, and the 4-byte locator is tried. Lower-case locator letters, in the subsquare too, are recognised and give `syntax` ([amb.grid.case](03-position.md#amb.grid.case)). When a locator and symbol match but the next byte is not `SP`, the bytes are `stat.text`, with no finding ([amb.stat.grid](#amb.stat.grid)). | no | the byte before `SP` or end of field | p. 42/26; p. 105/81; p. 106/82 |
 | <a id="stat.text"></a>`stat.text` | Status text | The rest of the field; its bytes are checked as [`cmt.text`](02-fields.md#cmt.text). At most 62 bytes with neither `stat.time` nor `stat.grid`, 55 after `stat.time`, 54 after `stat.grid` counting the leading `SP`. Longer gives `value` at the first byte past the limit, also when the text is valid UTF-8 and its character count is within the limit ([amb.stat.len](#amb.stat.len)). | no | end of field | p. 104/80; p. 106/82 |
 | <a id="stat.beam"></a>`stat.beam` | Beam heading and power | The last 3 bytes of `stat.text` when they are `^`, then a heading byte (a digit or `A`–`Z`), then a power byte 0x31–0x4B (`1` to `9`, `:` to `@`, `A` to `K`). A depth + 1 token inside `stat.text`. Any other last 3 bytes are plain text. | no | end of field | p. 105/81 |
 | <a id="stat.freq"></a>`stat.freq` | Frequency in status text | The rules of section 7 apply at the start of `stat.text`, after the leading `SP` when there is a `stat.grid`. | no | — | p. 111/87; p. 115/91 |
@@ -58,7 +58,7 @@ neither, then text. A report with a locator has no timestamp.
 | <a id="cap.sep"></a>`cap.sep` | Separator | `,`, 1 byte. | between items | 1 byte | p. 101/77 |
 | <a id="cap.token"></a>`cap.token` | Token | 1 or more bytes 0x21–0x7E other than `,` and `=` ([amb.cap.form](#amb.cap.form)). | yes | `=`, `,` or end of field | p. 101/77 |
 | <a id="cap.value"></a>`cap.value` | Value | 1 or more bytes 0x21–0x7E other than `,`. An `=` with nothing after it gives `syntax`. For the tokens `MSG_CNT` and `LOC_CNT` the value is a count, so digits; any other byte gives `syntax`, as a byte outside the set ([README section 3](README.md#3-tokenizer-model)). | no | `,` or end of field | p. 101/77 |
-| <a id="cap.pad"></a>`cap.pad` | Padding | One or more `SP` before or after a token or value. A token of its own; gives `ambiguous` ([amb.cap.form](#amb.cap.form)). | no | the next byte that is not `SP` | — |
+| <a id="cap.pad"></a>`cap.pad` | Padding | One or more `SP` before or after a token or value. A token of its own; gives `ambiguous` at its first byte where the field read with the spaces as padding would give no `syntax` or `value` finding of its own ([amb.cap.form](#amb.cap.form)). | no | the next byte that is not `SP` | — |
 
 ## 4. General queries
 
@@ -94,8 +94,9 @@ match the rows below is not a directed query; 08 reads it as a message.
 
 A directed query carries no message identifier (p. 101/77, p. 103/79):
 a text with `{` does not match the rows above and is read as a message.
-The responses to directed queries are ordinary packets of other kinds
-and are not recognised as responses.
+The responses to directed queries are ordinary packets and are not
+recognised as responses; which of them carry a message identifier is
+set out in [amb.qry.response](#amb.qry.response).
 
 ## 5. User-defined data
 
@@ -104,7 +105,15 @@ and are not recognised as responses.
 | <a id="udf.dti"></a>`udf.dti` | Identifier | `{`, 1 byte. | yes | 1 byte | p. 31/17; p. 121/97 |
 | <a id="udf.user"></a>`udf.user` | User ID | 1 byte. `{` marks experimental use. A byte outside 0x21–0x7E gives `unstated`. | yes | 1 byte | p. 121/97 |
 | <a id="udf.type"></a>`udf.type` | Packet type | 1 byte. A byte outside 0x21–0x7E gives `unstated`. | yes | 1 byte | p. 121/97 |
-| <a id="udf.data"></a>`udf.data` | Data | Any bytes. Printable 7-bit ASCII (`SP` to `~`) is strongly recommended, not required: the first byte outside it gives `discouraged`. | no | end of field | p. 121/97 |
+| <a id="udf.data"></a>`udf.data` | Data | Any bytes. Printable 7-bit ASCII (`SP` to `~`) is strongly recommended, not required; bytes outside it give no finding. | no | end of field | p. 121/97 |
+
+Bytes outside `SP` to `~` in `udf.data` are counted by the field
+inventory as a statistic of its own, as
+[README section 3](README.md#3-tokenizer-model) sets out for fields
+where APRS12c only recommends printable ASCII. An earlier draft gave
+`discouraged` at the first such byte; it was dropped when the README
+gave such bytes no finding, since many senders put UTF-8 there and the
+finding would bury the others.
 
 A field shorter than 3 bytes gives `syntax`. The list of assigned user
 IDs (p. 122/98) is not checked: the document says there is no mechanism
@@ -155,10 +164,18 @@ After a frequency the items are taken in the order `freq.rx`,
 `freq.tone`, `freq.offset`, `freq.range`, each optional, each starting
 with one `SP` and followed by `SP` or the end of the text; `freq.dstar`
 can follow `freq.offset`. An item that matches out of this order stays
-text and gives `ambiguous` ([amb.freq.items](#amb.freq.items)). The text
-after the last item is comment text.
+text and gives `ambiguous` at its leading `SP`, where reading the items
+in any order would give no `syntax` or `value` finding of its own
+([amb.freq.items](#amb.freq.items)). The text after the last item is
+comment text.
 
 ## 8. Ambiguities
+
+A finding "of its own" is one that the other reading gives and this
+reading does not. A `syntax` or `value` finding that both readings give
+elsewhere in the packet does not stop an `ambiguous` finding
+([README section 3](README.md#3-tokenizer-model)). The same holds for
+every condition of this kind in this file.
 
 <a id="amb.stat.time"></a>
 ### amb.stat.time
@@ -173,6 +190,22 @@ not allow.
 **Reading taken.** **[proposed]** (a), with `ambiguous` at the first
 digit when the bytes are 6 digits and `/` or `h`. Visible in the bytes,
 hence the `ambiguous` finding.
+
+**In the bytes.** **[agreed]** Reading (b) means accepting the seven
+bytes as a timestamp, as the decoders that accept these forms do, and
+the `ambiguous` finding stays. **[proposed]** Under the test of
+[README section 3](README.md#3-tokenizer-model), reading (b) counts
+only where it accepts the whole report. The finding is `ambiguous` at
+offset 1, the first digit, and is given where the six digits are
+values that [`time.dhm`](02-fields.md#time.dhm) (with `/`) or
+[`time.hms`](02-fields.md#time.hms) (with `h`) accepts with no `syntax`
+or `value` finding, and the text after the seventh byte, checked as
+`stat.text` after a `stat.time`, gives no `syntax` or `value` finding
+of its own. A finding that both readings give on that text, such as
+one for a control byte, does not stop it. An earlier draft also gave
+no `ambiguous` finding where this reading reported any `syntax` or
+`value` finding on the status text; that was dropped with the README
+rule that counts only the other reading's own findings.
 
 **Decoders (read).**
 
@@ -191,26 +224,54 @@ or `h`?
 <a id="amb.stat.grid"></a>
 ### amb.stat.grid
 
-**Open in the document.** The locator form is 4 or 6 bytes, then a
-symbol, then text that starts with `SP` (p. 105/81, p. 106/82). A status
-text that begins like a locator cannot be told apart from one without
-the `SP` rule, and a 4-byte locator whose symbol table is an overlay
-letter begins like a 6-byte locator.
+**Open in the document.** The locator, 4 or 6 bytes, follows `>`
+directly, then a symbol, and status text, when there is any, must
+start with `SP` (p. 105/81, p. 106/82). Letters are sent in upper case
+and may be received in either (p. 105/81). A 4-byte locator whose
+symbol table is an overlay letter begins like a 6-byte locator.
 
 **Readings.** (a) Require `SP` or the end after the symbol; try 6 bytes
-first. (b) Take any locator-and-symbol prefix.
+first. An earlier draft listed a second reading that takes any
+locator-and-symbol prefix, with or without the `SP`. It was dropped
+because the document requires the `SP` (p. 105/81); Dire Wolf and
+pdn-aprs read it so (see Decoders;
+[README section 3](README.md#3-tokenizer-model)).
 
-**Reading taken.** **[proposed]** (a). When the locator and symbol match
-but `SP` is missing, the bytes are text and the tokenizer gives
-`ambiguous`: visible in the bytes. With the `SP`-or-end rule the 6- and
-the 4-byte readings cannot both complete, since the byte after a 4-byte
-reading's symbol would have to be both `SP` (or the end) and the
-6-byte reading's table byte; trying 6 first therefore decides nothing in
-a packet that conforms, and needs no finding.
+**Reading taken.** **[proposed]** (a). When the locator and symbol
+match but `SP` is missing, the bytes are status text, with no finding;
+recognising such reports is left to a deviation recogniser. With the
+`SP`-or-end rule the 6- and the 4-byte readings cannot both complete,
+since the byte after a 4-byte reading's symbol would have to be both
+`SP` (or the end) and the 6-byte reading's table byte; trying 6 first
+therefore decides nothing in a packet that conforms, and needs no
+finding.
+
+**[proposed]** The Maidenhead rules of
+[03-position.md](03-position.md#amb.grid.range) apply to the locator. A
+first-pair letter outside `A`–`R`, in either case, is recognised as a
+locator letter and gives `syntax`, where the bytes otherwise have the
+shape of `stat.grid`, with the symbol and the `SP` or end. A fifth or
+sixth byte outside `A`–`X`, in either case, is not a subsquare letter,
+so the 6-byte locator does not match and the 4-byte one is tried. A
+lower-case
+letter is recognised and gives `syntax`, in the first pair and in the
+subsquare alike ([amb.grid.case](03-position.md#amb.grid.case)). In a
+`[` beacon a lower-case subsquare after an upper-case first pair gives
+`ambiguous` at byte 5, because a listed reading there ends the locator
+after 4 bytes. In a status report such a reading would contradict
+p. 105/81, which lets letters be received in lower case, so it is not
+a listed reading here
+([README section 3](README.md#3-tokenizer-model)) and that finding is
+not given.
+
+**In the bytes.** **[proposed]** No `ambiguous` finding. An earlier
+draft gave one at offset 1 where a locator and symbol were not followed
+by `SP`, under the second reading since dropped.
 
 **Decoders (read).** Dire Wolf tries 6 then 4 characters, accepts either
 case, checks the symbol table only with a warning and warns about a
-missing space (`get_maidenhead`, decode_aprs.c:4082; decode_aprs.c:2447–2510).
+missing space (`get_maidenhead`, decode_aprs.c:4082;
+decode_aprs.c:2447–2510).
 pdn-aprs tries 6 characters and, only when they are not a locator, 4;
 it needs a valid symbol and tolerates a missing space (`decode` and
 `grid`, status.rs:12–70; `is_locator`, status.rs:72). Xastir leaves
@@ -236,7 +297,9 @@ the only one given
 ([README section 3](README.md#3-tokenizer-model), precedence). An
 earlier draft gave `ambiguous` in place of `value` in that case; it was
 dropped when the README made a `syntax` or `value` finding the only
-finding for such bytes.
+finding for such bytes. **[proposed]** Text within the limit in bytes
+is within it in characters too, so where (a) accepts the text (b)
+accepts it the same way; no `ambiguous` finding.
 
 **Decoders (read).** FAP strips CR, LF and trailing spaces and applies
 no limit (`_status_parse`, FAP.pm:1297–1309). Dire Wolf and pdn-aprs
@@ -251,8 +314,9 @@ not in characters?
 
 **Open in the document.** Capabilities are tokens or token-value pairs
 separated by commas (p. 101/77). No byte set is given for either, nor
-whether spaces can surround them. The appendix lists an IGate report with
-spaces after the commas (p. 155/131; see [err.cap.bracket](#err.cap.bracket)).
+whether spaces can surround them. The appendix lists an IGate report
+with spaces after the commas (p. 155/131; see
+[err.cap.bracket](#err.cap.bracket)).
 
 **Readings.** (a) Visible bytes only, spaces not allowed. (b) Spaces
 around items are padding.
@@ -260,6 +324,17 @@ around items are padding.
 **Reading taken.** **[proposed]** (a) for the token and value; `SP`
 around them is taken as `cap.pad` with `ambiguous`, since (b) would also
 match: visible in the bytes.
+
+**In the bytes.** **[proposed]** Under the test of
+[README section 3](README.md#3-tokenizer-model), reading (b) counts
+only where it accepts the whole field. Each `cap.pad` token gets an
+`ambiguous` finding at its first byte where the field, read with every
+`cap.pad` as padding, would give no `syntax` or `value` finding of its
+own. A finding that both readings give elsewhere in the field, such as
+one for an empty item or for a count that is not digits, does not stop
+it. An earlier draft gave no `ambiguous` finding wherever this reading
+gave a `syntax` or `value` finding on the field; that was dropped with
+the README rule that counts only the other reading's own findings.
 
 **Decoders (read).** FAP splits at `,` and trims spaces around tokens
 and values (`_capabilities_parse`, FAP.pm:1315–1340). pdn-aprs trims
@@ -318,7 +393,10 @@ with no stated digit counts.
 
 **Reading taken.** **[proposed]** (a), with the number format of
 `qry.lat`. Not visible as an alternative: decided by the reading, no
-`ambiguous` finding.
+`ambiguous` finding. **[proposed]** Under the test of
+[README section 3](README.md#3-tokenizer-model), (b) divides a
+footprint after `APRS` the same way, and after another type it would
+give `syntax`, so it does not count.
 
 **Decoders (read).** Dire Wolf reads the footprint leniently with a
 numeric conversion, checks the latitude and longitude ranges and
@@ -353,7 +431,10 @@ callsign directly after the type, no padding. (c) As the example: one
 unlisted type, or a callsign of other bytes makes the text a message,
 with no finding. Not visible as an alternative where (a) matches: the
 type has a fixed length, so (b) and (c) place the callsign at the same
-bytes. Decided silently; no `ambiguous` finding.
+bytes. Decided silently; no `ambiguous` finding. **[proposed]** Under
+the test of [README section 3](README.md#3-tokenizer-model), (e) would
+report a malformed query where (d) reads a message, so it does not
+count; and every text that (b) or (c) accepts, (a) accepts too.
 
 **Decoders (read).** Dire Wolf takes any message text starting with `?`
 as a directed query but decodes nothing after it; its header comment
@@ -373,6 +454,70 @@ test in `_message_parse` (FAP.pm:1352–1398) or `parse_message`
 **Corpus question.** Message texts starting with `?`, by type; how many
 have a `SP` before the callsign, trailing padding, or a `{`.
 
+<a id="amb.qry.response"></a>
+### amb.qry.response
+
+**Open in the document.** Responses to queries are sent once and carry
+no message identifier, so that nobody acknowledges them (p. 101/77). The
+rule names no query type and no exception. Yet `APRSM` asks the queried
+station for the messages it still holds for the querying station, and
+the example answer is a message ending in `{003` (p. 103/79), with the
+text and number of the numbered message example of chapter 14
+(p. 93/71). That page says a message without an identifier is not
+acknowledged and a numbered one is repeated until it is acknowledged,
+cancelled or timed out, so a message still outstanding is one that
+carries a number.
+
+**Readings.** (a) The rule covers every response, and the `{003` of the
+`APRSM` example is an error. (b) The rule is stated too broadly: it
+covers the replies that the queried station composes, and the `APRSM`
+answer is the outstanding messages themselves, each with its
+identifier.
+
+**Reading taken.** **[agreed]** (b). The rule that a response carries
+no message identifier applies to the replies that the queried station
+composes for the query: `APRSD`, `APRSH`, and `APRST` or `PING?`.
+`APRSO`, `APRSP` and `APRSS` are answered with objects, positions and
+status reports, which never carry a message identifier. The `APRSM`
+answer is the outstanding messages themselves, each keeping its
+identifier, so that the querying station can acknowledge them; each is
+an ordinary message
+([08-message.md section 5](08-message.md#5-group-and-special-addressees)).
+Reading (a) would have outstanding messages re-sent in a form that
+cannot be acknowledged. APRS 1.0.1 has the rule and the example as
+12c has them (1.0.1 PDF 87, 89). The older APRSdos protocol notes,
+`PROTOCOL.TXT` on aprs.org (read through the Wayback Machine, capture
+20240120045957), state the same once-only, unnumbered rule for
+responses, list messages beside the position, status and objects that
+a queried station sends again, and describe the `APRSD` and `APRSH`
+answers as a single message written for the reply. An earlier draft
+held the question as one half of
+[err.qry.directed](#err.qry.directed), an error in the example; it was
+moved here when the example was found consistent with chapter 14.
+
+**In the bytes.** **[agreed]** Nothing in a packet marks it as a
+response: a reply is an ordinary message, object, position or status
+report, read by its own rules. The tokenizer recognises no packet as a
+response and gives no finding.
+
+**Decoders (read).** Of the decoders read, only Xastir answers directed
+queries. It handles them only when they are addressed to itself and
+carry no identifier (db.c:14205–14230). It answers `APRSD` and `APRST`
+or `PING?`, and a `VER` query of its own, with composed messages
+(db.c:12775–12820, 12936–12941, 12964–12969), all sent once through
+`transmit_message_data` without an identifier (messages.c:955–1022),
+whereas its ordinary outgoing messages carry a sequence number
+(messages.c:1378). It answers `APRSP` by scheduling its position
+(db.c:12896) and leaves `APRSM`, `APRSH`, `APRSO` and `APRSS`
+unanswered, marked as not implemented (db.c:12836, 12855–12859, 12874,
+12912). Dire Wolf decodes a directed query and sends nothing
+(decode_aprs.c:1960–1966, 2742–2794). No source read implements
+`APRSM`, so deployed code does not show whether its answer is numbered.
+
+**Corpus question.** Messages sent by a queried station to the querying
+station shortly after a directed query, by query type, and how many of
+them carry `{`.
+
 <a id="amb.freq.lead"></a>
 ### amb.freq.lead
 
@@ -385,7 +530,12 @@ space and the matter is being clarified.
 delimiter.
 
 **Reading taken.** **[proposed]** (a). Not visible as an alternative:
-decided by the reading, no `ambiguous` finding.
+decided by the reading, no `ambiguous` finding. **[proposed]** Under
+the tests of [README section 3](README.md#3-tokenizer-model): reading
+(b) would leave a frequency after a `/` or `SP` as comment text, but
+every frequency written with a delimiter carries that, and the bytes of
+one packet cannot narrow it, so it is decided by the reading and gives
+no finding. A frequency with no delimiter is read the same way by both.
 
 **Decoders (read).**
 
@@ -405,13 +555,21 @@ or nothing?
 **Open in the document.** `MHz` is to be sent in that mixed case and
 accepted in any case (p. 114/90). UAP §3.3 says it is case-sensitive.
 
-**Readings.** (a) Exact case. (b) Any case.
+**Readings.** (a) Recognise any case; another case gives `syntax`, as a
+departure from the sending rule. (b) Recognise any case with no
+finding, since receivers are told to accept it. An earlier draft listed
+a reading that takes `MHz` in the stated case only and leaves another
+case as comment text, as UAP §3.3 has it. It was dropped because
+p. 114/90 tells receivers to accept any case
+([README section 3](README.md#3-tokenizer-model)); none of the decoders
+read does so.
 
-**Reading taken.** **[proposed]** Recognise any case; another case gives
-`syntax`, as a departure from the sending rule, and that finding alone
-is given, although (b) would accept the bytes
-([README section 3](README.md#3-tokenizer-model), precedence). The
-tokens are the same under both readings; no `ambiguous` finding.
+**Reading taken.** **[proposed]** (a), the kind that
+[README section 3](README.md#3-tokenizer-model) gives a departure from
+a sending rule that receivers are told to accept. That finding alone is
+given, although (b) would accept the bytes (precedence). Both readings
+divide the bytes the same way and differ only in the kind of finding;
+no `ambiguous` finding.
 
 **Decoders (read).** Dire Wolf accepts any case and warns
 (decode_aprs.c:4435, 4577–4583). pdn-aprs accepts any case
@@ -434,6 +592,18 @@ only.
 **Reading taken.** **[proposed]** (a). An item out of order stays text
 with `ambiguous`: visible in the bytes. A 3-digit range is recognised
 with `unstated`.
+
+**In the bytes.** **[proposed]** Under the test of
+[README section 3](README.md#3-tokenizer-model), reading (b) counts
+only where it accepts the whole comment or status text. The first item
+that (a) leaves as text because it is out of order gets an `ambiguous`
+finding at its first byte, its leading `SP`, where reading (b), taking
+that item and the items after it in any order, would give no `syntax`
+or `value` finding of its own on the text. Where this reading already
+gives a
+`syntax` or `value` finding on those bytes, that finding alone is given
+(precedence). The 3-digit range is a matter of the finding kind, not of
+how the bytes divide.
 
 **Decoders (read).** Dire Wolf reads tone, offset and range in any order
 (decode_aprs.c:4611–4692). pdn-aprs reads them in the fixed order, each a
@@ -458,7 +628,21 @@ any comment.
 
 **Reading taken.** **[proposed]** (a). In other comments, a start that
 matches a tone item stays text and gives `ambiguous`: visible in the
-bytes.
+bytes. The same holds for an offset or a range item, which `freq.obj`
+also reads at the start; an earlier draft named only the tone.
+
+**In the bytes.** **[proposed]** Under the test of
+[README section 3](README.md#3-tokenizer-model), reading (b) counts
+only where it accepts the whole comment or status text. Where section 7
+looks for a frequency outside a `freq.objname` object or item and finds
+none, a start that matches `freq.tone`, `freq.offset` or `freq.range`
+as `freq.obj` reads them, with no leading `SP`, gets an `ambiguous`
+finding at its first byte, the first byte of the comment or text. It is
+given only where reading (b), taking the items there as `freq.obj`
+does, would give no `syntax` or `value` finding of its own on the text.
+Where this
+reading already gives a `syntax` or `value` finding on those bytes,
+that finding alone is given (precedence).
 
 **Decoders (read).** Dire Wolf reads tone, offset and range at the
 comment start whether or not a frequency is present, and takes a
@@ -480,7 +664,12 @@ with digits and a point.
 listed separators.
 
 **Reading taken.** **[proposed]** (a). Not visible in the bytes; no
-finding.
+finding. **[proposed]** Under the tests of
+[README section 3](README.md#3-tokenizer-model): reading (b) would read
+a name of these shapes with an unlisted byte in its last places as an
+ordinary name, and its comment then without left-justified items, but
+every name of that kind carries this, and the bytes of one packet
+cannot narrow it, so it is decided by the reading and gives no finding.
 
 **Decoders (read).** Dire Wolf converts a name with a numeric
 conversion and checks the result against amateur bands
@@ -535,19 +724,21 @@ Origin: already in APRS 1.0.1 (1.0.1 PDF 88). 12b has it (12b PDF 104).
 <a id="err.qry.directed"></a>
 ### err.qry.directed
 
-Two contradictions sit in the directed query part of chapter 15
-(section 4.1, [amb.qry.dir](#amb.qry.dir)). The heard callsign needs no
-filler spaces and the diagram has no separator before it (p. 103/79),
-but the `APRSH` example puts a space before it and its note says it is
-padded to 9 bytes. Responses carry no message identifier (p. 101/77),
-but the `APRSM` example response ends in `{003` (p. 103/79); that
-response is one of the outstanding messages themselves, which may
-explain the identifier, but the rule states no exception. The reading
-accepts both callsign forms (amb.qry.dir) and does not check responses.
+In the directed query part of chapter 15 (section 4.1,
+[amb.qry.dir](#amb.qry.dir)), the heard callsign needs no filler spaces
+and the diagram has no separator before it (p. 103/79), but the `APRSH`
+example puts a space before it and its note says it is padded to 9
+bytes. The reading accepts both callsign forms (amb.qry.dir).
 
-Origin: already in APRS 1.0.1, which has the rule (1.0.1 PDF 87), the
-diagram, the `APRSH` example with its note and the `APRSM` response
-(1.0.1 PDF 89). 12b has them unchanged (12b PDF 103, 105).
+An earlier draft also listed here the `{003` of the `APRSM` example
+response against the rule that responses carry no message identifier
+(p. 101/77). That half was moved to
+[amb.qry.response](#amb.qry.response), which finds the rule stated too
+broadly rather than the example wrong.
+
+Origin: already in APRS 1.0.1, which has the diagram and the `APRSH`
+example with its note (1.0.1 PDF 89). 12b has them unchanged (12b
+PDF 105).
 
 <a id="err.freq.offset"></a>
 ### err.freq.offset
@@ -582,6 +773,3 @@ not in APRS 1.0.1. 12b has them (12b PDF 120, 121).
 - Whether a directed query of an unlisted type (pdn-aprs accepts one)
   should be recognised with `unstated` instead of being read as a
   message ([amb.qry.dir](#amb.qry.dir)).
-- Whether [err.qry.directed](#err.qry.directed) is an erratum is to be
-  decided. The `APRSM` example response carries `{003`, which may be
-  intended, since that response is the outstanding messages themselves.

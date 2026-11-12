@@ -126,10 +126,10 @@ layer; see [amb.lat.null](#amb.lat.null).
 | <a id="sym.code"></a>`sym.code` | Symbol code | 1 byte, `0x21`–`0x7E`: the codes listed in both tables of Appendix 2 run from `'!'` to `'~'`. | Format file | Fixed, 1 byte | p. 40/24, p. 139/115 to p. 141/117 |
 
 In the uncompressed position the table identifier sits between `lat` and
-`lon`, and the code directly after `lon` (p. 40/24). Lower-case `'a'`–`'j'`
-are table identifiers only in the compressed block ([`cmp.table`](#cmp.table));
-in `sym.table` they are a `syntax` finding (p. 125/101). Any byte outside
-the set is a `syntax` finding.
+`lon`, and the code directly after `lon` (p. 40/24). Lower-case
+`'a'`–`'j'` are table identifiers only in the compressed block
+([`cmp.table`](#cmp.table)); in `sym.table` they are a `syntax` finding
+(p. 125/101). Any byte outside the set is a `syntax` finding.
 
 An overlay selects the alternate table and puts the character on the
 symbol (p. 125/101, p. 126/102). Only symbols marked as overlay-capable
@@ -209,11 +209,16 @@ holds. See [amb.cmp.cs](#amb.cmp.cs) for the order of steps 2 and 4.
 **[agreed]** Step 2, the GGA bits of `T`, is tested before the range of
 `c`. When step 2 applies and `c` is also in `'!'`–`'z'`, the course and
 speed range of step 4, the token is `cmp.cs.alt` with an `ambiguous`
-finding at `c`, since a reading that tests the range of `c` first would
-take the bytes as course and speed. **[proposed]** The same holds when
-`c` is `'{'`, the range value of step 5: the token is `cmp.cs.alt`, with
-an `ambiguous` finding at `c`, since that reading would take the bytes
-as a range.
+finding at `c`, since a reading that lets the range of `c` decide
+alone, without consulting `T`, would take the bytes as course and
+speed. **[proposed]** The same holds when `c` is `'{'`, the range value
+of step 5: the token is `cmp.cs.alt`, with an `ambiguous` finding at
+`c`, since that reading would take the bytes as a range.
+**[proposed]** A `syntax` finding at `s` or the `value` finding of 6.4
+at `T` does not suppress either finding: both readings would give it,
+so it does not count against the other reading
+([README section 3](README.md#3-tokenizer-model)). See
+[amb.cmp.cs](#amb.cmp.cs).
 
 ### 6.4 The T byte
 
@@ -232,9 +237,14 @@ step 1 of 6.3.
 **[proposed]** No data extension follows a compressed block. The bytes
 after `T` are what the format puts there, usually a comment
 ([`cmt.text`](#cmt.text)). When the bytes directly after `T` match an
-extension form of 7.2, they get an `ambiguous` finding at their first
-byte and stay comment text; see
-[amb.ext.compressed](#amb.ext.compressed).
+extension form that 7.1 would try at a slot of the same report, with no
+`syntax` or `value` finding of that form, they get an `ambiguous`
+finding at their first byte and stay comment text; see
+[amb.ext.compressed](#amb.ext.compressed). An earlier draft gave the
+finding for any form of 7.2; a form that 7.1 would not try there, or
+one that fails, is not an extension under any reading, so it does not
+make the bytes ambiguous
+([README section 3](README.md#3-tokenizer-model)).
 
 ## 7. Data extensions
 
@@ -244,8 +254,14 @@ byte and stay comment text; see
   an uncompressed position, in the formats whose files provide one. When
   they match one of the forms in 7.2, they are read as that extension.
   When they match none, the slot is empty and the comment starts there.
-  No finding either way, apart from the literal-letter case below. See
-  [amb.ext.slot](#amb.ext.slot).
+  Being an extension, or not, gives no finding of its own. See
+  [amb.ext.slot](#amb.ext.slot). **[proposed]** The slot bytes on
+  which the readings of another entry divide differently get the
+  `ambiguous` findings that entry gives: the literal-letter case and
+  the descriptor-only case below, [amb.ext.csespd](#amb.ext.csespd) and
+  [amb.ext.phg](#amb.ext.phg). An earlier draft also listed
+  [amb.pos.ext](03-position.md#amb.pos.ext), which no longer gives a
+  finding.
 - **[proposed]** The forms are tried in this order, and the first match
   is taken:
   1. **[agreed]** In an object or item report whose symbol is table
@@ -267,13 +283,22 @@ byte and stay comment text; see
   [06-weather.md](06-weather.md) reads.
 - **[agreed]** Seven slot bytes with a literal `'T'` at offset 0, `'/'`
   at offset 3 and `'C'` at offset 4, the spelling of the descriptor's
-  name, get an `ambiguous` finding at the first byte of the slot, in any
-  report, because a reading that takes those letters as literal would
-  read them as `ext.area`. The bytes stay what this reading makes them.
-  In an object or item report with symbol `\l` they fail step 1 and
-  give its `syntax` finding, which alone is given
+  name, and digits at offsets 1, 2, 5 and 6, get an `ambiguous` finding
+  at the first byte of the slot, in any report, because a reading that
+  takes those letters as literal would read them as `ext.area`. The
+  bytes stay what this reading makes them. In an object or item report
+  with symbol `\l` they fail step 1 and give its `syntax` finding,
+  which alone is given
   ([README section 3](README.md#3-tokenizer-model), Precedence). See
   [amb.ext.area](#amb.ext.area).
+- **[proposed]** In an object or item report whose symbol is not `\l`
+  and which is not read as a weather report, seven slot bytes after an
+  uncompressed position that fit only `ext.area`, with a colour of
+  `'1'` and `'0'`–`'5'` (10 to 15), so that they are no course and
+  speed or other form of step 3, are comment text with an `ambiguous`
+  finding at their first byte, under the condition of
+  [amb.area.symbol](05-object-item.md#amb.area.symbol): a reading in
+  which the bytes decide would take them as a descriptor.
 - **[proposed]** There is no slot after a compressed block (6.5).
 
 ### 7.2 Fields
@@ -306,17 +331,33 @@ are comment text (UAP 5.9).
 
 **[proposed]** A course and speed whose two parts are of different kinds
 (digits in one, dots or spaces in the other, as in `088/...`) is read as
-`ext.csespd` with an `unstated` finding. See
-[amb.ext.csespd](#amb.ext.csespd).
+`ext.csespd` with an `unstated` finding. **[proposed]** It also gets an
+`ambiguous` finding at its first byte, since a reading that takes only
+the listed forms would read the seven bytes as comment text, unless the
+course gives the `value` finding above, which then alone is given. A
+seven-byte slot with `'/'` at offset 3 and only digits, dots and spaces,
+in which one part mixes kinds, is comment text, with an `ambiguous`
+finding at its first byte unless its course part is three digits above
+360. See [amb.ext.csespd](#amb.ext.csespd).
+
+**[proposed]** An `ext.phg`, `ext.phgr` or `ext.dfs` whose `h` is not a
+digit gets an `ambiguous` finding at its first byte, under the
+condition of [amb.ext.phg](#amb.ext.phg), unless its `d` gives the
+`value` finding above.
 
 ### 7.4 Bearing and NRQ
 
-**[proposed]** `ext.brgnrq` is read directly after the extension of a
-report whose symbol is table `'/'` with code `'\'`. When that extension
-is not `ext.csespd`, the finding is `ambiguous`. Under any other symbol
-the 8 bytes are comment text; when they directly follow an `ext.csespd`,
-the finding is `ambiguous`. Whether a DF report requires the field is
-stated in [03-position.md](03-position.md). See
+**[agreed]** `ext.brgnrq` is read only directly after an `ext.csespd`
+of a report whose symbol is table `'/'` with code `'\'`. With that
+symbol, 8 bytes of its shape directly after any other extension are
+comment text with an `ambiguous` finding at their first byte.
+**[proposed]** That finding is given when their bearing is at most 360;
+with a larger bearing the reading that would take them as bearing and
+NRQ gives `value` and does not count. Under any other symbol the 8
+bytes are comment text; when they directly follow an `ext.csespd` and
+fit `ext.brgnrq` with a bearing of at most 360, the finding is
+`ambiguous` at their first byte. Whether a DF report requires the field
+is stated in [03-position.md](03-position.md#3-df-reports). See
 [amb.ext.brgnrq](#amb.ext.brgnrq).
 
 ## 8. Comment
@@ -369,14 +410,20 @@ APRS12c as outside the official standard (p. 43/27); its own ID marks
 it, and it gets no finding. See [amb.cmt.alt](#amb.cmt.alt).
 
 **[proposed]** `cmt.dao`: every candidate is recorded; more than one
-gives an `ambiguous` finding. Its
-place in the comment gives no finding. The order of a DAO and a base-91
-telemetry block is checked by [`tlm.b91`](07-telemetry.md#tlm.b91). See
-[amb.cmt.dao](#amb.cmt.dao).
+gives an `ambiguous` finding on each, at the candidate's first `'!'`,
+under the conditions of [amb.cmt.dao](#amb.cmt.dao). A single
+candidate gives no finding, wherever it stands in the comment. An
+earlier draft also gave `ambiguous` to a single candidate followed by
+further bytes of the comment; that rested on taking a DAO only at the
+end of the comment, which contradicts p. 35/21 and was dropped
+([amb.cmt.dao](#amb.cmt.dao)). The order of a DAO and a base-91
+telemetry block is checked by [`tlm.b91`](07-telemetry.md#tlm.b91).
 
-**[proposed]** `cmt.noarchive` is searched in free-text fields only:
-comments and the text fields that format files name. See
-[amb.cmt.noarchive](#amb.cmt.noarchive).
+**[agreed]** `'!x!'` is searched for in the whole information field. A
+match that lies inside a free-text field (comments and the text fields
+that format files name) is a `cmt.noarchive` token. Any other match is
+no token and gets an `ambiguous` finding on `cmt.noarchive` at its
+first `'!'`. See [amb.cmt.noarchive](#amb.cmt.noarchive).
 
 ### 8.3 DAO forms
 
@@ -419,6 +466,8 @@ finding, out-of-range parts a `value` finding (section 2).
 **In the bytes.** Visible, since (b) or (c) would accept the bytes. The
 `syntax` or `value` finding of the reading alone is given
 ([README section 3](README.md#3-tokenizer-model), Precedence).
+**[proposed]** Where (a) gives no finding, (b) and (c) read the seven
+bytes the same way, so there is no `ambiguous` finding.
 
 | Decoder | Reads | Where |
 |---|---|---|
@@ -520,8 +569,11 @@ latitude and longitude is null. (c) The tokenizer does not distinguish.
 **Reading taken.** **[proposed]** (c): no token or finding of its own;
 recognition belongs to the decoding layer.
 
-**In the bytes.** Decided silently. The bytes cannot tell a null
-position from a station at 0° 0′, so no finding is given.
+**In the bytes.** **[proposed]** Decided silently. Readings (a) and (b)
+would classify all-zero coordinates as the null position, but every
+such position carries the question, and the bytes of one packet cannot
+tell a null position from a station at 0° 0′
+([README section 3](README.md#3-tokenizer-model)). No finding.
 
 | Decoder | Reads | Where |
 |---|---|---|
@@ -606,8 +658,15 @@ altitude example has `c` = `'S'`, inside the course range (p. 58/40,
 p. 59/41). The weather diagrams put wind in `cs` (p. 86/66).
 
 **Readings.** (a) `c` = `SP`, then the GGA bits, then the range of `c`.
-(b) The range of `c` first; GGA only inside the course range. (c) GGA
-first, before the `SP` test.
+(b) The document's literal order: the range of `c` decides alone,
+course and speed for `'!'`–`'z'` and range for `'{'`, and the `T` byte
+is not consulted for `cs`; `T` is still the compression type byte of
+6.4. (c) GGA first, before the `SP` test.
+
+An earlier draft described (b) as the range of `c` first, with the GGA
+bits tested only inside the course range. That is Xastir's behaviour
+(table below), not a reading of the text, which gives the GGA rule
+without limiting it to part of the range.
 
 **Reading taken.** **[agreed]** (a), as in 6.3: `T` is tested before
 the range of `c`. `c` = `SP` comes first because `T` has no meaning then
@@ -618,11 +677,18 @@ step.
 are set and `c` lies in the course and speed range `'!'`–`'z'`, which
 the bytes show. Those blocks get `cmp.cs.alt` with an `ambiguous`
 finding at `c` (6.3). **[proposed]** They also differ when the GGA bits
-are set and `c` is `'{'`: (a) reads altitude and (b) a range, and (b)
-accepts the bytes, since `s` is a base-91 digit under both. Those blocks
-also get `cmp.cs.alt` with an `ambiguous` finding at `c`. With `c` =
+are set and `c` is `'{'`: (a) reads altitude and (b) a range. Those
+blocks also get `cmp.cs.alt` with an `ambiguous` finding at `c`. With `c` =
 `SP` and the GGA bits set, (c) would read altitude from a `c` that is
 not a base-91 digit, so it fails there and gives no finding.
+**[proposed]** In both visible cases (b) gives no finding of its own
+that (a) does not give: both need `s` to be a base-91 digit and read
+`T` by the same rule (6.4). A `syntax` finding at `s` or a `value`
+finding at `T` is one that both readings give, so it does not count
+against (b), and the `ambiguous` finding at `c` is given beside it
+(README section 3). In a weather report, (b) would take a `c` in
+`'!'`–`'z'` as wind (step 3) rather than course and speed; the finding
+is the same.
 
 | Decoder | Reads | Where |
 |---|---|---|
@@ -754,13 +820,17 @@ extension unless the format says so.
 
 **Reading taken.** **[proposed]** (a) (7.1).
 
-**In the bytes.** Inherent ([README section 3](README.md#3-tokenizer-model)):
-every extension that the reading accepts at the slot could also be the
-start of a comment, and the bytes of one packet cannot narrow it. A
-finding here would mark every extension. Decided by the reading, with
-no finding. Slot bytes that this reading does not take as an extension
-but another reading would are visible cases, reported by
-[amb.ext.csespd](#amb.ext.csespd) and [amb.ext.area](#amb.ext.area).
+**In the bytes.** Inherent
+([README section 3](README.md#3-tokenizer-model)): every extension that
+the reading accepts at the slot could also be the start of a comment,
+and the bytes of one packet cannot narrow it. A finding here would mark
+every extension. Decided by the reading, with no finding. Slot bytes on
+which the readings of another entry divide differently, whether this
+reading takes them as an extension or not, are visible cases, reported
+by [amb.ext.csespd](#amb.ext.csespd), [amb.ext.phg](#amb.ext.phg),
+[amb.ext.area](#amb.ext.area) and, in an object or item report,
+[amb.area.symbol](05-object-item.md#amb.area.symbol).
+[amb.pos.ext](03-position.md#amb.pos.ext) no longer gives a finding.
 
 | Decoder | Reads | Where |
 |---|---|---|
@@ -794,13 +864,18 @@ of that form is comment text here, and an extension under reading (b)
 when it directly follows the slot's extension, or under reading (c)
 anywhere. Either reading leaves the rest of the comment as it is, so it
 accepts what this reading accepts. Such a run gets an `ambiguous`
-finding at its first byte. Exceptions: a run that overlaps another
-token found in the comment (8.2), and a run whose bytes already carry
-an `ambiguous` finding of 6.5 or 7.4, get no further finding. This is
-the same kind of run that [amb.ext.compressed](#amb.ext.compressed)
-reports after a compressed block. An earlier draft treated the
-question as not visible, on the grounds that such a run cannot be told
-from text; that is the case the finding marks.
+finding at its first byte. A run that already carries the `ambiguous`
+finding of 6.5 does not get it a second time: both entries report the
+run under the rule of the form it fits, at the same byte. This is the
+same kind of run that [amb.ext.compressed](#amb.ext.compressed) reports
+after a compressed block. **[proposed]** A run that overlaps another
+token found in the comment (8.2), or whose bytes carry the finding of
+7.4, still gets this finding: findings from different rules on one
+byte are not merged ([README section 3](README.md#3-tokenizer-model)).
+An earlier draft gave no further finding in those two cases. An
+earlier draft also treated the question as not visible, on the grounds
+that such a run cannot be told from text; that is the case the finding
+marks.
 
 | Decoder | Reads | Where |
 |---|---|---|
@@ -828,11 +903,16 @@ uncompressed position.
 **Reading taken.** **[proposed]** (a), following the diagrams.
 
 **In the bytes.** Visible. Under (a) the bytes after `T` are comment
-text, so a comment whose first bytes fit an extension form of 7.2 is a
-case that the bytes of the packet show, not one that every compressed
-report carries; and the decoders split on it (table below), reading
-those bytes as an extension or as text. They get an `ambiguous` finding
-at their first byte (6.5). This differs from
+text, so a comment whose first bytes fit an extension is a case that
+the bytes of the packet show, not one that every compressed report
+carries; and the decoders split on it (table below), reading those
+bytes as an extension or as text. **[proposed]** Reading (b) takes them
+as an extension, and accepts them, when they fit a form that 7.1 would
+try at a slot of the same report and give no `syntax` or `value`
+finding of that form. Those bytes get an `ambiguous` finding at their
+first byte, the byte after `T` (6.5). Bytes that fit only another form
+of 7.2, or that would give such a finding, get none: (b) would not read
+them as an extension, or would fail on them. This differs from
 [amb.ext.slot](#amb.ext.slot), where the bytes in question are an
 extension that the reading accepts, and a finding would mark every
 extension.
@@ -871,6 +951,22 @@ reading (b) would take it. The meaning of 000 is left to decoding.
 `ambiguous` finding above; parts of different kinds an `unstated`
 finding; a course above 360 a `value` finding, which alone is given
 ([README section 3](README.md#3-tokenizer-model), Precedence).
+**[proposed]** By the test of README section 3, at the slot:
+
+- A run with `'/'` at offset 3 and only digits, dots and spaces, in
+  which a part mixes kinds, fails (a) and is comment text. (b) takes it
+  as course and speed and accepts the report, since the comment limits
+  with and without an extension are seven bytes apart (p. 50/32),
+  unless its course part is three digits above 360, where (b) would
+  give `value`. Where (b) accepts, the run gets `ambiguous` at its
+  first byte; otherwise no finding.
+- Parts of different kinds are read by (a) and (b) as course and speed
+  with the `unstated` finding. (c) reads the seven bytes as the start of
+  the comment, and accepts the report, since the comment limits with
+  and without an extension are seven bytes apart (p. 50/32). They get
+  `ambiguous` at their first byte beside the `unstated` finding, unless
+  the course gives `value`, which then alone is given.
+- Parts of one kind each are read alike by all three readings.
 
 | Decoder | Reads | Where |
 |---|---|---|
@@ -908,7 +1004,15 @@ digits only; PHGR not recognised.
 PHG followed by a comment of that shape, and the bytes of one packet
 cannot narrow it. It is decided by the reading (PHGR first), with no
 finding. A `d` of `'9'` is visible and is reported as the `value`
-finding of 7.3, which alone is given (Precedence).
+finding of 7.3, which alone is given (Precedence). **[proposed]** An
+`h` that is not a digit is visible: (b) does not take the bytes as an
+extension and reads them as the start of the comment. It accepts the
+report when the comment, with those bytes added, stays within the
+limit the format gives without an extension; for `ext.phg` and
+`ext.dfs` that holds whenever (a) accepts, the limits being seven bytes
+apart (p. 50/32), while the nine bytes of an `ext.phgr` can pass it.
+Where (b) accepts, the extension gets `ambiguous` at its first byte,
+unless its `d` gives the `value` finding, which then alone is given.
 
 | Decoder | Reads | Where |
 |---|---|---|
@@ -935,11 +1039,36 @@ the DF symbol `/\` (p. 52/34). The bearing range is not stated.
 course and speed with the DF symbol. (c) After a course and speed, any
 symbol.
 
-**Reading taken.** **[proposed]** (a), following the diagrams. Bearing
+**Reading taken.** **[agreed]** (b), following the text of the
+extension chapter (p. 45/27, p. 48/30) and every DF example, as
+[03-position.md](03-position.md#amb.df.ext) does; the DF diagrams that
+(a) follows are an erratum there
+([err.df.ext](03-position.md#err.df.ext)). An earlier draft of this
+entry took (a); it was changed to agree with 03. **[proposed]** Bearing
 above 360 is a `value` finding.
 
-**In the bytes.** Visible: an `ambiguous` finding where (b) or (c) would
-read the bytes differently (7.4).
+**In the bytes.** Visible: an `ambiguous` finding where (a) or (c) would
+read the bytes differently (7.4). **[proposed]** By the test of
+[README section 3](README.md#3-tokenizer-model) that is two cases, both
+picked out by the bytes, with the finding at the first byte of the 8:
+
+- With the DF symbol, after an extension other than `ext.csespd`: (a)
+  reads the 8 bytes as bearing and NRQ, and accepts them when their
+  bearing is at most 360. With a larger bearing (a) would give `value`
+  and does not count; there is no finding.
+- Under another symbol, after an `ext.csespd`: (c) reads them as
+  bearing and NRQ, and accepts them when they fit `ext.brgnrq` with a
+  bearing of at most 360. With a larger bearing (c) would give `value`
+  and does not count; there is no finding.
+
+With the DF symbol after an `ext.csespd` the three readings agree, and
+under another symbol after any other extension none of them reads
+bearing and NRQ. In both visible cases only findings that the other
+reading itself would produce count against it. Besides the bearing,
+the one it could add is a comment over its limit, and that does not
+arise: its 28 bytes are met
+exactly when this reading's comment, 8 bytes longer, meets 36
+([03-position.md](03-position.md#amb.df.ext)).
 
 | Decoder | Reads | Where |
 |---|---|---|
@@ -975,14 +1104,26 @@ after a position report. An earlier draft of this entry took (a), with
 other extensions tried when the descriptor fails; it was changed to
 agree with those two files.
 
-**In the bytes.** Visible where the slot is spelled with a literal `'T'`
-at offset 0, `'/'` at offset 3 and `'C'` at offset 4, which only
-reading (b) takes as a descriptor: those seven bytes get an `ambiguous`
-finding at their first byte, in any report (7.1). In an object or item
-report with symbol `\l` the same bytes fail the descriptor, and there
-that `syntax` finding alone is given
+**In the bytes.** **[agreed]** Visible where the slot is spelled with a
+literal `'T'` at offset 0, `'/'` at offset 3 and `'C'` at offset 4, and
+holds digits at offsets 1, 2, 5 and 6, which only reading (b) takes as
+a descriptor: those seven bytes get an `ambiguous` finding at their
+first byte, in any report (7.1). In an object or item report with
+symbol `\l` the same bytes fail the descriptor, and there that `syntax`
+finding alone is given
 ([README section 3](README.md#3-tokenizer-model), Precedence). Other
-slots are decided by the symbol bytes, with no finding.
+slots are decided by the symbol bytes, with no finding of this entry.
+**[proposed]** One case is visible under the readings of
+[amb.area.symbol](05-object-item.md#amb.area.symbol) instead: in an
+object or item report without the `\l` symbol, a slot that fits only
+`ext.area`, with a colour from 10 to 15 and so no course and speed,
+gets the `ambiguous` finding that 05 gives (7.1). **[proposed]**
+In a `\l` object or item, every descriptor that the reading accepts
+has digits where (b) wants the letters, so (b) would read every one as
+comment text; every descriptor carries that, and the bytes of one
+packet cannot narrow it, so it gives no finding. A `\l` slot that fails
+the descriptor gives the `syntax` finding of 05, which alone is given,
+although (a) might read another extension there (Precedence).
 
 | Decoder | Reads | Where |
 |---|---|---|
@@ -1007,7 +1148,11 @@ are not UTF-8 (UAP 5.16, 5.25) are not addressed.
 comment is opaque bytes.
 
 **Reading taken.** **[proposed]** (a), as in 8.1. The severity is
-listed in section 11.
+listed in section 11. The comment is not one of the fields of
+[README section 3](README.md#3-tokenizer-model) where APRS12c only
+recommends printable ASCII: p. 34/20 admits UTF-8, so well-formed UTF-8
+gives no finding by the rule of 8.1 itself, and the rule for bytes
+outside 7-bit ASCII in those fields does not apply here.
 
 **In the bytes.** Visible, and reported as `syntax` findings, which
 alone are given ([README section 3](README.md#3-tokenizer-model),
@@ -1071,7 +1216,12 @@ six.
 **In the bytes.** Visible. Repeated altitudes get `ambiguous` findings
 (8.2); a malformed one gets the `syntax` finding above, which alone is
 given for it ([README section 3](README.md#3-tokenizer-model),
-Precedence).
+Precedence). **[proposed]** With two or more well-formed occurrences,
+of `cmt.alt` or `cmt.alt.neg`, (b) and (c) each read all but one as
+comment text, which accepts them, so each occurrence gets `ambiguous`
+at its `'/'`. A single well-formed occurrence is read alike by all
+three readings and gets no finding. A malformed run is not an
+occurrence and does not count towards the repetition.
 
 | Decoder | Reads | Where |
 |---|---|---|
@@ -1096,7 +1246,13 @@ letters and digits leaves 29), mixed `SP` and digit, and how a reader
 tells a DAO from text of the same shape.
 
 **Readings.** (a) Every candidate recorded. (b) The last. (c) The first.
-(d) Only at the end of the comment.
+
+An earlier draft listed (d), a DAO only at the end of the comment.
+P. 35/21 lets the field stand anywhere in the position comment and
+only recommends the end, so (d) contradicts the text: it is decoder
+behaviour, not a reading
+([README section 3](README.md#3-tokenizer-model)). None of the decoders
+in the table below limits the DAO to the end of the comment.
 
 **Reading taken.** **[proposed]** (a), with the forms of 8.3.
 
@@ -1105,7 +1261,16 @@ and the forms that 8.3 marks give `unstated` findings. Whether a single
 candidate is a DAO or text of the same shape is inherent
 ([README section 3](README.md#3-tokenizer-model)): every DAO carries the
 question, and the bytes of one packet cannot narrow it. It is taken
-silently.
+silently. **[proposed]** By the test of README section 3:
+
+- With several candidates, (b) and (c) each read all but one of them
+  as text. Each candidate gets `ambiguous` at its first `'!'` when one
+  of those readings that reads it as text accepts the report: the
+  comment, with the bytes of the candidates that reading takes as text
+  now counted (8.1), stays within its limit.
+- A single candidate is read alike by all three readings, wherever it
+  stands in the comment, and gives no finding; the question left is
+  the inherent one above.
 
 | Decoder | Reads | Where |
 |---|---|---|
@@ -1129,12 +1294,21 @@ header or other fields count is not stated.
 **Readings.** (a) Free-text fields only. (b) The whole information field.
 (c) The whole line.
 
-**Reading taken.** **[proposed]** (a). In base-91 fields the bytes
-`'!'` and `'x'` are digits, so a whole-field search would find the marker
-inside coordinates.
+**Reading taken.** **[agreed]** (a) for the token, with the search of
+(b): `'!x!'` is looked for in the whole information field, a match
+inside a free-text field is the `cmt.noarchive` token, and a match
+anywhere else in the information field gives `ambiguous` (8.2). In
+base-91 fields the bytes `'!'` and `'x'` are digits, so a run there can
+be part of the coordinates rather than a marker. An earlier draft
+searched free-text fields only and gave no finding elsewhere.
 
-**In the bytes.** Decided silently: `'!x!'` outside a free-text field
-produces no token and no finding.
+**In the bytes.** **[proposed]** Visible under the test of
+[README section 3](README.md#3-tokenizer-model): (b) takes a match
+outside free text as the marker, and since the marker only flags the
+packet and leaves the bytes to the field they lie in, (b) accepts the
+packet wherever this reading does. The finding at the first `'!'` has
+no further condition. A match in the address header is outside the
+search; see section 11.
 
 | Decoder | Reads | Where |
 |---|---|---|
@@ -1269,4 +1443,9 @@ the page.
 - Whether a separate finding kind for forms that APRS12c describes as
   outside its standard, such as [`cmt.alt.neg`](#cmt.alt.neg), is
   wanted instead of a separate ID.
+- Whether `'!x!'` in the address header, which an address only
+  APRS-IS can carry may hold ([`addr.is`](01-frame.md#addr.is)), is
+  searched for and gives a finding
+  ([amb.cmt.noarchive](#amb.cmt.noarchive)). The search covers the
+  information field only.
 - Each ambiguity above ends in a corpus question. None has been run.

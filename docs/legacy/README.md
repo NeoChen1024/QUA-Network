@@ -37,9 +37,9 @@ repository and is linked from the
 [documentation index](../README.md#external-references). Neither
 edition is a reference for the reading itself.
 
-**Bytes.** Packets are byte strings, not text. A literal byte is written in
-code, `'!'`; a range as `0x21`–`0x7B`; `SP` is 0x20. "Digit" means `'0'`–`'9'`.
-Case is significant unless an entry says otherwise.
+**Bytes.** Packets are byte strings, not text. A literal byte is written
+in code, `'!'`; a range as `0x21`–`0x7B`; `SP` is 0x20. "Digit" means
+`'0'`–`'9'`. Case is significant unless an entry says otherwise.
 
 **Rules.** Each file has rule tables with the columns
 
@@ -140,17 +140,27 @@ ambiguity entry would divide or classify these particular bytes
 differently: two `!DAO!` candidates in one comment, GGA bits in a
 compressed `T` byte whose `c` byte also lies in the course range.
 
-**[proposed]** The other reading counts only when it would accept the
-whole field, or the whole report, that the bytes belong to: read that
-way, the packet would give no `syntax` or `value` finding of its own on
-those bytes or on the rest of that field or report. A reading that
-would itself fail on the packet does not make it ambiguous. Each
-ambiguity entry that gives an `ambiguous` finding says on which bytes,
-and under which condition the other reading would accept them.
+**[agreed]** A listed reading is a reading of the document's text. A
+way of reading the bytes that contradicts an explicit statement of
+APRS12c is recorded in the entry as decoder behaviour, not as a reading,
+and produces no finding. Recognising such packets is the work of the
+deviation recognisers.
+
+**[agreed]** The other reading counts only when it would accept the
+whole field, or the whole report, that the bytes belong to. Only
+findings that the other reading itself would produce count against it:
+a `syntax` or `value` finding that both readings would give elsewhere in
+the packet does not suppress the `ambiguous` finding. Each ambiguity
+entry that gives an `ambiguous` finding says on which bytes, and under
+which condition the other reading would accept them.
 
 **[agreed]** Precedence. When the reading already reports the bytes as
 a `syntax` or `value` finding, that finding alone is given, and no
 `ambiguous` finding beside it, so that one defect is counted once.
+
+**[agreed]** One byte may carry several findings from different rules.
+Each keeps its own rule ID; they are not merged. Identical findings
+(the same rule, kind and offset) are given once.
 
 **[agreed]** An ambiguity that every instance of a form carries, and
 that the bytes of one packet cannot narrow, is decided by the reading
@@ -176,6 +186,10 @@ with the same kind:
   that other codes are allowed: no finding.
 - A form marked obsolete: `obsolete`. A form that is only "not
   recommended", discouraged or advised against: `discouraged`.
+- **[agreed]** Bytes outside 7-bit ASCII in a field where APRS12c only
+  recommends printable ASCII: no finding. Many senders put UTF-8 there,
+  and a finding would bury everything else. The field inventory counts
+  such bytes per field as a statistic of its own, outside the findings.
 - A departure from a stated sending rule that receivers are told to
   accept, such as the case of a locator or of `MHz`: `syntax`.
 - A mixture of forms that are each allowed: no finding where the
@@ -223,9 +237,5 @@ An entry that cites a decoder names it and the function or line it read.
   own example packets against this reading (RFC section 15, step 4).
 - Deviation recognisers and the divergence catalogue entries they belong
   to (RFC Appendix E).
-- The test of section 3, that another reading counts only where it would
-  accept the field or report, has not yet been applied to every
-  ambiguity entry. An entry that does not refer to it may still give an
-  `ambiguous` finding where the other reading would fail.
 - APRS12c is itself a draft with known issues. When a later draft of the
   reference appears, this reading is checked against it page by page.

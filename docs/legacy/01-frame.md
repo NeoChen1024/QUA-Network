@@ -50,8 +50,8 @@ is read as an address that only APRS-IS can carry.
 | <a id="addr.src"></a>`addr.src` | Source address | `addr.call` with optional `addr.ssid`, or `addr.is`. A `*` after it gives `syntax`. | yes | `line.gt` | p. 22/12; p. 107/83; UAP §1.1 |
 | <a id="addr.dest"></a>`addr.dest` | Destination address | `addr.call` with optional `addr.ssid`, or `addr.is`. Empty gives `syntax`. A `*` after it gives `syntax`. Its class is given by section 5. | yes | `,` or `line.sep` | p. 22/12; p. 25/13; UAP §1.2 |
 | <a id="addr.call"></a>`addr.call` | Callsign, AX.25 form | 1 to 6 bytes, each `A`–`Z` or a digit. | yes, in the AX.25 form | `-`, `*`, `,`, `>` or `:` | p. 22/12; p. 107/83; UAP §1 |
-| <a id="addr.ssid"></a>`addr.ssid` | SSID, AX.25 form | `-` then `1`–`9`, or `1` followed by `0`–`5`. SSID 0 is written by leaving the suffix out. `-0` or a leading zero gives `syntax`; two digits above 15 give `value` ([amb.addr.form](#amb.addr.form)). | no | `*`, `,`, `>` or `:` | p. 107/83; UAP §1.1 |
-| <a id="addr.is"></a>`addr.is` | Address only APRS-IS can carry | Not in the AX.25 form, but 1 to 9 bytes, each 0x21–0x7E other than `>`, `,`, `:` and `*`. One token for the whole address; gives `is-only`. Anything else in an address position gives `syntax` ([amb.addr.form](#amb.addr.form)). | — | as the position it is in | p. 108/84; UAP ch. 4 |
+| <a id="addr.ssid"></a>`addr.ssid` | SSID, AX.25 form | `-` then `1`–`9`, or `1` followed by `0`–`5`. SSID 0 is written by leaving the suffix out. **[agreed]** After an `addr.call`, the suffix `-0`, or `-0` and one more digit (`N0CALL-0`, `N0CALL-01`), is a wrong text form of an address that AX.25 can carry: this rule gives `syntax`, and the address is not `addr.is`. Two digits above 15 give `value` ([amb.addr.form](#amb.addr.form)). | no | `*`, `,`, `>` or `:` | p. 107/83; UAP §1.1 |
+| <a id="addr.is"></a>`addr.is` | Address only APRS-IS can carry | Not in the AX.25 form and not an `addr.call` with a suffix that `addr.ssid` reports, but 1 to 9 bytes, each 0x21–0x7E other than `>`, `,`, `:` and `*`. One token for the whole address; gives `is-only`. Anything else in an address position gives `syntax` ([amb.addr.form](#amb.addr.form)). | — | as the position it is in | p. 108/84; UAP ch. 4 |
 
 ## 4. The path
 
@@ -91,9 +91,17 @@ and the class is a depth-1 token inside `addr.dest`:
 8. `dest.altnet`.
 
 A destination that takes class 3 or 6 and also matches `dest.grid` gives
-`ambiguous`. For a third-party packet the outer destination is classified
-with the outer data type identifier and the inner one with the inner
-identifier.
+`ambiguous` at the first byte of `addr.dest`
+([amb.dest.class](#amb.dest.class)). **[proposed]** So does a
+destination of any class other than `dest.mice` whose six bytes are two
+upper-case letters, two digits and two upper-case letters and fit
+`dest.grid` only with a letter outside the Maidenhead ranges
+([amb.grid.range](03-position.md#amb.grid.range)). **[agreed]** A
+locator-shaped destination with lower-case letters, which only APRS-IS
+can carry, is not `dest.grid`; it falls to the next class without a
+finding of its own. For a third-party packet the outer destination is
+classified with the outer data type identifier and the inner one with
+the inner identifier.
 
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|
@@ -103,7 +111,7 @@ identifier.
 | <a id="dest.symnn"></a>`dest.symnn` | Numbered symbol | `GPSC` (primary table) or `GPSE` (alternate table), then two digits. The number is the symbol code byte minus 0x20, so `01` to `94`; `00` or `95`–`99` gives `value`. No overlay. | — | end of `addr.dest` | p. 27/17; p. 85/65; p. 126/102; p. 139/115 to p. 141/117 |
 | <a id="dest.sym"></a>`dest.sym` | Lettered symbol | `GPS`, `SPC` or `SYM`, then the two bytes `xy` of the table below, then an optional overlay `z`: a digit or `A`–`Z`. On RF a missing overlay is a space; the text form shows 5 bytes ([amb.dest.symfill](#amb.dest.symfill)). An overlay on a primary-table `xy` gives `value`. Whether an alternate symbol is overlay-capable is not checked ([amb.sym.overlay](02-fields.md#amb.sym.overlay)). | — | end of `addr.dest` | p. 27/17; p. 85/65; p. 126/102; p. 139/115 to p. 141/117 |
 | <a id="dest.generic"></a>`dest.generic` | Generic beacon address | One of the prefixes `ALL`, `AP`, `CQ`, `DF`, `DGPS`, `DRILL`, `DX`, `GPS`, `ID`, `JAVA`, `MAIL`, `MICE`, `QST`, `QTH`, `RTCM`, `SKY`, `SPACE`, `SPC`, `SYM`, `TEL`, `TEST`, `TLM`, `WX`, extended by `A`–`Z` or digits to at most 6 bytes; or exactly `BEACON`. | — | end of `addr.dest` | p. 29/19 |
-| <a id="dest.grid"></a>`dest.grid` | Locator destination | The 6-byte form of [`grid.loc`](03-position.md#grid.loc). Gives `obsolete`. | — | end of `addr.dest` | p. 28/18; p. 42/26 |
+| <a id="dest.grid"></a>`dest.grid` | Locator destination | The 6-byte form of [`grid.loc`](03-position.md#grid.loc), upper case only, every letter in its Maidenhead range ([amb.grid.range](03-position.md#amb.grid.range)). Gives `obsolete`. | — | end of `addr.dest` | p. 28/18; p. 42/26 |
 | <a id="dest.altnet"></a>`dest.altnet` | Alternate net | Any destination not taken above, including callsigns and digipeater aliases. No finding. | — | end of `addr.dest` | p. 29/19; UAP §5.2 |
 | <a id="dest.ssid"></a>`dest.ssid` | Destination SSID | The `addr.ssid` of the destination. Non-zero on any class other than `dest.mice` gives `obsolete` ([amb.dest.ssid](#amb.dest.ssid)). | no | — | p. 22/12; p. 25/13; p. 27/17; p. 29/19; UAP §1.2.1 |
 
@@ -262,8 +270,10 @@ occur inside an address, nor what ends the header if it does.
 ends at the first `:` after a well-formed address list.
 
 **Reading taken.** **[proposed]** (a). No address byte set in this file
-admits `:`, so (a) and (b) only differ on lines that already give
-`syntax`, and that finding alone is given
+admits `:`, so on a line whose header (a) accepts, the first `:` is also
+the first one after a well-formed address list, and (b) ends the header
+at the same byte. The two differ only on lines where (a) already gives
+`syntax` in the header, and that finding alone is given
 ([README section 3](README.md#3-tokenizer-model), Precedence). No
 `ambiguous` finding.
 
@@ -326,13 +336,21 @@ AX.25 form gives no finding; other names of 1 to 9 visible bytes give
 and after the q-construct; the destination strict.
 
 **Reading taken.** **[proposed]** (b), with the byte set 0x21–0x7E less
-the four separators `>` `,` `:` `*`. An explicit `-0` and a leading zero
-are departures from the text form and give `syntax`; a numeric SSID over
-15 gives `value`. Where another reading would accept those bytes, the
-`syntax` or `value` finding alone is given
-([README section 3](README.md#3-tokenizer-model), Precedence). The
-choice between `is-only` and the other readings is decided by the
-reading; no `ambiguous` finding.
+the four separators `>` `,` `:` `*`. **[agreed]** An explicit `-0` and
+an SSID with a leading zero, such as `N0CALL-0` and `N0CALL-01`, are a
+wrong text form of an address that AX.25 can carry, not an address only
+APRS-IS can carry: [`addr.ssid`](#addr.ssid) gives `syntax`, and there
+is no `is-only` finding. **[proposed]** A numeric SSID over 15 gives
+`value`, also from `addr.ssid`. Where another reading would accept
+those bytes, the `syntax` or `value` finding alone is given
+([README section 3](README.md#3-tokenizer-model), Precedence).
+**[proposed]** The choice of (b) gives no `ambiguous` finding. On an
+address in the AX.25 form the three readings agree. On any other
+address (a) gives `syntax`, and so does (c) everywhere but the source
+and the entries after the q-construct; a reading that fails does not
+count (README section 3). Where (c) accepts such an address, it takes
+the same bytes as one address that the AX.25 form cannot hold, as (b)
+does.
 
 **Decoders (read).**
 
@@ -394,7 +412,11 @@ as APRS-IS entries.
 **Reading taken.** **[proposed]** (b). The tokenizer does not check the
 third byte against a list, since the list is in a document outside the
 references. Entries after the q-construct are not counted against the
-limit of 8. Decided by the reading; no `ambiguous` finding.
+limit of 8. **[proposed]** Every q-construct carries the question,
+whichever entries follow it, and the bytes of one packet cannot narrow
+it, so it is decided by the reading
+([README section 3](README.md#3-tokenizer-model)): `is-only` is the
+only finding, with no `ambiguous` beside it.
 
 **Decoders (read).** FAP notes any 3-byte `q..` entry and then allows a
 32-digit hex entry (FAP.pm:2554–2557). aprslib takes the entry after a
@@ -421,8 +443,19 @@ forms; a six-byte locator can fit other classes; ALTNET is everything
 else. No precedence is given.
 
 **Readings.** (a) Choose by data type identifier first (Mic-E), then by a
-fixed order of the address forms. (b) Choose by the address alone. (c)
-Report every class that matches.
+fixed order of the address forms. (b) Report every class of the address
+forms that matches; a destination that the identifier makes Mic-E is
+`dest.mice` only.
+
+An earlier draft listed a further reading, choosing by the address
+alone, as (b), and let the old (c), now (b), report other classes
+beside `dest.mice`. With a Mic-E identifier the destination carries
+Mic-E data (p. 26/12, p. 60/42), so classifying it by its shape alone
+ignores the selector and contradicts that statement. It is decoder
+behaviour, not a reading
+([README section 3](README.md#3-tokenizer-model)), and gives no
+finding. Which of the decoders read do this was not checked beyond the
+statements below.
 
 **Reading taken.** **[proposed]** (a), in the order of section 5: the
 more specific form before the wildcard that also covers it, current forms
@@ -430,6 +463,23 @@ before the obsolete locator, ALTNET last. When a destination taken as
 `dest.tocall` or `dest.generic` also fits `dest.grid`, the tokenizer
 gives `ambiguous`; the other overlaps are decided by the order without a
 finding.
+
+**In the bytes.** **[proposed]** By the tests of
+[README section 3](README.md#3-tokenizer-model):
+
+- With a Mic-E identifier both readings take the destination as
+  `dest.mice`. A Mic-E destination that also fits another class gives
+  no finding, since only a classification by shape, which is decoder
+  behaviour, would read it otherwise.
+- Every `APRS`, every `dest.tocall` and every `dest.symnn` or `dest.sym`
+  also fits `dest.generic`. Reading (b) would report both classes, but
+  every instance of those forms carries the overlap, and the bytes of
+  one packet cannot narrow it: decided by the order, no finding.
+- A destination taken as `dest.tocall` or `dest.generic` whose six
+  bytes also fit the 6-byte form of [`grid.loc`](03-position.md#grid.loc)
+  is one the bytes pick out. Read as `dest.grid`, as (b) also reads it,
+  it is accepted with only the `obsolete` finding of that class. It
+  gets `ambiguous` at the first byte of `addr.dest`.
 
 **Decoders (read).** Dire Wolf looks up the device identifier for every
 identifier other than `'` and `` ` `` (decode_aprs.c:325–334), and takes
@@ -490,8 +540,13 @@ space when there is no overlay, since an AX.25 address has six bytes
 **Readings.** (a) Five bytes in the text form mean no overlay. (b) Six
 bytes are needed.
 
-**Reading taken.** **[proposed]** (a). Decided by the reading; no
-`ambiguous` finding.
+**Reading taken.** **[proposed]** (a). Under (b) a five-byte `GPSxy`,
+`SPCxy` or `SYMxy` would be `dest.generic`, which accepts it, instead of
+`dest.sym`. **[proposed]** Every five-byte symbol destination carries
+the question, and the bytes of one packet cannot narrow it, so it is
+decided by the reading
+([README section 3](README.md#3-tokenizer-model)): no `ambiguous`
+finding.
 
 **Decoders (read).** FAP accepts 2 or 3 bytes after the prefix
 (FAP.pm:826–876). Dire Wolf reads bytes 4 and 5 and takes byte 6 as an
@@ -517,7 +572,10 @@ cannot tell from the bytes which applies.
 
 **Reading taken.** **[proposed]** The tokenizer reports nothing; the
 choice belongs to the decoding layer, which applies the precedence of
-p. 127/103. Not visible in the bytes; no finding.
+p. 127/103. **[proposed]** The three readings tokenize the SSID alike
+and differ only in what the decoding layer makes of it, so none divides
+or classifies the bytes differently: not visible in the bytes
+([README section 3](README.md#3-tokenizer-model)), no finding.
 
 **Decoders (read).** Dire Wolf uses the source SSID only when the
 identifier is `$` (symbols.c:693–703). Xastir uses it for NMEA records,
@@ -538,14 +596,20 @@ was abandoned in 2012 and the `!` identifier is now only at the start
 [err.dti.x1j](#err.dti.x1j)). UAP §5.28 shows an IGate that puts bytes
 in front of the identifier.
 
-**Readings.** (a) Byte 0 only. (b) Also a `!` found later, within the
-first 40 bytes. (c) Strip known prefixes, then read byte 0.
+**Readings.** (a) Byte 0 only. This is the one reading of the text.
 
-**Reading taken.** **[proposed]** (a): no later `!` is
-looked for. A later position is left to a deviation recogniser. Decided
-by the reading; no finding beyond the one that byte 0 already gives in
-the table of section 7. Where that finding is `syntax`, it alone is
-given ([README section 3](README.md#3-tokenizer-model), Precedence).
+An earlier draft listed two more, which are decoder behaviour, not
+readings ([README section 3](README.md#3-tokenizer-model)): (b) a `!`
+found later, within the first 40 bytes, contradicts p. 154/130, which
+puts the `!` identifier only at the start; (c) stripping known prefixes
+before reading byte 0 contradicts p. 23/13, which makes the first byte
+of the field the identifier. In the table below, FAP, aprslib, aprsc
+and pdn-aprs search for a later `!`, and Xastir strips a prefix.
+
+**Reading taken.** **[proposed]** (a): no later `!` is looked for and no
+prefix is stripped. Such packets are left to a deviation recogniser. No
+finding is given beyond the one that byte 0 already gives in the table
+of section 7; the decoder behaviour above gives no `ambiguous` finding.
 
 **Decoders (read).**
 
@@ -580,10 +644,14 @@ prohibition) and `unstated` for the rest. **[agreed]** Before that
 verdict, the two obsolete forms without an identifier are tried, the
 object of `obj.obsolete` first and then the bulletin of `bln.obsolete`
 (section 7), since p. 80/62 and p. 98/76 describe them. A match gives
-`obsolete` in place of the finding at `dti`. Decided by the reading; no
-`ambiguous` finding. Where (c) would accept a "do not use" field, the
-`syntax` finding alone is given
+`obsolete` in place of the finding at `dti`. Where (c) would accept a
+"do not use" field, the `syntax` finding alone is given
 ([README section 3](README.md#3-tokenizer-model), Precedence).
+**[proposed]** Otherwise no `ambiguous` finding: (a) fails on every
+such field and does not count, and (c) would read as status text every
+field that reaches `dti.unknown` or an obsolete form. Every such field
+carries that question, and the bytes of one packet cannot narrow it, so
+it is decided by the reading (README section 3).
 
 **Decoders (read).** FAP returns no result unless the fallback of
 [amb.dti.offset](#amb.dti.offset) finds a position; it also accepts a
@@ -612,9 +680,21 @@ packet form (p. 31/17). Chapter 5 gives no selector; chapter 12 shows
 Read a position or NMEA sentence unless it fails.
 
 **Reading taken.** **[proposed]** (a). A position cannot start with `!`
-(neither a digit nor a symbol table identifier), and an NMEA address
-field cannot be `ULTW` followed by a hex digit, so the two never overlap.
-Decided by the reading; no `ambiguous` finding.
+(neither a digit nor a symbol table identifier), so `!!` is never also
+a position. **[proposed]** A field that starts `$ULTW` is also an NMEA
+sentence in one case: when byte 5 is a letter `A`–`Z` and byte 6 is
+`,`, the five bytes after `$` are a valid
+[`nmea.addr`](03-position.md#nmea.addr). A hex digit `A`–`F` after
+`ULTW` can therefore start either. Where (b), reading the whole field
+as NMEA by 03-position, would itself give no `syntax` or `value`
+finding, the field gets `ambiguous` at offset 1, the finding that
+[amb.wx.rawdti](06-weather.md#amb.wx.rawdti) gives against
+`wx.raw.ultpkt`. Every other field divides the same way under both
+readings: where (a) reads a position or an NMEA sentence, (b) reads the
+same. A `!` or `$` field that fails as a position or as NMEA would be
+raw weather under (b), but (a) already reports it as `syntax`, which
+alone is given ([README section 3](README.md#3-tokenizer-model),
+Precedence).
 
 **Decoders (read).** FAP: `!` then `!` is Ultimeter; `$GP` is NMEA,
 `$ULTW` weather, other `$` fields not parsed (FAP.pm:2648–2651,
@@ -652,7 +732,13 @@ read in the AX.25 form, since it is the station that sent the packet on
 RF. Where (b) or (c) would divide an inner header that gives one of
 these `syntax` findings differently, that finding alone is given
 ([README section 3](README.md#3-tokenizer-model), Precedence).
-Otherwise decided by the reading; no `ambiguous` finding.
+**[proposed]** On an inner header that (a) reads with no `syntax`
+finding, the only `*` is on the last entry before the first `:`, so (c)
+ends the header at the same byte. (b), which admits exactly the
+network identifier and the gateway, reads the same entries when no
+original path is kept, and fails when one is, since it would then take
+a path entry as the network identifier and find a `*` past the
+gateway. A reading that fails does not count. No `ambiguous` finding.
 
 **Decoders (read).**
 
@@ -717,8 +803,11 @@ addresses, one of them followed by `*`, is `tp.aea`. At line level
 APRS-IS carries TNC-2 text (UAP §1, ch. 4), so an AEA line header gives
 `syntax`, and that finding alone is given
 ([README section 3](README.md#3-tokenizer-model), Precedence). An inner
-header with no `,` cannot be read in the TNC-2 form, so the two do not
-overlap: decided by the reading, no `ambiguous` finding.
+header with no `,` cannot be read in the TNC-2 form, which puts a `,`
+before `tp.net` and `tp.gate`, and one with a `,` is never `tp.aea`.
+**[proposed]** So (b) fails on every inner header that (a) reads as
+`tp.aea`, and a reading that fails does not count: no `ambiguous`
+finding.
 
 **Decoders (read).** Xastir converts an AEA path to TNC-2 order
 (`valid_path`, util.c:3238–3283). FAP states it supports TNC-2 only

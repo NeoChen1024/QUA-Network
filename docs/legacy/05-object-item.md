@@ -145,11 +145,11 @@ the same.
 An object whose symbol code is `'_'`, in either position form, carries a
 weather report in place of the data extension and comment. When at least
 one byte follows the position block, everything after it is read by
-[06-weather.md](06-weather.md#53-object) as [`wx.obj`](06-weather.md#wx.obj),
-and neither `obj.ext` nor `obj.cmt` applies; an object that ends at the
-symbol code is an ordinary object. **[proposed]** An object read as
-weather is classified as a weather report: the token of byte 0 carries
-`wx.obj` in place of `obj.dti`, as
+[06-weather.md](06-weather.md#53-object) as
+[`wx.obj`](06-weather.md#wx.obj), and neither `obj.ext` nor `obj.cmt`
+applies; an object that ends at the symbol code is an ordinary object.
+**[proposed]** An object read as weather is classified as a weather
+report: the token of byte 0 carries `wx.obj` in place of `obj.dti`, as
 [06-weather.md section 2](06-weather.md#2-recognition) and
 [README section 3](README.md#3-tokenizer-model) state, and the object
 header and position keep their own IDs. Items with symbol code `'_'`
@@ -182,7 +182,9 @@ the [README](README.md#4-decoders-consulted), not run.
   11 is left to a deviation recogniser. Visible in the bytes. Reading
   (b) would accept such a report, but the `syntax` finding alone is
   given, with no `ambiguous` beside it
-  ([README section 3](README.md#3-tokenizer-model), Precedence).
+  ([README section 3](README.md#3-tokenizer-model), Precedence). Where
+  offsets 11 to 17 hold a timestamp, reading (b) detects it too and the
+  readings agree, since no position starts with six digits.
 - **Decoders.**
 
   | Decoder | Reads | Where |
@@ -202,28 +204,25 @@ the [README](README.md#4-decoders-consulted), not run.
 ### amb.obj.name
 
 - **Open.** The name is fixed at nine bytes of printable ASCII, padded
-  with trailing spaces (p. 76/58). Not stated: an all-space name, leading
-  spaces, `'*'` or `'_'` inside the name, and what to do when offset 10
-  is not `'*'` or `'_'` because the sender did not pad the name.
-- **Readings.** (a) Strict offsets; any 0x20–0x7E byte in the name.
-  (b) Scan for the first `'*'` or `'_'` and take what precedes it.
+  with trailing spaces, and any printable byte may stand in it
+  (p. 76/58). Not stated: an all-space name, and what to do when offset
+  10 is not `'*'` or `'_'` because the sender did not pad the name.
+- **Readings.** (a) Strict offsets; any 0x20–0x7E byte in the name. An
+  earlier draft also listed (b): scan for the first `'*'` or `'_'` and
+  take what precedes it as the name. That contradicts the fixed
+  nine-byte name of p. 76/58, so by
+  [README section 3](README.md#3-tokenizer-model) it is decoder
+  behaviour (pdn-aprs, below), not a listed reading, and gives no
+  finding.
 - **Reading taken.** **[proposed]** (a). Leading spaces and `'*'` or `'_'`
-  inside the nine bytes are part of the name. A name of nine SP gives
-  `syntax`, as no name is left once the padding is removed. A byte other
-  than `'*'` or `'_'` at offset 10 gives `syntax` on `obj.state`;
-  reading (b) is left to a deviation recogniser. Visible in the bytes,
-  under the test of [README section 3](README.md#3-tokenizer-model):
-  **[proposed]** a `'*'` or `'_'` inside the nine bytes gives an
-  `ambiguous` finding at the first such byte only when reading (b) would
-  parse the rest of the report from there: with the name ended at that
-  byte, the bytes after it are an `obj.time`, an `obj.pos` and what may
-  follow it, with no `syntax` or `value` finding. Otherwise reading (b)
-  fails on the packet, and the byte is part of the name with no finding.
-  An earlier draft gave the finding for every such byte. Where reading
-  (b) would accept bytes that this reading reports as `syntax`, that
-  finding alone is given, with no `ambiguous` beside it
-  ([README section 3](README.md#3-tokenizer-model), Precedence). Leading
-  spaces give no finding, since reading (b) keeps them too.
+  inside the nine bytes are part of the name, with no finding. A name of
+  nine SP gives `syntax`, as no name is left once the padding is
+  removed. A byte other than `'*'` or `'_'` at offset 10 gives `syntax`
+  on `obj.state`; recognising an unpadded name is left to a deviation
+  recogniser. No other reading is listed, so the entry gives no
+  `ambiguous` finding. An earlier draft gave one at a `'*'` or `'_'`
+  inside the name where reading (b) would have parsed the rest of the
+  report from there.
 - **Decoders.** FAP: nine bytes 0x20–0x7E, then `'*'` or `'_'`
   (`FAP.pm:1237`). Dire Wolf: copies nine bytes, trims trailing spaces,
   notes a bad state byte and continues (`decode_aprs.c:2156-2167`).
@@ -241,22 +240,23 @@ the [README](README.md#4-decoders-consulted), not run.
 <a id="amb.item.name"></a>
 ### amb.item.name
 
-- **Open.** The name is 3 to 9 bytes ended by the first `'!'` or `'_'`
-  (p. 77/59). Not stated: what to do with a shorter or longer name, or
-  with no terminator.
+- **Open.** The name is 3 to 9 bytes ended by the first `'!'` or `'_'`,
+  and neither byte may stand in it, since they end it (p. 77/59). Not
+  stated: what to do with a shorter or longer name, or with no
+  terminator.
 - **Readings.** (a) The first `'!'` or `'_'` ends the name; a length
-  outside 3 to 9 is an error. (b) Search only the bytes where a 3 to 9
-  byte name can end. (c) A `'!'` or `'_'` among the first three bytes is
-  part of the name, since a name has at least three.
+  outside 3 to 9 is an error. An earlier draft also listed (b), searching
+  only the bytes where a 3 to 9 byte name can end, and (c), taking a
+  `'!'` or `'_'` among the first three bytes as part of the name. Both
+  keep a `'!'` or `'_'` inside the name, which p. 77/59 excludes, so by
+  [README section 3](README.md#3-tokenizer-model) they are decoder
+  behaviour (pdn-aprs and javAPRSlib, below), not listed readings, and
+  give no finding.
 - **Reading taken.** **[proposed]** (a), with a length outside 3 to 9
   giving `value`, as a field outside its stated length; an empty name or
-  no terminator gives `syntax`. Visible in the bytes. Reading (c) can
-  differ only where the first `'!'` or `'_'` is among the first three
-  bytes after the identifier, and there reading (a) already gives a
-  `value` or `syntax` finding, which alone is given, with no `ambiguous`
-  beside it ([README section 3](README.md#3-tokenizer-model),
-  Precedence). The same holds where reading (b) would accept a name that
-  reading (a) reports.
+  no terminator gives `syntax`. Each is a finding at the bytes
+  concerned. No other reading is listed, so there is no `ambiguous`
+  finding.
 - **Decoders.** FAP: 3 to 9 bytes, then `'!'` or `'_'`
   (`_item_to_decimal`, `FAP.pm:1449`). Dire Wolf: the first `'!'` or
   `'_'` within nine bytes, no minimum (`aprs_item`,
@@ -265,10 +265,11 @@ the [README](README.md#4-decoders-consulted), not run.
   then its object-name check of 1 to 9 printable bytes
   (`db.c:15575-15597`; `valid_object`, `objects.c:74-93`). aprsc: 3 to 9
   printable bytes (`parse_aprs_item`, `parse_aprs.c:958-985`). pdn-aprs:
-  looks for the terminator from offset 4 on, so reading (c) (`item`,
-  `object.rs:74-89`). javAPRSlib: the first `'!'` if that gives 1 to 9
-  bytes, else the first `'_'`, in which case the name it takes is one
-  byte too long and ends with the `'_'` (`ItemField.java:50-64`).
+  looks for the terminator from offset 4 on, so a `'!'` or `'_'` among
+  the first three bytes stays in the name (`item`, `object.rs:74-89`).
+  javAPRSlib: the first `'!'` if that gives 1 to 9 bytes, else the first
+  `'_'`, in which case the name it takes is one byte too long and ends
+  with the `'_'` (`ItemField.java:50-64`).
 - **Corpus question.** Offsets of the first `'!'` or `'_'` in item
   reports; names of 1, 2 or more than 9 bytes.
 
@@ -294,6 +295,21 @@ the [README](README.md#4-decoders-consulted), not run.
   course and speed extension also has the shape of a descriptor; that
   ambiguity is carried by every such extension, is decided by the
   symbol, and gives no finding.
+- **In the bytes.** **[proposed]** One case remains visible under the
+  test of README section 3. In an object or item report with another
+  symbol, not read as weather (section 7), seven bytes after the symbol
+  code of an uncompressed position may fit
+  [`ext.area`](02-fields.md#ext.area) with a colour of `'1'` and
+  `'0'`–`'5'`, and so fit no course and speed or other extension. This
+  reading leaves them as comment text, and reading (b) would take them
+  as a descriptor. They give an `ambiguous` finding at their first byte.
+  Reading (b) reads every other byte of the report as this reading
+  does, and the limits of `obj.cmt` allow the same total either way, 7
+  and 36 bytes against 43, so a `syntax` or `value` finding elsewhere in
+  the report is given by both and does not suppress the `ambiguous`
+  finding. An earlier draft withheld it wherever the report had such a
+  finding. [02-fields.md section 7.1](02-fields.md#71-the-extension-slot)
+  gives the slot the same exception.
 - **Decoders.** FAP: lists area objects and signposts as not handled
   (`FAP.pm:45`). Dire Wolf: tests for a literal `'T'` as the first byte
   and `"/C"` as the fourth and fifth, which the example descriptors do
@@ -324,23 +340,34 @@ the [README](README.md#4-decoders-consulted), not run.
   at the start of the comment.
 - **Readings.** (a) At the start of the comment only. (b) Anywhere.
   (c) Only with the line types or the signpost symbol.
-- **Reading taken.** **[proposed]** (c) in all cases. Corridor: (a), one
-  or more digits, since only a line area carries one and its comment
-  follows the descriptor. Signpost: (b), the first well-formed braces,
-  since the text says only "in the comment".
+- **Reading taken.** **[agreed]** (c): corridor and signpost braces are
+  read only within the scope of their symbols, and readings (a) and (b)
+  differ only in where the braces stand within that scope. Braces in
+  other reports are comment text with no finding. **[proposed]** The
+  scope is a line area, type `'1'` or `'6'`, for the corridor, and the
+  `'\'` `'m'` symbol for the signpost, in object and item reports
+  (section 5); braces in an area of another type are comment text as
+  well. Corridor: (a), one or more digits, since only a line area
+  carries one and its comment follows the descriptor. Signpost: (b), the
+  first well-formed braces, since the text says only "in the comment".
 - **In the bytes.** **[proposed]** Visible, under the test of
   [README section 3](README.md#3-tokenizer-model), in one case each.
   Corridor: when a line area's comment does not start with a corridor,
   the first braces of corridor shape later in it, which reading (b)
   would take as the corridor, are comment text with an `ambiguous`
   finding at their `'{'`. When the comment starts with a corridor, (a)
-  and (b) both take that one, and later braces are text under both, with
-  no finding. Signpost: when the braces taken do not stand at the start
-  of the comment, reading (a) would leave them as text, so they give an
-  `ambiguous` finding at their `'{'`. A second candidate is text under
-  every reading listed, so it gives no finding. An earlier draft gave
+  and (b) both take that one, and later braces are text under both,
+  with no finding. Signpost: when the braces taken do not stand at the
+  start of the comment, reading (a) would leave them as text, so they
+  give an `ambiguous` finding at their `'{'`. A second candidate is text
+  under every reading listed, so it gives no finding. In both cases the
+  other reading reads every other byte as this reading does, so a
+  `syntax` or `value` finding elsewhere in the report is given by both
+  and does not suppress the `ambiguous` finding. An earlier draft gave
   `ambiguous` for every later corridor-shaped braces and for every
-  second signpost candidate; neither case meets the test.
+  second signpost candidate, neither of which meets the test, and a
+  later one withheld the finding wherever the comment had a `syntax` or
+  `value` finding.
 - **Decoders.** Xastir: corridor only for types 1 and 6 and only at the
   start of the comment, a decimal number (`db.c:7999-8030`); signpost
   only for `'\'` `'m'`, the first `'{'` with 1 to 3 bytes and `'}'`

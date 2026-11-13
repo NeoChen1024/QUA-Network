@@ -64,13 +64,13 @@ not rejected.
 
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|
-| <a id="path.sep"></a>`path.sep` | Entry separator | `,`, 1 byte, before each entry. Two adjacent separators, or one directly before `line.sep`, leave an empty entry: `syntax`. | per entry | 1 byte | p. 107/83; UAP §5.6 |
+| <a id="path.sep"></a>`path.sep` | Entry separator | `,`, 1 byte, before each entry. Two adjacent separators, or one directly before `line.sep`, leave an empty entry: `syntax`. **[proposed]** An empty entry does not count toward the limit of 8. | per entry | 1 byte | p. 107/83; UAP §5.6 |
 | <a id="path.digi"></a>`path.digi` | Digipeater entry | `addr.call` with optional `addr.ssid`, or `addr.is`, then optional `path.used`. Every entry before `path.q`, or every entry if there is none. More than 8 gives `value` at the ninth. | no | `,` or `line.sep` | p. 22/12; p. 107/83 |
 | <a id="path.used"></a>`path.used` | Used marker | `*` directly after the address of a `path.digi`. It marks the entry heard; all entries before it count as used. A second `*` among the `path.digi` entries gives `syntax` ([amb.path.used](#amb.path.used)). | no | 1 byte | p. 107/83; p. 20/10; UAP §1.3.1 |
 | <a id="path.obsolete"></a>`path.obsolete` | Obsolete alias | A `path.digi` whose callsign is exactly `RELAY`, `TRACE` or `WIDE` (no digit), with any SSID. Gives `obsolete`. | no | — | p. 20/10; p. 155/131; UAP §5.5 |
 | <a id="path.nogate"></a>`path.nogate` | Gating block | A `path.digi` whose callsign is `NOGATE` or `RFONLY`. Classified; no finding, wherever it stands. | no | — | p. 110/86 |
-| <a id="path.q"></a>`path.q` | q-construct | `q`, `A`, then one byte `A`–`Z` or `a`–`z`, as a whole entry, no `*`. The first such entry. Gives `is-only` ([amb.path.q](#amb.path.q)). | no | `,` or `line.sep` | p. 155/131; UAP ch. 4 |
-| <a id="path.is"></a>`path.is` | Entry after the q-construct | 1 or more bytes, each 0x21–0x7E other than `,` and `:`. AX.25 form gives no finding; anything else gives `is-only`. A trailing `*` gives `unstated`. | no | `,` or `line.sep` | UAP ch. 4 |
+| <a id="path.q"></a>`path.q` | q-construct | `q`, `A`, then one byte `A`–`Z` or `a`–`z`, as a whole entry, no `*`. The first such entry. **[proposed]** An entry `qA?*` is not `path.q`; before the first q-construct it is read as `path.digi`. Gives `is-only` ([amb.path.q](#amb.path.q)). | no | `,` or `line.sep` | p. 155/131; UAP ch. 4 |
+| <a id="path.is"></a>`path.is` | Entry after the q-construct | 1 or more bytes, each 0x21–0x7E other than `,` and `:`. AX.25 form gives no finding; anything else gives `is-only`. **[proposed]** The text-form SSID rules of `addr.ssid` are not applied here: `N0CALL-0` is simply not in the AX.25 form. A trailing `*` gives `unstated`. | no | `,` or `line.sep` | UAP ch. 4 |
 
 ## 5. Destination classes
 
@@ -78,7 +78,9 @@ APRS12c lists six uses of the destination address (p. 25/13) and does not
 say how to choose between them when an address fits more than one. The
 reading takes them in this order **[proposed]**
 ([amb.dest.class](#amb.dest.class)); the first that matches is the class,
-and the class is a depth-1 token inside `addr.dest`:
+and the class is a depth-1 token inside `addr.dest` **[proposed]** that
+covers the callsign; a [`dest.ssid`](#dest.ssid) token follows it when
+there is an SSID:
 
 1. `dest.mice` when the data type identifier is a Mic-E one (0x1C, 0x1D,
    `'` or `` ` ``), whatever the address holds.
@@ -105,15 +107,15 @@ the inner identifier.
 
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|
-| <a id="dest.mice"></a>`dest.mice` | Mic-E destination | Six bytes and the SSID, read by [04-mic-e.md](04-mic-e.md), including what the SSID means there. | when the identifier is Mic-E | end of `addr.dest` | p. 26/12; ch. 10 |
-| <a id="dest.aprs"></a>`dest.aprs` | Obsolete generic | Exactly `APRS`. Gives `obsolete`. | — | end of `addr.dest` | p. 29/19; p. 107/83 |
-| <a id="dest.tocall"></a>`dest.tocall` | Software or device identifier | `AP` then 1 to 4 bytes, each `A`–`Z` or a digit. `APZ` + anything is the experimental block. The registry is external and not checked. | — | end of `addr.dest` | p. 25/13; UAP §1.2, §5.3 |
-| <a id="dest.symnn"></a>`dest.symnn` | Numbered symbol | `GPSC` (primary table) or `GPSE` (alternate table), then two digits. The number is the symbol code byte minus 0x20, so `01` to `94`; `00` or `95`–`99` gives `value`. No overlay. | — | end of `addr.dest` | p. 27/17; p. 85/65; p. 126/102; p. 139/115 to p. 141/117 |
-| <a id="dest.sym"></a>`dest.sym` | Lettered symbol | `GPS`, `SPC` or `SYM`, then the two bytes `xy` of the table below, then an optional overlay `z`: a digit or `A`–`Z`. On RF a missing overlay is a space; the text form shows 5 bytes ([amb.dest.symfill](#amb.dest.symfill)). An overlay on a primary-table `xy` gives `value`. Whether an alternate symbol is overlay-capable is not checked ([amb.sym.overlay](02-fields.md#amb.sym.overlay)). | — | end of `addr.dest` | p. 27/17; p. 85/65; p. 126/102; p. 139/115 to p. 141/117 |
-| <a id="dest.generic"></a>`dest.generic` | Generic beacon address | One of the prefixes `ALL`, `AP`, `CQ`, `DF`, `DGPS`, `DRILL`, `DX`, `GPS`, `ID`, `JAVA`, `MAIL`, `MICE`, `QST`, `QTH`, `RTCM`, `SKY`, `SPACE`, `SPC`, `SYM`, `TEL`, `TEST`, `TLM`, `WX`, extended by `A`–`Z` or digits to at most 6 bytes; or exactly `BEACON`. | — | end of `addr.dest` | p. 29/19 |
-| <a id="dest.grid"></a>`dest.grid` | Locator destination | The 6-byte form of [`grid.loc`](03-position.md#grid.loc), upper case only, every letter in its Maidenhead range ([amb.grid.range](03-position.md#amb.grid.range)). Gives `obsolete`. | — | end of `addr.dest` | p. 28/18; p. 42/26 |
-| <a id="dest.altnet"></a>`dest.altnet` | Alternate net | Any destination not taken above, including callsigns and digipeater aliases. No finding. | — | end of `addr.dest` | p. 29/19; UAP §5.2 |
-| <a id="dest.ssid"></a>`dest.ssid` | Destination SSID | The `addr.ssid` of the destination. Non-zero on any class other than `dest.mice` gives `obsolete` ([amb.dest.ssid](#amb.dest.ssid)). | no | — | p. 22/12; p. 25/13; p. 27/17; p. 29/19; UAP §1.2.1 |
+| <a id="dest.mice"></a>`dest.mice` | Mic-E destination | Six bytes and the SSID, read by [04-mic-e.md](04-mic-e.md), including what the SSID means there. | when the identifier is Mic-E | end of the callsign | p. 26/12; ch. 10 |
+| <a id="dest.aprs"></a>`dest.aprs` | Obsolete generic | Exactly `APRS`. Gives `obsolete`. | — | end of the callsign | p. 29/19; p. 107/83 |
+| <a id="dest.tocall"></a>`dest.tocall` | Software or device identifier | `AP` then 1 to 4 bytes, each `A`–`Z` or a digit. `APZ` + anything is the experimental block. The registry is external and not checked. | — | end of the callsign | p. 25/13; UAP §1.2, §5.3 |
+| <a id="dest.symnn"></a>`dest.symnn` | Numbered symbol | `GPSC` (primary table) or `GPSE` (alternate table), then two digits. The number is the symbol code byte minus 0x20, so `01` to `94`; `00` or `95`–`99` gives `value`. No overlay. | — | end of the callsign | p. 27/17; p. 85/65; p. 126/102; p. 139/115 to p. 141/117 |
+| <a id="dest.sym"></a>`dest.sym` | Lettered symbol | `GPS`, `SPC` or `SYM`, then the two bytes `xy` of the table below, then an optional overlay `z`: a digit or `A`–`Z`. On RF a missing overlay is a space; the text form shows 5 bytes ([amb.dest.symfill](#amb.dest.symfill)). An overlay on a primary-table `xy` gives `value`. Whether an alternate symbol is overlay-capable is not checked ([amb.sym.overlay](02-fields.md#amb.sym.overlay)). | — | end of the callsign | p. 27/17; p. 85/65; p. 126/102; p. 139/115 to p. 141/117 |
+| <a id="dest.generic"></a>`dest.generic` | Generic beacon address | One of the prefixes `ALL`, `AP`, `CQ`, `DF`, `DGPS`, `DRILL`, `DX`, `GPS`, `ID`, `JAVA`, `MAIL`, `MICE`, `QST`, `QTH`, `RTCM`, `SKY`, `SPACE`, `SPC`, `SYM`, `TEL`, `TEST`, `TLM`, `WX`, extended by zero or more bytes `A`–`Z` or digits to at most 6 bytes; or exactly `BEACON`. | — | end of the callsign | p. 29/19 |
+| <a id="dest.grid"></a>`dest.grid` | Locator destination | The 6-byte form of [`grid.loc`](03-position.md#grid.loc), upper case only, every letter in its Maidenhead range ([amb.grid.range](03-position.md#amb.grid.range)). Gives `obsolete`. | — | end of the callsign | p. 28/18; p. 42/26 |
+| <a id="dest.altnet"></a>`dest.altnet` | Alternate net | Any destination not taken above, including callsigns and digipeater aliases. No finding. | — | end of the callsign | p. 29/19; UAP §5.2 |
+| <a id="dest.ssid"></a>`dest.ssid` | Destination SSID | The `addr.ssid` of the destination. Non-zero on any class other than `dest.mice` gives `obsolete` ([amb.dest.ssid](#amb.dest.ssid)). **[proposed]** Not given when `addr.ssid` already reports the suffix (`syntax` or `value`). | no | — | p. 22/12; p. 25/13; p. 27/17; p. 29/19; UAP §1.2.1 |
 
 The two bytes `xy` of `dest.sym`, as given by Appendix 2 (p. 139/115 to
 p. 141/117), follow a fixed pattern by symbol code range. The second byte
@@ -143,7 +145,7 @@ from this table is `dest.generic`.
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|
 | <a id="dti"></a>`dti` | Data type identifier | Byte 0 of `line.info`, and only byte 0 ([amb.dti.offset](#amb.dti.offset)). Selects the format by the table below. The `dti` rules give the dispatch and the findings of the table; the token of byte 0 carries the identifier rule of the most specific format the packet is classified as, such as [`pos.dti`](03-position.md#pos.dti), [`wx.pos`](06-weather.md#wx.pos) or [`tp.dti`](#tp.dti), listed below the table ([README section 3](README.md#3-tokenizer-model)). | yes | 1 byte | p. 23/13; p. 31/17; p. 154/130 |
-| <a id="dti.unknown"></a>`dti.unknown` | Undispatched field | The whole of `line.info` when the identifier selects no format and neither obsolete form below the table matches. Verdict `unknown-format`; the finding is given in the table below ([amb.dti.undefined](#amb.dti.undefined)). | — | end of `line.info` | p. 31/17; p. 123/99 |
+| <a id="dti.unknown"></a>`dti.unknown` | Undispatched field | The whole of `line.info` when the identifier selects no format and neither obsolete form below the table matches. Verdict `unknown-format`; the finding is given in the table below ([amb.dti.undefined](#amb.dti.undefined)). **[proposed]** This holds inside a third-party payload too: the data type of the packet cannot be determined. | — | end of `line.info` | p. 31/17; p. 123/99 |
 
 The dispatch, by byte value of `dti`. "Class" is the document's own
 category; "Read in" is where the rest of the field is tokenized, and
@@ -247,15 +249,15 @@ field is tokenized from `dti` again, one depth level down.
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|
 | <a id="tp.dti"></a>`tp.dti` | Identifier | `}`, 1 byte: the byte-0 token of this field carries `tp.dti`. | yes | 1 byte | p. 31/17; p. 108/84 |
-| <a id="tp.src"></a>`tp.src` | Original source | `addr.call` with optional `addr.ssid`; or 1 to 9 bytes, each 0x21–0x7E other than `>` and `:`, which gives `is-only`. | yes | `>` | p. 108/84; p. 109/85 |
+| <a id="tp.src"></a>`tp.src` | Original source | `addr.call` with optional `addr.ssid`; or 1 to 9 bytes, each 0x21–0x7E other than `>`, `:` and `*`, which gives `is-only`. A `*` gives `syntax` ([amb.tp.header](#amb.tp.header)). | yes | `>` | p. 108/84; p. 109/85 |
 | <a id="tp.gt"></a>`tp.gt` | Source terminator | `>`, 1 byte. | yes | 1 byte | p. 108/84 |
 | <a id="tp.dest"></a>`tp.dest` | Original destination | As `addr.dest`, classified by section 5 with the inner identifier. | yes | `,` | p. 108/84 |
-| <a id="tp.path"></a>`tp.path` | Retained original path | Zero or more entries, each `,` then an address as `path.digi`, `path.q` or `path.is`, without `*`. A `*` here gives `syntax` ([amb.tp.header](#amb.tp.header)). | no | the `,` before `tp.net` | p. 108/84; p. 138/114 |
+| <a id="tp.path"></a>`tp.path` | Retained original path | Zero or more entries, each `,` then an address as `path.digi`, `path.q` or `path.is`, without `*`. **[proposed]** The token includes the `,`; the entry is read one level below it under the rules of section 4, including the limit of 8 and the obsolete and gating classes, without `path.used`. A `*` here gives `syntax` ([amb.tp.header](#amb.tp.header)). | no | the `,` before `tp.net` | p. 108/84; p. 138/114 |
 | <a id="tp.net"></a>`tp.net` | Network identifier | `,` then an address, AX.25 form or `addr.is` (`TCPIP` in the examples), without `*`. | yes | `,` | p. 108/84 |
 | <a id="tp.gate"></a>`tp.gate` | Receiving gateway | `,` then `addr.call` with optional `addr.ssid`, then `*`. A missing `*`, or an address not in the AX.25 form, gives `syntax` ([amb.tp.header](#amb.tp.header)). It is the last entry of the inner header. | yes | `tp.sep` | p. 108/84; p. 109/85 |
 | <a id="tp.sep"></a>`tp.sep` | Inner header end | `:`, the first `:` after `tp.dti`. | yes | 1 byte | p. 108/84 ([amb.tp.header](#amb.tp.header)) |
-| <a id="tp.info"></a>`tp.info` | Original information field | Tokenized from `dti` at depth + 1, under every rule of this directory. A further `}` is followed ([amb.tp.nest](#amb.tp.nest)). | yes | end of the enclosing field | p. 108/84; p. 110/86 |
-| <a id="tp.aea"></a>`tp.aea` | AEA-form inner header | Every address separated by `>` instead of `,`: source, any retained digipeaters, the network identifier, the gateway with `*`, then the original destination, then `:`. Gives `obsolete` ([amb.tp.aea](#amb.tp.aea)). | no | `tp.sep` | p. 137/113; p. 138/114 |
+| <a id="tp.info"></a>`tp.info` | Original information field | Tokenized from `dti` at depth + 1, under every rule of this directory. An empty field gives `syntax` under this rule. A further `}` is followed ([amb.tp.nest](#amb.tp.nest)). | yes | end of the enclosing field | p. 108/84; p. 110/86 |
+| <a id="tp.aea"></a>`tp.aea` | AEA-form inner header | Every address separated by `>` instead of `,`: source, any retained digipeaters, the network identifier, the gateway with `*`, then the original destination, then `:`. Gives `obsolete` ([amb.tp.aea](#amb.tp.aea)). **[proposed]** Recognised when there is no `,`, at least four non-empty addresses, and exactly one `*`, at the end of the second-to-last address. Each address is read one level below; the last is classified as a destination by section 5. | no | `tp.sep` | p. 137/113; p. 138/114 |
 
 ## 9. Ambiguities
 

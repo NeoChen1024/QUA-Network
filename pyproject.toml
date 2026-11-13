@@ -18,6 +18,8 @@ qua-check-vectors = "qua_network.check_vectors:cli"
 qua-icon-stats = "qua_network.icon_stats:cli"
 qua-icon-encode = "qua_network.icon_encode:cli"
 qua-spec-extract = "qua_network.spec_extract:cli"
+qua-legacy-tokenize = "qua_network.legacy_tokenize:cli"
+qua-legacy-fields = "qua_network.legacy_fields:cli"
 
 [build-system]
 requires = ["setuptools>=77.0.3"]

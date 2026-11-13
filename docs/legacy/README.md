@@ -4,7 +4,7 @@
 |---|---|
 | Status | Draft. Not frozen. Items carry the labels **[agreed]**, **[proposed]** and **[open]** with the meaning given in the RFC. |
 | Reference | `APRS12c.pdf` in submodule `3rdparty/aprsspec`, commit `5830d42f`. See [RFC Appendix D](../rfc/qua-network-rfc-0.md#appendix-d-reference-documents). |
-| Used by | The legacy tokenizer and field inventory (RFC section 15, step 4). Not yet written. |
+| Used by | `qua-legacy-tokenize` and `qua-legacy-fields` (package `qua_network.legacy`), RFC section 15, step 4. They read 01-frame so far; the other files have no reader yet. |
 
 ## 1. Purpose
 
@@ -97,7 +97,12 @@ the strict result.
 - **Tokens.** `(rule ID, start, end, depth)`, as byte offsets into the
   raw TNC2 line. The depth-0 tokens cover the line exactly, in order, with
   no gap and no overlap. Bytes the tokenizer cannot account for form a
-  `residue` token, which names the rule at which parsing stopped. Deeper
+  `residue` token, which names the rule at which parsing stopped.
+  **[proposed]** A field whose extent its delimiters fix keeps its own
+  token when its bytes are wrong, with the finding; only bytes whose rule
+  cannot be told, at that level or inside such a field, are residue. A
+  finding for a byte that is missing is placed where that byte was
+  expected, which may be the end of the line. Deeper
   tokens lie inside one token of the level above: the parts of a Mic-E
   destination address, items found inside a comment, the inner packet of a
   third-party payload. **[agreed]** The token of the data type identifier
@@ -127,6 +132,10 @@ the strict result.
 - **Verdict.** The most severe of `conform`, `conform-ambiguous`, `value`,
   `syntax`, `unknown-format`, in increasing order. `unknown-format` is
   given when the data type cannot be determined.
+  While the reader of a format is not written, the field after its
+  identifier byte is a residue token that names `unread`, and a packet
+  with such a field has no verdict. This is a state of the
+  implementation, not a rule of the reading.
 
 **[proposed]** The tokenizer finds boundaries and checks bytes and ranges.
 It does not compute values (degrees, knots, decoded telemetry). Decoding is
@@ -233,8 +242,12 @@ An entry that cites a decoder names it and the function or line it read.
 
 ## 6. Open items
 
-- The tokenizer, the field inventory tool and the check of the document's
-  own example packets against this reading (RFC section 15, step 4).
+- Readers for the formats of 02 to 09; until one exists, a field of
+  that format is left as an `unread` residue and its packet has no
+  verdict. The obsolete object and bulletin without an identifier
+  (01-frame section 7) are tried only once 05 and 08 have readers.
+- The check of the document's own example packets against this reading
+  (RFC section 15, step 4).
 - Deviation recognisers and the divergence catalogue entries they belong
   to (RFC Appendix E).
 - APRS12c is itself a draft with known issues. When a later draft of the

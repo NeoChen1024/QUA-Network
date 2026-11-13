@@ -1494,6 +1494,14 @@ commands.
   (Courier for literal data, highlight for literal characters, shading for
   optional fields). The output stays under `work/`, because the documents'
   terms do not allow their text into this repository.
+- `qua-legacy-tokenize`: shows how the strict legacy tokenizer reads
+  packets, following the reading in `docs/legacy/`: tokens with their byte
+  offsets, findings and verdict.
+- `qua-legacy-fields`: field inventory over the corpus under that reading:
+  per rule, the packets carrying it, token count, byte length
+  distribution and bytes outside 7-bit ASCII; verdicts and findings with
+  example packets. So far only the frame of 01-frame is read; every
+  format after the data type identifier is left as unread residue.
 
 ## Appendix D. Reference documents
 

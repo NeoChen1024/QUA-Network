@@ -37,6 +37,8 @@ uv pip install --python .venv/bin/python -e .
 | `qua-icon-stats` | Size of the candidate icon bitmap forms on BDF font glyphs. |
 | `qua-icon-encode` | Encode a 16 by 16 picture as an icon bitmap field; produce the icon bitmap vectors. |
 | `qua-spec-extract` | Extract the reference PDFs to Markdown under `work/`, for reading and search. |
+| `qua-legacy-tokenize` | Show how the legacy tokenizer reads packets: tokens, findings, verdict. |
+| `qua-legacy-fields` | Field inventory of the corpus under the legacy reading: presence, sizes and findings per rule. |
 
 Each command documents its options under `--help`. The raw corpus lives in
 `corpus/` and derived products in `work/`; neither is in Git.

@@ -56,6 +56,30 @@ def split_payload(line):
     return (header, payload) if sep else (line, None)
 
 
+def header_spans(header, base=0):
+    """Split an address header into byte spans, without judging their content.
+
+    Returns (source, destination, entries) where each item is a (start, end)
+    span of the header, offset by base, and entries lists the path entries
+    in order. Separators are not part of any span: source ends at the first
+    '>', destination and each entry at the next ',' or the end. Returns None
+    when there is no '>'.
+    """
+    gt = header.find(b">")
+    if gt < 0:
+        return None
+    spans = []
+    start = gt + 1
+    while True:
+        comma = header.find(b",", start)
+        if comma < 0:
+            spans.append((base + start, base + len(header)))
+            break
+        spans.append((base + start, base + comma))
+        start = comma + 1
+    return (base, base + gt), spans[0], spans[1:]
+
+
 def parse_header(header):
     """Return (source, destination, n_digis, q_construct), or None if the header is not SRC>DST[,path],qA?,gate.
 

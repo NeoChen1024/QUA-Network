@@ -7,6 +7,9 @@ the dest.mice token of the same packet's header.
 """
 
 import re
+from pathlib import Path
+
+import yaml
 
 from qua_network.legacy.fields import (
     DIGITS,
@@ -178,8 +181,35 @@ def fixed(scan, start, end, depth):
 
 _KENWOOD = frozenset(b">]")
 _OTHER = frozenset(b"`'")
-_KENWOOD_SUFFIX = frozenset(b"=^&")
-_SUFFIX_EXAMPLES = frozenset((b"_(", b"_0", b"_3", b"|3", b"|4"))  # p. 73/55
+
+# amb.mice.suffix: the device suffixes are those of the aprs-deviceid
+# register at the commit the repository pins, read from the submodule.
+_TOCALLS = Path(__file__).resolve().parents[3] / "3rdparty" / "aprs-deviceid" / "tocalls.yaml"
+
+
+def _load_suffixes(path):
+    """(prefix, suffix) pairs of the 'micelegacy' list, and (prefix or None,
+    suffix) of the 'mice' list, as bytes; None stands for any 0x60 or 0x27
+    prefix. Entries without a suffix name no suffix."""
+    try:
+        with open(path, "rb") as fh:
+            reg = yaml.safe_load(fh)
+    except FileNotFoundError:
+        raise RuntimeError(
+            f"aprs-deviceid register not found at {path}; the Mic-E device suffixes"
+            " (docs/legacy/04-mic-e.md, amb.mice.suffix) are read from it."
+            " Check out the submodule: git submodule update --init 3rdparty/aprs-deviceid"
+        ) from None
+
+    def enc(v):
+        return None if v is None else str(v).encode("latin-1")
+
+    legacy = frozenset((enc(e["prefix"]), enc(e["suffix"])) for e in reg["micelegacy"] if e.get("suffix") is not None)
+    other = frozenset((enc(e.get("prefix")), enc(e["suffix"])) for e in reg["mice"] if e.get("suffix") is not None)
+    return legacy, other
+
+
+_KENWOOD_PAIRS, _OTHER_SUFFIXES = _load_suffixes(_TOCALLS)
 _HEX = frozenset(b"0123456789ABCDEFabcdef")
 # A fifth or sixth byte outside A-X, in either case, is no subsquare letter
 # (amb.grid.range); only the 4-byte locator is then tried.
@@ -240,7 +270,8 @@ def _after_prefix(scan, p, end, d, prefix):
     # (amb.mice.suffix, amb.mice.pipe).
     te = end
     if prefix in _KENWOOD:
-        if end > p and line[end - 1] in _KENWOOD_SUFFIX:
+        # Only a listed (prefix, last byte) pair; any other last byte is text.
+        if end > p and (bytes((prefix,)), line[end - 1 : end]) in _KENWOOD_PAIRS:
             te = end - 1
     elif prefix in _OTHER:
         if end == p:
@@ -250,7 +281,9 @@ def _after_prefix(scan, p, end, d, prefix):
             scan.find("mice.type.suffix", "syntax", p)
         else:
             te = end - 2
-            if line[te:end] not in _SUFFIX_EXAMPLES:
+            # The register is open: an unlisted suffix keeps its token.
+            sfx = line[te:end]
+            if (None, sfx) not in _OTHER_SUFFIXES and (bytes((prefix,)), sfx) not in _OTHER_SUFFIXES:
                 scan.find("mice.type.suffix", "unstated", te)
 
     # The locator, after the prefix and any altitude (amb.mice.grid).

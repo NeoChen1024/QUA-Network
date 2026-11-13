@@ -64,8 +64,8 @@ not rejected.
 
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|
-| <a id="path.sep"></a>`path.sep` | Entry separator | `,`, 1 byte, before each entry. Two adjacent separators, or one directly before `line.sep`, leave an empty entry: `syntax`. **[proposed]** An empty entry does not count toward the limit of 8. | per entry | 1 byte | p. 107/83; UAP §5.6 |
-| <a id="path.digi"></a>`path.digi` | Digipeater entry | `addr.call` with optional `addr.ssid`, or `addr.is`, then optional `path.used`. Every entry before `path.q`, or every entry if there is none. More than 8 gives `value` at the ninth. | no | `,` or `line.sep` | p. 22/12; p. 107/83 |
+| <a id="path.sep"></a>`path.sep` | Entry separator | `,`, 1 byte, before each entry. Two adjacent separators, or one directly before `line.sep`, leave an empty entry: `syntax`, at the separator itself, as an exception to the placing rule of [README section 3](README.md#3-tokenizer-model). **[agreed]** An empty entry counts toward the limit of 8 like any other; an earlier draft left it out. | per entry | 1 byte | p. 107/83; UAP §5.6 |
+| <a id="path.digi"></a>`path.digi` | Digipeater entry | `addr.call` with optional `addr.ssid`, or `addr.is`, then optional `path.used`. Every entry before `path.q`, or every entry if there is none. **[agreed]** More than 8 is a list with too many fields: `syntax` against `path.digi` at the separator before the ninth ([README section 3](README.md#3-tokenizer-model), Kinds by situation). An earlier draft gave `value` at the ninth entry. | no | `,` or `line.sep` | p. 22/12; p. 107/83 |
 | <a id="path.used"></a>`path.used` | Used marker | `*` directly after the address of a `path.digi`. It marks the entry heard; all entries before it count as used. A second `*` among the `path.digi` entries gives `syntax` ([amb.path.used](#amb.path.used)). | no | 1 byte | p. 107/83; p. 20/10; UAP §1.3.1 |
 | <a id="path.obsolete"></a>`path.obsolete` | Obsolete alias | A `path.digi` whose callsign is exactly `RELAY`, `TRACE` or `WIDE` (no digit), with any SSID. Gives `obsolete`. | no | — | p. 20/10; p. 155/131; UAP §5.5 |
 | <a id="path.nogate"></a>`path.nogate` | Gating block | A `path.digi` whose callsign is `NOGATE` or `RFONLY`. Classified; no finding, wherever it stands. | no | — | p. 110/86 |
@@ -259,7 +259,7 @@ field is tokenized from `dti` again, one depth level down.
 | <a id="tp.gt"></a>`tp.gt` | Source terminator | `>`, 1 byte. | yes | 1 byte | p. 108/84 |
 | <a id="tp.dest"></a>`tp.dest` | Original destination | As `addr.dest`, classified by section 5 with the inner identifier, including a `*` at its end. | yes | `,` | p. 108/84 |
 | <a id="tp.path"></a>`tp.path` | Retained original path | Zero or more entries, each `,` then an address as `path.digi`, `path.q` or `path.is`, without `*`. **[proposed]** The token includes the `,`; the entry is read one level below it under the rules of section 4, including the limit of 8 and the obsolete and gating classes. A `*` here gives `syntax` ([amb.tp.header](#amb.tp.header)), so `path.used` does not apply. The `*` and the bytes after it are a `residue` below the token, and the finding is at the `*`, unless the address before it already gives `syntax` (README section 3, Output; Placing a finding). | no | the `,` before `tp.net` | p. 108/84; p. 138/114 |
-| <a id="tp.net"></a>`tp.net` | Network identifier | `,` then an address, AX.25 form or `addr.is` (`TCPIP` in the examples), without `*`. A `*` gives `syntax` at the `*`, unless the address before it already gives `syntax`; the `*` and the bytes after it are a `residue` below the token (README section 3, Output; Placing a finding). **[proposed]** An empty one gives `syntax` where its first byte was expected. | yes | `,` | p. 108/84 |
+| <a id="tp.net"></a>`tp.net` | Network identifier | `,` then an address, AX.25 form or `addr.is` (`TCPIP` in the examples), without `*`. A `*` gives `syntax` at the `*`, unless the address before it already gives `syntax`; the `*` and the bytes after it are a `residue` below the token (README section 3, Output; Placing a finding). An empty one is a missing field and gives `syntax` where its first byte was expected ([README section 3](README.md#3-tokenizer-model), Kinds by situation). | yes | `,` | p. 108/84 |
 | <a id="tp.gate"></a>`tp.gate` | Receiving gateway | `,` then `addr.call` with optional `addr.ssid`, then `*`. A missing `*`, or an address not in the AX.25 form, gives `syntax` ([amb.tp.header](#amb.tp.header)): one finding, at the first byte that does not fit the AX.25 form, or where the `*` was expected (README section 3, Placing a finding). An earlier draft gave both defects a finding, the address one at its first byte. It is the last entry of the inner header. | yes | `tp.sep` | p. 108/84; p. 109/85 |
 | <a id="tp.sep"></a>`tp.sep` | Inner header end | `:`, the first `:` after `tp.dti`. | yes | 1 byte | p. 108/84 ([amb.tp.header](#amb.tp.header)) |
 | <a id="tp.info"></a>`tp.info` | Original information field | Tokenized from `dti` at depth + 1, under every rule of this directory. An empty field gives `syntax` under this rule. A further `}` is followed ([amb.tp.nest](#amb.tp.nest)). | yes | end of the enclosing field | p. 108/84; p. 110/86 |
@@ -534,8 +534,11 @@ given.
 **Readings.** (a) Ignore it. (b) Report it as the obsolete path form.
 (c) Treat it as malformed.
 
-**Reading taken.** **[proposed]** (b): `obsolete` for any class other
-than `dest.mice`.
+**Reading taken.** **[agreed]** (b): `obsolete` for any class other
+than `dest.mice`, following p. 27/17. The pages that call the SSID a
+live path or reserved do not outrank it under the rule for pages that
+disagree ([README section 3](README.md#3-tokenizer-model)), so the
+author chose this side.
 
 **In the bytes.** Every non-zero destination SSID carries the question,
 and the bytes of one packet cannot narrow it, so it is decided by the
@@ -674,8 +677,11 @@ no format as a status report.
 Read as status text.
 
 **Reading taken.** **[proposed]** (b): one `dti.unknown` token, verdict
-`unknown-format`, with `syntax` for "do not use" values (a stated
-prohibition) and `unstated` for the rest. **[agreed]** Before that
+`unknown-format`. The finding at `dti` is `syntax` for "do not use"
+values, which a stated prohibition covers, and `unstated` for the
+unused, reserved and unlisted values of a table the document does not
+close ([README section 3](README.md#3-tokenizer-model), Kinds by
+situation). **[agreed]** Before that
 verdict, the two obsolete forms without an identifier are tried, the
 object of `obj.obsolete` first and then the bulletin of `bln.obsolete`
 (section 7), since p. 80/62 and p. 98/76 describe them. A match gives
@@ -847,9 +853,11 @@ first column and the network identifier (see [err.tp.aea](#err.tp.aea)).
 **Readings.** (a) Recognise the AEA form inside `}` with `obsolete`. (b)
 Do not recognise it.
 
-**Reading taken.** **[proposed]** (a), with `>` as the missing separator,
+**Reading taken.** **[agreed]** (a), with `>` as the missing separator,
 as in the example that APRS 1.0.1 gave with the same diagram (1.0.1 PDF
-p. 95). An inner header with no `,` and at least four `>`-separated
+p. 95): an example of the earlier edition fills the gap
+([README section 3](README.md#3-tokenizer-model), Pages that disagree).
+**[proposed]** An inner header with no `,` and at least four `>`-separated
 addresses, one of them followed by `*`, is `tp.aea`. At line level
 APRS-IS carries TNC-2 text (UAP §1, ch. 4), so an AEA line header gives
 `syntax`, and that finding alone is given

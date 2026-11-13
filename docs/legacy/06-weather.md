@@ -276,10 +276,12 @@ match, it has read nothing, and a `c` element is `wx.wdir` with no
 finding of this kind. Either way an `s` there is snowfall
 ([amb.wx.order](#amb.wx.order)).
 
-**[proposed]** The weather data ends at the first byte, after the leading
-elements, that does not start an element of section 6.1. A letter that
-APRS12c does not define ends the data. Reading:
-[amb.wx.letters](#amb.wx.letters), [amb.wx.width](#amb.wx.width).
+The weather data ends at the first byte, after the leading elements,
+that does not start an element of section 6.1. A letter that APRS12c
+does not define ends the data: nothing delimits an element, so an
+unknown letter leaves its extent unknown, and reading stops there
+([README section 3](README.md#3-tokenizer-model), Kinds by situation).
+Reading: [amb.wx.letters](#amb.wx.letters), [amb.wx.width](#amb.wx.width).
 
 ## 7. Software and unit codes
 
@@ -890,7 +892,11 @@ still does.
   2.7.1 advises receivers to ignore unknown letter-and-digits pairs.
 - **Readings.** (a) An undefined letter ends the data. (b) An undefined
   letter followed by digits is an extra element.
-- **Taken.** **[proposed]** (a). Extra elements are a matter for a
+- **Taken.** (a): an undefined letter leaves the extent of what it
+  starts unknown, so reading stops there and the bytes from it are
+  judged as what may stand next
+  ([README section 3](README.md#3-tokenizer-model), Kinds by
+  situation). Extra elements are a matter for a
   deviation recogniser (README section 3). The bytes from the undefined
   letter on are read as a tail (section 7) or fail as one
   ([amb.wx.comment](#amb.wx.comment)); a `syntax` finding there is the

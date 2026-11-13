@@ -32,7 +32,7 @@ includes the comma that ends it, as the diagrams count it.
 |---|---|---|---|---|---|
 | <a id="tlm.dti"></a>`tlm.dti` | Data type identifier | `'T'` at offset 0. | Required | 1 byte | p. 31/17, p. 88/68 |
 | <a id="tlm.seq"></a>`tlm.seq` | Sequence number | `'#'`, then three digits and `','`, or `'MIC'` with an optional `','`. A digit run of another length is a delimited field outside its stated length and gives a `value` finding ([amb.tlm.seq](#amb.tlm.seq); [README section 3](README.md#3-tokenizer-model), Kinds by situation). | Required | The `','`, or the `'C'` of `MIC` when no comma follows | p. 88/68, p. 153/129 |
-| <a id="tlm.analog"></a>`tlm.analog` | Analog value, five times | Three digits, 000 to 999, then `','`. **[proposed]** Also a relaxed number: an optional `'-'`, then digits, or digits `'.'` digits, or `'.'` digits; it gives an `unstated` finding. Anything else, an empty value included, gives `syntax` ([amb.tlm.value](#amb.tlm.value)). | Required | The `','` | p. 88/68, p. 134/110, p. 157/133 |
+| <a id="tlm.analog"></a>`tlm.analog` | Analog value, five times | Three digits, 000 to 999, then `','`. **[agreed]** Also a relaxed number: an optional `'-'`, then digits, or digits `'.'` digits, or `'.'` digits, with no finding. Anything else, an empty value included, gives `syntax` ([amb.tlm.value](#amb.tlm.value); an empty value is a missing field, [README section 3](README.md#3-tokenizer-model), Kinds by situation). | Required | The `','` | p. 88/68, p. 134/110, p. 157/133 |
 | <a id="tlm.digital"></a>`tlm.digital` | Digital value | Eight bytes, each `'0'` or `'1'`. | Required | 8 bytes | p. 88/68 |
 | <a id="tlm.cmt"></a>`tlm.cmt` | Comment | The rest, directly after the eighth bit, read as [`cmt.text`](02-fields.md#cmt.text). No length limit is stated. | Optional | End of information field | p. 88/68, p. 152/128 |
 
@@ -43,10 +43,13 @@ has no identifier of its own: it is found in a comment. A definition
 message shares the identifier `':'` with the other message kinds and
 carries [`tlm.def.dti`](#tlm.def.dti) (section 4).
 
-**[proposed]** All five analog values and the digital value are required
-([amb.tlm.count](#amb.tlm.count)). A report that ends early gives
-`syntax` at the first missing field, where its first byte was expected
-([README section 3](README.md#3-tokenizer-model), Output).
+A report that ends before its required fields are all present has too
+few fields and gives `syntax` at the end, where the first byte of the
+first missing field was expected; an empty analog value is a missing
+field and gives `syntax` where its first byte was expected
+([README section 3](README.md#3-tokenizer-model), Output; Kinds by
+situation). **[proposed]** All five analog values and the digital value
+are required ([amb.tlm.count](#amb.tlm.count)).
 
 A `','` or SP directly after the eighth bit is the first byte of the
 comment and gives no finding: no text of APRS12c puts a separator there
@@ -78,10 +81,11 @@ finding):
   the bytes stop fitting the relaxed number, or at the `','` or end of
   the text when a byte is missing there (an empty value, `1.`, `-`). A
   value that runs to the end of the field with no `','` after it gives
-  `syntax` at the end, where the `','` was expected. **[proposed]** The
-  optional `'-'` may stand before each of the three forms, as the value
-  `-7.3` of the third example on p. 88/68 requires. The `unstated`
-  finding of a relaxed analog value is at its first byte.
+  `syntax` at the end, where the `','` was expected. The optional `'-'`
+  may stand before each of the three forms, as the value `-7.3` of the
+  third example on p. 88/68 requires: the example fills a gap of the
+  description ([README section 3](README.md#3-tokenizer-model), Pages
+  that disagree).
 
 **[proposed]** `tlm.cmt` is searched for the items of
 [02-fields.md](02-fields.md#82-items-found-inside-a-comment) section
@@ -201,8 +205,8 @@ where every field is within its own limit
 | <a id="tlm.parm.name"></a>`tlm.parm.name` | One name | A1: 1 or more bytes. A2 to B8: `','` and 0 or more bytes. Limits in the table below; a longer name gives a `value` finding. | Optional | The next `','` or the end | p. 91/71 |
 | <a id="tlm.unit"></a>`tlm.unit` | Units and labels | `UNIT.`, then fields as `tlm.parm`: units for A1 to A5, labels for B1 to B8. | Required keyword | End of message text | p. 91/71, p. 135/111 |
 | <a id="tlm.unit.label"></a>`tlm.unit.label` | One unit or label | As `tlm.parm.name`, with the same limits. | Optional | The next `','` or the end | p. 91/71 |
-| <a id="tlm.eqns"></a>`tlm.eqns` | Equation coefficients | `EQNS.`, then up to 15 numbers: a, b and c for A1, then for A2, up to A5, separated by `','`. The list may stop after any field. | Required keyword | End of message text | p. 92/72, p. 135/111 |
-| <a id="tlm.eqns.coef"></a>`tlm.eqns.coef` | One coefficient | **[proposed]** The relaxed number of `tlm.analog`. Anything else, an empty field included, gives `syntax` ([amb.tlm.eqns](#amb.tlm.eqns)). | Optional | The next `','` or the end | p. 92/72 |
+| <a id="tlm.eqns"></a>`tlm.eqns` | Equation coefficients | `EQNS.`, then up to 15 numbers: a, b and c for A1, then for A2, up to A5, separated by `','`. The list may stop after the last coefficient of any channel; a list that stops inside a channel's three has too few fields (below). | Required keyword | End of message text | p. 92/72, p. 135/111 |
+| <a id="tlm.eqns.coef"></a>`tlm.eqns.coef` | One coefficient | An empty field is a missing field and gives `syntax` ([README section 3](README.md#3-tokenizer-model), Kinds by situation). **[proposed]** Otherwise the relaxed number of `tlm.analog`; anything else gives `syntax` ([amb.tlm.eqns](#amb.tlm.eqns)). | Optional | The next `','` or the end | p. 92/72 |
 | <a id="tlm.bits"></a>`tlm.bits` | Bit sense and project title | `BITS.`, then the parts below. | Required keyword | End of message text | p. 92/72, p. 135/111 |
 | <a id="tlm.bits.sense"></a>`tlm.bits.sense` | Bit sense | Eight bytes, each `'0'` or `'1'`, B1 to B8 from left to right. | Required | 8 bytes | p. 92/72 |
 | <a id="tlm.bits.title"></a>`tlm.bits.title` | Project title | 0 to 23 bytes directly after the bits; a longer title gives a `value` finding. A first byte `','` belongs to the title and gives an `ambiguous` finding ([amb.tlm.bitsep](#amb.tlm.bitsep); [README section 3](README.md#3-tokenizer-model), Separators and padding). | Optional | End of message text | p. 92/72 |
@@ -216,20 +220,32 @@ the byte counts on p. 91/71, which include it:
 
 The document notes that these limits are widely ignored (p. 91/71); an
 over-long field still gives `value`, as for any field over a stated
-limit. **[proposed]** A fourteenth field in `PARM.` or `UNIT.`, or a
-sixteenth in `EQNS.`, gives `syntax`. A keyword with nothing after it
-gives an `unstated` finding, since the list's earliest stopping point is
-not stated ([amb.tlm.meta](#amb.tlm.meta)).
+limit.
 
-**[proposed]** Positions and kinds of these findings. The `syntax`
-finding of an extra field is given once, against the field's rule at
-the `','` that starts the first extra field; the fields after it keep
-their tokens. The `unstated` finding of an empty list is against
-`tlm.parm`, `tlm.unit` or `tlm.eqns`, at the byte after the keyword. An
-A1 field that is empty with a `','` after it is shorter than its stated
-length and gives `value` at that `','`. A coefficient that fits the
-relaxed number gives no finding: unlike `tlm.analog`, `tlm.eqns.coef`
-has no stricter form beside it.
+Field counts and empty fields, by
+[README section 3](README.md#3-tokenizer-model) (Kinds by situation). A
+fourteenth field in `PARM.` or `UNIT.`, or a sixteenth in `EQNS.`, is a
+field too many: one `syntax` finding, against the field's rule at the
+`','` that starts the first extra field, and the fields after it keep
+their tokens. An A1 field that is empty with a `','` after it is a
+missing field and gives `syntax` at that `','`, where its first byte was
+expected, as decided by the author; an earlier draft gave `value` there,
+as a field shorter than its stated length. An `EQNS.` list that stops
+inside a channel's three coefficients has too few fields and gives
+`syntax` against `tlm.eqns.coef` at the end of the list, where the next
+coefficient was expected, as decided by the author; an earlier draft let
+the list stop after any field with no finding. A keyword with nothing
+after it gives an `unstated` finding, as
+[amb.tlm.meta](#amb.tlm.meta) decides: no field of the list is
+required, since its earliest stopping point is not stated, so an empty
+list is not a missing field; A1 is required only when a `','` follows
+it.
+
+**[proposed]** Positions of the other findings. The `unstated` finding
+of an empty list is against `tlm.parm`, `tlm.unit` or `tlm.eqns`, at the
+byte after the keyword. A coefficient that fits the relaxed number gives
+no finding: unlike `tlm.analog`, `tlm.eqns.coef` has no stricter form
+beside it.
 
 A `BITS.` text that ends before the eighth bit gives `syntax` at its end,
 where the first missing bit was expected, against `tlm.bits.sense`
@@ -319,11 +335,14 @@ the [README](README.md#4-decoders-consulted), not run.
   and length are not addressed.
 - **Readings.** (a) Three digits only. (b) A signed decimal as in
   section 2. (c) Any bytes between commas.
-- **Reading taken.** **[proposed]** (a) without a finding, (b) with an
-  `unstated` finding, anything else `syntax`. The document endorses the
-  relaxed form but does not define it; the shape of (b) is the one FAP
-  and pdn-aprs accept, less the trailing point that pdn-aprs also takes.
-  Visible in the bytes: each relaxed value carries the `unstated`
+- **Reading taken.** **[agreed]** (a) and (b), both without a finding;
+  anything else `syntax`. The text describes the relaxed form and
+  encourages receivers to accept it, so it is a form the document
+  defines ([README section 3](README.md#3-tokenizer-model)); reading it
+  as `syntax` would contradict that text. Its shape is the one the
+  text describes, a leading minus and a decimal point, which is also
+  what FAP and pdn-aprs accept, less the trailing point that pdn-aprs
+  also takes. An earlier draft gave each relaxed value an `unstated`
   finding. A relaxed value gets no `ambiguous` finding: reading (c)
   takes it with the same boundaries and as the same field, and reading
   (a) does not match it. Bytes that give `syntax` here, which reading
@@ -506,9 +525,13 @@ the [README](README.md#4-decoders-consulted), not run.
   (p. 91/71). The field bytes, empty fields, more than 13 fields and an
   empty list are not addressed.
 - **Readings.** (a) Limits enforced. (b) Split on commas, no limits.
-- **Reading taken.** **[proposed]** (a) as `value` findings; empty fields
-  after A1 allowed, as the byte counts include the comma; extra fields
-  `syntax`; an empty list `unstated`. Visible in the bytes. Reading (b)
+- **Reading taken.** Extra fields, and an empty A1 field with a `','`
+  after it, give `syntax` as section 4 sets out
+  ([README section 3](README.md#3-tokenizer-model), Kinds by
+  situation); an earlier draft gave the empty A1 field `value`.
+  **[proposed]** (a) as `value` findings; empty fields after A1 allowed,
+  as the byte counts include the comma. **[agreed]** An empty list gives `unstated`: the document
+  says nothing about where the list may stop. Visible in the bytes. Reading (b)
   would accept the over-long and extra fields, but the `value` or
   `syntax` finding alone is given, with no `ambiguous` beside it
   ([README section 3](README.md#3-tokenizer-model), Precedence).
@@ -530,10 +553,14 @@ the [README](README.md#4-decoders-consulted), not run.
   list may stop at any field, even inside a channel's three.
 - **Readings.** (a) The relaxed number of `tlm.analog`. (b) Also
   exponents. (c) Empty fields allowed.
-- **Reading taken.** **[proposed]** (a); empty fields `syntax`; a list
-  of any length up to 15 without a finding. Visible in the bytes.
-  Readings (b) and (c) would accept an exponent or an empty field, but
-  the `syntax` finding alone is given, with no `ambiguous` beside it
+- **Reading taken.** An empty field, a sixteenth field, and a list that
+  stops inside a channel's three coefficients give `syntax`, as
+  section 4 sets out ([README section 3](README.md#3-tokenizer-model),
+  Kinds by situation); the last was decided by the author. An earlier
+  draft took a list of any length up to 15 without a finding.
+  **[proposed]** (a). Visible in the bytes. Readings (b) and (c) would
+  accept an exponent or an empty field, but the `syntax` finding alone
+  is given, with no `ambiguous` beside it
   ([README section 3](README.md#3-tokenizer-model), Precedence).
 - **Decoders.** Dire Wolf: each field converted as a floating-point
   number; an empty field and a count other than 15 are reported

@@ -29,7 +29,6 @@ _ACK = re.compile(rb"(?:ack|rej)(?:[A-Za-z0-9]{1,5}|[A-Za-z0-9]{2}\}(?:[A-Za-z0-
 # 09 section 4.1, reading (a) of amb.qry.dir: mark, type, optional SP,
 # optional heard station, optional trailing SP; no '{' can match.
 _QUERY = re.compile(rb"\?(?:APRS[DHMOPST]|PING\?) ?(?:[A-Za-z0-9-]{1,9})? *")
-_NWS_WORDS = (b"ADVIS", b"WARN", b"WATCH")
 # Reading (c) of amb.nws.addressee.
 _NWS_OTHER = (b"NWS_", b"SKY", b"CWA", b"BOM")
 # Section 8: the type byte and the number of fields it allows.
@@ -47,7 +46,7 @@ def read(scan, start, end, depth):
 def _read(scan, s, end, depth, texts, by_addressee):
     """Read the field line[s:end]. by_addressee=False reads it as a message
     by section 2.1 from case 3 on, whatever the addressee, for the other
-    readings of amb.msg.order, amb.bln.forms and amb.nws.addressee.
+    readings of amb.msg.order and amb.bln.forms.
     Returns the kind decided, or None when the field ends before the text."""
     line = scan.line
     a0 = s + 1
@@ -315,8 +314,9 @@ def _alnum_field(scan, rule, p, e, lengths):
         scan.find(rule, "value", p + hi)
     elif bad is None and run not in lengths:
         # Too short: where the first missing byte was expected (README
-        # section 3, Placing a finding).
-        scan.find(rule, "value", p + run)
+        # section 3, Placing a finding). An empty required field is missing,
+        # not short (Kinds by situation).
+        scan.find(rule, "syntax" if run == 0 else "value", p + run)
     if bad is not None:
         scan.find(rule, "syntax", bad)
 
@@ -351,24 +351,33 @@ def _nts(scan, t0, te, depth, texts):
         return False
     d = depth + 1
     scan.tok("nts.prefix", t0, t0 + 3, d)
-    p, count = t0 + 3, 0
+    lo, hi = _NTS[line[t0 + 1]]
+    # The fields are counted by their separators, an empty one included. An
+    # empty field is missing: syntax where its first byte was expected. A
+    # count outside the row gives syntax on nts.sep at the separator that
+    # starts the first extra field, or at the end where the next separator
+    # was expected (README section 3, Kinds by situation).
+    p, count = t0 + 3, 1
     while True:
         q = line.find(b"\\", p, te)
         fe = q if q >= 0 else te
         if fe > p:
-            # An empty field has no token and is not counted.
-            count += 1
             scan.tok("nts.field", p, fe, d)
             _text_bytes(scan, "nts.field", p, fe)
             texts.append((p, fe))
             noarchive_in(scan, p, fe, d + 1)
+        elif count <= hi:
+            # An extra field is reported once, at its separator.
+            scan.find("nts.field", "syntax", p)
         if q < 0:
             break
         scan.tok("nts.sep", q, q + 1, d)
+        count += 1
+        if count == hi + 1:
+            scan.find("nts.sep", "syntax", q)
         p = q + 1
-    lo, hi = _NTS[line[t0 + 1]]
-    if not lo <= count <= hi:
-        scan.find("nts.prefix", "syntax", t0)
+    if count < lo:
+        scan.find("nts.sep", "syntax", te)
     return True
 
 
@@ -427,10 +436,8 @@ def _nws(scan, s, t0, end, depth, texts):
         # it, unless this reading already fails on the reference's bytes.
         if not _reported(scan, ref, end):
             scan.find("nws.ref", "ambiguous", ref)
-    word = line[s + 5 : s + 10].rstrip(b" ")
-    if word not in _NWS_WORDS:
-        # amb.nws.addressee, reading (b): only the listed words.
-        _other_reading(scan, s, end, depth, s + 1, s + 10, "nws.level", s + 5, ("ack", "tlm", "qry", "msg"))
+    # Any severity word is allowed (section 7, nws.level): p. 97/75 lists
+    # them with "such as ... etc.", so no reading limits the words.
     _other_reading(scan, s, end, depth, t0, end, "nws.text", t0, ("ack", "tlm", "qry"))
 
 

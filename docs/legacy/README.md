@@ -227,6 +227,25 @@ bytes are the form, and bytes out of range give `syntax`. A form
 defined by shape alone otherwise catches unrelated text too often to
 report on it.
 
+**[agreed]** Pages that disagree. When parts of APRS12c disagree, the
+format diagram and the explicit rule text are followed over an example.
+Between two rule texts, the page about the format in question is
+followed over a general page. An example may fill a gap that the
+diagram leaves, such as a separator it does not draw or a sign, but may
+not override what the diagram shows; an example of the earlier edition
+APRS 1.0.1 may fill such a gap where APRS12c gives none, unless a later
+text sets that example aside. Between texts of different editions, the
+later text is followed: a later text sets an earlier one aside when it
+says so, and also when it defines a form that the earlier text rules
+out, as the Mic-E type codes of the APRS 1.2 addendum do for the 1.0.1
+prohibition on p. 72/54. Each such case
+is recorded as an erratum, whichever side is followed.
+
+**[agreed]** A form that the text describes, even without a full
+syntax, is a form the document defines: bytes of that form get no
+finding, and the strict bullet of the next paragraph applies only to
+bytes outside the description.
+
 **[agreed]** Kinds by situation. The files report like situations
 with the same kind:
 
@@ -234,15 +253,33 @@ with the same kind:
 - A fixed-width field whose bytes do not fit, including a value written
   with more or fewer digits than its width: `syntax`. Nothing delimits
   the field, so excess bytes cannot be counted against it.
-- A delimited or variable-length field longer or shorter than a stated
-  length: `value`, at the first byte past the limit when it is too long.
+- A delimited or variable-length field that is not empty and is longer
+  or shorter than a stated length: `value`, at the first byte past the
+  limit when it is too long.
+- **[agreed]** An empty required field is a missing field: `syntax`
+  where its first byte was expected. A list with too few or too many
+  fields is a matter of structure: `syntax` at the separator, or the
+  end, where the count departs from the one stated; the fields after it
+  keep their tokens. A list whose fields come in groups, such as the
+  three coefficients of a telemetry channel, that stops inside a group
+  has too few fields.
 - A value outside a stated range, or a code outside the closed set of
   values that a table or a form defines: `value`.
 - A code that a stated prohibition covers ("do not use"): `syntax`.
-- A code outside a list that the document does not close, at a place
-  the document leaves open for it, or a combination of pieces that are
-  each allowed and about which the document says nothing: `unstated`.
-  Where the document says that other codes are allowed: no finding.
+- A code outside a list that the document does not close, or whose
+  list it leaves to a register kept elsewhere, at a place the document
+  leaves open for it, or a combination of pieces that are each allowed
+  and about which the document says nothing: `unstated`. Where the
+  document says that other codes are allowed, as a list given with
+  "such as" or "etc." does: no finding. **[agreed]** The code keeps its
+  token when its extent is known. When an unknown code leaves the
+  extent unknown, as an element letter the document does not define,
+  reading stops there and the bytes from it are judged as whatever may
+  stand next: a tail, a residue, or `unknown-format`.
+- **[agreed]** A register kept outside APRS12c, to which the document
+  defers, is used at the version this project pins, and the entry names
+  that version. The Mic-E device codes are checked against
+  `3rdparty/aprs-deviceid` this way.
 - **[agreed]** A byte pattern outside every form the document defines,
   such as a relaxed number or a fill that no form shows, is not that
   form. At a place the format fixes it gives `syntax`; in free text it

@@ -123,9 +123,8 @@ def _report(scan, start, end, depth, texts, alnum_seq=False):
             scan.find("tlm.analog", "syntax", bad)
             if c < 0:
                 return mic_bare
-        elif not strict:
-            # amb.tlm.value: the relaxed number.
-            scan.find("tlm.analog", "unstated", p)
+        # The relaxed number gives no finding: the text describes it
+        # (amb.tlm.value).
         p = c + 1
 
     if p >= end:
@@ -300,13 +299,19 @@ def definition(scan, t0, te, depth, kw=None):
             if bad is not None:
                 scan.find(item, "syntax", bad)
             if k == 0 and b == body:
-                # A1 holds at least one byte; a ',' follows here.
-                scan.find(item, "value", body)
+                # A1 holds at least one byte and a ',' follows here: an empty
+                # required field is missing (README section 3, Kinds by
+                # situation).
+                scan.find(item, "syntax", body)
             elif b - body > _NAME_MAX[k]:
                 scan.find(item, "value", body + _NAME_MAX[k])
         if c < 0:
-            return
+            break
         k, a = k + 1, c
+    if kw == b"EQNS." and k < most and (k + 1) % 3:
+        # A list that stops inside a channel's three coefficients has too few
+        # fields: the next coefficient was expected at the end.
+        scan.find(item, "syntax", te)
 
 
 def _bits(scan, t0, te, depth):

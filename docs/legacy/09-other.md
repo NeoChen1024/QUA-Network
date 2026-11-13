@@ -92,16 +92,21 @@ from that search, which covers the whole information field.
 | <a id="cap.value"></a>`cap.value` | Value | 1 or more bytes 0x21–0x7E other than `,`. An `=` with nothing after it gives `syntax`. For the tokens `MSG_CNT` and `LOC_CNT` the value is a count, so digits; any other byte gives `syntax`, as a byte outside the set ([README section 3](README.md#3-tokenizer-model)). | no | `,` or end of field | p. 101/77 |
 | <a id="cap.pad"></a>`cap.pad` | Padding | One or more `SP` before or after a token or value. A token of its own; gives `ambiguous` at its first byte where the field read with the spaces as padding would give no `syntax` or `value` finding of its own ([amb.cap.form](#amb.cap.form)). | no | the next byte that is not `SP` | — |
 
+An item with no bytes, between two `cap.sep` or between one and either
+end of the field, and an `=` with nothing after it, are missing fields:
+`syntax` on `cap.item` or `cap.value` where the first byte was expected
+([README section 3](README.md#3-tokenizer-model), Kinds by situation).
+A field with nothing after `<` holds one item with no bytes.
+
 **[proposed]** Tokens. Each item is a `cap.item` token at the level of
 `cap.sep`, with its `cap.pad`, `cap.token` and `cap.value` one level
 deeper; the `=` has no token. A token runs from its first to its last
 byte that is not `SP` before the first `=`, and a value likewise after
 it, so a `SP` inside one is a byte outside its set and gives `syntax`
 there. An item of `SP` only is empty and has no `cap.pad`: `syntax` on
-`cap.item` at its first byte, or where it was expected when it has no
-bytes. Only `SP` before `=` gives `syntax` on `cap.token` at the
-item's first byte; nothing or only `SP` after it gives `syntax` on
-`cap.value` at the byte after `=`. Reading (b) of
+`cap.item` at its first byte. Only `SP` before `=` gives `syntax` on
+`cap.token` at the item's first byte; only `SP` after it gives `syntax`
+on `cap.value` at the byte after `=`. Reading (b) of
 [amb.cap.form](#amb.cap.form) divides the bytes as this reading does, so
 it has no finding of its own and every `cap.pad` gets its `ambiguous`
 finding.
@@ -130,8 +135,9 @@ the run of letters from offset 1, possibly empty, and `qry.end` gives
 `syntax` where the `?` was expected. Reading goes on after a missing
 `?` where the start of the footprint can be told, by the test below;
 otherwise the rest is residue. An earlier draft made the rest residue
-in every case. **[proposed]** An empty type gives `syntax` at offset
-1; with the `?` missing as well, both findings are at offset 1.
+in every case. An empty type is a missing field and gives `syntax` at
+offset 1, where its first byte was expected (Kinds by situation); with
+the `?` missing as well, both findings are at offset 1.
 **[proposed]** The bytes after `qry.end` are a footprint when they start
 with a number of the `qry.lat` form, with or without its sign byte;
 other bytes give `syntax` on `qry.fp` at their first byte and are
@@ -151,10 +157,12 @@ of the radius, a fifth digit as well as text, cannot be counted against
 the fixed field; they give `syntax` on `qry.fp` at their first byte and
 are residue, since no rule can be told for them. This is how the "any
 other length" of the `qry.radius` row is reported for a radius that is
-too long. **[proposed]** A part with no bytes at all, between two `,`
-or after the last one, is missing, and a missing `,` is missing at the
-end of the field: each gives `syntax` on `qry.fp` where it was
-expected.
+too long. A part with no bytes at all, between two `,` or after the
+last one, is a missing field, and a footprint that stops before its
+radius has too few fields: each gives `syntax` where the missing part
+or `,` was expected, the end of the field for a missing `,`
+([README section 3](README.md#3-tokenizer-model), Kinds by situation).
+**[proposed]** These findings are on `qry.fp`.
 
 ### 4.1 Directed queries
 
@@ -500,10 +508,12 @@ directed type in the general form means.
 **Readings.** (a) Any upper-case type, unknown ones ignored by the
 receiver. (b) Only the three general types.
 
-**Reading taken.** **[proposed]** The three general types give no
+**Reading taken.** The three general types give no
 finding; a directed type gives `value`, as a value outside the set
 stated for this form; another upper-case type gives `unstated`, since
-the receiver rule (ignore it) is stated but the type is not. The
+the receiver rule (ignore it) is stated but the type is not
+([README section 3](README.md#3-tokenizer-model), Kinds by
+situation). The
 `value` finding for a directed type is the only one given, although (a)
 would accept the bytes
 ([README section 3](README.md#3-tokenizer-model), precedence). Otherwise

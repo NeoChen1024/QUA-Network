@@ -23,7 +23,8 @@ Third-party material is referenced, not copied into this repository.
 |---|---|---|
 | APRS Documentation Project (WB2OSZ) | submodule `3rdparty/aprsspec` | What legacy APRS packets are meant to say. See RFC Appendix D for the role of each document. |
 | Unishox2 | submodule `3rdparty/Unishox2` | The text compression codec of RFC 5.7, and the reference encoder its behaviour is checked against. |
-| aprs-deviceid | submodule `3rdparty/aprs-deviceid` | Destination callsign to software and device, for `qua-tocall-stats`. CC BY-SA 2.0. |
+| aprs-deviceid | submodule `3rdparty/aprs-deviceid` | Destination callsign to software and device, for `qua-tocall-stats`; the Mic-E device suffixes that the legacy tokenizer checks, at commit `c50d026` ([docs/legacy/04-mic-e.md](legacy/04-mic-e.md#amb.mice.suffix)). Read at run time, not copied. CC BY-SA 2.0. |
+| aprs-symbols (aprs.fi set, OH7LZB) | submodule `3rdparty/aprs-symbols` | How the symbols of the primary and alternate tables and the overlay characters are drawn, as examples (PNG sheets at several sizes, and the vector source). Not used by any tool. Licensing is per symbol, listed in its `COPYRIGHT.md`: some CC BY-SA 2.0 or public domain, many of unknown origin, a few brand logos. Nothing from it is copied into this repository. |
 | GNU Unifont | <https://unifoundry.com/unifont/> | A 16-pixel bitmap Unicode font with CJK coverage, suggested as a starting point for embedded designs (RFC 5.6). |
 | Fusion Pixel Font | submodule `3rdparty/fusion-pixel-font` | Bitmap fonts with CJK coverage at 8, 10 and 12 pixels, suggested likewise (RFC 5.6). Fonts under OFL 1.1, build tools under MIT. |
 | u8g2 | <https://github.com/olikraus/u8g2>, `tools/font/bdf/` | BDF sources of icon fonts (Open Iconic, Siji) and of Unifont, as test sets for `qua-icon-stats` (RFC 5.6). Read at commit `ab9e48b2`. Each font carries its own licence. |

@@ -37,10 +37,10 @@ p. 132/108).
 | <a id="obj.dti"></a>`obj.dti` | Data type identifier | `';'` at offset 0. | Required | 1 byte | p. 31/17, p. 76/58 |
 | <a id="obj.name"></a>`obj.name` | Object name | Offsets 1 to 9, each byte 0x20–0x7E. Trailing SP are padding and not part of the name; case is significant. Nine SP give a `syntax` finding ([amb.obj.name](#amb.obj.name)). | Required | 9 bytes | p. 76/58 |
 | <a id="obj.state"></a>`obj.state` | Live or killed | Offset 10: `'*'` live, `'_'` killed. Any other byte gives a `syntax` finding ([amb.obj.name](#amb.obj.name)). | Required | 1 byte | p. 76/58 |
-| <a id="obj.time"></a>`obj.time` | Timestamp | Offsets 11 to 17: [`time.dhm`](02-fields.md#time.dhm) or [`time.hms`](02-fields.md#time.hms). **[proposed]** Required ([amb.obj.time](#amb.obj.time)). | Required | 7 bytes | p. 76/58, p. 153/129 |
+| <a id="obj.time"></a>`obj.time` | Timestamp | Offsets 11 to 17: [`time.dhm`](02-fields.md#time.dhm) or [`time.hms`](02-fields.md#time.hms). Required ([amb.obj.time](#amb.obj.time); README section 3, Pages that disagree). | Required | 7 bytes | p. 76/58, p. 153/129 |
 | <a id="obj.pos"></a>`obj.pos` | Position | From offset 18, or from offset 11 after a missing timestamp ([amb.obj.time](#amb.obj.time)). A digit there starts an uncompressed position: [`lat`](02-fields.md#lat), [`sym.table`](02-fields.md#sym.table), [`lon`](02-fields.md#lon), [`sym.code`](02-fields.md#sym.code), 19 bytes. A byte in the set of [`cmp.table`](02-fields.md#cmp.table) starts a compressed block, [`cmp.block`](02-fields.md#cmp.block), 13 bytes. `obj.pos` is the selector rule of [02-fields section 6.1](02-fields.md#61-telling-the-two-position-forms-apart): any other byte there is a `syntax` finding on `obj.pos` at that byte, and the bytes from it to the end of the field, whose extent cannot be told, are a `residue` that names `obj.pos` ([README section 3](README.md#3-tokenizer-model), Output and Placing a finding). | Required | 19 or 13 bytes | p. 55/37, p. 76/58 |
 | <a id="obj.ext"></a>`obj.ext` | Data extension | After an uncompressed position only: [`ext.csespd`](02-fields.md#ext.csespd), [`ext.phg`](02-fields.md#ext.phg) or [`ext.phgr`](02-fields.md#ext.phgr), [`ext.rng`](02-fields.md#ext.rng), [`ext.dfs`](02-fields.md#ext.dfs) or the area descriptor [`ext.area`](02-fields.md#ext.area) (section 4). | Optional | 7 bytes; 9 for `ext.phgr` | p. 76/58, p. 33/19 |
-| <a id="obj.cmt"></a>`obj.cmt` | Comment | The rest, read as [`cmt.text`](02-fields.md#cmt.text) with the comment items of [02-fields.md](02-fields.md#82-items-found-inside-a-comment) section 8, the braces of sections 4 and 5 below, a frequency at its start ([09-other.md](09-other.md#7-frequency-specification)), and base-91 telemetry, which gives `unstated` here ([amb.tlm.b91.where](07-telemetry.md#amb.tlm.b91.where)). At most 36 bytes after an extension, the 9-byte [`ext.phgr`](02-fields.md#ext.phgr) included, as in [amb.pos.cmtlen](03-position.md#amb.pos.cmtlen), and 43 without; **[proposed]** 43 after a compressed position ([err.obj.cmplen](#err.obj.cmplen)). A longer comment gives a `value` finding. | Optional | End of information field | p. 76/58, p. 132/108 |
+| <a id="obj.cmt"></a>`obj.cmt` | Comment | The rest, read as [`cmt.text`](02-fields.md#cmt.text) with the comment items of [02-fields.md](02-fields.md#82-items-found-inside-a-comment) section 8, the braces of sections 4 and 5 below, a frequency at its start ([09-other.md](09-other.md#7-frequency-specification)), and base-91 telemetry, which gives `unstated` here ([amb.tlm.b91.where](07-telemetry.md#amb.tlm.b91.where)). At most 36 bytes after an extension, the 9-byte [`ext.phgr`](02-fields.md#ext.phgr) included, as in [amb.pos.cmtlen](03-position.md#amb.pos.cmtlen), and 43 without; 43 after a compressed position, from the object diagram ([err.obj.cmplen](#err.obj.cmplen); README section 3, Pages that disagree). A longer comment gives a `value` finding. | Optional | End of information field | p. 76/58, p. 132/108 |
 
 The token of byte 0 carries `obj.dti`, so that the tokens show the
 packet as an object report
@@ -99,7 +99,7 @@ and a comment. It has no timestamp (p. 77/59, p. 132/108).
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|
 | <a id="item.dti"></a>`item.dti` | Data type identifier | `')'` at offset 0. Gives a `discouraged` finding (section 2). | Required | 1 byte | p. 31/17, p. 77/59 |
-| <a id="item.name"></a>`item.name` | Item name | From offset 1: bytes 0x20–0x7E other than `'!'` and `'_'`, 3 to 9 of them. **[proposed]** A name of 1 or 2 bytes, or of more than 9, gives a `value` finding; an empty name, or no `'!'` or `'_'` at all, a `syntax` finding ([amb.item.name](#amb.item.name)). | Required | The first `'!'` or `'_'` | p. 77/59 |
+| <a id="item.name"></a>`item.name` | Item name | From offset 1: bytes 0x20–0x7E other than `'!'` and `'_'`, 3 to 9 of them. A name of 1 or 2 bytes, or of more than 9, gives a `value` finding, and an empty name, a missing field, a `syntax` finding ([README section 3](README.md#3-tokenizer-model), Kinds by situation). **[proposed]** No `'!'` or `'_'` at all gives a `syntax` finding ([amb.item.name](#amb.item.name)). | Required | The first `'!'` or `'_'` | p. 77/59 |
 | <a id="item.state"></a>`item.state` | Live or killed | `'!'` live, `'_'` killed. | Required | 1 byte | p. 77/59 |
 | <a id="item.pos"></a>`item.pos` | Position | As `obj.pos`, directly after `item.state`. `item.pos` is the selector rule here and carries the `syntax` finding and the `residue`, as `obj.pos` does. | Required | 19 or 13 bytes | p. 77/59 |
 | <a id="item.ext"></a>`item.ext` | Data extension | As `obj.ext`. | Optional | 7 bytes | p. 77/59 |
@@ -245,8 +245,9 @@ the [README](README.md#4-decoders-consulted), not run.
   the area
   template (p. 78/60) and the FLIGHTPTH example (p. 80/62) have none.
 - **Readings.** (a) Required. (b) Optional, detected by its shape.
-- **Reading taken.** **[proposed]** (a), as the diagram and most
-  decoders read have it. A missing timestamp gives a `syntax` finding on
+- **Reading taken.** (a), as the diagram has it
+  ([README section 3](README.md#3-tokenizer-model), Pages that
+  disagree); most decoders read agree. A missing timestamp gives a `syntax` finding on
   `obj.time` at offset 11. **[proposed]** The shape of the bytes is the
   test: when offsets 11 to 16 are digits, the bytes are the timestamp
   and are read by [`time.dhm`](02-fields.md#time.dhm) or
@@ -344,12 +345,14 @@ the [README](README.md#4-decoders-consulted), not run.
   [README section 3](README.md#3-tokenizer-model) they are decoder
   behaviour (pdn-aprs and javAPRSlib, below), not listed readings, and
   give no finding.
-- **Reading taken.** **[proposed]** (a), with a length outside 3 to 9
-  giving `value`, as a field outside its stated length; an empty name or
-  no terminator gives `syntax`. Each is a finding at the bytes
-  concerned. No other reading is listed, so there is no `ambiguous`
+- **Reading taken.** **[proposed]** (a), with no terminator giving
+  `syntax`. No other reading is listed, so there is no `ambiguous`
   finding.
-- **Placement.** A name of 1 or 2 bytes gives the `value` finding at
+- **Placement.** Under (a), a name that is not empty and is outside 3
+  to 9 bytes gives `value`, as a field outside its stated length, and
+  an empty name is a missing field and gives `syntax`
+  ([README section 3](README.md#3-tokenizer-model), Kinds by
+  situation). A name of 1 or 2 bytes gives the `value` finding at
   its terminator, where the first missing byte was expected; a name of
   more than 9 bytes gives it at its tenth byte, the first past the
   limit; an empty name gives `syntax` at offset 1, where the terminator

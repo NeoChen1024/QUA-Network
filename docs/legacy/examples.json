@@ -1524,20 +1524,14 @@
    "printed": "68",
    "kind": "packet",
    "verdict": "conform",
-   "findings": [
-    "unstated tlm.analog @6",
-    "unstated tlm.analog @11",
-    "unstated tlm.analog @15",
-    "unstated tlm.analog @21",
-    "unstated tlm.analog @26"
-   ],
+   "findings": [],
    "basis": [
     "07-telemetry.md#tlm.analog",
     "07-telemetry.md#amb.tlm.value",
     "07-telemetry.md#err.tlm.analog",
     "07-telemetry.md#tlm.digital"
    ],
-   "note": "The sequence is 3 digits. All five analog values are decimals and one is negative, so each is the relaxed number and gives unstated. The digital value is at 31-38, with no comment.",
+   "note": "The sequence is 3 digits. All five analog values are decimals and one is negative, so each is the relaxed number and gives unstated. The digital value is at 31-38, with no comment. Re-derived after amb.tlm.value was agreed: a relaxed value, which the text describes, gives no finding.",
    "doubt": "The reading does not state where the unstated finding goes; I put it at the first byte of each value. The relaxed grammar puts its optional '-' before 'digits'; I read the sign as applying to the decimal forms as well, as err.tlm.analog implies for the negative value. Otherwise the fifth value would give syntax."
   },
   {

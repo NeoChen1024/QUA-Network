@@ -152,8 +152,7 @@ none to a matching text; the `value` finding of the `msg.text` length
 limit (case 5) is the only one it can give. Whether a definition message (case 4) gives one is 07's to decide. The
 bytes that the precedence rule looks at are: the text from offset 11
 for [amb.msg.order](#amb.msg.order) and [amb.msg.ack](#amb.msg.ack);
-the addressee for [amb.bln.forms](#amb.bln.forms) and for an `NWS-`
-word that is not listed ([amb.nws.addressee](#amb.nws.addressee)); and
+the addressee for [amb.bln.forms](#amb.bln.forms); and
 the whole field after the identifier for an addressee that starts with
 `NWS_`, `SKY`, `CWA` or `BOM`, since reading (c) of that entry would
 read every byte of it differently. That last finding is given in cases
@@ -161,8 +160,8 @@ read every byte of it differently. That last finding is given in cases
 ([07 section 4](07-telemetry.md#4-telemetry-definition-messages)). The `ambiguous` findings
 are given against `bln.text` or `nws.text` at offset 11
 ([amb.msg.order](#amb.msg.order)), `bln.addr` at offset 4
-([amb.bln.forms](#amb.bln.forms)), and `nws.level` at offset 5 or
-`msg.addr` at offset 1 ([amb.nws.addressee](#amb.nws.addressee)).
+([amb.bln.forms](#amb.bln.forms)), and `msg.addr` at offset 1
+([amb.nws.addressee](#amb.nws.addressee)).
 
 ## 3. Messages
 
@@ -171,7 +170,7 @@ are given against `bln.text` or `nws.text` at offset 11
 | <a id="msg.text"></a>`msg.text` | Message text | From offset 11. Text bytes, except `'{'`. More than 67 bytes gives `value`. May be empty. Reading: [amb.msg.text](#amb.msg.text). | Required, 0 bytes allowed | First `'{'`, or end of information field | p. 93/71 |
 | <a id="msg.id.open"></a>`msg.id.open` | Identifier marker | `'{'`. | Optional; its presence asks for an acknowledgement | Fixed 1 byte | p. 93/71 |
 | <a id="msg.id"></a>`msg.id` | Message number | 1-5 letters or digits, to the end of the information field. 6 or more letters or digits give `value`; any other byte gives `syntax`. Not used in the reply-ack form. Reading: [amb.msg.id](#amb.msg.id). | Required after `msg.id.open` | End of information field | p. 93/71 |
-| <a id="msg.id.mm"></a>`msg.id.mm` | Reply-ack: own number | 2 letters or digits. Another count of letters or digits gives `value`. | Required in the reply-ack form | `'}'` | p. 95/73 |
+| <a id="msg.id.mm"></a>`msg.id.mm` | Reply-ack: own number | 2 letters or digits. Another count of letters or digits, other than none, gives `value`; an empty one gives `syntax` (below). | Required in the reply-ack form | `'}'` | p. 95/73 |
 | <a id="msg.id.close"></a>`msg.id.close` | Reply-ack separator | `'}'`. Its presence alone tells the receiver that the sender handles reply-acks. | Required in the reply-ack form | Fixed 1 byte | p. 95/73 |
 | <a id="msg.id.aa"></a>`msg.id.aa` | Reply-ack: acknowledged number | 0 or 2 letters or digits: the number of a message from the addressee that this packet acknowledges. Another count gives `value`. | Optional | End of information field | p. 95/73 |
 
@@ -192,14 +191,16 @@ letters or digits, and `syntax` at its first byte that is not a letter
 or digit; both can be given, as two independent defects. `msg.id.mm`
 and `msg.id.aa` follow the same pattern: `value` at the first byte past 2 letters or
 digits; `value` where the first missing letter or digit was expected
-when the part is all letters or digits but shorter than allowed, which
-is the `'}'` for `msg.id.mm` and the end of the field for `msg.id.aa`;
-and `syntax` at the first other byte, a second `'}'` included. An
-earlier draft placed the `value` finding of a short part at its first
-byte. **[proposed]** A `'{'` with nothing after it gives `syntax`
-against `msg.id` at the end of the field, where its first byte was
-expected. **[proposed]** An empty `msg.id.mm` is a part shorter than
-allowed, and gives `value` at the `'}'`.
+when the part is all letters or digits, not empty, but shorter than
+allowed, which is the `'}'` for `msg.id.mm` and the end of the field
+for `msg.id.aa`; and `syntax` at the first other byte, a second `'}'`
+included. An earlier draft placed the `value` finding of a short part
+at its first byte. An empty required part is a missing field and gives
+`syntax` where its first byte was expected: a `'{'` with nothing after
+it gives `syntax` against `msg.id` at the end of the field, and an
+empty `msg.id.mm` gives `syntax` at the `'}'`, as decided by the
+author. An earlier draft read an empty `msg.id.mm` as a part shorter
+than allowed and gave `value` there.
 
 **[proposed]** `msg.text` (except in case 4 of section 2.1),
 [`bln.text`](#bln.text), [`nws.text`](#nws.text) and, in an NTS line,
@@ -277,12 +278,15 @@ acknowledged.
 | <a id="bln.text"></a>`bln.text` | Bulletin text | From offset 11. Text bytes, `'{'` included. More than 67 bytes gives `value`. May be empty. | Required, 0 bytes allowed | End of information field, or `bln.ref` | p. 96/74, p. 97/75 |
 | <a id="bln.ref"></a>`bln.ref` | Reference identifier | `'{'` followed by 1-5 letters or digits at the very end of the field. The tokenizer reports `ambiguous` at the `'{'` when the bytes are also valid bulletin text: the text from offset 11, `bln.ref` included, is at most 67 bytes. Reading: [amb.bln.ref](#amb.bln.ref). | Optional | End of information field | p. 97/75 |
 
-**[proposed]** An addressee starting with `BLN` that fits none of the
+An addressee starting with `BLN` that fits none of the
 three forms (for example a letter followed by a group name, a lower-case
 letter or a punctuation byte at offset 4) is still read as a bulletin
-addressee. The tokenizer reports `unstated` against `bln.addr` and
-tokenizes the bytes after `BLN` as one depth-1 `bln.group`. It also
-gives the `ambiguous` finding of [amb.bln.forms](#amb.bln.forms), at
+addressee, whose bytes after `BLN` the document leaves undefined and
+whose extent the fixed 9 bytes give
+([README section 3](README.md#3-tokenizer-model), Kinds by situation).
+The tokenizer reports `unstated` against `bln.addr` and
+tokenizes the bytes after `BLN` as one depth-1 `bln.group`.
+**[proposed]** It also gives the `ambiguous` finding of [amb.bln.forms](#amb.bln.forms), at
 offset 4, where the packet read as a message would give no `syntax` or
 `value` finding of its own.
 
@@ -310,7 +314,7 @@ for repeated acknowledgements and their spacing (p. 94/72).
 |---|---|---|---|---|---|
 | <a id="nws.addr"></a>`nws.addr` | NWS addressee | Offsets 1-9: `NWS-` and a severity word, padded with `SP` to 9 bytes. Depth-1 tokens below. Reading: [amb.nws.addressee](#amb.nws.addressee). | Required | Fixed 9 bytes | p. 97/75 |
 | <a id="nws.kw"></a>`nws.kw` | Prefix | `NWS-` at offsets 1-4. | Required | Fixed 4 bytes | p. 97/75 |
-| <a id="nws.level"></a>`nws.level` | Severity word | 1-5 letters or digits from offset 5. The document gives `ADVIS`, `WARN` and `WATCH` and leaves the list open; any word is accepted. Other bytes as for `msg.addr.name`. | Required | First `SP`, or offset 9 | p. 97/75 |
+| <a id="nws.level"></a>`nws.level` | Severity word | 1-5 letters or digits from offset 5. Other bytes as for `msg.addr.name`. **[agreed]** The words `ADVIS`, `WARN` and `WATCH` are given on p. 97/75 with "such as ... etc.", so the document allows other words: any word gets no finding. An earlier draft said only that the list was open and any word accepted, and still gave an unlisted word an `ambiguous` finding ([amb.nws.addressee](#amb.nws.addressee)). | Required | First `SP`, or offset 9 | p. 97/75 |
 | [`msg.addr.pad`](#msg.addr.pad) | Padding | `SP` bytes to offset 9. | Required when the word is shorter than 5 bytes | Offset 9 | p. 97/75 |
 | [`msg.sep`](#msg.sep) | Separator | `':'` at offset 10. | Required | Fixed 1 byte | p. 97/75 |
 | <a id="nws.text"></a>`nws.text` | Bulletin text | From offset 11. Text bytes, no length limit. Its inner structure is defined outside APRS12c and is not tokenized. | Required | End of information field, or `nws.ref` | p. 97/75 |
@@ -320,9 +324,13 @@ for repeated acknowledgements and their spacing (p. 94/72).
 row means bytes outside its own set of letters and digits: they get the
 findings that `msg.addr.name` gives a byte outside its set. A `'-'`
 therefore gives `unstated` in `nws.level`, although `msg.addr.name`
-allows it. An empty `nws.text`, also one followed by `nws.ref`, gives
-`syntax` against `nws.text` at offset 11; under precedence, an
-`nws.ref` that starts there then gets no `ambiguous` finding.
+allows it.
+
+An empty `nws.text`, also one followed by `nws.ref`, is a missing field
+and gives `syntax` against `nws.text` at offset 11, where its first byte
+was expected; an `nws.ref` that starts there then gets no `ambiguous`
+finding ([README section 3](README.md#3-tokenizer-model), Kinds by
+situation; Precedence).
 
 ## 8. NTS radiograms
 
@@ -337,7 +345,7 @@ identifier. The NTS tokens are depth-1 tokens inside `msg.text`.
 | <a id="nts.field"></a>`nts.field` | Field | Text bytes other than `'\'`. | See below | `'\'` or end of `msg.text` | p. 98/76 |
 | <a id="nts.sep"></a>`nts.sep` | Field separator | `'\'`. | Between fields | Fixed 1 byte | p. 98/76 |
 
-Number of `nts.field` tokens after the prefix, by type byte (p. 98/76):
+Number of fields after the prefix, by type byte (p. 98/76):
 
 | Type | Line | Fields |
 |---|---|---|
@@ -348,19 +356,34 @@ Number of `nts.field` tokens after the prefix, by type byte (p. 98/76):
 | `S` | Signature | 1 |
 | `R` | Received from, date and time, sent to, date and time | 4 |
 
-**[proposed]** A field count outside its row gives `syntax` against
-`nts.prefix`. The 67-byte limit of `msg.text` applies to the whole line,
-prefix included (p. 98/76). That the `#`, `A`, `S` and `R` lines are
-required, and that there are at most six text lines, are rules about a
-set of packets; the tokenizer reads one packet at a time and does not
-check them.
+The fields are counted by their separators, and a count outside its
+row is a matter of structure: `syntax` against `nts.sep` at the
+separator that starts the first field too many, or at the end of
+`msg.text`, where the next separator was expected, when there are too
+few; the fields after an extra separator keep their tokens
+([README section 3](README.md#3-tokenizer-model), Kinds by situation;
+Placing a finding). An earlier draft gave the finding against
+`nts.prefix`.
 
-**[proposed]** The count is of `nts.field` tokens, as the table says.
-An empty field, between two `nts.sep` bytes or between one and the
-prefix or the end of `msg.text`, has no token and does not count: a
-`'#'` line with an empty field, such as a missing time, has 7 fields
-and gives `syntax`, and so does a type `1` line with nothing after the
-prefix.
+**[proposed]** The 67-byte limit of `msg.text` applies to the whole
+line, prefix included (p. 98/76). That the `#`, `A`, `S` and `R` lines
+are required, and that there are at most six text lines, are rules
+about a set of packets; the tokenizer reads one packet at a time and
+does not check them.
+
+**[agreed]** Each field that the table counts is required, an address
+line in the middle of an `A` line included. An empty
+field, between two `nts.sep` bytes or between one and the prefix or the
+end of `msg.text`, has no token but counts toward the number of fields,
+and is a missing field: `syntax` against `nts.field` where its first
+byte was expected. A `'#'` line with an empty field, such as a missing
+time, has 8 fields and gives that one finding, and so does a type `1`
+line with nothing after the prefix, at the end of the text. An empty
+field after the first field too many gets no finding of its own. A line
+with too few fields whose last field is empty gets both findings at the
+end, each on its own rule. An earlier draft did not count an empty
+field and reported it through the count
+([README section 3](README.md#3-tokenizer-model), Kinds by situation).
 
 A byte that is not a text byte inside an `nts.field` gets one `syntax`
 finding against `nts.field`, the most specific rule that holds it, and
@@ -401,8 +424,11 @@ not a free-text field: a `'!x!'` in it is no token and gets the
   javAPRSlib and aprs-parser-rs delimit the addressee at the first
   `':'`, and pdn-aprs tolerates an earlier `':'` (see Decoders;
   [README section 3](README.md#3-tokenizer-model)).
-- **Taken.** **[proposed]** (a), with other printable bytes in the name
-  reported as `unstated` rather than `syntax`. Lower case is accepted.
+- **Taken.** **[proposed]** (a). Lower case is accepted. Other printable
+  bytes in the name are reported as `unstated` rather than `syntax`: the
+  document states no byte set for the name, so they lie outside a list
+  it does not close
+  ([README section 3](README.md#3-tokenizer-model), Kinds by situation).
   An interior space, a `':'` inside the 9 bytes, or a separator before
   offset 10 gives `syntax`, and that finding alone is given, although
   (b) may accept the bytes
@@ -514,7 +540,12 @@ not a free-text field: a `'!x!'` in it is no token and gets the
   (b) or (c) may accept the bytes
   ([README section 3](README.md#3-tokenizer-model), precedence). Where
   (a) accepts the bytes, (b) and (c) divide them the same way. No
-  `ambiguous` finding.
+  `ambiguous` finding. An empty `msg.id.mm` is a missing field and
+  gives `syntax` at the `'}'` instead, as decided by the author
+  ([section 3](#3-messages);
+  [README section 3](README.md#3-tokenizer-model), Kinds by situation),
+  and that finding too is given alone; an earlier draft counted it
+  among the other lengths and gave `value`.
 - **Decoders.** aprslib accepts 2 + 2 or 2 + nothing (message.py:92,
   113). Dire Wolf recognises the form only when `'}'` is the third byte of
   the number (decode_aprs.c:2062). FAP accepts 1-5 and 1-5 or nothing
@@ -631,8 +662,10 @@ not a free-text field: a `'!x!'` in it is no token and gets the
 - **Readings.** (a) An empty name is a general bulletin; a group name is
   1-5 bytes. (b) Any `BLN` prefix is a bulletin and the rest is free.
   (c) Only the three defined shapes are bulletins; others are messages.
-- **Taken.** **[proposed]** (a), with other `BLN` shapes read as bulletins
-  and given `unstated` (section 6).
+- **Taken.** (a), with other `BLN` shapes read as bulletins and given
+  `unstated` (section 6): a shape outside the forms the document defines,
+  at a place it leaves open, in a field whose extent is fixed
+  ([README section 3](README.md#3-tokenizer-model), Kinds by situation).
 - **In the bytes.** **[proposed]** Under the test of
   [README section 3](README.md#3-tokenizer-model): a `BLN` addressee that
   fits none of the three shapes is a bulletin here and a message under
@@ -703,22 +736,24 @@ not a free-text field: a `'!x!'` in it is no token and gets the
   examples and the list is open (p. 97/75). The text format is deferred
   to an external page (p. 97/75). Other prefixes used for weather alerts
   are not mentioned.
-- **Readings.** (a) `NWS-` and any 1-5 letters or digits. (b) Only the
-  listed words. (c) Also `NWS_`, `SKY`, `CWA` and `BOM` prefixes.
+- **Readings.** (a) `NWS-` and any 1-5 letters or digits. (c) Also
+  `NWS_`, `SKY`, `CWA` and `BOM` prefixes. An earlier draft also listed
+  (b), only the words `ADVIS`, `WARN` and `WATCH`. P. 97/75 gives them
+  with "such as ... etc.", so (b) contradicts the document and by
+  [README section 3](README.md#3-tokenizer-model) is not a listed
+  reading; it gives no finding.
 - **Taken.** **[proposed]** (a). Other prefixes are ordinary message
   addressees; `NWS_` gives `unstated` through its `'_'` byte.
 - **In the bytes.** **[proposed]** Visible, under the test of
-  [README section 3](README.md#3-tokenizer-model), in two cases. An
-  `NWS-` addressee whose word is not `ADVIS`, `WARN` or `WATCH` is an NWS
-  bulletin here and a message under reading (b); where the packet, read
-  as a message by section 2.1 from case 3 on, would give no `syntax` or
-  `value` finding of its own, it gets an `ambiguous` finding at offset
-  5. An
+  [README section 3](README.md#3-tokenizer-model), in one case. An
   addressee starting with `NWS_`, `SKY`, `CWA` or `BOM` is a message
   here and an NWS bulletin under reading (c), which accepts any text
   bytes; it gets an `ambiguous` finding at offset 1, unless the packet
   already gives a `syntax` or `value` finding on those bytes. An earlier
-  draft called the question not visible.
+  draft called the question not visible. A later one also gave an
+  `NWS-` addressee whose word is not `ADVIS`, `WARN` or `WATCH` an
+  `ambiguous` finding at offset 5 from reading (b), which is no longer
+  listed (`nws.level`, section 7).
 - **Decoders.** Dire Wolf accepts `NWS-`, `NWS_`, and `SKY`, `CWA`, `BOM`
   prefixes, and reports `NWS` without `'-'` or `'_'` (decode_aprs.c:1901,
   1916). Xastir accepts `NWS-`, `NWS_`, `BOM-`, `BOM_` (db.c:14306) and

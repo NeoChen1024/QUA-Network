@@ -230,15 +230,19 @@ def _path(scan, entries, depth, inner=False):
             d = depth + 1
             if ee == es:
                 scan.find("tp.path", "syntax", es - 1)
-                continue
             star_at = line.find(b"*", es, ee)
         else:
             scan.tok("path.sep", es - 1, es, depth)
             d = depth
             if ee == es:
-                # An empty entry does not count toward the limit of 8.
                 scan.find("path.sep", "syntax", es - 1)
-                continue
+        if ee == es:
+            # An empty entry counts toward the limit of 8 (01 path.sep).
+            if not q_seen:
+                n_digi += 1
+                if n_digi == 9:
+                    scan.find("path.digi", "syntax", es - 1)
+            continue
         entry = line[es:ee]
         if not q_seen and _Q.match(entry):
             q_seen = True
@@ -279,7 +283,7 @@ def _path(scan, entries, depth, inner=False):
             ae, star = _strip_star(line, es, ee)
             scan.tok("path.digi", es, ae, d)
         if n_digi == 9:
-            scan.find("path.digi", "value", es)
+            scan.find("path.digi", "syntax", es - 1)
         if ae == es:
             if not inner:
                 scan.find("path.digi", "syntax", es)

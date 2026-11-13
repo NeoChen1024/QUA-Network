@@ -1016,7 +1016,9 @@ follow position data without excluding the compressed form (p. 45/27).
 **Readings.** (a) No slot; the bytes are comment. (b) A slot as after an
 uncompressed position.
 
-**Reading taken.** **[proposed]** (a), following the diagrams.
+**Reading taken.** (a), following the diagrams over the general
+extension chapter ([README section 3](README.md#3-tokenizer-model),
+Pages that disagree).
 
 **In the bytes.** Visible. Under (a) the bytes after `T` are comment
 text, so a comment whose first bytes fit an extension is a case that

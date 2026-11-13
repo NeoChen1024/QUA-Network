@@ -10,3 +10,6 @@
 [submodule "3rdparty/fusion-pixel-font"]
 	path = 3rdparty/fusion-pixel-font
 	url = https://github.com/TakWolf/fusion-pixel-font.git
+[submodule "3rdparty/aprs-symbols"]
+	path = 3rdparty/aprs-symbols
+	url = https://github.com/hessu/aprs-symbols

@@ -38,7 +38,33 @@ def read(scan, start, end, depth):
     """A ':' field; start is the identifier byte, whose token is emitted."""
     texts = []
     _read(scan, start, end, depth, texts, True)
+    _keyword_case(scan, start, end, depth)
     noarchive_outside(scan, start, end, texts)
+
+
+def _keyword_case(scan, s, end, depth):
+    """amb.msg.addressee: an addressee that starts with BLN or NWS- in
+    another case is a message addressee, since the keyword is stated in upper
+    case with no allowance (README section 3, Letter case). It gets an
+    ambiguous finding at its first byte where the reading that folds the case
+    of the keyword takes the packet as a bulletin or NWS bulletin and gives
+    no syntax or value finding of its own."""
+    line = scan.line
+    a0 = s + 1
+    for kw in (b"BLN", b"NWS-"):
+        k = a0 + len(kw)
+        if k <= end and line[a0:k] != kw and line[a0:k].upper() == kw:
+            break
+    else:
+        return
+    if _reported(scan, a0, k):
+        return
+    other = Scan(line[:a0] + kw + line[k:])
+    _read(other, s, end, depth, [], True)
+    mine = {(f.kind, f.offset) for f in scan.findings if f.kind in _SV}
+    if any((f.kind, f.offset) not in mine for f in other.findings if f.kind in _SV):
+        return
+    scan.find("msg.addr.name", "ambiguous", a0)
 
 
 def _read(scan, s, end, depth, texts, by_addressee):

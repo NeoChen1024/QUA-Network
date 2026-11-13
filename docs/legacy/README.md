@@ -210,7 +210,10 @@ more specific rule is given, as Placing a finding asks. The case
 in point is a Mic-E destination with a lower-case letter, or with more
 than six bytes in its callsign part: the part rule or `mice.dest` of
 [04-mic-e](04-mic-e.md#3-destination-address) reports the byte, and
-`addr.dest` gives no `syntax` finding there. Findings for different
+`addr.dest` gives no `syntax` finding there. **[agreed]** The address
+field still reports its other faults as on any address, such as its
+SSID or a `'*'` after it
+([04-mic-e section 3](04-mic-e.md#3-destination-address)). Findings for different
 faults keep their own rules, by the paragraph above, also at one byte.
 This is the default; an entry may state an exception, and then says
 so. **[proposed]** The more specific rule is the one whose field is

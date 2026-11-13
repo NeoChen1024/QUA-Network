@@ -41,8 +41,6 @@ _SET_ABC = _ZERO_FLAG | _CUSTOM | _STANDARD
 _SET_NSW = _ZERO_FLAG | _STANDARD
 _BLANK = frozenset(b"KLZ")
 _DEST_RULES = ("mice.dest.a", "mice.dest.b", "mice.dest.c", "mice.dest.ns", "mice.dest.lonoff", "mice.dest.we")
-# The rules on which 01-frame reports a destination not in the AX.25 form.
-_ADDRESS_RULES = ("addr.dest", "tp.dest", "tp.aea")
 
 
 def _dest_digit(c):
@@ -75,7 +73,6 @@ def destination(scan, start):
         # 01-frame reports a destination it could not take as an address.
         return
     ds, de, d = t.start, t.end, t.depth + 1
-    first = len(scan.findings)
     n = min(6, de - ds)
     digit = [None] * 6
     blank = [False] * 6
@@ -103,7 +100,6 @@ def destination(scan, start):
         # Such an address is not in the AX.25 form either (01 amb.addr.form).
         scan.residue(ds + 6, de, d, "mice.dest")
         scan.find("mice.dest", "syntax", ds + 6)
-    _drop_address_form(scan, first, ds, de)
 
     # Checks on the six bytes together. Blanks run from byte 6 leftwards;
     # those in bytes 1 and 2 are reported by their own rule above.
@@ -124,19 +120,6 @@ def destination(scan, start):
         scan.find("mice.dest", "value", next(p for p, k in flags if k != first))
 
     _dest_ssid(scan, t)
-
-
-def _drop_address_form(scan, first, ds, de):
-    """Withdraw the AX.25-form finding of 01-frame at a byte of the callsign
-    part that a rule of section 3 has just reported: one fault, two rules, and
-    the Mic-E rule is the more specific (README section 3). A finding at de is
-    kept, since there 01-frame may report a '*' or a missing SSID digit."""
-    own = {f.offset for f in scan.findings[first:] if f.kind == "syntax"}
-    scan.findings[:] = [
-        f
-        for f in scan.findings
-        if not (f.kind == "syntax" and f.rule in _ADDRESS_RULES and ds <= f.offset < de and f.offset in own)
-    ]
 
 
 def _dest_ssid(scan, t):

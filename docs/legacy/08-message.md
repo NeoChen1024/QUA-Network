@@ -431,7 +431,28 @@ not a free-text field: a `'!x!'` in it is no token and gets the
   javAPRSlib and aprs-parser-rs delimit the addressee at the first
   `':'`, and pdn-aprs tolerates an earlier `':'` (see Decoders;
   [README section 3](README.md#3-tokenizer-model)).
-- **Taken.** **[proposed]** (a). Lower case is accepted. Other printable
+- **Taken.** **[agreed]** Lower case in the addressee gives no
+  finding, as decided by the author: p. 109/85 notes that a message
+  sender's address need not follow the AX.25 rules and may hold
+  lower-case letters, which messaging applications have to handle, and
+  the acknowledgement on that page is
+  addressed back to that sender, so the document allows lower case
+  here. This is the Kinds by situation bullet of
+  [README section 3](README.md#3-tokenizer-model) for a place where
+  the document says other forms are allowed, not the Letter case
+  bullet. An earlier draft said only that lower case is accepted.
+  This does not reach the keywords `BLN` and `NWS-` that select a
+  bulletin or an NWS bulletin (section 2.1): the document shows them in
+  upper case with no allowance, so an addressee that starts with either
+  in another case is a message addressee. It gets an `ambiguous`
+  finding on `msg.addr.name` at offset 1 where the reading that folds
+  the case of the keyword takes the packet as a bulletin or NWS
+  bulletin and gives no `syntax` or `value` finding of its own, unless
+  this reading already reports the keyword's bytes
+  ([README section 3](README.md#3-tokenizer-model): Letter case,
+  Placing a finding, Precedence). An earlier draft gave such an
+  addressee no finding.
+  **[proposed]** (a). Other printable
   bytes in the name are reported as `unstated` rather than `syntax`: the
   document states no byte set for the name, so they lie outside a list
   it does not close
@@ -583,7 +604,13 @@ not a free-text field: a `'!x!'` in it is no token and gets the
   at most 5 letters or digits (p. 93/71, p. 94/72); Dire Wolf, Xastir,
   aprsc and javAPRSlib read it so (see Decoders;
   [README section 3](README.md#3-tokenizer-model)).
-- **Taken.** **[proposed]** (a), lower case only. Any other text that
+- **Taken.** (a), lower case only. This applies the Letter case rule
+  of [README section 3](README.md#3-tokenizer-model): p. 94/72 shows
+  `ack` and `rej` in lower case with no allowance for another case, so
+  another case is not the acknowledgement or rejection form, and the
+  text is message text, with an `ambiguous` finding where reading (b),
+  which folds the case, accepts it. An earlier draft gave (a) as a
+  reading of its own, labelled proposed. Any other text that
   starts with `ack` or `rej`, in any case, is read as message text:
   among them `ack` with a valid number and then `{` and an identifier,
   read as a message whose text is the acknowledgement, and `ack` with 6
@@ -689,7 +716,9 @@ not a free-text field: a `'!x!'` in it is no token and gets the
   section 6. That a general bulletin is also a group bulletin with an
   empty name, and that reading (b) would not divide the name part into
   tokens, is carried by every bulletin of that shape and gives no
-  finding. An earlier draft called the question not visible.
+  finding. An earlier draft called the question not visible. A `BLN`
+  in another case is not a bulletin addressee
+  ([amb.msg.addressee](#amb.msg.addressee)).
 - **Decoders.** Dire Wolf treats any `BLN` addressee as a bulletin,
   naming the three shapes and an "other" (decode_aprs.c:1870-1893).
   Xastir treats any `BLN` addressee as a bulletin (db.c:13982). aprslib
@@ -783,7 +812,9 @@ not a free-text field: a `'!x!'` in it is no token and gets the
   starting with `NWS_`, `SKY`, `CWA` or `BOM` an `ambiguous` finding at
   offset 1 from reading (c), and an `NWS-` addressee whose word is not
   `ADVIS`, `WARN` or `WATCH` one at offset 5 from reading (b); neither
-  is listed any longer (`nws.level`, section 7).
+  is listed any longer (`nws.level`, section 7). An `NWS-` in another
+  case is not an NWS addressee
+  ([amb.msg.addressee](#amb.msg.addressee)).
 - **Decoders.** Dire Wolf accepts `NWS-`, `NWS_`, and `SKY`, `CWA`, `BOM`
   prefixes, and reports `NWS` without `'-'` or `'_'` (decode_aprs.c:1901,
   1916). Xastir accepts `NWS-`, `NWS_`, `BOM-`, `BOM_` (db.c:14306) and

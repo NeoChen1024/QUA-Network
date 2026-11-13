@@ -60,15 +60,11 @@ def position(scan, start, end, depth):
     if line[start] in b"/@":
         if missing(scan, "pos.time", p, end):
             return
-        if end - p >= 8 and all(c in DIGITS for c in line[p : p + 8]):
-            # The time.mdhm form, which a position report does not admit.
-            scan.tok("time.mdhm", p, p + 8, depth)
-            scan.find("pos.time", "syntax", p)
-            p += 8
-        else:
-            p, ok = timestamp7(scan, p, end, depth)
-            if not ok:
-                return
+        # Always the 7 bytes the layout fixes: time.mdhm is not recognised
+        # here (README section 3, Obsolete and nested forms).
+        p, ok = timestamp7(scan, p, end, depth)
+        if not ok:
+            return
     if missing(scan, "pos.form", p, end):
         return
     c = line[p]
@@ -211,9 +207,9 @@ def grid(scan, start, end, depth):
             break
     if bad is None and e4 < s + 4:
         bad = e4
-    # The subsquare (amb.grid.form, amb.grid.range, amb.grid.case).
+    # The subsquare (amb.grid.form, amb.grid.range).
     n = 4
-    amb = False
+    closed = in_range = False
     if end - s >= 6 and line[s + 4] in _LETTERS and line[s + 5] in _LETTERS:
         a, b = line[s + 4], line[s + 5]
         closed = end > s + 6 and line[s + 6] == 0x5D
@@ -222,24 +218,27 @@ def grid(scan, start, end, depth):
             n = 6
         if closed and not in_range and bad is None:
             bad = s + 4 if a not in _AX else s + 5
-        # Without ']', reading (b) of amb.grid.form ends an in-range locator
-        # after 4 bytes, and reading (a) of amb.grid.case ends it after 4
-        # bytes when only the subsquare is lower case. One finding. Letters
-        # out of range and not closed by ']' are comment text, with no
-        # finding (README section 3). With ']' every reading takes six
-        # bytes, and one that rejects them fails.
-        amb = bad is None and not closed and in_range
     e = min(s + n, end)
+    # Without ']', reading (b) of amb.grid.form ends an in-range locator
+    # after 4 bytes. Letters out of range and not closed by ']' are comment
+    # text, with no finding (README section 3). With ']' every reading takes
+    # six bytes. A lower-case subsquare is at fault under this reading, and
+    # its syntax finding alone is given (Precedence); a fault in the first
+    # four bytes, lower case among them, is at fault under both readings and
+    # does not suppress the finding (Which findings are the other reading's
+    # own).
+    amb = not closed and in_range and not (line[s + 4] in LOWER or line[s + 5] in LOWER)
+    # Lower case is recognised and gives syntax, at the first lower-case
+    # letter when no byte before it fails (amb.grid.case; README section 3,
+    # Letter case).
+    letters = (s, s + 1, s + 4, s + 5) if n == 6 else (s, s + 1)
+    lower = next((i for i in letters if i < e and line[i] in LOWER), None)
+    if lower is not None and (bad is None or bad > lower):
+        bad = lower
     if e > s:
         scan.tok("grid.loc", s, e, depth)
     if bad is not None:
         scan.find("grid.loc", "syntax", bad)
-    # Lower case at the letter places of a locator (amb.grid.case); not where
-    # the first four bytes already fail.
-    letters = (s, s + 1, s + 4, s + 5) if n == 6 else (s, s + 1)
-    lower = next((i for i in letters if i < e and line[i] in LOWER), None)
-    if lower is not None and (bad is None or bad > lower):
-        scan.find("grid.loc", "unstated", lower)
     if amb:
         scan.find("grid.loc", "ambiguous", s + 4)
     p = e

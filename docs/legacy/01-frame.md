@@ -112,7 +112,13 @@ form: it gives `syntax` on `addr.dest`, by reading (c) of
 the next class without a finding of its own. An earlier draft said that
 only APRS-IS can carry such a destination. For a third-party packet the
 outer destination is classified with the outer data type identifier and
-the inner one with the inner identifier.
+the inner one with the inner identifier. **[proposed]** P. 152/128
+lets a Maidenhead locator be received in lower case
+([amb.grid.case](03-position.md#amb.grid.case)), but that allowance
+does not reach a destination: the destination is an address first, and
+an address in lower case is already outside the AX.25 form, with its
+finding on `addr.dest`; the class is then chosen by the bytes as
+written (below), and [`dest.grid`](#dest.grid) takes upper case only.
 
 A destination not in the AX.25 form, such as that lower-case one, is
 classified by the bytes as written, and the address gives its `syntax`
@@ -122,7 +128,17 @@ For `dest.mice` that finding is not given at a byte that a rule of
 [04-mic-e section 3](04-mic-e.md#3-destination-address) reports for
 the same fault, as the more specific rule
 ([README section 3](README.md#3-tokenizer-model), One fault, two
-rules).
+rules). **[agreed]** A Mic-E destination is divided at its first `'-'`
+whatever its case, as decided by the author: the bytes before it are
+the `dest.mice` token, and the bytes from it are `dest.ssid`, read as
+on any address, with the findings of [`addr.ssid`](#addr.ssid) for a
+`-0`, a leading zero or a value above 15, and otherwise `syntax` on the
+address field at the first byte of the SSID that does not fit. So
+`s4tpwr-3` is read as `S4TPWR-3` is, apart from the case findings of
+04-mic-e, and `s4tpwr-16` gives `value` on `addr.ssid` as `S4TPWR-16`
+does. An earlier draft took the whole address as the class token when
+it was not in the AX.25 form, so a valid SSID made the callsign part
+too long for 04-mic-e.
 
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|

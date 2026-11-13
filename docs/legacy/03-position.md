@@ -47,7 +47,7 @@ symbol code.
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|
 | <a id="pos.dti"></a>`pos.dti` | Identifier | `!` or `=` (no timestamp), `/` or `@` (timestamp). `=` and `@` mark a station that handles messages; the tokenizer records which. | yes | 1 byte | p. 31/17; p. 50/32 |
-| <a id="pos.time"></a>`pos.time` | Timestamp | After `/` or `@` only: [`time.dhm`](02-fields.md#time.dhm) or [`time.hms`](02-fields.md#time.hms), 7 bytes. Missing, or in the [`time.mdhm`](02-fields.md#time.mdhm) form, gives `syntax`. The timestamp is the 7 bytes that the layout fixes, so a missing or malformed one is still a 7-byte token with one `syntax` finding at its first byte that fails, and the position is read after it; one cut short by the end of the field covers the bytes present, with the finding where its first missing byte was expected (README section 3, Output). An earlier draft said that a missing timestamp gives the finding where it was expected, and nothing else. **[proposed]** Eight digits are the `time.mdhm` form: an 8-byte `time.mdhm` token, the `syntax` finding at its first byte, and the position read after it. | for `/`, `@` | 7 bytes | p. 38/22; p. 50/32; p. 59/41 |
+| <a id="pos.time"></a>`pos.time` | Timestamp | After `/` or `@` only: [`time.dhm`](02-fields.md#time.dhm) or [`time.hms`](02-fields.md#time.hms), 7 bytes. Missing gives `syntax`. The timestamp is the 7 bytes that the layout fixes, so a missing or malformed one is still a 7-byte token with one `syntax` finding at its first byte that fails, and the position is read after it; one cut short by the end of the field covers the bytes present, with the finding where its first missing byte was expected (README section 3, Output). An earlier draft said that a missing timestamp gives the finding where it was expected, and nothing else. **[agreed]** [`time.mdhm`](02-fields.md#time.mdhm) is not recognised here: p. 38/22 places it only in positionless weather reports, and a form at a place the document does not describe for it is not recognised there (README section 3, Obsolete and nested forms). Bytes that fit neither seven-byte form, eight digits included, are a 7-byte `time.dhm` token with its `syntax` finding as [02 section 2](02-fields.md#2-timestamps) places it (offset 6 when the six digits hold), and the position is read after those 7 bytes. An earlier draft said that the `time.mdhm` form gives `syntax`, and read eight digits as an 8-byte `time.mdhm` token with the `syntax` finding at its first byte and the position after it. | for `/`, `@` | 7 bytes | p. 38/22; p. 50/32; p. 59/41 |
 | <a id="pos.form"></a>`pos.form` | Form selector | Not a token. The next byte picks the form: a digit gives `pos.unc`; `/`, `\`, `A`–`Z` or `a`–`j` gives `pos.cmp`. Any other byte gives `syntax` and the rest of the field is `residue`. | yes | — | p. 50/32; p. 55/37; p. 125/101 ([amb.pos.form](#amb.pos.form)) |
 | <a id="pos.unc"></a>`pos.unc` | Uncompressed position | Not a token; the sequence [`lat`](02-fields.md#lat) (8 bytes), [`sym.table`](02-fields.md#sym.table) (1), [`lon`](02-fields.md#lon) (9), [`sym.code`](02-fields.md#sym.code) (1). Position ambiguity is read by [`lat.amb`](02-fields.md#lat.amb) and [`lon.amb`](02-fields.md#lon.amb). | one of the two forms | 19 bytes | p. 39/23; p. 40/24; p. 50/32 |
 | <a id="pos.cmp"></a>`pos.cmp` | Compressed position | [`cmp.block`](02-fields.md#cmp.block), 13 bytes. | one of the two forms | 13 bytes | p. 55/37; p. 59/41 |
@@ -105,32 +105,43 @@ by [01-frame.md](01-frame.md#dti).
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|
 | <a id="grid.dti"></a>`grid.dti` | Identifier | `[`, 1 byte. | yes | 1 byte | p. 31/17; p. 42/26; p. 51/33 |
-| <a id="grid.loc"></a>`grid.loc` | Locator | Two letters `A`–`R`, two digits, then optionally two letters `A`–`X`: 4 or 6 bytes. The letter ranges are those of the Maidenhead system, which APRS12c refers to but does not state ([amb.grid.range](#amb.grid.range)). The same letters in lower case are recognised; the format that holds the locator says what they give ([amb.grid.case](#amb.grid.case)). Used here, by [`stat.grid`](09-other.md#stat.grid) and by [`dest.grid`](01-frame.md#dest.grid). | yes | 4 or 6 bytes ([amb.grid.form](#amb.grid.form)) | p. 42/26; p. 51/33; p. 105/81; p. 106/82; p. 150/126 |
+| <a id="grid.loc"></a>`grid.loc` | Locator | Two letters `A`–`R`, two digits, then optionally two letters `A`–`X`: 4 or 6 bytes. The letter ranges are those of the Maidenhead system, which APRS12c refers to but does not state ([amb.grid.range](#amb.grid.range)). The same letters in lower case are recognised and give `syntax`, except in a destination, which 01-frame holds to the AX.25 form ([amb.grid.case](#amb.grid.case)). Used here, by [`stat.grid`](09-other.md#stat.grid), by [`mice.grid`](04-mic-e.md#mice.grid) and by [`dest.grid`](01-frame.md#dest.grid). | yes | 4 or 6 bytes ([amb.grid.form](#amb.grid.form)) | p. 42/26; p. 51/33; p. 105/81; p. 106/82; p. 150/126; p. 152/128 |
 | <a id="grid.close"></a>`grid.close` | Closing bracket | `]`, 1 byte, directly after `grid.loc`. A `]` after six locator-shaped bytes makes all six the locator ([amb.grid.range](#amb.grid.range)). | no | 1 byte | p. 51/33 |
 | <a id="grid.cmt"></a>`grid.cmt` | Comment | Any bytes to the end of the field. No limit beyond that of [`line.info`](01-frame.md#line.info). | no | end of field | p. 51/33 |
 
-In a beacon, a locator with lower-case letters gives `unstated`: this
-format states no case rule. When the first four bytes fail, the extent
+In a beacon, a lower-case letter in the locator, in the first pair and
+in the subsquare alike, is recognised and gives `syntax` at the first
+such letter, unless an earlier byte fails: p. 152/128 states the case
+rule for every Maidenhead locator, and the beacon pages say nothing
+against it ([amb.grid.case](#amb.grid.case);
+[README section 3](README.md#3-tokenizer-model), Letter case). An
+earlier draft gave `unstated`, on the ground that this format states no
+case rule. When the first four bytes fail, the extent
 is still taken from what follows: six bytes when bytes 5 and 6 are
-letters followed by `]` or in range, else four. The first failing byte
-alone gives `syntax`
+letters followed by `]` or in range, in either case, else four. The
+first failing byte alone gives `syntax`
 ([README section 3](README.md#3-tokenizer-model), Output). By the tests
 of README section 3, applied to the readings of
-[amb.grid.form](#amb.grid.form) and [amb.grid.case](#amb.grid.case), a
-beacon gets `ambiguous` at byte 5, the first byte after a 4-byte
-locator, when bytes 5 and 6 are both letters and a reading listed would
-divide them differently from this one: a 6-byte locator with no `]`
-after it ([amb.grid.form](#amb.grid.form)), and a subsquare that holds
-a lower-case letter after an upper-case first pair
-([amb.grid.case](#amb.grid.case)). One finding is given however many of
-these hold, since identical findings are given once. **[agreed]** Two
+[amb.grid.form](#amb.grid.form), a beacon gets `ambiguous` at byte 5,
+the first byte after a 4-byte locator, when bytes 5 and 6 are both
+letters in range with no `]` after them: reading (b) would end the
+locator after 4 bytes. A lower-case letter in bytes 5 and 6 is at
+fault under this reading, so its `syntax` finding alone is given there
+(Precedence); a fault in the first four bytes, such as a lower-case
+letter or a letter out of range in the first pair, is at fault under
+both readings and does not suppress the `ambiguous` finding (Which
+findings are the other reading's own). An earlier draft also
+gave `ambiguous` at byte 5 for a lower-case subsquare after an
+upper-case first pair, from a reading of
+[amb.grid.case](#amb.grid.case) that took upper case only; that
+reading was dropped, and with it the finding. **[agreed]** Two
 letters of which one is outside `A`–`X`, with no `]` after them, are
 comment text with no finding ([amb.grid.range](#amb.grid.range)); with
-a `]` they give `syntax`. With a `]` after the six bytes none of the
-conditions for `ambiguous` holds: every reading takes the six bytes as
-the locator ([amb.grid.range](#amb.grid.range)), and reading (a) of
-amb.grid.case, which rejects the lower-case letters, then fails and
-does not count (README section 3).
+a `]` they give `syntax`. With a `]` after the six bytes no
+`ambiguous` finding is given: every reading takes the six bytes as
+the locator ([amb.grid.range](#amb.grid.range)). An earlier draft
+added that reading (a) of amb.grid.case, which rejected the lower-case
+letters, then failed and did not count.
 **[proposed]** `grid.cmt` is a free-text field for
 [`cmt.noarchive`](02-fields.md#cmt.noarchive); the other items of
 02 section 8.2 are not searched in it.
@@ -466,7 +477,11 @@ first byte where the readings divide
 would end the locator after 4 bytes and read bytes 5 and 6 as the start
 of `grid.cmt`, which accepts any bytes, so (b) accepts every such
 beacon that (a) accepts. With a `]` after the locator both readings
-agree.
+agree. Bytes 5 and 6 in range include lower-case letters, which are
+recognised and give `syntax` ([amb.grid.case](#amb.grid.case)); then
+(a) does not accept the beacon, and its `syntax` finding at the first
+lower-case letter alone is given
+([README section 3](README.md#3-tokenizer-model), Precedence).
 
 **Decoders (read).** Xastir takes 6 bytes only when `]` follows, else 4
 (`extract_position`, db.c:7061–7099). pdn-aprs requires the `]`
@@ -545,31 +560,45 @@ outside these ranges?
 ### amb.grid.case
 
 **Open in the document.** For a status locator, letters are sent in
-upper case and accepted in either (p. 105/81). For the beacon and the
-destination no case rule is given.
+upper case and accepted in either (p. 105/81). The revision history
+states the same rule for the Maidenhead locator with no format named
+(p. 152/128). The beacon pages (p. 42/26, p. 51/33) and the destination
+say nothing about case.
 
-**Readings.** (a) Upper case only. (b) Either case. (c) The status rule
-everywhere.
+**Readings.** (b) Either case, with no finding. (c) The rule of
+p. 152/128 everywhere: sent in upper case, accepted in either.
 
-**Reading taken.** **[proposed]** Recognise either case. Lower case
-gives `syntax` in a status report (a stated sending rule) and `unstated`
-in a beacon. A destination in the AX.25 form cannot hold lower case,
-and one not in that form, which gives `syntax` on `addr.dest`
+An earlier draft listed (a), upper case only. P. 152/128 lets every
+locator be received in lower case, so (a) contradicts the text: it is
+not a listed reading
+([README section 3](README.md#3-tokenizer-model)), as
+[amb.stat.grid](09-other.md#amb.stat.grid) already argued for the
+status report.
+
+**Reading taken.** **[agreed]** (c), as decided by the author: lower
+case is recognised and gives `syntax` in a beacon as in a status report
+and a Mic-E status, since p. 152/128 states the case rule for every
+locator and the beacon pages say nothing that conflicts
+([README section 3](README.md#3-tokenizer-model), Letter case, a
+sending rule that receivers are told to accept). An earlier draft gave
+`unstated` in a beacon, as a format that states no case rule. A
+destination in the AX.25 form cannot hold lower case, and one not in
+that form, which gives `syntax` on `addr.dest`
 ([amb.addr.form](01-frame.md#amb.addr.form)), is not `dest.grid` when
-it does ([amb.grid.range](#amb.grid.range)). An earlier draft called
-such a destination one that only APRS-IS can carry.
+it does ([amb.grid.range](#amb.grid.range); for why the allowance of
+p. 152/128 does not reach a destination, see
+[01-frame section 5](01-frame.md#5-destination-classes)). An earlier
+draft called such a destination one that only APRS-IS can carry.
 
-**In the bytes.** Visible, and reported by those kinds; the `syntax`
-finding of a status report alone is given
-([README section 3](README.md#3-tokenizer-model), Precedence), and in a
-beacon the `unstated` finding stands without an `ambiguous` one.
-That last holds where a lower-case letter is in the
-first pair: (a) and (c) then fail, and (b) reads the bytes as the
-reading does. A lower-case letter only in the subsquare is different:
-(a) does not take bytes 5 and 6 as a subsquare, ends the locator after
-4 bytes and reads them as the start of `grid.cmt`, which accepts them.
-The beacon then also gets `ambiguous` at byte 5, beside the `unstated`
-finding.
+**In the bytes.** Visible, and reported as `syntax`, which alone is
+given ([README section 3](README.md#3-tokenizer-model), Precedence):
+(b) would accept the bytes. Both readings divide the bytes the same way,
+so the case gives no `ambiguous` finding of its own. An earlier draft
+gave a beacon with a lower-case subsquare after an upper-case first
+pair `ambiguous` at byte 5, beside the `unstated` finding, because
+reading (a) ended the locator after 4 bytes; with (a) dropped, an
+`ambiguous` finding at byte 5 comes only from
+[amb.grid.form](#amb.grid.form) (section 5).
 
 **Decoders (read).** Dire Wolf accepts either case in status locators
 (`get_maidenhead`, decode_aprs.c:4082, called at 2447 and 2481). In the

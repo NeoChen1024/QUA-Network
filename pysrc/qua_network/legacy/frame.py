@@ -41,22 +41,36 @@ def first_bad(a, allowed, limit):
 _IS_SET = frozenset(range(0x21, 0x7F)) - frozenset(b">,:*")
 
 
+def ax25_faults(a):
+    """Offsets in a of the faults of the AX.25 text form, in order: each
+    callsign byte outside A-Z and 0-9, the seventh callsign byte, then the
+    first byte at fault in the SSID after the first '-'."""
+    dash = a.find(b"-")
+    call = a if dash < 0 else a[:dash]
+    if not call:
+        yield 0
+    for i, c in enumerate(call[:6]):
+        if c not in _CALL:
+            yield i
+    if len(call) > 6:
+        yield 6
+    if dash < 0:
+        return
+    j = dash + 1
+    if j == len(a) or a[j] not in b"123456789":
+        yield j
+    elif j + 1 == len(a):
+        return
+    elif a[j] != 0x31 or a[j + 1] not in b"012345":
+        yield j + 1
+    elif j + 2 < len(a):
+        yield j + 2
+
+
 def ax25_bad(a):
     """Offset in a of the first byte that does not fit the AX.25 text form,
     for an address that _AX25 rejects (len(a) when a byte is missing)."""
-    i = 0
-    while i < len(a) and i < 6 and a[i] in _CALL:
-        i += 1
-    if i == 0 or i == len(a) or a[i] != 0x2D:
-        return i
-    j = i + 1
-    if j == len(a) or a[j] not in b"123456789":
-        return j
-    if j + 1 == len(a):
-        return len(a)
-    if a[j] != 0x31 or a[j + 1] not in b"012345":
-        return j + 1
-    return j + 2
+    return next(ax25_faults(a), len(a))
 
 
 def address(scan, start, end, depth, call_rule="addr.call", ssid_rule="addr.ssid", rule=None):
@@ -375,11 +389,36 @@ def _dest(scan, ds, de, depth, dti, rule):
         if ssid and _AX25.match(a) and dti not in _MICE_DTI:
             scan.find("dest.ssid", "obsolete", ce)
         return form, ce
+    dash = a.find(b"-")
+    if dti in _MICE_DTI:
+        return _mice_dest(scan, ds, de, depth, rule, dash)
     form, ce = address(scan, ds, de, depth, ssid_rule="dest.ssid", rule=rule)
     # The class applies to the bytes as written ([agreed]: a lower-case
     # locator shape is not dest.grid and falls through to the next class).
     scan.tok(dest_class(scan, a, ds, dti), ds, de, depth)
     return form, ce
+
+
+def _mice_dest(scan, ds, de, depth, rule, dash):
+    """A Mic-E destination that is not in the AX.25 form. The callsign part,
+    up to the first '-', is dest.mice: 04-mic-e section 3 reports each of its
+    faults, so the address field gives none there (README section 3, One
+    fault, two rules). The SSID is read as on any address: dest.ssid, with
+    addr.ssid's findings for '-0', '-0d' and values above 15, and otherwise
+    syntax on the field at its first byte that does not fit."""
+    a = scan.line[ds:de]
+    ce = de if dash < 0 else ds + dash
+    scan.tok("dest.mice", ds, ce, depth)
+    if dash < 0:
+        return BAD, ce
+    scan.tok("dest.ssid", ce, de, depth)
+    # The SSID judged on a stand-in callsign, so that only its own bytes count.
+    probe = b"A" + a[dash:]
+    if _SSID_ZERO.match(probe) or _SSID_HIGH.match(probe):
+        scan.find("addr.ssid", "syntax" if probe[2] == 0x30 else "value", ce)
+    elif not _AX25.match(probe):
+        scan.find(rule, "syntax", ce - 1 + ax25_bad(probe))
+    return BAD, ce
 
 
 # --- Data type identifier (01 section 7) --------------------------------

@@ -585,11 +585,21 @@ with another indicator byte or an out-of-range value.
 (b) Indicator bytes in either case. (c) Any seventh byte; the timestamp
 is dropped when it cannot be decoded.
 
-**Reading taken.** (a), the narrowest of the three
-([README section 3](README.md#3-tokenizer-model), Kinds by situation):
-other bytes are a `syntax` finding, out-of-range parts a `value`
-finding (section 2). The minute and second ranges are implied by the
-unit and count as stated (same rule).
+**Reading taken.** (a). P. 38/22 shows the indicator bytes in lower
+case and gives no allowance for another case, so `'Z'` and `'H'` are
+not the indicator of any form
+([README section 3](README.md#3-tokenizer-model), Letter case). The
+timestamp's place is fixed, so these bytes are not text either: no form
+matches, and `time.dhm` is the form taken by default, with a `syntax`
+finding at offset 6 (section 2; README section 3, Forms that can stand
+at one place). Any other byte at offset 6 is read the same way. Reading
+(b) is not taken because it folds the case where the document gives no
+allowance (Letter case); (c) is wider still, and the narrowest reading
+the text supports is taken (Kinds by situation). Out-of-range parts are
+a `value` finding (section 2). The minute and second ranges are implied
+by the unit and count as stated (Kinds by situation). An earlier draft
+gave (a) as the narrowest of the three readings only, without the
+Letter case rule.
 
 **In the bytes.** Visible, since (b) or (c) would accept the bytes. The
 `syntax` or `value` finding of the reading alone is given

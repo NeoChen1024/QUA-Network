@@ -392,14 +392,14 @@ sixth byte outside `A`–`X`, in either case, is not a subsquare letter,
 so the 6-byte locator does not match and the 4-byte one is tried. A
 lower-case
 letter is recognised and gives `syntax`, in the first pair and in the
-subsquare alike ([amb.grid.case](03-position.md#amb.grid.case)). In a
-`[` beacon a lower-case subsquare after an upper-case first pair gives
-`ambiguous` at byte 5, because a listed reading there ends the locator
-after 4 bytes. In a status report such a reading would contradict
-p. 105/81, which lets letters be received in lower case, so it is not
-a listed reading here
-([README section 3](README.md#3-tokenizer-model)) and that finding is
-not given.
+subsquare alike ([amb.grid.case](03-position.md#amb.grid.case)). A
+reading that ended the locator before a lower-case subsquare would
+contradict p. 105/81, and p. 152/128 for every locator, which let
+letters be received in lower case, so it is not a listed reading
+([README section 3](README.md#3-tokenizer-model)) and no `ambiguous`
+finding comes from it. An earlier draft said that a `[` beacon still
+gave that finding at byte 5, where amb.grid.case then listed an
+upper-case-only reading; that reading has since been dropped there too.
 
 Status texts that name a DMR talkgroup, such as `TG4605` followed by
 `SP`, have the shape of a 4-byte locator with an overlay symbol. An

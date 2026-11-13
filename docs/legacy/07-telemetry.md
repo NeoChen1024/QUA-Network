@@ -172,11 +172,13 @@ keyword.
 
 The tokens of the table below lie inside the message text token.
 
-**[proposed]** The keyword is exactly `PARM.`, `UNIT.`, `EQNS.` or
+The keyword is exactly `PARM.`, `UNIT.`, `EQNS.` or
 `BITS.` in upper case; text starting otherwise is an ordinary message,
 with an `ambiguous` finding when it starts with one of the keywords in
 another case and the rest of it would fit that message
-([amb.tlm.keyword](#amb.tlm.keyword)). Bulletin and NWS
+([amb.tlm.keyword](#amb.tlm.keyword);
+[README section 3](README.md#3-tokenizer-model), Letter case).
+**[proposed]** Bulletin and NWS
 addressees are tested first by 08, so their text is never a definition
 message; any other addressee does not change the reading.
 An earlier draft gave an addressee starting with `NWS_`, `SKY`, `CWA`
@@ -489,12 +491,19 @@ the [README](README.md#4-decoders-consulted), not run.
   different case, and a keyword in a message to a station that sends no
   telemetry, are not addressed.
 - **Readings.** (a) Exact upper case. (b) Any case.
-- **Reading taken.** **[proposed]** (a); other text is an ordinary
-  message. Visible in the bytes: a text that starts with one of the four
-  keywords in another case, which reading (b) would take as a definition
-  message, is message text with an `ambiguous` finding at its first byte.
-  Whether the addressee sends telemetry cannot be seen in the packet and
-  gives no finding.
+- **Reading taken.** (a); other text is an ordinary message. This
+  applies the Letter case rule of
+  [README section 3](README.md#3-tokenizer-model): the keywords are
+  shown in upper case with no allowance for another case (p. 91/71,
+  p. 92/72), so another case is not the keyword, and the bytes are
+  message text, with an `ambiguous` finding where reading (b), which
+  folds the case, accepts the whole text. An earlier draft gave (a)
+  as a reading of its own, labelled proposed. Visible in the bytes: a
+  text that starts with one of the four keywords in another case,
+  which reading (b) would take as a definition message, is message
+  text with an `ambiguous` finding at its first byte. Whether the
+  addressee sends telemetry cannot be seen in the packet and gives no
+  finding.
 - **In the bytes.** By the tests of
   [README section 3](README.md#3-tokenizer-model), the finding is given
   only when the rest of the text, read as that definition message, fits

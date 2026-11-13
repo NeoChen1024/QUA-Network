@@ -137,6 +137,21 @@ names its `obsolete` finding, at the `'-'`, which is not given where
 [README section 3](README.md#3-tokenizer-model): Output, Placing a
 finding, and Precedence for the derived findings.
 
+**[agreed]** When the finding of 01-frame is withdrawn as above, the
+address field still gives its one `syntax` finding at a fault that no
+rule of this section reports, as decided by the author. The SSID is
+read as on any address
+([01-frame section 5](01-frame.md#5-destination-classes)): in
+`s4tpwr-16` it gives `value` on `addr.ssid`, as in `S4TPWR-16`, and a
+valid SSID such as the `-3` of `s4tpwr-3` gives none. A `'*'` after
+the address gives `syntax` on `addr.dest`: in `s4tpwr*` the lower-case
+letters are this section's and the `'*'` is the address field's. An
+earlier draft withdrew the finding and gave none in its place, so such
+a `'*'` went unreported; a later one gave the address field its first
+fault that no rule of this section reports, so a fault in the SSID of a
+lower-case destination was reported unlike the same SSID in upper
+case.
+
 ## 4. Information field
 
 Offsets 1 to 6 carry the longitude, speed and course, each byte offset by
@@ -686,8 +701,11 @@ the [README](README.md#4-decoders-consulted), not run.
   case and accepted by receivers in lower case, applies to the Mic-E
   status text too, so a lower-case locator is recognised and gives
   `syntax` ([README section 3](README.md#3-tokenizer-model), Letter
-  case). An earlier draft cited only the rule that locators are sent in
-  upper case (p. 152/128).
+  case). P. 152/128 states the same rule, upper case sent and either
+  case received, for every Maidenhead locator
+  ([amb.grid.case](03-position.md#amb.grid.case)). An earlier draft
+  cited p. 152/128 only for the rule that locators are sent in upper
+  case.
 - **In the bytes.** Whether a four-character locator is one, which
   reading (b) denies, is carried by every four-character locator and
   gives no finding ([README section 3](README.md#3-tokenizer-model)).

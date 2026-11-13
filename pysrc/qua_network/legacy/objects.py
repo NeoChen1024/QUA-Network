@@ -81,21 +81,14 @@ def _object(scan, dti, p, end, depth, texts):
     if line[e] not in b"*_":
         scan.find("obj.state", "syntax", e)
 
-    # amb.obj.time: required. Six digits mark a timestamp, which no position
-    # starts with; anything else is a missing timestamp.
+    # amb.obj.time: always the 7 bytes the layout fixes, malformed or missing,
+    # as for pos.time; the position is read after them.
     t = e + 1
-    head = line[t : min(t + 6, end)]
-    if head and all(c in DIGITS for c in head):
-        q, ok = timestamp7(scan, t, end, depth)
-        if not ok:
-            return
-    else:
-        # A missing timestamp uses no byte; the position is read from where it
-        # was expected (README section 3, Output).
-        scan.find("obj.time", "syntax", t)
-        if t >= end:
-            return
-        q = t
+    if missing(scan, "obj.time", t, end):
+        return
+    q, ok = timestamp7(scan, t, end, depth)
+    if not ok:
+        return
     if missing(scan, "obj.pos", q, end):
         return
     # obj.name: trailing SP are padding and not part of the name.

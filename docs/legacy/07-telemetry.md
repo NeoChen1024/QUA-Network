@@ -240,9 +240,11 @@ against `msg.text`: the field is the most specific rule that holds it
 ([README section 3](README.md#3-tokenizer-model), Placing a finding).
 An earlier draft left such a byte to the `syntax` finding of
 `msg.text`. The length limit of [`msg.text`](08-message.md#msg.text) applies
-to the whole text, keyword included. **[proposed]** It applies even
-where every field is within its own limit
-([err.tlm.parmlen](#err.tlm.parmlen)).
+to the whole text, keyword included. It applies even
+where every field is within its own limit, since nested limits are each
+checked on their own rule
+([README section 3](README.md#3-tokenizer-model), Length limits;
+[err.tlm.parmlen](#err.tlm.parmlen)).
 
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|
@@ -251,7 +253,7 @@ where every field is within its own limit
 | <a id="tlm.unit"></a>`tlm.unit` | Units and labels | `UNIT.`, then fields as `tlm.parm`: units for A1 to A5, labels for B1 to B8. | Required keyword | End of message text | p. 91/71, p. 135/111 |
 | <a id="tlm.unit.label"></a>`tlm.unit.label` | One unit or label | As `tlm.parm.name`, with the same limits. | Optional | The next `','` or the end | p. 91/71 |
 | <a id="tlm.eqns"></a>`tlm.eqns` | Equation coefficients | `EQNS.`, then up to 15 numbers: a, b and c for A1, then for A2, up to A5, separated by `','`. The list may stop after the last coefficient of any channel; a list that stops inside a channel's three has too few fields (below). | Required keyword | End of message text | p. 92/72, p. 135/111 |
-| <a id="tlm.eqns.coef"></a>`tlm.eqns.coef` | One coefficient | An empty field is a missing field and gives `syntax` ([README section 3](README.md#3-tokenizer-model), Kinds by situation). **[proposed]** Otherwise the relaxed number of `tlm.analog`; anything else gives `syntax` ([amb.tlm.eqns](#amb.tlm.eqns)). | Optional | The next `','` or the end | p. 92/72 |
+| <a id="tlm.eqns.coef"></a>`tlm.eqns.coef` | One coefficient | An empty field is a missing field and gives `syntax` ([README section 3](README.md#3-tokenizer-model), Kinds by situation). Otherwise the relaxed number of `tlm.analog`, the narrowest reading; anything else gives `syntax` ([amb.tlm.eqns](#amb.tlm.eqns); [README section 3](README.md#3-tokenizer-model), Kinds by situation). | Optional | The next `','` or the end | p. 92/72 |
 | <a id="tlm.bits"></a>`tlm.bits` | Bit sense and project title | `BITS.`, then the parts below. | Required keyword | End of message text | p. 92/72, p. 135/111 |
 | <a id="tlm.bits.sense"></a>`tlm.bits.sense` | Bit sense | Eight bytes, each `'0'` or `'1'`, B1 to B8 from left to right. | Required | 8 bytes | p. 92/72 |
 | <a id="tlm.bits.title"></a>`tlm.bits.title` | Project title | 0 to 23 bytes directly after the bits; a longer title gives a `value` finding. A first byte `','` belongs to the title and gives an `ambiguous` finding ([amb.tlm.bitsep](#amb.tlm.bitsep); [README section 3](README.md#3-tokenizer-model), Separators and padding). | Optional | End of message text | p. 92/72 |
@@ -318,7 +320,7 @@ the [README](README.md#4-decoders-consulted), not run.
   Readings (b) and (c) would accept some of these bytes, but the `value`
   or `syntax` finding alone is given, with no `ambiguous` beside it
   ([README section 3](README.md#3-tokenizer-model), Precedence).
-- **In the bytes.** **[proposed]** Reading (b) takes every sequence
+- **In the bytes.** Reading (b) takes every sequence
   that this reading accepts with the same bytes. Reading (c) does too,
   except for `MIC` with no `','` after it: it would run the sequence on
   to the first `','`, taking the first analog value with it, and so
@@ -525,9 +527,10 @@ the [README](README.md#4-decoders-consulted), not run.
   8.2), so the readings divide no bytes differently, and there is no
   `ambiguous` finding ([README section 3](README.md#3-tokenizer-model)). An earlier draft gave one at the first `'|'` of
   a run followed by text, which only the dropped part of reading (b)
-  took as a block. **[proposed]** Whether a run that fits `tlm.b91` at
+  took as a block. Whether a run that fits `tlm.b91` at
   its place is a block, or comment text of the same shape, is inherent
-  ([README section 3](README.md#3-tokenizer-model)): every block
+  ([README section 3](README.md#3-tokenizer-model), the paragraph on
+  an ambiguity that every instance of a form carries): every block
   carries the question, and the bytes of one packet cannot narrow it.
   It is taken silently. An earlier draft stated this in section 3.
 - **Decoders.** All read accept either order and text after the block:
@@ -630,7 +633,11 @@ the [README](README.md#4-decoders-consulted), not run.
   section 4 sets out ([README section 3](README.md#3-tokenizer-model),
   Kinds by situation); the last was decided by the author. An earlier
   draft took a list of any length up to 15 without a finding.
-  **[proposed]** (a). Visible in the bytes. Readings (b) and (c) would
+  (a): the readings differ only in how much they accept, and the
+  narrowest that the text supports is taken
+  ([README section 3](README.md#3-tokenizer-model), Kinds by
+  situation, narrowest reading); (c) is the empty field, which the
+  sentence above settles. Visible in the bytes. Readings (b) and (c) would
   accept an exponent or an empty field, but the `syntax` finding alone
   is given, with no `ambiguous` beside it
   ([README section 3](README.md#3-tokenizer-model), Precedence).
@@ -729,9 +736,14 @@ The message text limit is 67 (p. 93/71, p. 135/111;
 Readings: (a) the message limit holds, and a text of 68 bytes gives the
 `value` finding of `msg.text`; (b) the field limits take precedence, and
 a definition message whose every field is within its limit gets no
-`msg.text` finding. **[proposed]** (a): the definition messages are
+`msg.text` finding. (a): the definition messages are
 messages, and the field limits are each kept separately, so a 68-byte
 text is reported once, by `msg.text`, and no finding is given here.
+Where limits nest, each is checked on its own rule
+([README section 3](README.md#3-tokenizer-model), Length limits),
+which (b) would contradict. Whether the excess over 67 bytes is `value` or
+`syntax` is the question of [amb.msg.text](08-message.md#amb.msg.text),
+which this entry follows.
 
 Origin: already in APRS 1.0.1: the same byte counts on 1.0.1 PDF p. 79
 and the 67-byte message text on PDF p. 81, and both again in Appendix 1

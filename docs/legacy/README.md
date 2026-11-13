@@ -184,7 +184,11 @@ a `syntax` or `value` finding, that finding alone is given, and no
 check across several fields, or an `obsolete` or `unstated` finding on
 the same defect, is not given where a rule already reports the bytes as
 `syntax` or `value`. Defects that are independent of each other keep
-their own findings.
+their own findings. **[agreed]** As the author decided, a finding for a
+missing field reports the byte where it is placed, where the field was
+expected, although that byte belongs to the token that follows: no
+`ambiguous` finding is given on bytes that include it
+([06-weather amb.wx.tail](06-weather.md#amb.wx.tail)).
 
 **[agreed]** Which findings are the other reading's own. A finding of
 the other reading is shared with this reading, and does not count
@@ -199,6 +203,30 @@ at fault: the first byte past a limit, or the place where a missing
 byte was expected. An `ambiguous` finding goes on the rule this reading
 gives the bytes, at the first byte where the readings divide them
 differently. An entry may state an exception, and then says so.
+
+**[agreed]** When a fixed field is present. As the author decided, the
+entry of a field whose place and width the format fixes names the test
+that makes the field present. When the test fails, the field is
+missing: it uses no byte, gives `syntax` against its ID at the byte
+where it was expected, as any missing field does (Kinds by situation;
+Placing a finding), and reading continues at that same byte. Where an
+entry names no test, the field is always present: its fixed bytes are
+its token even when they are wrong, with one `syntax` finding at the
+first byte that fails (Output). Only a place that holds no byte at all,
+because the field around it has ended, leaves such a field missing,
+which is the empty required field of Kinds by situation. A place where
+several forms can stand names no test either: when none of them
+matches, the finding goes on the selector rule of the place, or, where
+it has none, on the form the entry takes by default, as Forms that can
+stand at one place says. The timestamps
+[`pos.time`](03-position.md#pos.time) and
+[`obj.time`](05-object-item.md#obj.time) name no test and are always
+the seven bytes the layout fixes. The wind field of a complete weather
+report and the leading elements of a positionless report name one
+([06-weather sections 5.1](06-weather.md#51-uncompressed-position) and
+[6.2](06-weather.md#62-order-and-end-of-the-data)). Where a missing
+field's finding stands beside others at its byte, Precedence and
+Missing fields at one byte decide.
 
 **[agreed]** One byte may carry several findings from different rules.
 Each keeps its own rule ID; they are not merged. Identical findings
@@ -219,6 +247,29 @@ This is the default; an entry may state an exception, and then says
 so. **[proposed]** The more specific rule is the one whose field is
 narrower, or the one of the format the packet is read as over the
 general rule of 01-frame.
+
+**[agreed]** Missing fields at one byte. As the author decided, when
+consecutive missing fields fail at the same byte, only the first gives
+its `syntax` finding. The later missing fields at that byte, and a
+residue that starts at that byte, give no finding: the bytes there are
+not what the format expects next, which is one fault, and the first
+finding reports it (compare Precedence). Their tokens are unchanged:
+a missing field still has none, and the residue keeps its token and
+the rule it names. The rule covers missing fields and residues only; a
+token read from that byte keeps its own findings (One byte may carry
+several findings). The case in point is a positionless weather report
+whose four leading places all hold other bytes: it gives one finding,
+on the wind direction, where it would otherwise give one for each
+leading element and one for the residue after them
+([06-weather section 6.2](06-weather.md#62-order-and-end-of-the-data)).
+**[agreed]** A count finding given at the end of a field, where the
+next separator of a list was expected, reports fields missing there
+and counts as a missing field for this rule, as for an NTS line whose
+last field is empty
+([08-message section 8](08-message.md#8-nts-radiograms)).
+An earlier draft did not say whether such findings were one fault or
+several, and the files gave one finding for each missing field and
+for the residue.
 
 **[agreed]** The "In the bytes" paragraph of an ambiguity entry that
 only applies the tests of this section to the reading taken is not a

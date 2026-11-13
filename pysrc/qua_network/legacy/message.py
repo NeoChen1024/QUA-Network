@@ -264,7 +264,8 @@ def _nws_addr(scan, s, end, depth):
     scan.tok("nws.addr", a0, q, depth)
     scan.tok("nws.kw", a0, a0 + 4, d)
     p = a0 + 4
-    n, bad, uns = _name(line, p, q, _ALNUM)
+    # The level takes the byte set of msg.addr.name, '-' included.
+    n, bad, uns = _name(line, p, q, _NAME)
     _name_tokens(scan, p, n, q, d, "nws.level")
     if uns is not None:
         scan.find("nws.level", "unstated", uns)
@@ -374,7 +375,9 @@ def _nts(scan, t0, te, depth, texts):
     # empty field is missing: syntax where its first byte was expected. A
     # count outside the row gives syntax on nts.sep at the separator that
     # starts the first extra field, or at the end where the next separator
-    # was expected (README section 3, Kinds by situation).
+    # was expected (README section 3, Kinds by situation). Too few fields
+    # are fields missing at the end, so after an empty last field the count
+    # gives no finding of its own (Missing fields at one byte).
     p, count = t0 + 3, 1
     while True:
         q = line.find(b"\\", p, te)
@@ -386,7 +389,7 @@ def _nts(scan, t0, te, depth, texts):
             noarchive_in(scan, p, fe, d + 1)
         elif count <= hi:
             # An extra field is reported once, at its separator.
-            scan.find("nts.field", "syntax", p)
+            scan.missing("nts.field", p)
         if q < 0:
             break
         scan.tok("nts.sep", q, q + 1, d)
@@ -395,7 +398,7 @@ def _nts(scan, t0, te, depth, texts):
             scan.find("nts.sep", "syntax", q)
         p = q + 1
     if count < lo:
-        scan.find("nts.sep", "syntax", te)
+        scan.missing("nts.sep", te)
     return True
 
 

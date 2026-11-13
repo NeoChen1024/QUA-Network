@@ -69,7 +69,7 @@ not rejected.
 |---|---|---|---|---|---|
 | <a id="path.sep"></a>`path.sep` | Entry separator | `,`, 1 byte, before each entry. Two adjacent separators, or one directly before `line.sep`, leave an empty entry: `syntax`, at the separator itself, as an exception to the placing rule of [README section 3](README.md#3-tokenizer-model). **[agreed]** An empty entry counts toward the limit of 8 like any other; an earlier draft left it out. | per entry | 1 byte | p. 107/83; UAP §5.6 |
 | <a id="path.digi"></a>`path.digi` | Digipeater entry | `addr.call` with optional `addr.ssid`, then optional `path.used`. Any other address gives `syntax` on this rule at its first byte that does not fit the AX.25 form ([amb.addr.form](#amb.addr.form); README section 3, Placing a finding); an earlier draft read it as `addr.is`. Every entry before `path.q`, or every entry if there is none. **[agreed]** More than 8 is a list with too many fields: `syntax` against `path.digi` at the separator before the ninth ([README section 3](README.md#3-tokenizer-model), Kinds by situation). An earlier draft gave `value` at the ninth entry. | no | `,` or `line.sep` | p. 22/12; p. 107/83 |
-| <a id="path.used"></a>`path.used` | Used marker | `*` directly after the address of a `path.digi`. It marks the entry heard; all entries before it count as used. A second `*` among the `path.digi` entries gives `syntax` ([amb.path.used](#amb.path.used)). | no | 1 byte | p. 107/83; p. 20/10; UAP §1.3.1 |
+| <a id="path.used"></a>`path.used` | Used marker | `*` directly after the address of a `path.digi`. It marks the entry heard; all entries before it count as used. **[agreed]** Every `*` after the first among the `path.digi` entries gives `syntax` at that `*`, one finding per extra `*` ([amb.path.used](#amb.path.used)). | no | 1 byte | p. 107/83; p. 20/10; UAP §1.3.1 |
 | <a id="path.obsolete"></a>`path.obsolete` | Obsolete alias | A `path.digi` whose callsign is exactly `RELAY`, `TRACE` or `WIDE` (no digit), with any SSID. Gives `obsolete`. | no | — | p. 20/10; p. 155/131; UAP §5.5 |
 | <a id="path.nogate"></a>`path.nogate` | Gating block | A `path.digi` whose callsign is `NOGATE` or `RFONLY`. Classified; no finding, wherever it stands. | no | — | p. 110/86 |
 | <a id="path.q"></a>`path.q` | q-construct | `q`, `A`, then one byte `A`–`Z` or `a`–`z`, as a whole entry, no `*`. The first such entry. **[proposed]** An entry `qA?*` is not `path.q`; before the first q-construct it is read as `path.digi`. Gives `is-only` ([amb.path.q](#amb.path.q)). **[agreed]** The code is checked against the APRS-IS q-construct definition (`APRS-IS q`, `APRS-IS q-alg`): its list of codes is closed, so a code outside it gives `value`; `qAZ`, which a server drops, gives `syntax` on the feed; `qAX`, which the definition deprecates, gives `obsolete`; `qAC` gives `syntax` unless the path before it is exactly `TCPIP*`; every code is followed by a callsign, and every code but `qAI` by one only, so a missing one gives `syntax` at the end of the entry and a second one `syntax` against `path.is` at its separator; a callsign repeated after the construct gives `syntax` against `path.is` at its first byte. | no | `,` or `line.sep` | p. 155/131; UAP ch. 4; APRS-IS q; APRS-IS q-alg |
@@ -180,7 +180,7 @@ from this table is `dest.generic`.
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|
 | <a id="dti"></a>`dti` | Data type identifier | Byte 0 of `line.info`, and only byte 0 ([amb.dti.offset](#amb.dti.offset)). Selects the format by the table below. The `dti` rules give the dispatch and the findings of the table; the token of byte 0 carries the identifier rule of the most specific format the packet is classified as, such as [`pos.dti`](03-position.md#pos.dti), [`wx.pos`](06-weather.md#wx.pos) or [`tp.dti`](#tp.dti), listed below the table ([README section 3](README.md#3-tokenizer-model)). | yes | 1 byte | p. 23/13; p. 31/17; p. 154/130 |
-| <a id="dti.unknown"></a>`dti.unknown` | Undispatched field | The whole of `line.info` when the identifier selects no format and neither obsolete form below the table matches. Verdict `unknown-format`; the finding is given in the table below ([amb.dti.undefined](#amb.dti.undefined)). **[proposed]** This holds inside a third-party payload too: the data type of the packet cannot be determined. | — | end of `line.info` | p. 31/17; p. 123/99 |
+| <a id="dti.unknown"></a>`dti.unknown` | Undispatched field | The whole of `line.info` when the identifier selects no format and neither obsolete form below the table matches. Verdict `unknown-format`; the finding is given in the table below ([amb.dti.undefined](#amb.dti.undefined)). **[agreed]** This holds inside a third-party payload too: the data type of the packet cannot be determined, and the verdict of the whole line is `unknown-format`. A `}` field whose inner header has no `:` has no inner field to read, and gets the same verdict under [`tp.sep`](#tp.sep). | — | end of `line.info` | p. 31/17; p. 123/99 |
 
 The dispatch, by byte value of `dti`. "Class" is the document's own
 category; "Read in" is where the rest of the field is tokenized, and
@@ -256,7 +256,9 @@ A field read as `dti.unknown` has no identifier rule.
 
 Packets that fit no format are, per p. 123/99, non-APRS beacons that a
 program can show as status. The tokenizer does not: they stay
-`dti.unknown` **[proposed]** ([amb.dti.undefined](#amb.dti.undefined)).
+`dti.unknown`, since the data type cannot be determined
+([README section 3](README.md#3-tokenizer-model), Output;
+[amb.dti.undefined](#amb.dti.undefined)).
 
 An assigned identifier is a byte whose row in the dispatch table names
 a file to read it. Every other byte, whether not listed, unused,
@@ -300,9 +302,9 @@ field is tokenized from `dti` again, one depth level down.
 | <a id="tp.path"></a>`tp.path` | Retained original path | Zero or more entries, each `,` then an address as `path.digi`, `path.q` or `path.is`, without `*`. **[proposed]** The token includes the `,`; the entry is read one level below it under the rules of section 4, including the limit of 8 and the obsolete and gating classes. A `*` here gives `syntax` ([amb.tp.header](#amb.tp.header)), so `path.used` does not apply. The `*` and the bytes after it are a `residue` below the token, and the finding is at the `*`, unless the address before it already gives `syntax` (README section 3, Output; Placing a finding). | no | the `,` before `tp.net` | p. 108/84; p. 138/114 |
 | <a id="tp.net"></a>`tp.net` | Network identifier | `,` then an address in the AX.25 form (`TCPIP` in the examples), without `*`. **[agreed]** Any other address gives `syntax` on this rule at its first byte that does not fit that form ([amb.addr.form](#amb.addr.form)); an earlier draft also took `addr.is` here. A `*` gives `syntax` at the `*`, unless the address before it already gives `syntax`; the `*` and the bytes after it are a `residue` below the token (README section 3, Output; Placing a finding). An empty one is a missing field and gives `syntax` where its first byte was expected ([README section 3](README.md#3-tokenizer-model), Kinds by situation). | yes | `,` | p. 108/84 |
 | <a id="tp.gate"></a>`tp.gate` | Receiving gateway | `,` then `addr.call` with optional `addr.ssid`, then `*`. A missing `*`, or an address not in the AX.25 form, gives `syntax` ([amb.tp.header](#amb.tp.header)): one finding, at the first byte that does not fit the AX.25 form, or where the `*` was expected (README section 3, Placing a finding). An earlier draft gave both defects a finding, the address one at its first byte. It is the last entry of the inner header. | yes | `tp.sep` | p. 108/84; p. 109/85 |
-| <a id="tp.sep"></a>`tp.sep` | Inner header end | `:`, the first `:` after `tp.dti`. | yes | 1 byte | p. 108/84 ([amb.tp.header](#amb.tp.header)) |
+| <a id="tp.sep"></a>`tp.sep` | Inner header end | `:`, the first `:` after `tp.dti`. **[agreed]** A `}` field with no `:` after `tp.dti` gives `syntax` on this rule at the end of the field, where the `:` was expected, and the bytes after `tp.dti` are a `residue`. Its verdict is `unknown-format`, as for a line with no [`line.sep`](#line.sep): without the end of the inner header no carried information field is found, so the data type of the carried packet cannot be determined ([README section 3](README.md#3-tokenizer-model), Output). An earlier draft gave the `syntax` finding only and left the verdict open. | yes | 1 byte | p. 108/84 ([amb.tp.header](#amb.tp.header)) |
 | <a id="tp.info"></a>`tp.info` | Original information field | Tokenized from `dti` at depth + 1, under every rule of this directory. An empty field gives `syntax` under this rule. A further `}` is followed ([amb.tp.nest](#amb.tp.nest)). | yes | end of the enclosing field | p. 108/84; p. 110/86 |
-| <a id="tp.aea"></a>`tp.aea` | AEA-form inner header | Every address separated by `>` instead of `,`: source, any retained digipeaters, the network identifier, the gateway with `*`, then the original destination, then `:`. Gives `obsolete` ([amb.tp.aea](#amb.tp.aea)). **[proposed]** Recognised when there is no `,`, at least four non-empty addresses, and exactly one `*`, at the end of the second-to-last address. Each address is read one level below; the last is classified as a destination by section 5. **[agreed]** The first, the source, may be `addr.is`; any other address not in the AX.25 form gives `syntax` on `tp.aea`, one finding for the field, at the first such byte ([amb.addr.form](#amb.addr.form); README section 3, Placing a finding). On a Mic-E destination that finding is not given at a byte that a rule of [04-mic-e section 3](04-mic-e.md#3-destination-address) reports for the same fault (README section 3, One fault, two rules). | no | `tp.sep` | p. 137/113; p. 138/114 |
+| <a id="tp.aea"></a>`tp.aea` | AEA-form inner header | Every address separated by `>` instead of `,`: source, any retained digipeaters, the network identifier, the gateway with `*`, then the original destination, then `:`. Gives `obsolete` ([amb.tp.aea](#amb.tp.aea)). **[agreed]** Recognised when there is no `,`, at least four non-empty addresses, and exactly one `*`, at the end of the second-to-last address. Each address is read one level below; the last is classified as a destination by section 5. **[agreed]** The first, the source, may be `addr.is`; any other address not in the AX.25 form gives `syntax` on `tp.aea`, one finding for the field, at the first such byte ([amb.addr.form](#amb.addr.form); README section 3, Placing a finding). On a Mic-E destination that finding is not given at a byte that a rule of [04-mic-e section 3](04-mic-e.md#3-destination-address) reports for the same fault (README section 3, One fault, two rules). | no | `tp.sep` | p. 137/113; p. 138/114 |
 
 ## 9. Ambiguities
 
@@ -354,7 +356,10 @@ one.
 **Readings.** (a) Over 256 bytes is malformed. (b) It is a value beyond a
 stated limit. (c) No limit applies on APRS-IS.
 
-**Reading taken.** **[proposed]** (b), not (c). The kind and place then
+**Reading taken.** (b), not (c): the two differ only in how much they
+accept, and the narrowest reading the text supports is taken
+([README section 3](README.md#3-tokenizer-model), Kinds by situation,
+narrowest reading). The kind and place then
 follow: `value` at byte 257, the first byte past the limit, as for every
 stated length limit in this directory
 ([README section 3](README.md#3-tokenizer-model), Kinds by situation;
@@ -469,6 +474,12 @@ the last one marks the station heard.
 **Reading taken.** (a), the narrowest of the two in the count it
 accepts ([README section 3](README.md#3-tokenizer-model), Kinds by
 situation): the second `*` among `path.digi` entries gives `syntax`.
+**[agreed]** So does every later `*`: each `*` after the first gives
+its own `syntax` finding on `path.used`, at that `*`, one finding per
+extra `*`. Each is the `path.used` token of its own entry. An earlier
+draft named only the second `*` and left open whether a third or later
+one gets a finding, or whether a path gets one finding however many
+`*` it carries.
 
 **In the bytes.** Visible, since (b) would accept them; the `syntax`
 finding alone is given
@@ -504,7 +515,9 @@ situation), with the checks of the [`path.q`](#path.q) row: those that
 one line can show. The rules of the definition that depend on the
 connection a packet arrived on (a verified login, the port, when a
 server rewrites `qAR` to `qAo`) are not checked
-([README section 3](README.md#3-tokenizer-model), Boundaries). Earlier
+([README section 3](README.md#3-tokenizer-model), the paragraph that
+begins "The tokenizer finds boundaries": a rule that depends on what
+the line does not show). Earlier
 drafts checked the shape only, first because the list was in a
 document outside the references and then until the definition was
 brought in.
@@ -758,8 +771,10 @@ no format as a status report.
 **Readings.** (a) Reject. (b) Unknown format, kept as opaque bytes. (c)
 Read as status text.
 
-**Reading taken.** **[proposed]** (b): one `dti.unknown` token, verdict
-`unknown-format`. The finding at `dti` is `syntax` for "do not use"
+**Reading taken.** (b): one `dti.unknown` token, verdict
+`unknown-format`, which is given when the data type cannot be
+determined ([README section 3](README.md#3-tokenizer-model), Output).
+The finding at `dti` is `syntax` for "do not use"
 values, which a stated prohibition covers, and `unstated` for the
 unused, reserved and unlisted values of a table the document does not
 close ([README section 3](README.md#3-tokenizer-model), Kinds by
@@ -941,8 +956,17 @@ Do not recognise it.
 as in the example that APRS 1.0.1 gave with the same diagram (1.0.1 PDF
 p. 95): an example of the earlier edition fills the gap
 ([README section 3](README.md#3-tokenizer-model), Pages that disagree).
-**[proposed]** An inner header with no `,` and at least four `>`-separated
-addresses, one of them followed by `*`, is `tp.aea`. At line level
+**[agreed]** An inner header with no `,`, at least four `>`-separated
+addresses, all of them non-empty, and exactly one `*`, at the end of
+the second-to-last address (the gateway), is `tp.aea`, as the
+[`tp.aea`](#tp.aea) row states: those are the form's own defining
+bytes ([README section 3](README.md#3-tokenizer-model), Obsolete and
+nested forms). A near-miss, such as a header with a second `*`, a `*`
+elsewhere, an empty address or only three addresses, is not `tp.aea`:
+it falls to the TNC-2 reading of section 8 and gets that reading's
+findings. An earlier draft of this sentence asked only that one of the
+addresses be followed by `*`, which did not match the row.
+**[proposed]** At line level
 APRS-IS carries TNC-2 text (UAP §1, ch. 4), so an AEA line header gives
 `syntax`, and that finding alone is given
 ([README section 3](README.md#3-tokenizer-model), Precedence). An inner

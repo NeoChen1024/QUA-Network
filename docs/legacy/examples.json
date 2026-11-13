@@ -1067,20 +1067,26 @@
    "kind": "text-layer",
    "verdict": "syntax",
    "findings": [
-    "syntax obj.time @11",
-    "syntax sym.code @29"
+    "value time.dhm @11",
+    "syntax time.dhm @15",
+    "discouraged obj.pos @18",
+    "syntax cmp.cs @29"
    ],
    "basis": [
     "05-object-item.md#obj.time",
     "05-object-item.md#amb.obj.time",
     "05-object-item.md#err.obj.time",
     "05-object-item.md#err.area.gap",
+    "05-object-item.md#obj.pos",
+    "05-object-item.md#2-object-report",
+    "02-fields.md#2-timestamps",
+    "02-fields.md#62-fields",
+    "02-fields.md#63-reading-the-cs-bytes",
     "README.md#3-tokenizer-model",
-    "02-fields.md#1-scope",
-    "02-fields.md#sym.code"
+    "02-fields.md#1-scope"
    ],
-   "note": "The extraction lost the script-l symbol code and the line-area descriptor with its 100-mile corridor in braces, which should follow the longitude directly. The example also has no timestamp: the name fills offsets 1-9 and the latitude starts at 11. Offsets 11-16 are not all digits, so under the reading taken the timestamp is missing: a syntax finding on obj.time at offset 11, using no byte, and the position is read from offset 11 (amb.obj.time, 'After a missing timestamp'). Latitude 11-18, table '\\' at 19 and longitude 20-28 fit; the field ends where the symbol code was expected, so sym.code gives syntax at 29 (README section 3, Output and Placing a finding). The restored packet would still get the verdict syntax. Re-derived after the general rules of README section 3 were agreed.",
-   "doubt": "Earlier versions of this entry stopped parsing at offset 11. The rule ID of the cut-short finding is taken as sym.code, the most specific rule at fault; obj.pos is the selector and has no token."
+   "note": "The extraction lost the script-l symbol code and the line-area descriptor with its 100-mile corridor in braces, which should follow the longitude directly. The example also has no timestamp: the name fills offsets 1-9 and the latitude starts at 11. The timestamp is still the 7 bytes at 11-17 (amb.obj.time): offset 17 holds '0', which selects no form, so time.dhm is taken by default (02 section 2). Its first failing byte is the '.' at 15, a syntax finding; the day '49' at 11-12 is present and out of range, a value finding that is an independent defect. Minute '.5' is not two digits and is not checked. The position is read from 18, where 'N' is a compressed table byte, so a compressed object, with discouraged on obj.pos at 18 (05 section 2). The block is cut short: table 18, latitude 19-22, longitude 23-26, symbol code '5' at 27, c 'W' at 28; s is missing at 29 and T at 30. The cs part without T is cmp.cs (02 section 6.2), and the part cut short gives syntax where its first missing byte was expected, at 29. Re-derived after amb.obj.time took the timestamp as always the 7 bytes the layout fixes; an earlier version read the position from offset 11 after a missing timestamp, with syntax on obj.time at 11 and on sym.code at 29.",
+   "doubt": "The cmp.cs ID for a cs part without T is [proposed] in 02 section 6.2."
   },
   {
    "id": "p80-6e46dd10",
@@ -1222,7 +1228,7 @@
     "06-weather.md#amb.wx.status",
     "06-weather.md#amb.wx.letters"
    ],
-   "note": "Positionless report: the MDHM stamp at 1-8 is in range, and the leading c, s, g and t elements are at 9, 13, 17 and 21. Next come r, p, P, h and b; the 5-digit pressure is at 40-45. The 4-byte tail at offset 46 begins with a letter. Its last three bytes are the listed unit RSW, so it splits as software code w (added by the erratum) plus that unit. A tail of 3 or 4 bytes that starts with a letter always gets the ambiguous finding against wx.sw. The 'w' is not followed by a digit, so amb.wx.letters gives nothing.",
+   "note": "Positionless report: the MDHM stamp at 1-8 is in range, and the leading c, s, g and t elements are at 9, 13, 17 and 21. Next come r, p, P, h and b; the 5-digit pressure is at 40-45. The 4-byte tail at offset 46 begins with a letter. Its last three bytes are the listed unit RSW, so it splits as software code w (added by the erratum) plus that unit. A tail of 3 or 4 bytes that starts with a letter always gets the ambiguous finding of amb.wx.tail, on the rule of its first token, here wx.sw (README section 3, Placing a finding). The 'w' is not followed by a digit, so amb.wx.letters gives nothing.",
    "doubt": "Rule ID of the discouraged finding: 'dti' or possibly wx.pl."
   },
   {
@@ -1233,7 +1239,7 @@
    "verdict": "conform-ambiguous",
    "findings": [
     "discouraged dti @0",
-    "ambiguous wx.sw @29"
+    "ambiguous wx.unit @29"
    ],
    "basis": [
     "06-weather.md#wx.pl",
@@ -1245,7 +1251,7 @@
     "06-weather.md#amb.wx.tail",
     "06-weather.md#amb.wx.status"
    ],
-   "note": "The dots here are unknown fill, not an ellipsis. The c, s, g and t values are each three dots, which is allowed, at offsets 9, 13, 17 and 21, and the rain-since-midnight element is at 25. The 3-byte tail at offset 29 is not a listed unit, nor a listed unit after its first byte, and its first byte is not a listed software code. It is read as a 3-byte wx.unit and gets the two-way-split ambiguous finding against wx.sw. Its first letter is undefined but is not followed by a digit, so amb.wx.letters gives nothing.",
+   "note": "The dots here are unknown fill, not an ellipsis. The c, s, g and t values are each three dots, which is allowed, at offsets 9, 13, 17 and 21, and the rain-since-midnight element is at 25. The 3-byte tail at offset 29 is not a listed unit, nor a listed unit after its first byte, and its first byte is not a listed software code. It is read as a 3-byte wx.unit and gets the two-way-split ambiguous finding of amb.wx.tail on wx.unit, the rule of its first token (README section 3, Placing a finding). Its first letter is undefined but is not followed by a digit, so amb.wx.letters gives nothing. Re-derived after amb.wx.tail placed its finding on the rule of the first token; an earlier version had it on wx.sw.",
    "doubt": "Rule ID of the discouraged finding: 'dti' or possibly wx.pl."
   },
   {
@@ -1368,22 +1374,25 @@
    "kind": "packet",
    "verdict": "syntax",
    "findings": [
-    "syntax obj.time @11",
-    "ambiguous wx.sw @66"
+    "value time.dhm @11",
+    "syntax time.dhm @15",
+    "discouraged obj.pos @18",
+    "ambiguous cmp.cs.alt @28"
    ],
    "basis": [
     "06-weather.md#err.wx.object-time",
     "05-object-item.md#amb.obj.time",
     "05-object-item.md#obj.time",
     "05-object-item.md#obj.pos",
-    "05-object-item.md#7-weather-and-storm-data-on-objects",
-    "06-weather.md#53-object",
-    "06-weather.md#7-software-and-unit-codes",
-    "06-weather.md#amb.wx.tail",
+    "05-object-item.md#2-object-report",
+    "02-fields.md#2-timestamps",
+    "02-fields.md#63-reading-the-cs-bytes",
+    "02-fields.md#64-the-t-byte",
+    "02-fields.md#amb.ext.compressed",
     "README.md#3-tokenizer-model"
    ],
-   "note": "A weather object printed without the timestamp that the diagram requires. Offsets 11-16 are not all digits, so the timestamp is missing: syntax on obj.time at 11, using no byte, and the position is read from 11 (amb.obj.time). Symbol code '_' at 29 with bytes after it makes this a weather object (byte 0 carries wx.obj): wind 220/004 at 30-36, then g, t, r, p, P, h and b elements at 37-65. 'w' at 66 is not an element letter and is not followed by a digit, so the data ends there (amb.wx.letters gives nothing). The 4-byte tail 'wRSW' splits as software code 'w' (in this reading's list) and listed unit 'RSW', with the ambiguous finding of amb.wx.tail on wx.sw at 66. The obj.time syntax finding is one both tail readings give, so it does not stop that finding (README section 3, Which findings are the other reading's own). Re-derived after the general rules of README section 3 were agreed.",
-   "doubt": "Earlier versions of this entry stopped parsing at offset 11 and did not classify the packet as weather."
+   "note": "A weather object printed without the timestamp that the diagram requires. The timestamp is still the 7 bytes at 11-17 (amb.obj.time): offset 17 holds '0', which selects no form, so time.dhm is taken by default (02 section 2), with syntax at its first failing byte, the '.' at 15, and value at 11 for the day '49', an independent defect. The position is read from 18, where 'N' is a compressed table byte: a compressed object, with discouraged on obj.pos at 18 (05 section 2). The block is 18-30: latitude 19-22, longitude 23-26, symbol code '5' at 27, cs 'W_' at 28-29, T '2' at 30. T - 33 = 17 has bits 4-3 '1 0', the GGA source, so step 2 of 02 section 6.3 makes the cs cmp.cs.alt, and c 'W' also lies in the course range, which gives ambiguous at 28. The symbol code is not '_', so the packet is not a weather object. The comment at 31-70 is 40 bytes, within the 43 of a compressed object; its first bytes '20/004g' fit no extension form, and it holds no comment item. Re-derived after amb.obj.time took the timestamp as always the 7 bytes the layout fixes; an earlier version read the position from offset 11 after a missing timestamp, classified the packet as a weather object, and gave syntax on obj.time at 11 and the amb.wx.tail finding at 66.",
+   "doubt": "The restored packet, with a timestamp, would be the weather object the page shows."
   },
   {
    "id": "p87-002c2ca5",

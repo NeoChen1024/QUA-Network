@@ -93,10 +93,11 @@ def _value_len(line, v, end, rule, width, runs):
 
 
 def _first_bad(b, rule):
-    """Offset in the value b of a leading element of the first byte that
-    fails: a value starting with '.' or SP is fill throughout, any other
-    holds digits (after the sign of a temperature). len(b) when the bytes
-    present fit and the value is cut short."""
+    """Offset in the value b of a leading element (6.2), or in a part of
+    the wind field (5.1), of the first byte that fails: a value starting with
+    '.' or SP is fill throughout, any other holds digits (after the sign of a
+    temperature). len(b) when the bytes present fit and the value is cut
+    short."""
     if not b:
         return 0
     if b[0] in b". ":
@@ -163,13 +164,11 @@ def _data(scan, p, end, depth, positionless, wind=True):
     if positionless:
         seen = set()
         for letter, rule in _LEADING:
-            if p >= end:
-                # The field ends before a leading element: one finding, there.
-                scan.find(rule, "syntax", end)
-                return
-            if line[p] != letter:
-                # Missing: the finding is where it was expected; nothing is used.
-                scan.find(rule, "syntax", p)
+            if p >= end or line[p] != letter:
+                # A place without its letter is a missing element (6.2): the
+                # finding is where it was expected, no byte is used, and the
+                # next place is the same byte.
+                scan.missing(rule, p)
                 continue
             n = _fixed(line, p + 1, end, rule, 3)
             if n is None:
@@ -217,14 +216,14 @@ def _tail(scan, q, end, depth):
     b = line[q:end]
     n = len(b)
     if n > 5 or any(c not in _TAIL_BYTES for c in b):
-        scan.residue(q, end, depth, "wx.unit")
-        scan.find("wx.unit", "syntax", q)
+        scan.residue(q, end, depth, "wx.unit", fault=True)
         return "residue"
     if n == 1:
         _sw(scan, q, depth)
         return "wx.sw"
     split = n == 5
-    if n in (3, 4) and b[0] in _LETTERS:
+    two_ways = n in (3, 4) and b[0] in _LETTERS
+    if two_ways:
         # amb.wx.tail: the tail splits two ways; the listed codes choose.
         if b[1:] in _UNITS:
             split = True
@@ -232,13 +231,18 @@ def _tail(scan, q, end, depth):
             split = False
         else:
             split = b[0] in _SOFTWARE
-        scan.find("wx.sw", "ambiguous", q)
+    first = "wx.sw" if split else "wx.unit"
+    # Precedence: a syntax or value finding on the tail's bytes, a missing
+    # field placed at its first byte included, is given alone. The finding is
+    # on the rule of the first token (README section 3, Placing a finding).
+    if two_ways and not any(f.kind in _BAD and q <= f.offset <= end for f in scan.findings):
+        scan.find(first, "ambiguous", q)
     if split:
         _sw(scan, q, depth)
         scan.tok("wx.unit", q + 1, end, depth)
-        return "wx.sw"
-    scan.tok("wx.unit", q, end, depth)
-    return "wx.unit"
+    else:
+        scan.tok("wx.unit", q, end, depth)
+    return first
 
 
 def _alt_accepts(scan, s, end, runs=False, extra=False):
@@ -331,23 +335,47 @@ def complete(scan, p, end, depth, block=None, obj_cmt=False):
     line = scan.line
     s = p
     if block is None:
-        x = dirspd(line, p, end)
-        wind = x is not None
-        if x is None:
-            scan.find("ext.dirspd", "syntax", p)
+        if p + 3 < end and line[p + 3] == 0x2F:
+            wind = _wind(scan, p, end, depth)
+            p = min(p + 7, end)
         else:
-            scan.tok("ext.dirspd", p, p + 7, depth)
-            for f in x.findings:
-                # Parts of different kinds give unstated only: a reading that
-                # takes only the listed forms fails the required wind field.
-                if f[1] != "ambiguous":
-                    scan.find(*f)
-            p += 7
+            # 5.1: without its '/' the wind field is missing; the data is read
+            # from the same byte.
+            scan.missing("ext.dirspd", p)
+            wind = False
     else:
         wind = _cmpwind(scan, block)
     _data(scan, p, end, depth, False, wind)
     if obj_cmt:
         _object_comment(scan, s, end, depth)
+
+
+def _wind(scan, p, end, depth):
+    """The wind field at p, present by its '/' (5.1): a 7-byte ext.dirspd
+    token, cut short by end, with one syntax finding at the first byte that
+    fails. Returns whether it matches, and so has read c and s (6.2)."""
+    line = scan.line
+    e = min(p + 7, end)
+    scan.tok("ext.dirspd", p, e, depth)
+    x = dirspd(line, p, end)
+    if x is not None:
+        for f in x.findings:
+            # Parts of different kinds give unstated only: a reading that
+            # takes only the listed forms fails the required wind field.
+            if f[1] != "ambiguous":
+                scan.find(*f)
+        return True
+    for v in (p, p + 4):
+        b = line[v : min(v + 3, e)]
+        i = _first_bad(b, None)
+        if i < len(b) or len(b) < 3:
+            scan.find("ext.dirspd", "syntax", v + i)
+            break
+    d = line[p : p + 3]
+    if _digits(d) and int(d) > 360:
+        # Independent of a fault in the speed (README section 3, Precedence).
+        scan.find("ext.dirspd", "value", p)
+    return False
 
 
 def _cmpwind(scan, block):

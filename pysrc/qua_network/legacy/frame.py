@@ -523,8 +523,11 @@ def third_party(scan, start, end, depth, readers, level):
         scan.find("tp.dti", "unstated", start)
     sep = line.find(b":", start + 1, end)
     if sep < 0:
+        # No inner field is found, so the carried packet's data type cannot be
+        # determined: unknown-format, as for a line with no line.sep (01 tp.sep).
         scan.residue(start + 1, end, depth, "tp.sep")
         scan.find("tp.sep", "syntax", end)
+        scan.unknown_format = True
         return
     h0 = start + 1
     if not _tp_aea(scan, h0, sep, depth):

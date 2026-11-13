@@ -65,8 +65,10 @@ An earlier draft gave the first on `stat.grid` and the second on
 outside its set gives one `syntax` finding, at the first such byte
 (Placing a finding); an earlier draft gave one at every such byte.
 
-**[proposed]** `stat.text` is a free-text field for
-[`cmt.noarchive`](02-fields.md#cmt.noarchive). Of the other items of
+`stat.text` is a free-text field for
+[`cmt.noarchive`](02-fields.md#cmt.noarchive), which is looked for in
+all free text ([README section 3](README.md#3-tokenizer-model), Where
+comment items are looked for, the exception of `'!x!'`). Of the other items of
 [02 section 8.2](02-fields.md#82-items-found-inside-a-comment), only a
 frequency at its start (section 7) is looked for in it, and no
 altitude, DAO or [`tlm.b91`](07-telemetry.md#tlm.b91): their chapters
@@ -74,7 +76,7 @@ place them in comments, and p. 34/20 names the status report only for
 a locator and a beam heading
 ([README section 3](README.md#3-tokenizer-model), Where comment items
 are looked for). An earlier draft carried that second sentence as a
-proposal too. `stat.beam` and the tokens of section 7 lie one level below
+proposal. `stat.beam` and the tokens of section 7 lie one level below
 `stat.text`. No other field of this file is named a free-text field:
 `udf.data` holds data whose meaning its user defines, and `inv.data`
 holds bytes sent as invalid or for a test. A `'!x!'` in either is
@@ -95,7 +97,7 @@ from that search, which covers the whole information field.
 | <a id="cap.item"></a>`cap.item` | Capability | `cap.token`, optionally followed by `=` and `cap.value`. One or more items, separated by `cap.sep`. An empty field or an empty item gives `syntax`. | yes, at least one | `,` or end of field | p. 101/77 |
 | <a id="cap.sep"></a>`cap.sep` | Separator | `,`, 1 byte. | between items | 1 byte | p. 101/77 |
 | <a id="cap.token"></a>`cap.token` | Token | 1 or more bytes 0x21–0x7E other than `,` and `=` ([amb.cap.form](#amb.cap.form)). | yes | `=`, `,` or end of field | p. 101/77 |
-| <a id="cap.value"></a>`cap.value` | Value | 1 or more bytes 0x21–0x7E other than `,`. An `=` with nothing after it gives `syntax`. For the tokens `MSG_CNT` and `LOC_CNT` the value is a count, so digits; any other byte gives `syntax`, as a byte outside the set ([README section 3](README.md#3-tokenizer-model)). | no | `,` or end of field | p. 101/77 |
+| <a id="cap.value"></a>`cap.value` | Value | 1 or more bytes 0x21–0x7E other than `,`. An `=` with nothing after it gives `syntax`. For the tokens `MSG_CNT` and `LOC_CNT` the value is a count, so digits; any other byte gives `syntax`, as a byte pattern outside every form the document defines, at a place the format fixes ([README section 3](README.md#3-tokenizer-model), Kinds by situation). **[agreed]** A byte above 0x7E gives `syntax` too, as a byte outside the set: the README rule that gives no finding for bytes outside 7-bit ASCII covers only a field where APRS12c only recommends printable ASCII, and p. 101/77 says nothing of the kind. The value of any other token gets the byte set only (section 10). | no | `,` or end of field | p. 101/77 |
 | <a id="cap.pad"></a>`cap.pad` | Padding | One or more `SP` before or after a token or value. A token of its own; gives `ambiguous` at its first byte where the field read with the spaces as padding would give no `syntax` or `value` finding of its own ([amb.cap.form](#amb.cap.form)). | no | the next byte that is not `SP` | — |
 
 An item with no bytes, between two `cap.sep` or between one and either
@@ -143,7 +145,10 @@ the run of letters from offset 1, possibly empty, and `qry.end` gives
 otherwise the rest is residue. An earlier draft made the rest residue
 in every case. An empty type is a missing field and gives `syntax` at
 offset 1, where its first byte was expected (Kinds by situation); with
-the `?` missing as well, both findings are at offset 1.
+the `?` missing as well, `qry.end` is missing at the same byte and
+gives no finding of its own (Missing fields at one byte), while a
+footprint read from that byte keeps its findings. An earlier draft
+gave both missing fields a finding at offset 1.
 **[proposed]** The bytes after `qry.end` are a footprint when they start
 with a number of the `qry.lat` form, with or without its sign byte;
 other bytes give `syntax` on `qry.fp` at their first byte and are
@@ -475,9 +480,12 @@ with spaces after the commas (p. 155/131; see
 **Readings.** (a) Visible bytes only, spaces not allowed. (b) Spaces
 around items are padding.
 
-**Reading taken.** **[proposed]** (a) for the token and value; `SP`
-around them is taken as `cap.pad` with `ambiguous`, since (b) would also
-match: visible in the bytes.
+**Reading taken.** (a) for the token and value: the two readings
+differ only in how much they accept, and the narrowest that the text
+supports is taken, with the wider one tested for an `ambiguous` finding
+([README section 3](README.md#3-tokenizer-model), Kinds by situation,
+narrowest reading). `SP` around them is taken as `cap.pad` with
+`ambiguous`, since (b) would also match: visible in the bytes.
 
 **In the bytes.** Under the tests of
 [README section 3](README.md#3-tokenizer-model), reading (b) counts
@@ -990,7 +998,20 @@ in APRS 1.0.1. 12b has both (12b PDF 120, 121).
 ## 10. Open items
 
 - Whether the tokenizer checks a capability value for tokens other than
-  `MSG_CNT` and `LOC_CNT`, if more tokens appear in the corpus.
+  `MSG_CNT` and `LOC_CNT`, if more tokens appear in the corpus. Settled
+  by [README section 3](README.md#3-tokenizer-model): p. 101/77 lists
+  the capabilities with "include", an open list, so another token gets
+  no finding (Kinds by situation), and the document gives its value no
+  form, so checking one would add a form the document never mentions
+  (a listed reading comes from the document's text). The value of any
+  other token gets the byte set of `cap.value` only. The item is kept
+  here as a record.
+- **[open]** Whether `'='` may stand inside a capability value. The
+  `cap.value` row admits it as a byte 0x21–0x7E other than `','`, so
+  `RF_CNT==0` gives no finding, and p. 101/77 does not address it. A
+  scan of the capture window `aprsis-20261104-03.log` to
+  `aprsis-20261113-07.log` (221 files, 75,037,495 packets) found 20
+  such values.
 - `freq.dstar` is placed after a frequency and offset; whether a tone
   can stand between them is not shown by the examples.
 - Whether a directed query of an unlisted type (pdn-aprs accepts one)

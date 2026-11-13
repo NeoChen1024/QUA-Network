@@ -26,9 +26,10 @@ def _digits(b):
 
 
 def missing(scan, rule, p, end):
-    """True, with a syntax finding at p, when a required field starts at end."""
+    """True, with a syntax finding at p, when a required field starts at end
+    (Scan.missing: only the first missing field at one byte gives it)."""
     if p >= end:
-        scan.find(rule, "syntax", p)
+        scan.missing(rule, p)
         return True
     return False
 
@@ -453,9 +454,6 @@ def emit_ext(scan, x, depth):
 
 # --- Comment (02 section 8) ---------------------------------------------
 
-# Overlapping matches of every step-3 form, and of the comment items.
-_STEP3_AT = re.compile(rb"(?=[0-9. ]{3}/[0-9. ]{3}|PHG|RNG|DFS)")
-
 
 def bad_text_bytes(b):
     """Offsets in b of bytes outside printable ASCII and well-formed UTF-8."""
@@ -627,8 +625,9 @@ def comment(
     whose items are left-justified (09 freq.obj). extra
     holds (rule, start, end) of items the format itself found in the comment
     and has tokenized, for the overlap rule of 8.2. start_cse=False leaves out
-    the course and speed at the comment start, for a report in which 7.1
-    would not try that form at a slot. The bytes of a base-91 telemetry
+    the extension-shaped run at the comment start, for a comment that does not
+    directly follow the slot (storm data, 06 section 8) or a report in which
+    7.1 would try no form of step 3 at a slot. The bytes of a base-91 telemetry
     block belong to the block: no other item, and no extension-shaped run, is
     looked for inside it, and a '!x!' there is left to noarchive_outside
     through Comment.texts() (07 section 3). Returns a Comment, or None when
@@ -650,27 +649,21 @@ def comment(
         daos = [(i, k) for i, k in daos if not span[0] <= i < span[1]]
     items, alt_faults = _altitudes(scan, s, end, d, span)
 
-    # DAO candidates (8.3) outside the block; their bytes are not counted.
-    dao_bytes = set()
+    # DAO candidates (8.3) outside the block. Their bytes count toward the
+    # limit like those of any other item (8.1).
     for i, k in daos:
         scan.tok("cmt.dao", i, i + 5, d)
         if k:
             scan.find("cmt.dao", k, i)
-        dao_bytes.update(range(i, i + 5))
         items.append(("cmt.dao", i, i + 5))
-    counted = (end - s) - len(dao_bytes)
-    past = _past_limit(s, end, dao_bytes, limit)
+    counted = end - s
+    past = s + limit if counted > limit else None
     if len(daos) > 1:
-        # amb.cmt.dao: reading (b) keeps the last candidate and (c) the first,
-        # counting the others as text. Each accepts when within the limit, or
-        # when its length finding falls on the byte of this reading's, which
-        # is then shared (README section 3).
-        last, first = daos[-1][0], daos[0][0]
-        b_ok = _past_limit(s, end, set(range(last, last + 5)), limit) in (None, past)
-        c_ok = _past_limit(s, end, set(range(first, first + 5)), limit) in (None, past)
-        for n, (i, _) in enumerate(daos):
-            if (n < len(daos) - 1 and b_ok) or (n > 0 and c_ok):
-                scan.find("cmt.dao", "ambiguous", i)
+        # amb.cmt.dao: reading (b) keeps the last candidate and (c) the first.
+        # Both count the comment as this reading does, so a length finding of
+        # theirs is shared (README section 3) and each candidate is ambiguous.
+        for i, _ in daos:
+            scan.find("cmt.dao", "ambiguous", i)
 
     if span is not None:
         b91_block(scan, s, end, d, daos, span)
@@ -681,18 +674,16 @@ def comment(
 
     item_overlaps(scan, items)
 
-    # amb.ext.count / amb.ext.compressed: a step-3 form that fits cleanly.
-    # A course and speed, which has no marker, counts only at the comment
-    # start; the forms with a three-letter marker count anywhere. The finding
-    # is on the rule this reading gives the run's first byte (README section 3,
-    # Placing a finding): an item that byte lies in, else cmt.text.
-    for m in _STEP3_AT.finditer(line, s, end) if ext_search else ():
-        x = step3(line, m.start(), end)
-        if span is not None and span[0] <= m.start() < span[1]:
-            continue
-        if x is not None and x.clean() and (x.rule != "ext.csespd" or (x.start == s and start_cse)):
-            at = next((r for r, a, b in items if a <= x.start < b), "cmt.text")
-            scan.find(at, "ambiguous", x.start)
+    # amb.ext.count / amb.ext.compressed: a step-3 form that fits cleanly at
+    # the comment start, where reading (b) of either entry takes it as an
+    # extension. A run later in the comment is text with no finding: taking
+    # it is decoder behaviour (amb.ext.count). The finding is on the rule this
+    # reading gives the run's first byte (README section 3, Placing a
+    # finding): an item that byte lies in, else cmt.text.
+    x = step3(line, s, end) if ext_search and start_cse else None
+    if x is not None and x.clean() and (span is None or not span[0] <= s < span[1]):
+        at = next((r for r, a, b in items if a <= s < b), "cmt.text")
+        scan.find(at, "ambiguous", s)
 
     if past is not None:
         scan.find(limit_rule, "value", past)
@@ -708,18 +699,6 @@ def comment(
     # byte, whichever search of the field gave it.
     scan.withdraw("ambiguous", alt_faults)
     return Comment(s, end, counted, daos, span)
-
-
-def _past_limit(s, end, skip, limit):
-    """The first byte of line[s:end] past limit counted bytes, those in skip
-    not counted (8.1), or None when the field stays within the limit."""
-    n = 0
-    for i in range(s, end):
-        if i not in skip:
-            n += 1
-            if n > limit:
-                return i
-    return None
 
 
 def _item(rule):

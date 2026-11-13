@@ -274,9 +274,11 @@ def _query(scan, start, end, depth):
         elif t not in _GENERAL:
             scan.find("qry.type", "unstated", p)
     else:
-        scan.find("qry.type", "syntax", p)
+        scan.missing("qry.type", p)
     if q >= end or line[q] != 0x3F:
-        scan.find("qry.end", "syntax", q)
+        # After an empty type, qry.end is missing at the same byte and gives
+        # no finding of its own (README section 3, Missing fields at one byte).
+        scan.missing("qry.end", q)
         # Reading goes on where the start of the footprint can be told
         # (README section 3, Output).
         if q < end and _NUM.match(line, q, end):

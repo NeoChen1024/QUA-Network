@@ -38,8 +38,8 @@ p. 132/108).
 | <a id="obj.dti"></a>`obj.dti` | Data type identifier | `';'` at offset 0. | Required | 1 byte | p. 31/17, p. 76/58 |
 | <a id="obj.name"></a>`obj.name` | Object name | Offsets 1 to 9, each byte 0x20–0x7E. Trailing SP are padding and not part of the name; case is significant. Nine SP give a `syntax` finding ([amb.obj.name](#amb.obj.name)). | Required | 9 bytes | p. 76/58 |
 | <a id="obj.state"></a>`obj.state` | Live or killed | Offset 10: `'*'` live, `'_'` killed. Any other byte gives a `syntax` finding ([amb.obj.name](#amb.obj.name)). | Required | 1 byte | p. 76/58 |
-| <a id="obj.time"></a>`obj.time` | Timestamp | Offsets 11 to 17: [`time.dhm`](02-fields.md#time.dhm) or [`time.hms`](02-fields.md#time.hms). Required ([amb.obj.time](#amb.obj.time); README section 3, Pages that disagree). | Required | 7 bytes | p. 76/58, p. 153/129 |
-| <a id="obj.pos"></a>`obj.pos` | Position | From offset 18, or from offset 11 after a missing timestamp ([amb.obj.time](#amb.obj.time)). A digit there starts an uncompressed position: [`lat`](02-fields.md#lat), [`sym.table`](02-fields.md#sym.table), [`lon`](02-fields.md#lon), [`sym.code`](02-fields.md#sym.code), 19 bytes. A byte in the set of [`cmp.table`](02-fields.md#cmp.table) starts a compressed block, [`cmp.block`](02-fields.md#cmp.block), 13 bytes. `obj.pos` is the selector rule of [02-fields section 6.1](02-fields.md#61-telling-the-two-position-forms-apart): any other byte there is a `syntax` finding on `obj.pos` at that byte, and the bytes from it to the end of the field, whose extent cannot be told, are a `residue` that names `obj.pos` ([README section 3](README.md#3-tokenizer-model), Output and Placing a finding). | Required | 19 or 13 bytes | p. 55/37, p. 76/58 |
+| <a id="obj.time"></a>`obj.time` | Timestamp | Offsets 11 to 17: [`time.dhm`](02-fields.md#time.dhm) or [`time.hms`](02-fields.md#time.hms). Required ([amb.obj.time](#amb.obj.time); README section 3, Pages that disagree). A missing or malformed timestamp is still these 7 bytes, as for [`pos.time`](03-position.md#pos.time): the entry names no presence test, so the field is always present (README section 3, When a fixed field is present). | Required | 7 bytes | p. 76/58, p. 153/129 |
+| <a id="obj.pos"></a>`obj.pos` | Position | From offset 18 ([amb.obj.time](#amb.obj.time)). A digit there starts an uncompressed position: [`lat`](02-fields.md#lat), [`sym.table`](02-fields.md#sym.table), [`lon`](02-fields.md#lon), [`sym.code`](02-fields.md#sym.code), 19 bytes. A byte in the set of [`cmp.table`](02-fields.md#cmp.table) starts a compressed block, [`cmp.block`](02-fields.md#cmp.block), 13 bytes. `obj.pos` is the selector rule of [02-fields section 6.1](02-fields.md#61-telling-the-two-position-forms-apart): any other byte there is a `syntax` finding on `obj.pos` at that byte, and the bytes from it to the end of the field, whose extent cannot be told, are a `residue` that names `obj.pos` ([README section 3](README.md#3-tokenizer-model), Output and Placing a finding). | Required | 19 or 13 bytes | p. 55/37, p. 76/58 |
 | <a id="obj.ext"></a>`obj.ext` | Data extension | After an uncompressed position only: [`ext.csespd`](02-fields.md#ext.csespd), [`ext.phg`](02-fields.md#ext.phg) or [`ext.phgr`](02-fields.md#ext.phgr), [`ext.rng`](02-fields.md#ext.rng), [`ext.dfs`](02-fields.md#ext.dfs) or the area descriptor [`ext.area`](02-fields.md#ext.area) (section 4). | Optional | 7 bytes; 9 for `ext.phgr` | p. 76/58, p. 33/19 |
 | <a id="obj.cmt"></a>`obj.cmt` | Comment | The rest, read as [`cmt.text`](02-fields.md#cmt.text) with the comment items of [02-fields.md](02-fields.md#82-items-found-inside-a-comment) section 8, the braces of sections 4 and 5 below, and a frequency at its start ([09-other.md](09-other.md#7-frequency-specification)). **[agreed]** The comment counts as a position comment (p. 76/58, p. 80/62), so the altitude and the DAO are read in it; base-91 telemetry is not, and a run of its shape is text, with no finding ([amb.tlm.b91.where](07-telemetry.md#amb.tlm.b91.where); an earlier draft recorded it with an `unstated` finding). At most 36 bytes after an extension, the 9-byte [`ext.phgr`](02-fields.md#ext.phgr) included, as in [amb.pos.cmtlen](03-position.md#amb.pos.cmtlen), and 43 without; 43 after a compressed position, from the object diagram ([err.obj.cmplen](#err.obj.cmplen); README section 3, Pages that disagree). A longer comment gives a `value` finding. | Optional | End of information field | p. 76/58, p. 132/108 |
 
@@ -299,18 +299,27 @@ the [README](README.md#4-decoders-consulted), not run.
 - **Readings.** (a) Required. (b) Optional, detected by its shape.
 - **Reading taken.** (a), as the diagram has it
   ([README section 3](README.md#3-tokenizer-model), Pages that
-  disagree); most decoders read agree. A missing timestamp gives a `syntax` finding on
-  `obj.time` at offset 11. **[proposed]** The shape of the bytes is the
-  test: when offsets 11 to 16 are digits, the bytes are the timestamp
-  and are read by [`time.dhm`](02-fields.md#time.dhm) or
-  [`time.hms`](02-fields.md#time.hms), which report a wrong seventh
-  byte, a value out of range, or a field that ends inside them. Any
-  other bytes there are a missing timestamp.
-- **After a missing timestamp.** It uses no byte, and the position is
-  read from offset 11, where its first byte can be told by
-  `obj.pos` ([README section 3](README.md#3-tokenizer-model), Output:
-  reading continues at the next field). An earlier draft stopped there
-  and made the bytes from offset 11 to the end of the field a `residue`
+  disagree); most decoders read agree. **[agreed]** The timestamp is
+  the 7 bytes at offsets 11 to 17 that the layout fixes, whether they
+  are malformed or the timestamp is missing, as for
+  [`pos.time`](03-position.md#pos.time): a 7-byte token read by
+  [`time.dhm`](02-fields.md#time.dhm) or
+  [`time.hms`](02-fields.md#time.hms), chosen by offset 17 as
+  [02 section 2](02-fields.md#2-timestamps) does, with one `syntax`
+  finding at its first byte that fails, and the position is read from
+  offset 18 ([README section 3](README.md#3-tokenizer-model), Output;
+  Forms that can stand at one place). One cut short by the end of the
+  field covers the bytes present, with the finding where its first
+  missing byte was expected; a field that ends at offset 11 gives
+  `syntax` on `obj.time` there. An earlier draft took the shape of the
+  bytes as the test: six digits at offsets 11 to 16 were the
+  timestamp, and any other bytes were a missing timestamp that used no
+  byte, with the position read from offset 11. It was dropped because
+  it contradicts the 7-byte field that the diagram fixes, which the
+  Output rule keeps as a token when its bytes are wrong, and it lost
+  the position after a malformed timestamp such as a corrupted
+  `111111z`. A draft before that stopped at a missing timestamp and
+  made the bytes from offset 11 to the end of the field a `residue`
   that names `obj.time`, leaving the position to a deviation
   recogniser.
 - **In the bytes.** Visible. Reading (b) would accept a report without
@@ -356,10 +365,10 @@ the [README](README.md#4-decoders-consulted), not run.
   recogniser. No other reading is listed, so the entry gives no
   `ambiguous` finding. An earlier draft gave one at a `'*'` or `'_'`
   inside the name where reading (b) would have parsed the rest of the
-  report from there. **[proposed]** A name of nine SP gives `syntax`,
+  report from there. A name of nine SP gives `syntax`,
   as no name is left once the padding is removed: it is an empty required field
   ([README section 3](README.md#3-tokenizer-model), Kinds by
-  situation). p. 76/58 and p. 77/59 state the
+  situation: an empty required field is a missing field). **[proposed]** p. 76/58 and p. 77/59 state the
   byte set of object and item names as printable ASCII, where the
   comment, message and status text admit UTF-8 as well; the names are
   not a field where printable ASCII is only recommended, so the

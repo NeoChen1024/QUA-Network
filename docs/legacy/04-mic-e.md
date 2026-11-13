@@ -205,7 +205,7 @@ The obsolete Mic-E telemetry takes the place of the prefix
 | <a id="mice.status"></a>`mice.status` | Status text | Offset 9 to the end. Free text is [`cmt.text`](02-fields.md#cmt.text). No length limit is stated. The parts below are tokens one level deeper. | Optional | End of information field | p. 72/54 |
 | <a id="mice.tlm"></a>`mice.tlm` | Obsolete telemetry | 0x1D at offset 9, then 5 bytes of any value. Gives an `obsolete` finding. Bytes after it are read as status text with an `unstated` finding: the document says nothing of status text after the block ([README section 3](README.md#3-tokenizer-model), Kinds by situation). | Optional | 6 bytes | p. 72/54, p. 157/133 |
 | <a id="mice.type.prefix"></a>`mice.type.prefix` | Device type prefix | One byte at offset 9: `'>'` (Kenwood handheld), `']'` (Kenwood mobile), 0x60 (other maker, messaging capable) or 0x27 (other maker, not messaging capable). | Optional | 1 byte | p. 73/55 |
-| <a id="mice.alt"></a>`mice.alt` | Altitude | Three [`b91.digit`](02-fields.md#b91.digit) bytes, then `'}'`. Value minus 10000 is metres. **[proposed]** Only directly after the prefix, or at offset 9 when there is none ([amb.mice.alt](#amb.mice.alt)). | Optional | The `'}'` | p. 74/56, p. 153/129, p. 154/130 |
+| <a id="mice.alt"></a>`mice.alt` | Altitude | Three [`b91.digit`](02-fields.md#b91.digit) bytes, then `'}'`. Value minus 10000 is metres. Only directly after the prefix, or at offset 9 when there is none ([amb.mice.alt](#amb.mice.alt); README section 3, Fixed spots and repeats). | Optional | The `'}'` | p. 74/56, p. 153/129, p. 154/130 |
 | <a id="mice.grid"></a>`mice.grid` | Maidenhead locator | [`grid.loc`](03-position.md#grid.loc): two letters `'A'`–`'R'`, two digits, optionally two letters `'A'`–`'X'` ([amb.grid.range](03-position.md#amb.grid.range)); then `'/'` `'G'`; then SP when free text follows, which belongs to this token. Lower-case letters give a `syntax` finding, by the status report rule of p. 105/81 ([amb.mice.grid](#amb.mice.grid); README section 3, Letter case). **[proposed]** After the prefix and any altitude ([amb.mice.grid](#amb.mice.grid)). | Optional | The `'G'`, or the SP after it | p. 42/26, p. 73/55, p. 105/81, p. 152/128 |
 | <a id="mice.type.suffix"></a>`mice.type.suffix` | Device type suffix | After a 0x60 or 0x27 prefix: the last two bytes. Raw bytes, nothing stripped first ([amb.mice.suffix](#amb.mice.suffix); [README section 3](README.md#3-tokenizer-model)). **[agreed]** After a Kenwood prefix, the one-byte suffix is taken only when the pair (prefix, last byte) is in the `micelegacy` list of `3rdparty/aprs-deviceid/tocalls.yaml` at commit `c50d026` (2026-10-19): `'>'` with `'='`, `'^'` or `'&'`, and `']'` with `'='`. A last byte that does not form a listed pair is status text. **[agreed]** The two-byte suffix after a 0x60 or 0x27 prefix is checked against the `mice` list of the same file at the same commit, not against the five examples of p. 73/55: a listed suffix gives no finding, an unlisted one `unstated` (the register is open). **[agreed]** After a 0x60 or 0x27 prefix, a single byte left where the two-byte suffix stands gives a `syntax` finding: a fixed-width field that does not fit ([amb.mice.pipe](#amb.mice.pipe)). | Optional | End of information field | p. 73/55, p. 88/68; aprs-deviceid `tocalls.yaml` at `c50d026` |
 
@@ -305,10 +305,13 @@ any byte. The document asks that Mic-E data be converted for networks that
 do not keep binary data intact and converted back on return to RF, and
 gives no method (p. 74/56).
 
-**[proposed]** The tokenizer reads a Mic-E packet taken from APRS-IS
-exactly as one taken from RF: raw bytes, with no escape form recognised
-([amb.mice.transport](#amb.mice.transport)). Bytes that a TNC2 line cannot
-carry at all are a matter for [01-frame.md](01-frame.md).
+The tokenizer reads a Mic-E packet taken from APRS-IS exactly as one
+taken from RF: raw bytes, with no escape form recognised
+([amb.mice.transport](#amb.mice.transport); README section 3: a way of
+reading that adds a form the document never mentions is decoder
+behaviour). An earlier draft carried this paragraph as a proposal.
+Bytes that a TNC2 line cannot carry at all are a matter for
+[01-frame.md](01-frame.md).
 
 ## 7. Ambiguities
 
@@ -543,14 +546,19 @@ the [README](README.md#4-decoders-consulted), not run.
   before the suffix, breaks that rule (UAP 2.2, UAP 5.10, UAP 5.24,
   UAP 5.26). The Kenwood suffix bytes can also end ordinary text.
 - **Readings.** (a) By shape: the last two bytes after a 0x60 or 0x27
-  prefix, and a last `'='`, `'^'` or `'&'` after either Kenwood prefix.
-  (b) By the external list. An earlier draft also listed (c): (a) or (b)
-  after stripping trailing
+  prefix, and, after a Kenwood prefix, a last byte that forms one of
+  the four pairs of p. 73/55. (b) By the external list. An earlier
+  draft also listed (c): (a) or (b) after stripping trailing
   CR, LF and SP. Taking the suffix from bytes that are not the last
   contradicts p. 88/68, so by
   [README section 3](README.md#3-tokenizer-model) it is decoder
   behaviour (Dire Wolf strips one trailing CR, below), not a listed
-  reading, and gives no finding.
+  reading, and gives no finding. An earlier draft also wrote (a) with
+  a last `'='`, `'^'` or `'&'` after either Kenwood prefix. P. 73/55
+  gives each one-byte suffix with its prefix and no other pair, so a
+  last `'^'` or `'&'` after `']'` as a suffix is not a reading of the
+  document's text (README section 3); it gives no finding, and such a
+  byte is status text.
 - **Reading taken.** The external list is
   `3rdparty/aprs-deviceid/tocalls.yaml` at commit `c50d026`
   (2026-10-19), the version this project pins
@@ -591,10 +599,9 @@ the [README](README.md#4-decoders-consulted), not run.
   or 0x27 prefix, readings (a) and (b) divide the bytes the same way:
   the register is open, so an unlisted pair is still the suffix, and the
   list decides only the `unstated` finding on it. After a Kenwood
-  prefix, reading (a) would also take a last `'^'` or `'&'` after `']'`
-  as a suffix; p. 73/55 gives each one-byte suffix with its prefix and
-  no other pair, so that part of (a) is not a reading of the document's
-  text (README section 3) and gives no finding. A status text that ends
+  prefix, readings (a) and (b) take the same four pairs; a last `'^'`
+  or `'&'` after `']'` gives no finding, as the note under Readings
+  says. A status text that ends
   in CR, LF or SP has its suffix taken
   from its last bytes as they stand, with no `ambiguous` finding. An
   earlier draft gave one where reading (c) would have taken the suffix
@@ -656,8 +663,11 @@ the [README](README.md#4-decoders-consulted), not run.
   name "type byte" is used for the prefix here and for the suffix on
   p. 88/68.
 - **Readings.** (a) Only at the start, after any prefix. (b) Anywhere.
-- **Reading taken.** **[proposed]** (a). A later match of three base-91
-  digits and `'}'` is free text.
+- **Reading taken.** (a). P. 74/56 places the altitude first after
+  the type byte, a fixed spot, so it is read there only, and once; a
+  later match of three base-91 digits and `'}'` is free text
+  ([README section 3](README.md#3-tokenizer-model), Fixed spots and
+  repeats). An earlier draft carried (a) as a proposal of its own.
 - **In the bytes.** Visible, under the test of
   [README section 3](README.md#3-tokenizer-model), where reading (b)
   would accept the match as the altitude: there is no altitude at the
@@ -795,7 +805,13 @@ the [README](README.md#4-decoders-consulted), not run.
   cannot be detected, because SP is a valid value of `mice.lon.hun`,
   `mice.sp`, `mice.dc` and `mice.se`.
 - **Readings.** (a) Raw bytes on APRS-IS. (b) Some escape form.
-- **Reading taken.** **[proposed]** (a).
+- **Reading taken.** (a). The document asks for a conversion and
+  gives none, so recognising any particular escape form would add a
+  form that the document never mentions, which is decoder behaviour
+  ([README section 3](README.md#3-tokenizer-model), on listed
+  readings). Reading (b) can therefore take no bytes otherwise than
+  (a) does, and the bytes are read raw. An earlier draft carried (a)
+  as a proposal of its own.
 - **In the bytes.** Decided by the reading, with no finding
   ([README section 3](README.md#3-tokenizer-model)). Reading (b) names
   no escape form, so it divides no packet's bytes differently, and a
@@ -872,3 +888,14 @@ Origin: already in APRS 1.0.1, PDF p. 56 and p. 64 (printed 46 and 54).
 - The corpus questions in section 7.
 - ebarkie/aprs has no Mic-E decoder in the files read, and javAPRSlib's
   handling of the status text has not been read.
+- **[open]** A two-byte suffix that splits well-formed UTF-8. After a
+  0x60 or 0x27 prefix the last two bytes are the suffix as they stand
+  ([amb.mice.suffix](#amb.mice.suffix)), so where the status text ends
+  in a multi-byte UTF-8 character, the suffix can take its last bytes:
+  the free text then ends in a cut sequence and gives `syntax` on
+  [`cmt.text`](02-fields.md#cmt.text) at its lead byte, and the suffix,
+  being no listed one, gives `unstated`. A scan of the capture window
+  `aprsis-20261104-03.log` to `aprsis-20261113-07.log` (221 files,
+  75,037,495 packets) found 1,984 such packets. Whether the bytes of a
+  suffix that cut a character are read otherwise is not decided; the
+  tokenizer reads them as above.

@@ -47,7 +47,7 @@ symbol code.
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|
 | <a id="pos.dti"></a>`pos.dti` | Identifier | `!` or `=` (no timestamp), `/` or `@` (timestamp). `=` and `@` mark a station that handles messages; the tokenizer records which. | yes | 1 byte | p. 31/17; p. 50/32 |
-| <a id="pos.time"></a>`pos.time` | Timestamp | After `/` or `@` only: [`time.dhm`](02-fields.md#time.dhm) or [`time.hms`](02-fields.md#time.hms), 7 bytes. Missing gives `syntax`. The timestamp is the 7 bytes that the layout fixes, so a missing or malformed one is still a 7-byte token with one `syntax` finding at its first byte that fails, and the position is read after it; one cut short by the end of the field covers the bytes present, with the finding where its first missing byte was expected (README section 3, Output). An earlier draft said that a missing timestamp gives the finding where it was expected, and nothing else. **[agreed]** [`time.mdhm`](02-fields.md#time.mdhm) is not recognised here: p. 38/22 places it only in positionless weather reports, and a form at a place the document does not describe for it is not recognised there (README section 3, Obsolete and nested forms). Bytes that fit neither seven-byte form, eight digits included, are a 7-byte `time.dhm` token with its `syntax` finding as [02 section 2](02-fields.md#2-timestamps) places it (offset 6 when the six digits hold), and the position is read after those 7 bytes. An earlier draft said that the `time.mdhm` form gives `syntax`, and read eight digits as an 8-byte `time.mdhm` token with the `syntax` finding at its first byte and the position after it. | for `/`, `@` | 7 bytes | p. 38/22; p. 50/32; p. 59/41 |
+| <a id="pos.time"></a>`pos.time` | Timestamp | After `/` or `@` only: [`time.dhm`](02-fields.md#time.dhm) or [`time.hms`](02-fields.md#time.hms), 7 bytes. Missing gives `syntax`. The timestamp is the 7 bytes that the layout fixes, so a missing or malformed one is still a 7-byte token with one `syntax` finding at its first byte that fails, and the position is read after it; one cut short by the end of the field covers the bytes present, with the finding where its first missing byte was expected (README section 3, Output). The entry names no presence test, so the timestamp is always present (README section 3, When a fixed field is present). An earlier draft said that a missing timestamp gives the finding where it was expected, and nothing else. **[agreed]** [`time.mdhm`](02-fields.md#time.mdhm) is not recognised here: p. 38/22 places it only in positionless weather reports, and a form at a place the document does not describe for it is not recognised there (README section 3, Obsolete and nested forms). Bytes that fit neither seven-byte form, eight digits included, are a 7-byte `time.dhm` token with its `syntax` finding as [02 section 2](02-fields.md#2-timestamps) places it (offset 6 when the six digits hold), and the position is read after those 7 bytes. An earlier draft said that the `time.mdhm` form gives `syntax`, and read eight digits as an 8-byte `time.mdhm` token with the `syntax` finding at its first byte and the position after it. | for `/`, `@` | 7 bytes | p. 38/22; p. 50/32; p. 59/41 |
 | <a id="pos.form"></a>`pos.form` | Form selector | Not a token. The next byte picks the form: a digit gives `pos.unc`; `/`, `\`, `A`–`Z` or `a`–`j` gives `pos.cmp`. Any other byte gives `syntax` and the rest of the field is `residue`. | yes | — | p. 50/32; p. 55/37; p. 125/101 ([amb.pos.form](#amb.pos.form)) |
 | <a id="pos.unc"></a>`pos.unc` | Uncompressed position | Not a token; the sequence [`lat`](02-fields.md#lat) (8 bytes), [`sym.table`](02-fields.md#sym.table) (1), [`lon`](02-fields.md#lon) (9), [`sym.code`](02-fields.md#sym.code) (1). Position ambiguity is read by [`lat.amb`](02-fields.md#lat.amb) and [`lon.amb`](02-fields.md#lon.amb). | one of the two forms | 19 bytes | p. 39/23; p. 40/24; p. 50/32 |
 | <a id="pos.cmp"></a>`pos.cmp` | Compressed position | [`cmp.block`](02-fields.md#cmp.block), 13 bytes. | one of the two forms | 13 bytes | p. 55/37; p. 59/41 |
@@ -171,11 +171,10 @@ open in section 9.
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|
 | <a id="nmea.dti"></a>`nmea.dti` | Identifier | `$`, 1 byte, when the field does not start `$ULTW`. P. 52/34 discourages sending raw NMEA but does not make it obsolete: **[agreed]** the field gives `discouraged` at this byte, by the dispatch table of [01-frame.md](01-frame.md#dti). | yes | 1 byte | p. 31/17; p. 52/34 |
-| <a id="nmea.addr"></a>`nmea.addr` | Address field | 5 bytes, each `A`–`Z`: talker and sentence type. Anything else gives `syntax`. Talker and type are checked by shape only, not against a list of NMEA 0183 talkers or sentence types, until a definition is brought into the references: the five recommended types (GGA, GLL, RMC, VTG, WPL) are noted, others give no finding ([amb.nmea.sentence](#amb.nmea.sentence); [README section 3](README.md#3-tokenizer-model), Kinds by situation). | yes | `,` | p. 42/26; p. 52/34 |
+| <a id="nmea.addr"></a>`nmea.addr` | Address field | 5 bytes, each `A`–`Z`: talker and sentence type. Anything else gives `syntax`. Talker and type are checked by shape only, not against a list of NMEA 0183 talkers or sentence types, until a definition is brought into the references: the five recommended types (GGA, GLL, RMC, VTG, WPL) are noted, others give no finding ([amb.nmea.sentence](#amb.nmea.sentence); [README section 3](README.md#3-tokenizer-model), Kinds by situation). | yes | `,` or `*` | p. 42/26; p. 52/34 |
 | <a id="nmea.field"></a>`nmea.field` | Data field | `,` then zero or more bytes 0x20–0x7E other than `,`, `*` and `$`. One token per field; the content is not checked ([amb.nmea.sentence](#amb.nmea.sentence)). | yes, at least one | `,`, `*` or end of field | p. 42/26; p. 52/34 |
-| <a id="nmea.cks"></a>`nmea.cks` | Checksum | `*` then two hex digits, `0`–`9` or `A`–`F`, as in three of the four examples. Their value is compared with the exclusive-or of every byte after `$` and before `*`; a mismatch gives `value` at the first hex digit. Hex digits `a`–`f` give `unstated`, and the value is still compared. A missing checksum gives no finding ([amb.nmea.checksum](#amb.nmea.checksum)). | no | 2 bytes after `*` | p. 52/34 |
-| <a id="nmea.end"></a>`nmea.end` | Sentence terminator | CR, LF or both after the last field or the checksum. Gives `unstated`. **[proposed]** Any other bytes after the checksum are a residue that names `nmea.cks`, with `syntax` at the first of them. | no | end of field | — |
-| <a id="nmea.len"></a>`nmea.len` | Sentence length | Not a token. The bytes after `$` up to `nmea.end` or the end of the field number 25 to 209; outside that range gives `value` at `nmea.dti`. | — | — | p. 52/34 |
+| <a id="nmea.cks"></a>`nmea.cks` | Checksum | `*` then two hex digits, `0`–`9` or `A`–`F`, as in three of the four examples. Their value is compared with the exclusive-or of every byte after `$` and before `*`; a mismatch gives `value` at the first hex digit. Hex digits `a`–`f` give `unstated`, and the value is still compared. A missing checksum gives no finding ([amb.nmea.checksum](#amb.nmea.checksum)). **[agreed]** Bytes after the checksum are a `residue` that names `nmea.cks`, with `syntax` at the first of them, unless the checksum already gives `syntax`, since a field gives at most one (README section 3, Output; Placing a finding). A CR or LF is such a byte like any other; after the last field of a sentence without a checksum it is a byte of that field, outside its set. An earlier draft had a row `nmea.end` that read CR, LF or both after the last field or the checksum as a sentence terminator with `unstated`. It was dropped: no example on p. 52/34 shows a terminator, and a byte pattern outside every form the document defines gives `syntax` at a place the format fixes (README section 3, Kinds by situation). | no | 2 bytes after `*` | p. 52/34 |
+| <a id="nmea.len"></a>`nmea.len` | Sentence length | Not a token. The bytes after `$` to the end of the field number 25 to 209; outside that range gives `value` at `nmea.dti`. | — | — | p. 52/34 |
 
 ## 7. Ambiguities
 
@@ -649,11 +648,16 @@ only, together with the checksum of
 list of NMEA 0183 talkers or sentence types, until a definition of
 NMEA 0183 is brought into the references
 ([README section 3](README.md#3-tokenizer-model), Kinds by situation).
-**[proposed]** That shape, the field structure and byte set of
+**[agreed]** That shape, the field structure and byte set of
 `nmea.field`, is taken from the examples and the general form of an
-NMEA 0183 sentence (recalled, not read). An earlier draft gave (a) and
-the shape under one label, with no rule for lists kept outside the
-references.
+NMEA 0183 sentence (recalled, not read): one `nmea.field` token per
+comma field, checked by its byte set only and not split into finer
+tokens per sentence type. The exclusion of `$` from that set is
+NMEA 0183's reserved start character, also recalled, not read. An
+earlier draft gave (a) and the shape under one label, with no rule for
+lists kept outside the references. Finer tokens per sentence type were
+listed as open in section 9; they would need NMEA 0183 in the
+references and a decision on its version, and are left to that item.
 
 **In the bytes.** Decided by the reading; no `ambiguous` finding for
 other talkers or types. (b) and (c) reject every other talker or type,
@@ -748,8 +752,6 @@ p. 40). 12b carries both unchanged.
 
 ## 9. Open items
 
-- Whether an NMEA field is split into finer tokens per sentence type. The
-  reading stops at one token per comma field.
 - Whether a DF report with bearing but no DF symbol is worth a
   deviation recogniser, given the decoders that read it. It is decoder
   behaviour and gives no finding
@@ -757,8 +759,11 @@ p. 40). 12b carries both unchanged.
   are listed as open in [README section 6](README.md#6-open-items).
 - The NMEA sentence structure ([amb.nmea.sentence](#amb.nmea.sentence))
   comes from a document outside the references and is checked by shape
-  and checksum only. If NMEA 0183 is added, the structure is checked
-  against it. An earlier version of this item also named the Maidenhead
+  and checksum only, one token per comma field. If NMEA 0183 is
+  added, the structure is checked against it, at a version to be
+  decided, and whether a field is split into finer tokens per sentence
+  type is decided then. An earlier list held the finer tokens as an
+  item of its own; it is merged here. An earlier version of this item also named the Maidenhead
   letter ranges ([amb.grid.range](#amb.grid.range)); they count as
   stated, since the document names their source (README section 3).
 - An earlier list held as open whether [`grid.cmt`](#grid.cmt) holds

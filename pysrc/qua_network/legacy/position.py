@@ -276,20 +276,17 @@ def grid(scan, start, end, depth):
 
 _HEX = frozenset(b"0123456789ABCDEF")
 _HEX_LOWER = frozenset(b"abcdef")
-_END = re.compile(rb"(?:\r\n|\n\r|\r|\n)\Z")
 
 
 def nmea(scan, start, end, depth):
     line = scan.line
     s = start + 1
-    m = _END.search(line, s, end)
-    te = m.start() if m else end
-    n = te - s
-    if not 25 <= n <= 209:
+    # nmea.len counts every byte after '$': CR and LF are no terminator.
+    if not 25 <= end - s <= 209:
         scan.find("nmea.len", "value", start)
     # Address field: up to the first ',' or '*'.
     p = s
-    while p < te and line[p] not in b",*":
+    while p < end and line[p] not in b",*":
         p += 1
     if p > s:
         scan.tok("nmea.addr", s, p, depth)
@@ -300,9 +297,9 @@ def nmea(scan, start, end, depth):
         scan.find("nmea.addr", "syntax", bad)
     # Data fields.
     nf = 0
-    while p < te and line[p] == 0x2C:
+    while p < end and line[p] == 0x2C:
         q = p + 1
-        while q < te and line[q] not in b",*":
+        while q < end and line[q] not in b",*":
             q += 1
         scan.tok("nmea.field", p, q, depth)
         for i in range(p + 1, q):
@@ -315,13 +312,15 @@ def nmea(scan, start, end, depth):
     if nf == 0:
         scan.find("nmea.field", "syntax", p)
     # Checksum.
-    if p < te and line[p] == 0x2A:
-        ce = min(p + 3, te)
+    cks_bad = False
+    if p < end and line[p] == 0x2A:
+        ce = min(p + 3, end)
         scan.tok("nmea.cks", p, ce, depth)
         h = line[p + 1 : ce]
         if len(h) < 2 or not all(c in _HEX or c in _HEX_LOWER for c in h):
             bad = next((p + 1 + i for i, c in enumerate(h) if c not in _HEX and c not in _HEX_LOWER), ce)
             scan.find("nmea.cks", "syntax", bad)
+            cks_bad = True
         else:
             if any(c in _HEX_LOWER for c in h):
                 scan.find("nmea.cks", "unstated", p + 1)
@@ -331,13 +330,11 @@ def nmea(scan, start, end, depth):
             if x != int(h, 16):
                 scan.find("nmea.cks", "value", p + 1)
         p = ce
-    if p < te:
-        # Bytes after the checksum, or a '*' field, that no rule reads.
-        scan.residue(p, te, depth, "nmea.cks")
-        scan.find("nmea.cks", "syntax", p)
-    if m:
-        scan.tok("nmea.end", te, end, depth)
-        scan.find("nmea.end", "unstated", te)
+    if p < end:
+        # Bytes after the checksum; a field gives at most one syntax finding.
+        scan.residue(p, end, depth, "nmea.cks")
+        if not cks_bad:
+            scan.find("nmea.cks", "syntax", p)
     noarchive_outside(scan, start, end, [])
 
 

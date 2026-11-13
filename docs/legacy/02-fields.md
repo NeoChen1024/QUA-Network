@@ -482,9 +482,13 @@ field is stated in [03-position.md](03-position.md#3-df-reports).
 |---|---|---|---|---|---|
 | <a id="cmt.text"></a>`cmt.text` | Comment | Free text from the end of the last data field or extension to the end of the information field. No separator before it. Bytes: printable ASCII `0x20`–`0x7E`, and well-formed UTF-8 sequences. An empty comment produces no token. | No | End of the information field ([01](01-frame.md)) | p. 34/20 |
 
-- **[proposed]** A byte outside the set, including `0x0D` or `0x0A`
-  anywhere in the comment and a byte that does not form well-formed
-  UTF-8, is a `syntax` finding. See [amb.cmt.bytes](#amb.cmt.bytes).
+- A byte outside the set, including `0x0D` or `0x0A` anywhere in the
+  comment and a byte that does not form well-formed UTF-8, is a
+  `syntax` finding
+  ([README section 3](README.md#3-tokenizer-model), Kinds by situation:
+  a byte outside the byte set that a rule states). See
+  [amb.cmt.bytes](#amb.cmt.bytes). An earlier draft carried this
+  bullet as a proposal of its own.
 - The comment gives one such finding, at the first byte outside the
   set, and the token still runs to the end of the information field
   ([README section 3](README.md#3-tokenizer-model), Output and Placing
@@ -492,17 +496,22 @@ field is stated in [03-position.md](03-position.md#3-df-reports).
   set.
 - The length limit of a comment is given by the format file, in bytes
   (the diagrams count bytes, p. 50/32). The bytes counted are those of
-  the `cmt.text` token, items found inside it included, less those of
-  its `cmt.dao` tokens (next item). A DAO shape inside a base-91
-  telemetry block is no `cmt.dao` token (8.2), so its bytes count with
-  the block's. A longer comment is a `value` finding at the first byte
-  past the limit (README section 3, Length limits and Kinds by
-  situation). See [amb.cmt.length](#amb.cmt.length).
-- **[proposed]** p. 35/21 is the page that exempts the DAO: it lets the
-  option extend beyond a "viewable" limit of 57 bytes, since legacy
-  systems do not use those bytes. That limit is not one of the comment
-  limits of the diagrams, so reading it as an exemption from them is a
-  reading.
+  the `cmt.text` token, items found inside it included, its `cmt.dao`
+  tokens among them (next item). A longer comment is a `value` finding
+  at the first byte past the limit (README section 3, Length limits and
+  Kinds by situation). See [amb.cmt.length](#amb.cmt.length).
+- **[agreed]** As the author decided, the bytes of a DAO count toward
+  the comment limits of the diagrams like those of any other item.
+  P. 35/21 lets the option extend beyond a "viewable" limit of 57
+  bytes, since legacy systems do not use those bytes, but no diagram
+  has a limit of 57 bytes ([err.cmt.daolimit](#err.cmt.daolimit)), so
+  the page does not say that a DAO does not count toward the limits
+  the diagrams give ([README section 3](README.md#3-tokenizer-model),
+  Length limits). An earlier draft proposed reading p. 35/21 as that
+  page and left the bytes of `cmt.dao` tokens out of the count; it
+  added that a DAO shape inside a base-91 telemetry block, being no
+  `cmt.dao` token, counted with the block's bytes, which every byte of
+  the comment now does.
 
 ### 8.2 Items found inside a comment
 
@@ -581,10 +590,17 @@ An earlier draft left this open
 | <a id="cmt.dao"></a>`cmt.dao` | Datum and added precision | `'!'`, datum byte `D`, latitude byte `A`, longitude byte `O`, `'!'`, in one of the forms of 8.3. | No | Fixed, 5 bytes | p. 35/21 to p. 37/23; UAP 3.5 |
 | <a id="cmt.noarchive"></a>`cmt.noarchive` | No-archive marker | `'!x!'`, with a literal lower-case `'x'`. | No | Fixed, 3 bytes | p. 110/86, p. 155/131; UAP 3.7 |
 
-**[proposed]** `cmt.alt`: both IDs count as the same item for the
-repetition rule. The negative form is described in APRS12c as outside
-the official standard (p. 43/27); its own ID marks it, and it gets no
-finding. See [amb.cmt.alt](#amb.cmt.alt).
+`cmt.alt`: both IDs count as the same item for the repetition rule,
+since p. 43/27 introduces both altitude forms with the one keyword
+`'/A='` ([README section 3](README.md#3-tokenizer-model), Classes that
+a keyword declares). The negative form is described in APRS12c as
+outside the official standard (p. 43/27), but with a full syntax, five
+digits after the minus sign; its own ID marks it, and it gets no
+finding (README section 3: a form that the text describes is a form
+the document defines, and bytes of that form get no finding). See
+[amb.cmt.alt](#amb.cmt.alt). An earlier draft carried this paragraph
+as a proposal of its own, and section 11 asked whether a separate
+finding kind for such forms was wanted instead of a separate ID.
 
 `'/A='` declares the altitude
 ([README section 3](README.md#3-tokenizer-model), Classes that a
@@ -1126,41 +1142,59 @@ saying that a second one cannot follow, or that an extension later in
 the comment does not count. UAP says one, directly after the symbol
 (UAP 3.1, 3.2, 5.15).
 
-**Readings.** (a) One, at the slot. (b) A chain. (c) Extensions found
-anywhere in the comment. **[proposed]** Reading (c) takes only the
-forms that begin with a three-letter marker, `PHG` (with PHGR), `RNG`
-and `DFS`. A course and speed has no marker: away from the slot, seven
-bytes of its shape are as likely to be part of other text, such as a
-pair of frequencies or a date, and no decoder read searches for one
-there (Xastir, the one that searches the rest of the packet, looks for
-`RNG` and `PHG` only; table below). An earlier draft let (c) take every
-form of step 3, which gave the finding to any `ddd/ddd` in a comment.
+**Readings.** (a) One, at the slot. (b) A chain: a further extension
+directly after the slot's one.
+
+**[agreed]** As the author decided, extensions found anywhere in the
+comment are decoder behaviour, not a reading
+([README section 3](README.md#3-tokenizer-model)). P. 45/27 places
+the extension directly after the position data, and the comment
+follows it (p. 34/20); the further data that p. 34/20 lets a comment
+carry do not include PHG, RNG or DFS. An extension later in the
+comment adds a place that the document never mentions. Of the
+decoders read, Xastir searches the rest of the packet for `RNG` and
+`PHG` (`extract_powergain_range`), and pdn-aprs reads a later PHG, RNG
+or DFS behind an option (`late_extension`; table below). Such runs are
+a candidate for a deviation recogniser
+([README section 6](README.md#6-open-items)); here they are comment
+text with no finding. The Mic-E status text differs: p. 72/54 lets it
+carry any position comment item, such as PHG, without placing it
+([amb.mice.extension](04-mic-e.md#amb.mice.extension)). An earlier
+draft listed this as reading (c), first with every form of step 3,
+which gave the finding to any `ddd/ddd` in a comment, then narrowed to
+the forms that begin with a three-letter marker, `PHG` (with PHGR),
+`RNG` and `DFS`: a course and speed has no marker, seven bytes of its
+shape away from the slot are as likely to be part of other text, such
+as a pair of frequencies or a date, and no decoder read searches for
+one there.
 
 **Reading taken.** **[proposed]** (a). Most read decoders agree.
 
-**In the bytes.** **[proposed]** Visible, under the test of
+**In the bytes.** Visible, under the test of
 [README section 3](README.md#3-tokenizer-model). A run in the comment
 that fits a form of step 3 of 7.1 with no `syntax` or `value` finding
 of that form is comment text here, and an extension under reading (b)
-when it directly follows the slot's extension, or under reading (c)
-anywhere when it begins with a marker. **[proposed]** A course and
-speed run therefore gets the finding only at the start of the comment:
-directly after the slot's extension, or directly after a compressed
-block (6.5). Either reading leaves the rest of the comment as it is, so it
-accepts what this reading accepts. Such a run gets an `ambiguous`
-finding at its first byte. This is the same kind of run that
-[amb.ext.compressed](#amb.ext.compressed) reports after a compressed
-block. **[proposed]** The search covers the comment
-of every report that carries a position, including a compressed one,
-since reading (c) takes a run with a marker anywhere in such a comment.
+when it directly follows the slot's extension. Reading (b) leaves the
+rest of the comment as it is, so it accepts what this reading accepts.
+Such a run gets an `ambiguous` finding at its first byte. The search
+therefore looks only at the start of a comment that directly follows
+the slot's extension, in a report that carries a position. This is the
+same kind of run that [amb.ext.compressed](#amb.ext.compressed)
+reports at the start of the comment after a compressed block (6.5).
+An earlier draft also gave the finding to a run with a
+marker anywhere in the comment of every such report, a compressed one
+included, under reading (c), and gave it to a course and speed only at
+the start of the comment; those sentences carried the label of a
+proposal.
 **[agreed]** It does not cover the comment of a report without a
 position, such as a telemetry report: no reading gives such a report a
 data extension, so no rule makes a run there one.
-**[proposed]** A run that overlaps another
-token found in the comment (8.2), or whose bytes carry the finding of
-7.4, still gets this finding: findings from different rules on one
-byte are not merged ([README section 3](README.md#3-tokenizer-model)).
-An earlier draft gave no further finding in those two cases. A run
+A run that overlaps another token found in the comment (8.2), or
+whose bytes carry the finding of 7.4, still gets this finding:
+findings from different rules on one byte are not merged
+([README section 3](README.md#3-tokenizer-model), One byte may carry
+several findings). An earlier draft gave no further finding in those
+two cases, and a later one carried this sentence as a proposal. A run
 that starts inside a base-91 telemetry block is not looked for, since
 the block's bytes belong to the block (8.2); an earlier draft looked
 for such runs there too. An
@@ -1467,8 +1501,11 @@ are not UTF-8 (UAP 5.16, 5.25) are not addressed.
 **Readings.** (a) The stated set; anything else is an error. (b) The
 comment is opaque bytes.
 
-**Reading taken.** **[proposed]** (a), as in 8.1. The severity is
-listed in section 11. The comment is not one of the fields of
+**Reading taken.** (a), as in 8.1, with a `syntax` finding for a byte
+outside the set ([README section 3](README.md#3-tokenizer-model),
+Kinds by situation: a byte outside the byte set that a rule states).
+An earlier draft carried (a) as a proposal of its own and listed the
+severity as open in section 11. The comment is not one of the fields of
 [README section 3](README.md#3-tokenizer-model) where APRS12c only
 recommends printable ASCII: p. 34/20 admits UTF-8, so well-formed UTF-8
 gives no finding by the rule of 8.1 itself, and the rule for bytes
@@ -1498,7 +1535,8 @@ extension, 28 in a DF report (p. 50/32 to p. 53/35), 40 after a
 compressed block (p. 59/41), 36 or 43 in objects and items (p. 76/58,
 p. 77/59). The information field holds up to 256 bytes, and the editor
 questions the limit (p. 50/32, p. 76/58). A DAO can exceed a "viewable"
-limit given as 57 bytes (p. 35/21). No receiver action is stated.
+limit given as 57 bytes (p. 35/21), which is none of these
+([err.cmt.daolimit](#err.cmt.daolimit)). No receiver action is stated.
 
 **Readings.** (a) Over the limit is out of range. (b) The limit is
 advice only.
@@ -1506,9 +1544,10 @@ advice only.
 **Reading taken.** **[proposed]** (a): a `value` finding.
 
 Which bytes count is not part of this question. Items found in the
-comment, telemetry included, count; DAO bytes do not, under the
-reading of p. 35/21 that 8.1 proposes
-([README section 3](README.md#3-tokenizer-model), Length limits).
+comment, telemetry and the DAO included, count, as 8.1 states
+([README section 3](README.md#3-tokenizer-model), Length limits). An
+earlier draft left DAO bytes out, under a reading of p. 35/21 that 8.1
+proposed and that the author did not take.
 
 **In the bytes.** Visible, since (b) would accept the comment. Reported
 as that `value` finding, which alone is given
@@ -1607,18 +1646,18 @@ question, and the bytes of one packet cannot narrow it. It is taken
 silently. By the test of README section 3:
 
 - With several candidates, (b) and (c) each read all but one of them
-  as text. Each candidate gets `ambiguous` at its first `'!'` when one
-  of those readings that reads it as text accepts the report: the
-  comment, with the bytes of the candidates that reading takes as text
-  now counted (8.1), stays within its limit. When this reading's
-  comment is itself over the limit, that reading is over its limit
-  too. Its length finding is shared, and does not count, only when it
-  falls on the same byte as this reading's, which holds when no
-  candidate it counts lies before that byte; otherwise the finding is
-  its own and it does not accept
+  as text. The bytes of a candidate count toward the comment limit
+  whether it is read as a DAO or as text (8.1), so those readings
+  count the comment as this reading does: a length finding of theirs
+  falls on the byte of this reading's and is shared, and does not count
   ([README section 3](README.md#3-tokenizer-model), Which findings are
-  the other reading's own). An earlier draft counted the length finding
-  as shared wherever both readings gave one.
+  the other reading's own). Each candidate therefore gets `ambiguous`
+  at its first `'!'`. An earlier draft, which left the bytes of a
+  `cmt.dao` token out of the count, gave the finding only when one of
+  those readings, counting the candidates it read as text, stayed
+  within the limit, or gave its length finding on the same byte as
+  this reading's; a draft before it counted the length finding as
+  shared wherever both readings gave one.
 - A single candidate is read alike by all three readings, wherever it
   stands in the comment, and gives no finding; the question left is
   the inherent one above.
@@ -1743,6 +1782,24 @@ came with the APRS 1.2 addendum, and 12b already has the same values
 (PDF p. 39, printed 23). That the addendum's own text has them was not
 checked here.
 
+<a id="err.cmt.daolimit"></a>
+### err.cmt.daolimit
+
+On p. 35/21 the DAO option may extend beyond an existing "viewable"
+limit of 57 bytes that the page says is in the specification. No
+comment limit of 57 bytes appears in the document: the diagrams give
+43, 36 after an extension, 28 in a DF report (p. 50/32 to p. 53/35)
+and 40 after a compressed block (p. 59/41), and objects and items 36
+or 43 (p. 76/58, p. 77/59); a search of the text layer of APRS12c
+finds 57 nowhere else as a length. Where the figure comes from is not
+known. The reading follows the limits of the diagrams and counts DAO
+bytes toward them (8.1, [amb.cmt.length](#amb.cmt.length)).
+
+Origin: within an addendum. The DAO option is not in APRS 1.0.1
+([err.cmt.daoexample](#err.cmt.daoexample)); 12b already has the same
+sentence (PDF p. 37, printed 21; text layer checked). That the
+addendum's own text has it was not checked here.
+
 <a id="err.ext.phgheight"></a>
 ### err.ext.phgheight
 
@@ -1798,9 +1855,13 @@ the page.
 
 ## 11. Open items
 
-- The severity of comment bytes outside the stated set
-  ([amb.cmt.bytes](#amb.cmt.bytes)): `syntax` as read now, or a weaker
-  kind if the corpus shows Latin-1 text is common.
+- An earlier list held as open the severity of comment bytes outside
+  the stated set ([amb.cmt.bytes](#amb.cmt.bytes)): `syntax`, or a
+  weaker kind if the corpus showed Latin-1 text to be common. It is
+  settled by [README section 3](README.md#3-tokenizer-model), Kinds by
+  situation: a byte outside the byte set that a rule states gives
+  `syntax`. The rule for bytes outside 7-bit ASCII does not reach the
+  comment, whose set p. 34/20 states (8.1).
 - An earlier list held as open whether a DAO candidate inside a
   [`tlm.b91`](07-telemetry.md#tlm.b91) block is still a candidate,
   which 8.2 then made it, with an `ambiguous` finding on both. The
@@ -1824,9 +1885,20 @@ the page.
   under [README section 3](README.md#3-tokenizer-model) (Kinds by
   situation), if the text supports it. Whether to list and take it is
   not decided.
-- Whether a separate finding kind for forms that APRS12c describes as
-  outside its standard, such as [`cmt.alt.neg`](#cmt.alt.neg), is
-  wanted instead of a separate ID.
+- An earlier list held as open whether a separate finding kind for
+  forms that APRS12c describes as outside its standard, such as
+  [`cmt.alt.neg`](#cmt.alt.neg), is wanted instead of a separate ID.
+  It is settled by [README section 3](README.md#3-tokenizer-model): a
+  form that the text describes is a form the document defines and gets
+  no finding, and the separate ID marks it (8.2).
+- Whether reading (b) of [amb.ext.count](#amb.ext.count), a chain of
+  extensions, is a reading of the document's text or decoder
+  behaviour, the test that reading (c) failed. P. 45/27 names one
+  extension field, and BRG/NRQ (7.4) as the only field that follows
+  one. Of the decoders in the table of that entry, only Xastir reads
+  more than one: a course and speed after its DFS form, and PHG or RNG
+  anywhere. A candidate for review; until then (b) stays a listed
+  reading and gives its finding.
 - Whether `'!x!'` in the address header, which an address only
   APRS-IS can carry may hold ([`addr.is`](01-frame.md#addr.is)), is
   searched for and gives a finding

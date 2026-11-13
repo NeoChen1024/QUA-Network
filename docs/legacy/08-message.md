@@ -344,17 +344,21 @@ for repeated acknowledgements and their spacing (p. 94/72).
 |---|---|---|---|---|---|
 | <a id="nws.addr"></a>`nws.addr` | NWS addressee | Offsets 1-9: `NWS-` and a severity word, padded with `SP` to 9 bytes. Depth-1 tokens below. Reading: [amb.nws.addressee](#amb.nws.addressee). | Required | Fixed 9 bytes | p. 97/75 |
 | <a id="nws.kw"></a>`nws.kw` | Prefix | `NWS-` at offsets 1-4. | Required | Fixed 4 bytes | p. 97/75 |
-| <a id="nws.level"></a>`nws.level` | Severity word | 1-5 letters or digits from offset 5. Other bytes as for `msg.addr.name`. **[agreed]** The words `ADVIS`, `WARN` and `WATCH` are given on p. 97/75 with "such as ... etc.", so the document allows other words: any word gets no finding. An earlier draft said only that the list was open and any word accepted, and still gave an unlisted word an `ambiguous` finding ([amb.nws.addressee](#amb.nws.addressee)). | Required | First `SP`, or offset 9 | p. 97/75 |
+| <a id="nws.level"></a>`nws.level` | Severity word | 1-5 bytes from offset 5. **[agreed]** The byte set and the findings for other bytes are those of `msg.addr.name`: letters, digits and `'-'`, so a `'-'` gives no finding. **[agreed]** The words `ADVIS`, `WARN` and `WATCH` are given on p. 97/75 with "such as ... etc.", so the document allows other words: any word gets no finding. An earlier draft said only that the list was open and any word accepted, and still gave an unlisted word an `ambiguous` finding ([amb.nws.addressee](#amb.nws.addressee)). | Required | First `SP`, or offset 9 | p. 97/75 |
 | [`msg.addr.pad`](#msg.addr.pad) | Padding | `SP` bytes to offset 9. | Required when the word is shorter than 5 bytes | Offset 9 | p. 97/75 |
 | [`msg.sep`](#msg.sep) | Separator | `':'` at offset 10. | Required | Fixed 1 byte | p. 97/75 |
 | <a id="nws.text"></a>`nws.text` | Bulletin text | From offset 11. Text bytes, no length limit. Its inner structure is defined outside APRS12c and is not tokenized. | Required | End of information field, or `nws.ref` | p. 97/75 |
 | <a id="nws.ref"></a>`nws.ref` | Reference identifier | `'{'` followed by 1-5 letters or digits at the very end of the field; not to be acknowledged. The tokenizer reports `ambiguous` at the `'{'`: the bytes are also valid bulletin text, which has no length limit. Reading: [amb.bln.ref](#amb.bln.ref). | Optional | End of information field | p. 97/75 |
 
-**[proposed]** "Other bytes as for `msg.addr.name`" in the `nws.level`
-row means bytes outside its own set of letters and digits: they get the
-findings that `msg.addr.name` gives a byte outside its set. A `'-'`
-therefore gives `unstated` in `nws.level`, although `msg.addr.name`
-allows it.
+The level is part of a message addressee, which this file does not
+check as a callsign, and p. 97/75 gives the level no byte set of its
+own; the group name of `BLN` on the same page takes letters, digits
+and `'-'` too. An earlier draft read the row as "1-5 letters or digits,
+other bytes as for `msg.addr.name`", so that a `'-'` gave `unstated` in
+`nws.level` although `msg.addr.name` allows it. It was dropped: the
+agreed sentence of the row, that any word gets no finding, reads
+naturally as covering a word with `'-'`, and the narrower set was
+already wider than the examples, which are upper-case letters only.
 
 An empty `nws.text`, also one followed by `nws.ref`, is a missing field
 and gives `syntax` against `nws.text` at offset 11, where its first byte
@@ -395,11 +399,15 @@ few; the fields after an extra separator keep their tokens
 Placing a finding). An earlier draft gave the finding against
 `nts.prefix`.
 
-**[proposed]** The 67-byte limit of `msg.text` applies to the whole
-line, prefix included (p. 98/76). That the `#`, `A`, `S` and `R` lines
+The 67-byte limit of `msg.text` applies to the whole
+line, prefix included (p. 98/76), as a limit counts the items found
+inside its field ([README section 3](README.md#3-tokenizer-model),
+Length limits). That the `#`, `A`, `S` and `R` lines
 are required, and that there are at most six text lines, are rules
 about a set of packets; the tokenizer reads one packet at a time and
-does not check them.
+does not check them ([README section 3](README.md#3-tokenizer-model),
+the paragraph that begins "The tokenizer finds boundaries": a rule
+that depends on what the line does not show).
 
 **[agreed]** Each field that the table counts is required, an address
 line in the middle of an `A` line included. An empty
@@ -409,11 +417,18 @@ and is a missing field: `syntax` against `nts.field` where its first
 byte was expected. A `'#'` line with an empty field, such as a missing
 time, has 8 fields and gives that one finding, and so does a type `1`
 line with nothing after the prefix, at the end of the text. An empty
-field after the first field too many gets no finding of its own. A line
-with too few fields whose last field is empty gets both findings at the
-end, each on its own rule. An earlier draft did not count an empty
+field after the first field too many gets no finding of its own. An
+earlier draft did not count an empty
 field and reported it through the count
 ([README section 3](README.md#3-tokenizer-model), Kinds by situation).
+
+**[agreed]** A line with too few fields whose last field is empty gives
+one finding at the end, against `nts.field`: the fields the count still
+lacks are missing at that same byte, so the count gives no finding of
+its own there ([README section 3](README.md#3-tokenizer-model), Missing
+fields at one byte). The line then reads like one that stops after its
+last non-empty field, which gives the count finding alone. An earlier
+draft gave both findings at the end, each on its own rule.
 
 A byte that is not a text byte inside an `nts.field` gets one `syntax`
 finding against `nts.field`, the most specific rule that holds it, and
@@ -763,7 +778,7 @@ not a free-text field: a `'!x!'` in it is no token and gets the
   `unstated` (section 6): a shape outside the forms the document defines,
   at a place it leaves open, in a field whose extent is fixed
   ([README section 3](README.md#3-tokenizer-model), Kinds by situation).
-- **In the bytes.** **[proposed]** Under the test of
+- **In the bytes.** Under the test of
   [README section 3](README.md#3-tokenizer-model): a `BLN` addressee that
   fits none of the three shapes is a bulletin here and a message under
   reading (c). Where the packet, read as a message by section 2.1 from

@@ -32,13 +32,15 @@ class Finding(NamedTuple):
 class Scan:
     """What the tokenizer found in one line."""
 
-    __slots__ = ("line", "tokens", "findings", "_seen", "unknown_format", "unread")
+    __slots__ = ("line", "tokens", "findings", "_seen", "_missing", "unknown_format", "unread")
 
     def __init__(self, line):
         self.line = line
         self.tokens = []
         self.findings = []
         self._seen = set()
+        # Offsets where a missing field has given its syntax finding.
+        self._missing = set()
         self.unknown_format = False
         # Formats whose reader is not written yet; the packet has no verdict.
         self.unread = []
@@ -52,6 +54,14 @@ class Scan:
         if f not in self._seen:
             self._seen.add(f)
             self.findings.append(f)
+
+    def missing(self, rule, offset):
+        """A required field is missing at offset: syntax where it was
+        expected. Only the first of consecutive missing fields that fail at
+        one byte gives it (README section 3, Missing fields at one byte)."""
+        if offset not in self._missing:
+            self._missing.add(offset)
+            self.find(rule, "syntax", offset)
 
     def withdraw(self, kind, offsets):
         """Take back the findings of kind at offsets, where a rule already
@@ -68,9 +78,14 @@ class Scan:
                 self.tokens[i] = t._replace(rule=rule)
                 return
 
-    def residue(self, start, end, depth, stop):
+    def residue(self, start, end, depth, stop, fault=False):
+        """A residue token naming stop. fault gives its syntax finding at
+        start, on stop, unless a missing field already gave one at that byte
+        (README section 3, Missing fields at one byte)."""
         if end > start:
             self.tok("residue", start, end, depth, stop)
+            if fault and start not in self._missing:
+                self.find(stop, "syntax", start)
 
     def verdict(self):
         """The verdict, or None while some format of the packet is unread."""

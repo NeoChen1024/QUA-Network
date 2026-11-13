@@ -7,11 +7,22 @@ from multiprocessing import Pool
 import click
 from tqdm import tqdm
 
+
+def _cpu_count():
+    # os.process_cpu_count is new in Python 3.13; the tools also run on 3.11
+    # and 3.12, PyPy among them (AGENTS.md).
+    if hasattr(os, "process_cpu_count"):
+        return os.process_cpu_count()
+    if hasattr(os, "sched_getaffinity"):
+        return len(os.sched_getaffinity(0))
+    return os.cpu_count()
+
+
 jobs_option = click.option(
     "-j",
     "--jobs",
     type=click.IntRange(min=1),
-    default=os.process_cpu_count() or 1,
+    default=_cpu_count() or 1,
     show_default="CPU count",
     help="Worker processes; one file is one unit of work.",
 )

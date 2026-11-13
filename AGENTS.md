@@ -177,6 +177,13 @@ changes; link to it instead of restating formats, constants or figures here.
 - Use the repository-root `./.venv`, managed by uv. Do not fall back to
   system Python. Create it with `uv venv .venv` only if absent, and install
   with `uv pip install --python .venv/bin/python -e .`.
+- Run the legacy tokenizer tools (`qua-legacy-*`) under PyPy, from
+  `./.venv-pypy`: they are pure Python and spend their time in the
+  interpreter. Create it with `uv venv --python pypy-3.11 .venv-pypy` only if
+  absent, and install with `uv pip install --python .venv-pypy/bin/python
+  --no-deps -e . -r requirements-pypy.txt`. Only those tools' dependencies
+  are installed there (pyarrow has no PyPy build), so every other tool runs
+  from `./.venv`. Code they import stays valid on Python 3.11.
 - Test a corpus tool on a single hourly file before a full run.
 - Do not add automated tests unless asked. Validate with representative
   input and direct inspection of the output, and report what was checked.

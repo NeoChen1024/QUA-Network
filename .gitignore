@@ -6,6 +6,7 @@
 
 # Local environments and caches.
 .venv/
+.venv-pypy/
 __pycache__/
 *.pyc
 *.egg-info/

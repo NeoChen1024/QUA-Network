@@ -65,7 +65,6 @@ _GENERIC = re.compile(
     rb"(?:ALL|AP|CQ|DF|DGPS|DRILL|DX|GPS|ID|JAVA|MAIL|MICE|QST|QTH|RTCM|SKY|SPACE|SPC|SYM|TEL|TEST|TLM|WX)[A-Z0-9]*\Z"
 )
 _GRID = re.compile(rb"[A-R]{2}[0-9]{2}[A-X]{2}\Z")
-_GRID_SHAPE = re.compile(rb"[A-Z]{2}[0-9]{2}[A-Z]{2}\Z")
 
 
 def _sym_pairs():
@@ -114,9 +113,8 @@ def dest_class(scan, call, start, dti):
         cls = "dest.grid"
     else:
         cls = "dest.altnet"
-    # A destination in locator shape taken by another class (amb.dest.class).
-    if cls != "dest.grid" and _GRID_SHAPE.match(call):
-        scan.find("dest.grid", "ambiguous", start)
+    # A locator shape that another class takes, or whose letters are out of
+    # range, is not a locator and gives no finding (README section 3).
     return cls
 
 

@@ -214,18 +214,14 @@ position ([amb.mice.extension](#amb.mice.extension)).
 - After `mice.tlm` the bytes are read as status text whose prefix
   `mice.tlm` replaces: an altitude and a locator may follow it
   directly, and there is no suffix.
-- A fifth or sixth locator byte outside `'A'`–`'X'`, in either case,
-  is not a subsquare letter
-  ([amb.grid.range](03-position.md#amb.grid.range)): the six bytes are
-  not a locator, and only the four-byte locator is tried, which `/G`
-  must follow directly. A `/G` after such bytes does not close them
-  the way the `']'` of a beacon does. Reading (b) of amb.grid.range,
-  any letter, would take the six bytes as the locator. Where they are
-  two upper-case letters, two digits and two upper-case letters, then
-  `/G`, then the SP or what needs no SP (below), they are free text
-  with an `ambiguous` finding on `mice.grid` at the fifth byte.
-  Otherwise reading (b) gives a `syntax` finding of its own and there
-  is no finding.
+- **[proposed]** `/G` closes the locator the way the `']'` of a beacon
+  does ([README section 3](README.md#3-tokenizer-model), forms
+  recognised by shape alone): two letters, two digits and optionally two
+  letters, then `/G`, are `mice.grid`, and a letter outside its range
+  ([amb.grid.range](03-position.md#amb.grid.range)) gives `syntax` at
+  that byte. An earlier draft read a subsquare letter past `'X'` as no
+  subsquare, took the bytes as free text and gave them an `ambiguous`
+  finding at the fifth byte from reading (b) of amb.grid.range.
 - `mice.grid` gives at most one `syntax` finding: at its first byte
   that is lower case or outside its range, else at the byte after the
   `'G'` when free text follows there without the SP. Nothing, or only
@@ -236,8 +232,7 @@ position ([amb.mice.extension](#amb.mice.extension)).
 - The `ambiguous` findings of section 7 are given on these rules:
   `mice.type.prefix` at offset 9 ([amb.mice.byte9](#amb.mice.byte9));
   `mice.grid` at the first locator byte
-  ([amb.mice.grid](#amb.mice.grid)), or at the fifth for
-  amb.grid.range (above); `mice.alt` at the first byte of
+  ([amb.mice.grid](#amb.mice.grid)); `mice.alt` at the first byte of
   the match ([amb.mice.alt](#amb.mice.alt)); for
   [amb.mice.extension](#amb.mice.extension), the rule of the extension
   form, or `mice.status` for a position, at the first byte of the run.

@@ -44,7 +44,7 @@ neither, then text. A report with a locator has no timestamp.
 |---|---|---|---|---|---|
 | <a id="stat.dti"></a>`stat.dti` | Identifier | `>`, 1 byte. | yes | 1 byte | p. 31/17; p. 104/80 |
 | <a id="stat.time"></a>`stat.time` | Timestamp | [`time.dhm`](02-fields.md#time.dhm) with the zulu suffix `z` only: 6 digits then `z`. Six digits followed by `/` or `h` are not a timestamp; they stay `stat.text`, with `ambiguous` at the first digit where the report read with that timestamp would give no `syntax` or `value` finding of its own ([amb.stat.time](#amb.stat.time)). | no | 7 bytes | p. 38/22; p. 104/80 |
-| <a id="stat.grid"></a>`stat.grid` | Locator with symbol | Directly after `stat.dti`, never with `stat.time`: [`grid.loc`](03-position.md#grid.loc), then [`sym.table`](02-fields.md#sym.table), then [`sym.code`](02-fields.md#sym.code), then `SP` or the end of the field. The 6-byte locator is tried first, then the 4-byte one. The letter ranges are those of [amb.grid.range](03-position.md#amb.grid.range): a first-pair letter outside `A`–`R`, in either case, is recognised and gives `syntax` where the rest matches; a fifth or sixth byte outside `A`–`X`, in either case, means the locator has no subsquare, and the 4-byte locator is tried. Lower-case locator letters, in the subsquare too, are recognised and give `syntax` ([amb.grid.case](03-position.md#amb.grid.case)). When a locator and symbol match but the next byte is not `SP`, the bytes are `stat.text`, with no finding ([amb.stat.grid](#amb.stat.grid)). | no | the byte before `SP` or end of field | p. 42/26; p. 105/81; p. 106/82 |
+| <a id="stat.grid"></a>`stat.grid` | Locator with symbol | Directly after `stat.dti`, never with `stat.time`: [`grid.loc`](03-position.md#grid.loc), then [`sym.table`](02-fields.md#sym.table), then [`sym.code`](02-fields.md#sym.code), then `SP` or the end of the field. The 6-byte locator is tried first, then the 4-byte one. The letter ranges are those of [amb.grid.range](03-position.md#amb.grid.range): **[agreed]** a first-pair letter outside `A`–`R`, in either case, means the bytes are no locator and are `stat.text`, with no finding; a fifth or sixth byte outside `A`–`X`, in either case, means the locator has no subsquare, and the 4-byte locator is tried. Lower-case locator letters, in the subsquare too, are recognised and give `syntax` ([amb.grid.case](03-position.md#amb.grid.case)). When a locator and symbol match but the next byte is not `SP`, the bytes are `stat.text`, with no finding ([amb.stat.grid](#amb.stat.grid)). | no | the byte before `SP` or end of field | p. 42/26; p. 105/81; p. 106/82 |
 | <a id="stat.text"></a>`stat.text` | Status text | The rest of the field; its bytes are checked as [`cmt.text`](02-fields.md#cmt.text). At most 62 bytes with neither `stat.time` nor `stat.grid`, 55 after `stat.time`, 54 after `stat.grid` counting the leading `SP`. Longer gives `value` at the first byte past the limit, also when the text is valid UTF-8 and its character count is within the limit ([amb.stat.len](#amb.stat.len)). | no | end of field | p. 104/80; p. 106/82 |
 | <a id="stat.beam"></a>`stat.beam` | Beam heading and power | The last 3 bytes of `stat.text` when they are `^`, then a heading byte (a digit or `A`–`Z`), then a power byte 0x31–0x4B (`1` to `9`, `:` to `@`, `A` to `K`). A depth + 1 token inside `stat.text`. Any other last 3 bytes are plain text. | no | end of field | p. 105/81 |
 | <a id="stat.freq"></a>`stat.freq` | Frequency in status text | The rules of section 7 apply at the start of `stat.text`, after the leading `SP` when there is a `stat.grid`. | no | — | p. 111/87; p. 115/91 |
@@ -347,10 +347,11 @@ therefore decides nothing in a packet that conforms, and needs no
 finding.
 
 **[proposed]** The Maidenhead rules of
-[03-position.md](03-position.md#amb.grid.range) apply to the locator. A
-first-pair letter outside `A`–`R`, in either case, is recognised as a
-locator letter and gives `syntax`, where the bytes otherwise have the
-shape of `stat.grid`, with the symbol and the `SP` or end. A fifth or
+[03-position.md](03-position.md#amb.grid.range) apply to the locator.
+**[agreed]** A first-pair letter outside `A`–`R`, in either case, means
+the bytes are no locator: they are `stat.text`, with no finding, by the
+rule for forms recognised by shape alone
+([README section 3](README.md#3-tokenizer-model)). A fifth or
 sixth byte outside `A`–`X`, in either case, is not a subsquare letter,
 so the 6-byte locator does not match and the 4-byte one is tried. A
 lower-case
@@ -364,12 +365,11 @@ a listed reading here
 ([README section 3](README.md#3-tokenizer-model)) and that finding is
 not given.
 
-**[agreed]** A first-pair letter outside `A`–`R` is recognised, and its
-`syntax` finding stays. Status texts that name a DMR talkgroup, such as
-`TG4605` followed by `SP`, have the shape of a 4-byte locator with an
-overlay symbol and get that finding. They are outside the document,
-and the finding is kept on purpose: it shows how a form defined by
-shape alone catches unrelated text.
+Status texts that name a DMR talkgroup, such as `TG4605` followed by
+`SP`, have the shape of a 4-byte locator with an overlay symbol. An
+earlier draft recognised a first-pair letter outside `A`–`R` and gave
+them `syntax` on `stat.grid`; the author decided first to keep that
+finding and then, generalising, to read such bytes as status text.
 
 **In the bytes.** **[proposed]** No `ambiguous` finding. An earlier
 draft gave one at offset 1 where a locator and symbol were not followed

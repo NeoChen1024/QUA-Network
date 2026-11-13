@@ -183,8 +183,9 @@ _SUFFIX_EXAMPLES = frozenset((b"_(", b"_0", b"_3", b"|3", b"|4"))  # p. 73/55
 _HEX = frozenset(b"0123456789ABCDEFabcdef")
 # A fifth or sixth byte outside A-X, in either case, is no subsquare letter
 # (amb.grid.range); only the 4-byte locator is then tried.
-_GRID = re.compile(rb"[A-Za-z]{2}[0-9]{2}(?:[A-Xa-x]{2})?/G")
-_GRID_ANY_LETTER = re.compile(rb"[A-Z]{2}[0-9]{2}[A-Z]{2}/G")
+# '/G' closes the locator as ']' closes that of a beacon, so letters out of
+# range before it are a locator with a syntax finding (README section 3).
+_GRID = re.compile(rb"[A-Za-z]{2}[0-9]{2}(?:[A-Za-z]{2})?/G")
 _AR = frozenset(b"ABCDEFGHIJKLMNOPQR")
 _AX = frozenset(b"ABCDEFGHIJKLMNOPQRSTUVWX")
 _ALT_RUN = re.compile(rb"[!-{]{3}\}")
@@ -271,8 +272,6 @@ def _after_prefix(scan, p, end, d, prefix):
         p = ge
     elif _grid_other_symbol(line, p, te):
         scan.find("mice.grid", "ambiguous", p)
-    elif _grid_any_letter(line, p, te):
-        scan.find("mice.grid", "ambiguous", p + 4)
 
     # One data extension at the start of the free text (amb.mice.extension);
     # a course and speed is not one of the Mic-E forms.
@@ -304,17 +303,6 @@ def _tail_ok(line, q, te):
         return True
     blk = b91_block(Scan(line), q, te, 0, daos)
     return blk is not None and blk[0] == q
-
-
-def _grid_any_letter(line, p, te):
-    """Reading (b) of amb.grid.range: six upper-case bytes of a locator's
-    shape with a subsquare letter past 'X', then /G and what may follow it
-    without a syntax finding of its own."""
-    m = _GRID_ANY_LETTER.match(line, p, te)
-    if not m:
-        return False
-    q = m.end()
-    return q < te and line[q] == SP or _tail_ok(line, q, te)
 
 
 def _grid_other_symbol(line, p, te):

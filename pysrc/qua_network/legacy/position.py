@@ -216,11 +216,12 @@ def grid(scan, start, end, depth):
         if closed and not in_range and bad is None:
             bad = s + 4 if a not in _AX else s + 5
         # Without ']', reading (b) of amb.grid.form ends an in-range locator
-        # after 4 bytes, that of amb.grid.range takes out-of-range letters as
-        # a subsquare, and reading (a) of amb.grid.case ends it after 4 bytes
-        # when only the subsquare is lower case. One finding. With ']' every
-        # reading takes six bytes, and one that rejects them fails.
-        amb = bad is None and not closed
+        # after 4 bytes, and reading (a) of amb.grid.case ends it after 4
+        # bytes when only the subsquare is lower case. One finding. Letters
+        # out of range and not closed by ']' are comment text, with no
+        # finding (README section 3). With ']' every reading takes six
+        # bytes, and one that rejects them fails.
+        amb = bad is None and not closed and in_range
     e = min(s + n, end)
     if e > s:
         scan.tok("grid.loc", s, e, depth)

@@ -56,6 +56,7 @@ def read(scan, start, end, depth):
 # --- Status reports (09 section 2) --------------------------------------
 
 _LETTERS = UPPER | LOWER
+_AR_ANY = frozenset(b"ABCDEFGHIJKLMNOPQRabcdefghijklmnopqr")
 _AR = frozenset(b"ABCDEFGHIJKLMNOPQR")
 _AX = frozenset(b"ABCDEFGHIJKLMNOPQRSTUVWX")
 _AX_ANY = _AX | frozenset(b"abcdefghijklmnopqrstuvwx")
@@ -85,14 +86,15 @@ def _status(scan, start, end, depth, texts):
 def _grid_len(line, p, end):
     """The length of the locator of a stat.grid at p (6, then 4), or 0.
 
-    A locator letter is recognised in either case and, in the first pair,
-    outside A-R; the subsquare letters must lie in A-X (amb.stat.grid)."""
+    A locator letter is recognised in either case. Letters outside A-R in
+    the first pair, or A-X in the subsquare, are not a locator: the bytes
+    are status text (README section 3, amb.stat.grid)."""
     for n in (6, 4):
         q = p + n
         if q + 2 > end:
             continue
         b = line[p:q]
-        if not (b[0] in _LETTERS and b[1] in _LETTERS and b[2] in DIGITS and b[3] in DIGITS):
+        if not (b[0] in _AR_ANY and b[1] in _AR_ANY and b[2] in DIGITS and b[3] in DIGITS):
             return 0
         if n == 6 and not (b[4] in _AX_ANY and b[5] in _AX_ANY):
             continue
@@ -112,7 +114,7 @@ def _grid(scan, p, n, depth):
     ranges = (_AR, _AR, DIGITS, DIGITS, _AX, _AX)
     bad = next((p + i for i in range(n) if line[p + i] not in ranges[i]), None)
     if bad is not None:
-        # Lower case and first-pair letters past R (amb.grid.range, amb.grid.case).
+        # Lower case (amb.grid.case).
         scan.find("stat.grid", "syntax", bad)
     sym_table(scan, p + n, d)
     sym_code(scan, p + n + 1, d)

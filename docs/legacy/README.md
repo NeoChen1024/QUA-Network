@@ -178,6 +178,22 @@ symbol that fit a data extension are one, or the start of a comment: a
 finding there would mark every extension. Each ambiguity entry says
 which of the two cases it is.
 
+**[agreed]** A form recognised by its shape alone, at a place where
+free text or another class of the same field can also stand, is that
+form only when no class before it takes the bytes and its bytes lie
+within the form's ranges. Otherwise the bytes are what else stands
+there, with no finding of the form: no `syntax`, and no `ambiguous`
+finding from a reading that would widen the ranges. A Maidenhead
+locator is the case in point: in a status text, a destination address
+or the comment of a `[` beacon, locator-shaped bytes with a letter out
+of range are text or another class, and a destination such as `AP51WX`
+that a tocall takes is not a locator. Where the format fixes the place
+of the form or closes it with a delimiter of its own (the locator right
+after `[`, one closed by `]` or by the `/G` of a Mic-E status), the
+bytes are the form, and bytes out of range give `syntax`. A form
+defined by shape alone otherwise catches unrelated text too often to
+report on it.
+
 **[proposed]** Kinds by situation. The files report like situations
 with the same kind:
 

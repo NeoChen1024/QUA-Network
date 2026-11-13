@@ -92,13 +92,14 @@ there is an SSID:
 7. `dest.grid`.
 8. `dest.altnet`.
 
-A destination that takes class 3 or 6 and also matches `dest.grid` gives
-`ambiguous` at the first byte of `addr.dest`
-([amb.dest.class](#amb.dest.class)). **[proposed]** So does a
-destination of any class other than `dest.mice` whose six bytes are two
-upper-case letters, two digits and two upper-case letters and fit
-`dest.grid` only with a letter outside the Maidenhead ranges
-([amb.grid.range](03-position.md#amb.grid.range)). **[agreed]** A
+**[agreed]** A destination that takes class 3 or 6 and also matches
+`dest.grid`, such as `AP51WX`, is not a locator and gives no finding;
+neither does a destination of locator shape with a letter outside the
+Maidenhead ranges ([amb.grid.range](03-position.md#amb.grid.range)),
+by the rule for forms recognised by shape alone
+([README section 3](README.md#3-tokenizer-model)). Earlier drafts gave
+both an `ambiguous` finding at the first byte of `addr.dest`
+([amb.dest.class](#amb.dest.class)). **[agreed]** A
 locator-shaped destination with lower-case letters, which only APRS-IS
 can carry, is not `dest.grid`; it falls to the next class without a
 finding of its own. For a third-party packet the outer destination is
@@ -461,10 +462,12 @@ statements below.
 
 **Reading taken.** **[proposed]** (a), in the order of section 5: the
 more specific form before the wildcard that also covers it, current forms
-before the obsolete locator, ALTNET last. When a destination taken as
-`dest.tocall` or `dest.generic` also fits `dest.grid`, the tokenizer
-gives `ambiguous`; the other overlaps are decided by the order without a
-finding.
+before the obsolete locator, ALTNET last. Every overlap is decided by
+the order without a finding. **[agreed]** That includes a destination
+taken as `dest.tocall` or `dest.generic` that also fits `dest.grid`,
+which an earlier draft gave `ambiguous`: a locator is recognised by
+shape alone, and gives way to the classes before it
+([README section 3](README.md#3-tokenizer-model)).
 
 **In the bytes.** **[proposed]** By the tests of
 [README section 3](README.md#3-tokenizer-model):
@@ -479,9 +482,9 @@ finding.
   one packet cannot narrow it: decided by the order, no finding.
 - A destination taken as `dest.tocall` or `dest.generic` whose six
   bytes also fit the 6-byte form of [`grid.loc`](03-position.md#grid.loc)
-  is one the bytes pick out. Read as `dest.grid`, as (b) also reads it,
-  it is accepted with only the `obsolete` finding of that class. It
-  gets `ambiguous` at the first byte of `addr.dest`.
+  gives no finding (**[agreed]**, reading taken above). An earlier draft
+  gave it `ambiguous` at the first byte of `addr.dest`, since (b) reads
+  it as `dest.grid`.
 
 **Decoders (read).** Dire Wolf looks up the device identifier for every
 identifier other than `'` and `` ` `` (decode_aprs.c:325–334), and takes

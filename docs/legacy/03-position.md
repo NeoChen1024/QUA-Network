@@ -116,12 +116,13 @@ first failing byte alone gives `syntax`. **[proposed]** A beacon gets `ambiguous
 byte 5, the first byte after a 4-byte locator, when bytes 5 and 6 are
 both letters and a reading listed would divide them differently from
 this one: a 6-byte locator with no `]` after it
-([amb.grid.form](#amb.grid.form)), two letters of which one is outside
-`A`–`X` in either case and no `]` after them (with a `]` they give
-`syntax`, [amb.grid.range](#amb.grid.range)), and a
+([amb.grid.form](#amb.grid.form)), and a
 subsquare that holds a lower-case letter after an upper-case first pair
 ([amb.grid.case](#amb.grid.case)). One finding is given however many
-of these hold. **[proposed]** With a `]` after the six bytes none of
+of these hold. **[agreed]** Two letters of which one is outside `A`–`X`,
+with no `]` after them, are comment text with no finding
+([amb.grid.range](#amb.grid.range)); with a `]` they give `syntax`.
+**[proposed]** With a `]` after the six bytes none of
 these holds: every reading takes the six bytes as the locator
 ([amb.grid.range](#amb.grid.range)), and reading (a) of amb.grid.case,
 which rejects the lower-case letters, then fails and does not count.
@@ -454,7 +455,8 @@ refers to the IARU Region 1 manual for the Maidenhead system
 `A`–`X` for the subsquare. (b) Any letter.
 
 **Reading taken.** **[agreed]** (a): `A`–`R` for the first pair and
-`A`–`X` for the subsquare. In the first pair a letter outside `A`–`R`
+`A`–`X` for the subsquare. In the first pair of a beacon, whose locator
+the `[` places, a letter outside `A`–`R`
 gives `syntax`, which alone is given, although (b) would accept it
 ([README section 3](README.md#3-tokenizer-model), Precedence). A fifth
 or sixth byte outside `A`–`X` means there is no subsquare: the locator
@@ -472,19 +474,24 @@ shape of a 6-byte locator closes the locator: those six bytes are
 that byte. The sender evidently meant a subsquare, so the bytes are not
 read as a 4-byte locator followed by a comment.
 
-**[proposed]** Applying the tests of README section 3 where `grid.loc`
-is read:
+**[agreed]** Where nothing places or closes the locator, letters out of
+range make the bytes something else, with no finding, by the rule for
+forms recognised by shape alone
+([README section 3](README.md#3-tokenizer-model)); reading (b) does not
+make them ambiguous:
 
 - In a beacon, bytes 5 and 6 that are both letters, one of them outside
   `A`–`X` in either case, and not followed by `]`, start `grid.cmt`
-  after a 4-byte locator. (b) would take them as a subsquare and accept
-  the beacon, so it gets `ambiguous` at byte 5. Followed by `]`, they
-  give `syntax` as above.
-- A destination of two upper-case letters, two digits and two
-  upper-case letters with a letter out of range is classified by the
-  other classes of 01 section 5. (b) would take it as `dest.grid`,
-  which accepts it, so unless it is `dest.mice` it gets `ambiguous` at
-  the first byte of `addr.dest`.
+  after a 4-byte locator, with no finding. Followed by `]`, they give
+  `syntax` as above.
+- A destination of locator shape with a letter out of range is
+  classified by the other classes of 01 section 5, with no finding.
+- In a status report a first-pair letter out of range means there is no
+  [`stat.grid`](09-other.md#stat.grid).
+
+Earlier drafts gave the beacon and the destination an `ambiguous`
+finding, at byte 5 and at the first byte of `addr.dest`, from
+reading (b).
 
 **Decoders (read).** Dire Wolf checks `A`–`R` and `A`–`X`, either case
 (`get_maidenhead`, decode_aprs.c:4082–4102). Xastir checks `A`–`R` for

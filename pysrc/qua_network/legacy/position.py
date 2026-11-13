@@ -14,7 +14,6 @@ from qua_network.legacy.fields import (
     brgnrq_shape,
     cmp_block,
     comment,
-    csespd_mixed,
     emit_ext,
     item_overlaps,
     lat,
@@ -110,18 +109,13 @@ def _uncompressed(scan, start, p, end, depth):
     # cmt.text (README section 3, Placing a finding).
     if area_literal(line, p, end):
         scan.find("cmt.text", "ambiguous", p)  # amb.ext.area
-    if x is None:
-        q = csespd_mixed(line, p, end)
-        if q is not None:
-            scan.find("cmt.text", "ambiguous", q)  # amb.ext.csespd
-    else:
+    if x is not None:
         emit_ext(scan, x, depth)
         p += x.n
         if code == 0x40 and x.rule == "ext.csespd" and _STORM.match(line, p, end):
             if table in b"/\\":
-                # Storm data (06 section 8), then the comment; it does not follow
-                # the slot's extension, so no course and speed is looked for at
-                # its start.
+                # Storm data (06 section 8), then the comment; no run is looked
+                # for at its start (02 amb.ext.count).
                 p = weather_storm(scan, p, end, depth)
                 return comment(scan, p, end, depth, 36, "pos.cmt", start_cse=False)
             if table in SYM_TABLE:
@@ -142,7 +136,9 @@ def _uncompressed(scan, start, p, end, depth):
         elif brg is not None and df_sym != df_ext and brg <= 360:
             scan.find("df.notdf", "ambiguous", p)
 
-    cmt = comment(scan, p, end, depth, limit, limit_rule)
+    # The slot is the only place of an extension: no run after it is looked
+    # for (02 amb.ext.count).
+    cmt = comment(scan, p, end, depth, limit, limit_rule, start_cse=False)
     if x is not None and x.h_alpha:
         # amb.ext.phg: reading (b) takes the extension as comment text, within
         # the limit without an extension (43).

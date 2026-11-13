@@ -289,10 +289,12 @@ How the tokenizer applies this section:
   [amb.mice.extension](#amb.mice.extension), is the `cmt.text` token
   less the items found in it.
 - **[proposed]** In the status text the search of
-  [amb.mice.extension](#amb.mice.extension) takes the place of that of
-  [amb.ext.count](02-fields.md#amb.ext.count). A course and speed is
-  not a Mic-E extension form, so seven bytes of its shape give no
-  finding, at the start of the free text or later.
+  [amb.mice.extension](#amb.mice.extension) is the only one for
+  extension-shaped runs. A course and speed is not a Mic-E extension
+  form, so seven bytes of its shape give no finding, at the start of
+  the free text or later. An earlier draft said that this search took
+  the place of that of [amb.ext.count](02-fields.md#amb.ext.count),
+  which no longer looks for runs.
 - **[proposed]** The status text has no length limit, so the
   conditions of [amb.cmt.dao](02-fields.md#amb.cmt.dao) and
   [amb.ext.phg](02-fields.md#amb.ext.phg) that compare a comment with
@@ -595,6 +597,28 @@ the [README](README.md#4-decoders-consulted), not run.
   Kenwood prefix as the suffix, by shape. An earlier draft gave
   `unstated` to every two-byte suffix that is not one of the five
   examples on p. 73/55, since the document gives no list.
+
+  A status text that ends in a multi-byte UTF-8 character after a 0x60
+  or 0x27 prefix has its suffix taken from the last two bytes all the
+  same, so the suffix can cut the character. The suffix is a
+  fixed-width field whose entry names no test of presence beyond the
+  bytes left, so it is present and its bytes are its token
+  ([README section 3](README.md#3-tokenizer-model), When a fixed field
+  is present; the last sentence of the
+  [`mice.type.suffix`](#mice.type.suffix) row); it gives `unstated`, as
+  no listed suffix holds a byte outside ASCII. The free text then ends
+  in a cut sequence, a byte outside its byte set, and gives `syntax` on
+  [`cmt.text`](02-fields.md#cmt.text) at the lead byte (README section
+  3, Kinds by situation). The cause is a sender that writes the 0x60
+  prefix and no suffix; in a scan of the capture window
+  `aprsis-20261104-03.log` to `aprsis-20261113-07.log` (221 files,
+  75,037,495 packets), all 1,984 such packets followed a 0x60 prefix,
+  and nearly all came from one APRS-IS client. A prefix without a
+  suffix is a candidate for a deviation recogniser
+  ([README section 6](README.md#6-open-items)); Dire Wolf, which strips
+  a suffix only when its table matches (Decoders, below), is the
+  decoder reference for it. An earlier list held the case open in
+  section 9.
 - **In the bytes.** No `ambiguous` finding. After a 0x60
   or 0x27 prefix, readings (a) and (b) divide the bytes the same way:
   the register is open, so an unlisted pair is still the suffix, and the
@@ -617,7 +641,12 @@ the [README](README.md#4-decoders-consulted), not run.
   no suffix handling; it stays in the comment (`FAP.pm:1869-1874`,
   `mice.py:217-218`, `db.c:12706-12721`).
 - **Corpus question.** The last three bytes of the status text, by prefix
-  byte; how often the text ends in CR or SP, or holds 0xFF.
+  byte; how often the text ends in CR or SP, or holds 0xFF. A trailing
+  U+00B7 (`0xC2 0xB7`) after a listed suffix, which one IGate, F4MAJ,
+  appends to the packets it gates, makes those two bytes the suffix
+  and leaves the listed one in the text; it is an artefact of that
+  IGate and a candidate for a deviation recogniser of its own
+  ([README section 6](README.md#6-open-items)).
 
 <a id="amb.mice.pipe"></a>
 ### amb.mice.pipe
@@ -760,15 +789,28 @@ the [README](README.md#4-decoders-consulted), not run.
   passage as unclear (p. 72/54, p. 157/133).
 - **Readings.** (a) Extensions only at the start of the free text.
   (b) Anywhere. For the position: (c) not looked for; (d) looked for.
-- **Reading taken.** **[proposed]** (a) and (c). The start of the free
-  text is the spot of an extension because chapter 7 places an
-  extension directly after the position data (p. 45/27), and in Mic-E
-  the free text follows the encoded position; an extension is read
-  there only, and once, and later bytes of its shape are text
-  ([README section 3](README.md#3-tokenizer-model), Fixed spots and
-  repeats).
-- **In the bytes.** Visible where readings (b) or (d) would divide
-  them differently: a later run that fits
+- **Reading taken.** (a) for an extension, and **[proposed]** (c) for
+  the position.
+
+  **[agreed]** As the author decided, the spot that chapter 7 gives an
+  extension carries over into the Mic-E free text: p. 45/27 places an
+  extension directly after the position data, p. 34/20 puts the
+  comment after the data or the data extension, and the frequency
+  example of p. 115/91 shows PHG directly after the position, before
+  the frequency; in Mic-E the free text follows the encoded position.
+  With that spot, (a) applies
+  [README section 3](README.md#3-tokenizer-model), Fixed spots and
+  repeats: an extension is read at the start of the free text only, and
+  once, and later bytes of its shape are text. An earlier draft carried
+  (a) and (c) together under one proposal.
+
+  (c) is kept apart because p. 72/54, which allows a standard position
+  in the status text, gives it no place and no delimiter and carries
+  "(HUH???)" beside it; a reading that looks for such a
+  position by its shape alone, (d), rests on a passage the document
+  itself marks as unclear.
+- **In the bytes.** Visible where readings (b) or (d), which stay
+  listed, would divide them differently: a later run that fits
   [`ext.phg`](02-fields.md#ext.phg),
   [`ext.phgr`](02-fields.md#ext.phgr), [`ext.rng`](02-fields.md#ext.rng)
   or [`ext.dfs`](02-fields.md#ext.dfs), or a run anywhere in the text
@@ -888,14 +930,9 @@ Origin: already in APRS 1.0.1, PDF p. 56 and p. 64 (printed 46 and 54).
 - The corpus questions in section 7.
 - ebarkie/aprs has no Mic-E decoder in the files read, and javAPRSlib's
   handling of the status text has not been read.
-- **[open]** A two-byte suffix that splits well-formed UTF-8. After a
-  0x60 or 0x27 prefix the last two bytes are the suffix as they stand
-  ([amb.mice.suffix](#amb.mice.suffix)), so where the status text ends
-  in a multi-byte UTF-8 character, the suffix can take its last bytes:
-  the free text then ends in a cut sequence and gives `syntax` on
-  [`cmt.text`](02-fields.md#cmt.text) at its lead byte, and the suffix,
-  being no listed one, gives `unstated`. A scan of the capture window
-  `aprsis-20261104-03.log` to `aprsis-20261113-07.log` (221 files,
-  75,037,495 packets) found 1,984 such packets. Whether the bytes of a
-  suffix that cut a character are read otherwise is not decided; the
-  tokenizer reads them as above.
+- An earlier list held as open whether the bytes of a two-byte suffix
+  that cut a multi-byte UTF-8 character at the end of the status text
+  are read otherwise than as the suffix. The author decided that they
+  are not: the reading follows from README section 3, and
+  [amb.mice.suffix](#amb.mice.suffix) records the case, its cause and
+  the recogniser candidate.

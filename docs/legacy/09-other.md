@@ -97,7 +97,7 @@ from that search, which covers the whole information field.
 | <a id="cap.item"></a>`cap.item` | Capability | `cap.token`, optionally followed by `=` and `cap.value`. One or more items, separated by `cap.sep`. An empty field or an empty item gives `syntax`. | yes, at least one | `,` or end of field | p. 101/77 |
 | <a id="cap.sep"></a>`cap.sep` | Separator | `,`, 1 byte. | between items | 1 byte | p. 101/77 |
 | <a id="cap.token"></a>`cap.token` | Token | 1 or more bytes 0x21–0x7E other than `,` and `=` ([amb.cap.form](#amb.cap.form)). | yes | `=`, `,` or end of field | p. 101/77 |
-| <a id="cap.value"></a>`cap.value` | Value | 1 or more bytes 0x21–0x7E other than `,`. An `=` with nothing after it gives `syntax`. For the tokens `MSG_CNT` and `LOC_CNT` the value is a count, so digits; any other byte gives `syntax`, as a byte pattern outside every form the document defines, at a place the format fixes ([README section 3](README.md#3-tokenizer-model), Kinds by situation). **[agreed]** A byte above 0x7E gives `syntax` too, as a byte outside the set: the README rule that gives no finding for bytes outside 7-bit ASCII covers only a field where APRS12c only recommends printable ASCII, and p. 101/77 says nothing of the kind. The value of any other token gets the byte set only (section 10). | no | `,` or end of field | p. 101/77 |
+| <a id="cap.value"></a>`cap.value` | Value | 1 or more bytes 0x21–0x7E other than `,` and `=` ([amb.cap.form](#amb.cap.form)). An `=` with nothing after it gives `syntax`, and so does a further `=` in the value, at that byte. For the tokens `MSG_CNT` and `LOC_CNT` the value is a count, so digits; any other byte gives `syntax`, as a byte pattern outside every form the document defines, at a place the format fixes ([README section 3](README.md#3-tokenizer-model), Kinds by situation). **[agreed]** A byte above 0x7E gives `syntax` too, as a byte outside the set: the README rule that gives no finding for bytes outside 7-bit ASCII covers only a field where APRS12c only recommends printable ASCII, and p. 101/77 says nothing of the kind. The value of any other token gets the byte set only (section 10). | no | `,` or end of field | p. 101/77 |
 | <a id="cap.pad"></a>`cap.pad` | Padding | One or more `SP` before or after a token or value. A token of its own; gives `ambiguous` at its first byte where the field read with the spaces as padding would give no `syntax` or `value` finding of its own ([amb.cap.form](#amb.cap.form)). | no | the next byte that is not `SP` | — |
 
 An item with no bytes, between two `cap.sep` or between one and either
@@ -173,7 +173,15 @@ last one, is a missing field, and a footprint that stops before its
 radius has too few fields: each gives `syntax` where the missing part
 or `,` was expected, the end of the field for a missing `,`
 ([README section 3](README.md#3-tokenizer-model), Kinds by situation).
-**[proposed]** These findings are on `qry.fp`.
+A missing part gives its finding against its own rule, `qry.lon` or
+`qry.radius`, and a missing `,` against `qry.fp`, the list it
+separates; of consecutive missing fields at one byte, such as a
+missing longitude and the `,` after it at the end of the field, only
+the first gives a finding (README section 3, When a fixed field is
+present, Placing a finding, Missing fields at one byte). An earlier
+draft put all these findings on `qry.fp`, as **[proposed]**, so that a
+radius of three digits gave its finding on `qry.radius` and a radius
+of none on `qry.fp`.
 
 ### 4.1 Directed queries
 
@@ -249,11 +257,15 @@ gives depth + 1 tokens there. It is looked for:
   ([04-mic-e.md section 5](04-mic-e.md#5-status-text));
 - at the start of status text (`stat.freq`).
 
-**[proposed]** A DF report is a position report
+A DF report is a position report
 ([03-position.md section 3](03-position.md#3-df-reports)), so its
 comment, [`df.cmt`](03-position.md#df.cmt), is the `cmt.text` of a
 position report after its data extension and its bearing and NRQ, and
-a frequency is looked for at its start as at the start of `pos.cmt`.
+a frequency is looked for at its start as at the start of `pos.cmt`:
+p. 111/87 places the frequency comment in any fixed position comment,
+and an item is looked for in the fields its own chapter names
+([README section 3](README.md#3-tokenizer-model), Where comment items
+are looked for; [03-position.md section 2.1](03-position.md#21-after-an-uncompressed-position)).
 
 Nowhere else in a comment is it looked for. A weather report has no
 comment ([amb.wx.comment](06-weather.md#amb.wx.comment)), so no
@@ -475,17 +487,29 @@ not in characters?
 separated by commas (p. 101/77). No byte set is given for either, nor
 whether spaces can surround them. The appendix lists an IGate report
 with spaces after the commas (p. 155/131; see
-[err.cap.bracket](#err.cap.bracket)).
+[err.cap.bracket](#err.cap.bracket)). Each capability is a token or a
+token and value joined by `'='` (p. 101/77); whether a value may hold
+a further `'='` is not said.
 
 **Readings.** (a) Visible bytes only, spaces not allowed. (b) Spaces
-around items are padding.
+around items are padding. On `'='`: (c) an item holds one `'='`, so a
+value holds none; (d) the first `'='` ends the token, and the value
+may hold more.
 
-**Reading taken.** (a) for the token and value: the two readings
+**Reading taken.** (a) for the token and value: (a) and (b)
 differ only in how much they accept, and the narrowest that the text
 supports is taken, with the wider one tested for an `ambiguous` finding
 ([README section 3](README.md#3-tokenizer-model), Kinds by situation,
 narrowest reading). `SP` around them is taken as `cap.pad` with
 `ambiguous`, since (b) would also match: visible in the bytes.
+**[agreed]** As the author decided, (c) is listed as a reading of the
+token-and-value pair of p. 101/77, and (c) and (d) differ only in the
+byte set of the value, so the narrowest-reading rule takes (c): a
+further `'='` in a value gives `syntax` on `cap.value` at that byte. The
+split at the first `'='` is the same under both, since the token cannot
+hold `'='` (README section 3, Forms that can stand at one place: a
+delimiter ends a field at its first occurrence). An earlier draft
+admitted `'='` in a value and left the question open (section 10).
 
 **In the bytes.** Under the tests of
 [README section 3](README.md#3-tokenizer-model), reading (b) counts
@@ -500,10 +524,16 @@ one for an empty item or for a count that is not digits, does not stop
 it. An earlier draft gave no `ambiguous` finding wherever this reading
 gave a `syntax` or `value` finding on the field; that was dropped with
 the README rule that counts only the other reading's own findings.
+Reading (d) would accept a value with a further `'='`, but the `syntax`
+finding alone is given there, with no `ambiguous` beside it
+([README section 3](README.md#3-tokenizer-model), Precedence); a value
+without one is divided by (d) as by (c).
 
 **Decoders (read).** FAP splits at `,` and trims spaces around tokens
-and values (`_capabilities_parse`, FAP.pm:1315–1340). pdn-aprs trims
-spaces and needs at least one item (`capabilities`, other.rs:343–360).
+and values, ending the token at the first `'='` and keeping any later
+`'='` in the value (`_capabilities_parse`, FAP.pm:1313–1340). pdn-aprs
+trims spaces, splits at the first `'='` and needs at least one item
+(`capabilities`, other.rs:342–360).
 Dire Wolf copies the text without splitting it
 (`aprs_station_capabilities`, decode_aprs.c:2329–2339). aprslib lists
 `<` as unsupported (parsing/\_\_init\_\_.py:47–65). Xastir does not
@@ -1006,12 +1036,14 @@ in APRS 1.0.1. 12b has both (12b PDF 120, 121).
   (a listed reading comes from the document's text). The value of any
   other token gets the byte set of `cap.value` only. The item is kept
   here as a record.
-- **[open]** Whether `'='` may stand inside a capability value. The
-  `cap.value` row admits it as a byte 0x21–0x7E other than `','`, so
-  `RF_CNT==0` gives no finding, and p. 101/77 does not address it. A
+- Whether `'='` may stand inside a capability value. Settled by the
+  author ([amb.cap.form](#amb.cap.form)): a value holds no `'='`, so
+  `RF_CNT==0` gives `syntax` on `cap.value` at its second `'='`. An
+  earlier draft admitted it as a byte 0x21–0x7E other than `','`. A
   scan of the capture window `aprsis-20261104-03.log` to
   `aprsis-20261113-07.log` (221 files, 75,037,495 packets) found 20
-  such values.
+  such values, all received from RF; in 19 of them a damaged `','` had
+  joined two items. The item is kept here as a record.
 - `freq.dstar` is placed after a frequency and offset; whether a tone
   can stand between them is not shown by the examples.
 - Whether a directed query of an unlisted type (pdn-aprs accepts one)

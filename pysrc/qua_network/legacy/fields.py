@@ -299,7 +299,6 @@ def _cmp_short(scan, s, end, depth):
 # --- Data extensions (02 section 7) -------------------------------------
 
 _PART_KIND = {b"...": ".", b"   ": " "}
-_DDS = DIGITS | frozenset(b". ")
 
 
 def _part(b):
@@ -335,7 +334,11 @@ def _csespd(line, p, end, rule="ext.csespd"):
     over = kc == "d" and int(line[p : p + 3]) > 360
     if over:
         f.append((rule, "value", p))
-    if kc != ks:
+    if kc != ks and rule == "ext.csespd":
+        # 02 section 7.3: two values whose kinds differ, a combination the
+        # document says nothing about. In a weather report each part is an
+        # item of weather data, which may be unknown on its own (06 section
+        # 5.1), so ext.dirspd gives no finding for it.
         f.append((rule, "unstated", p))
         if not over:
             # amb.ext.csespd: reading (c) takes only the listed forms.
@@ -344,24 +347,9 @@ def _csespd(line, p, end, rule="ext.csespd"):
 
 
 def dirspd(line, p, end):
-    """ext.dirspd at p: the layout and findings of ext.csespd (7.2, 7.3)."""
+    """ext.dirspd at p: the layout and range of ext.csespd (7.2, 7.3); parts of
+    different kinds give no finding (06 section 5.1)."""
     return _csespd(line, p, end, "ext.dirspd")
-
-
-def csespd_mixed(line, p, end):
-    """amb.ext.csespd: seven bytes with '/' at offset 3 and only digits, dots and
-    spaces that reading (a) rejects. Returns the offset of the ambiguous finding
-    (p) when reading (b) would accept them, else None."""
-    if end - p < 7 or line[p + 3] != 0x2F:
-        return None
-    c, s = line[p : p + 3], line[p + 4 : p + 7]
-    if not all(x in _DDS for x in c + s):
-        return None
-    if _part(c) is not None and _part(s) is not None:
-        return None
-    if _digits(c) and int(c) > 360:
-        return None
-    return p
 
 
 def _hgd(line, q):
@@ -618,7 +606,7 @@ def comment(
     section 8.2; README section 3, Where comment items are looked for), so
     the caller says which: b91 searches base-91 telemetry (07), freq looks
     for a frequency at the start (09 section 7), dao looks for DAO
-    candidates, and ext_search runs the search of 02 amb.ext.count. The
+    candidates, and ext_search runs the search of 02 amb.ext.compressed. The
     altitude and '!x!' are always looked for. limit and limit_rule are the
     format's length limit and the rule that reports it, and freq_name says
     that the comment belongs to an object or item named as a frequency,
@@ -626,8 +614,10 @@ def comment(
     holds (rule, start, end) of items the format itself found in the comment
     and has tokenized, for the overlap rule of 8.2. start_cse=False leaves out
     the extension-shaped run at the comment start, for a comment that does not
-    directly follow the slot (storm data, 06 section 8) or a report in which
-    7.1 would try no form of step 3 at a slot. The bytes of a base-91 telemetry
+    directly follow a compressed block: one after an uncompressed position,
+    whose slot is the only place of an extension (02 amb.ext.count), storm
+    data (06 section 8), or a report in which 7.1 would try no form of step 3
+    at a slot. The bytes of a base-91 telemetry
     block belong to the block: no other item, and no extension-shaped run, is
     looked for inside it, and a '!x!' there is left to noarchive_outside
     through Comment.texts() (07 section 3). Returns a Comment, or None when
@@ -674,12 +664,12 @@ def comment(
 
     item_overlaps(scan, items)
 
-    # amb.ext.count / amb.ext.compressed: a step-3 form that fits cleanly at
-    # the comment start, where reading (b) of either entry takes it as an
-    # extension. A run later in the comment is text with no finding: taking
-    # it is decoder behaviour (amb.ext.count). The finding is on the rule this
-    # reading gives the run's first byte (README section 3, Placing a
-    # finding): an item that byte lies in, else cmt.text.
+    # amb.ext.compressed: a step-3 form that fits cleanly at the start of the
+    # comment after a compressed block, where reading (b) takes it as an
+    # extension. After an uncompressed position no run is looked for: a chain
+    # or a later extension is decoder behaviour (amb.ext.count). The finding
+    # is on the rule this reading gives the run's first byte (README section
+    # 3, Placing a finding): an item that byte lies in, else cmt.text.
     x = step3(line, s, end) if ext_search and start_cse else None
     if x is not None and x.clean() and (span is None or not span[0] <= s < span[1]):
         at = next((r for r, a, b in items if a <= s < b), "cmt.text")
@@ -742,14 +732,27 @@ def noarchive_in(scan, s, e, d, skip=None):
 def noarchive_outside(scan, start, end, texts):
     """'!x!' in the information field outside the free-text spans (amb.cmt.noarchive).
 
-    No finding where the reading already reports the bytes: inside a residue
-    (which an unread format's field also is) or on a syntax or value finding."""
+    No finding where the reading already reports the bytes (README section 3,
+    Precedence): a syntax or value finding of the rule whose token holds the
+    byte, or of a field missing there. A finding of another rule, such as the
+    length limit of the comment around a base-91 block, is an independent
+    defect and does not count. Nor inside a residue, whose rule cannot be
+    told."""
     line = scan.line
     i = line.find(b"!x!", start, end)
     if i < 0:
         return
     residues = [(t.start, t.end) for t in scan.tokens if t.rule == "residue"]
-    reported = {f.offset for f in scan.findings if f.kind in ("syntax", "value")}
+    held = {}
+    for t in scan.tokens:
+        held.setdefault(t.rule, []).append((t.start, t.end))
+
+    def reports(f):
+        if f.kind not in ("syntax", "value"):
+            return False
+        return scan.missed(f.offset) or any(a <= f.offset < b for a, b in held.get(f.rule, ()))
+
+    reported = {f.offset for f in scan.findings if reports(f)}
     while i >= 0:
         inside = any(ts <= i and i + 3 <= te for ts, te in texts) or any(rs <= i < re_ for rs, re_ in residues)
         if not inside and not reported.intersection(range(i, i + 3)):

@@ -333,8 +333,10 @@ make the bytes ambiguous
 ([README section 3](README.md#3-tokenizer-model)).
 
 That finding is on the rule this reading gives the first byte of the
-run, as in [amb.ext.count](#amb.ext.count)
+run, as [amb.ext.compressed](#amb.ext.compressed) states
 ([README section 3](README.md#3-tokenizer-model), Placing a finding).
+An earlier draft pointed here to amb.ext.count, which gave the same
+placement for its own runs.
 
 ## 7. Data extensions
 
@@ -380,11 +382,15 @@ run, as in [amb.ext.count](#amb.ext.count)
   3. Otherwise [`ext.csespd`](#ext.csespd), [`ext.phgr`](#ext.phgr),
      [`ext.phg`](#ext.phg), [`ext.rng`](#ext.rng), [`ext.dfs`](#ext.dfs).
      PHGR comes before PHG because it is the longer match.
-- **[proposed]** A slot holds one extension. Bytes after it that match
-  another extension are comment text, with an `ambiguous` finding where
-  [amb.ext.count](#amb.ext.count) gives one. Exceptions are
+- A slot holds one extension. Bytes after it that match another
+  extension are comment text, with no finding
+  ([README section 3](README.md#3-tokenizer-model), Fixed spots and
+  repeats; [amb.ext.count](#amb.ext.count)). Exceptions are
   [`ext.brgnrq`](#ext.brgnrq) (7.4) and storm data, which
-  [06-weather.md](06-weather.md) reads.
+  [06-weather.md](06-weather.md) reads. An earlier draft carried this
+  bullet as a proposal and gave a run directly after the slot's
+  extension an `ambiguous` finding, under a reading of amb.ext.count
+  that the author has since recorded as decoder behaviour.
 - **[agreed]** Seven slot bytes with a literal `'T'` at offset 0, `'/'`
   at offset 3 and `'C'` at offset 4, the spelling of the descriptor's
   name, and digits at offsets 1, 2, 5 and 6, get an `ambiguous` finding
@@ -436,10 +442,19 @@ states or the unit implies, or a code outside a table
 | `ext.phg`, `ext.phgr`, `ext.dfs` | `d` | `'0'`–`'8'` | `'9'` | The code table on p. 46/28 stops at 8 |
 | `ext.brgnrq` | Bearing | `000`–`360` | `361`–`999` | Implied by the unit; an earlier draft called it a reading |
 
-**[proposed]** A course and speed whose two parts are of different kinds
-(digits in one, dots or spaces in the other, as in `088/...`) is read as
-`ext.csespd` with an `unstated` finding. **[proposed]** Digits, dots and
-spaces are three kinds, so `.../   ` mixes kinds too.
+A course and speed whose two parts are of different kinds (digits in
+one, dots or spaces in the other, as in `088/...`) is read as
+`ext.csespd` with an `unstated` finding. Digits, dots and spaces are
+three kinds, so `.../   ` mixes kinds too. Course and speed are two
+values, each with its own forms, as the author decided
+([amb.ext.csespd](#amb.ext.csespd)), so such a pair is a combination of
+pieces that are each allowed and about which the document says nothing
+([README section 3](README.md#3-tokenizer-model), Kinds by situation:
+the bullets on combinations and on mixtures). An earlier draft carried
+these sentences as proposals. In a weather report, an `ext.dirspd`
+whose parts are of different kinds, such as `.../000`, gets no finding,
+as [06-weather section 5.1](06-weather.md#51-uncompressed-position)
+decides from p. 84/64 and p. 85/65.
 
 Such a course and speed also gets an `ambiguous` finding at its first
 byte, since a reading that takes only the listed forms would read the
@@ -447,10 +462,12 @@ seven bytes as comment text, unless the course gives the `value`
 finding above; then there is no `ambiguous` finding, and the `unstated`
 one, on an independent defect, stays. A seven-byte slot with `'/'` at
 offset 3 and only digits, dots and spaces, in which one part mixes
-kinds, is comment text, with an `ambiguous` finding at its first byte
-unless its course part is three digits above 360
-([README section 3](README.md#3-tokenizer-model), applied in
-[amb.ext.csespd](#amb.ext.csespd)).
+kinds, such as `8.8/036`, is comment text with no finding: a relaxed
+number is outside every form the document defines
+([README section 3](README.md#3-tokenizer-model), Kinds by situation,
+applied in [amb.ext.csespd](#amb.ext.csespd)). An earlier draft gave
+such a run an `ambiguous` finding at its first byte unless its course
+part was three digits above 360.
 
 An `ext.phg`, `ext.phgr` or `ext.dfs` whose `h` is not a digit gets an
 `ambiguous` finding at its first byte, under the condition of
@@ -533,15 +550,16 @@ field is stated in [03-position.md](03-position.md#3-df-reports).
   ([`tlm.b91`](07-telemetry.md#tlm.b91)) belong to the block, as
   [07-telemetry section 3](07-telemetry.md#3-base-91-comment-telemetry)
   decides and gives the reasons. The altitude, the DAO and the
-  extension-shaped runs of [amb.ext.count](#amb.ext.count) are not
-  looked for inside it, so no occurrence of them overlaps a block, and
-  a `'!x!'` among its pairs lies outside free text
+  extension-shaped run of [amb.ext.compressed](#amb.ext.compressed) are
+  not looked for inside it, so no occurrence of them overlaps a block,
+  and a `'!x!'` among its pairs lies outside free text
   ([amb.cmt.noarchive](#amb.cmt.noarchive)). The block is found first,
   with every DAO candidate of the field, since one may follow it.
   An earlier draft searched each item inside a block as well, so that a
   DAO candidate or `'!x!'` there overlapped the block and both got an
   `ambiguous` finding. A later one labelled this bullet as a decision
-  of this section.
+  of this section. Earlier drafts named the runs of
+  [amb.ext.count](#amb.ext.count), which no longer gives a finding.
 - An item that the document lets stand anywhere in its field, as it
   does the altitude, the DAO and `'!x!'`, is recorded at every
   occurrence, and two or more occurrences in one field give an
@@ -572,9 +590,10 @@ reports: **[agreed]** an object or item comment counts as a position
 comment. **[agreed]** A telemetry report has no position, so a DAO
 shape in `tlm.cmt` is text, with no finding; the altitude is still read
 there, since p. 43/27 places it in the comment without naming a
-format. The extension-shaped runs that
-[amb.ext.count](#amb.ext.count) reports are looked for as that entry
-states. Weather and storm data are read by
+format. The extension-shaped run that
+[amb.ext.compressed](#amb.ext.compressed) reports is looked for as that
+entry states; [amb.ext.count](#amb.ext.count) looks for none, and an
+earlier draft named its runs here. Weather and storm data are read by
 [06-weather.md](06-weather.md), and the parts of a Mic-E status text by
 [04-mic-e.md](04-mic-e.md). **[agreed]** The comment of a Maidenhead
 beacon, [`grid.cmt`](03-position.md#grid.cmt), holds the altitude and
@@ -637,7 +656,7 @@ malformed run falls on a byte of the field, no `ambiguous` finding of
 any rule is given at that byte, since this reading already reports it
 ([README section 3](README.md#3-tokenizer-model), Precedence). Such a
 finding may be that of another item that starts there, or of a run
-that [amb.ext.count](#amb.ext.count) or, in Mic-E,
+that, in Mic-E,
 [amb.mice.extension](04-mic-e.md#amb.mice.extension) or
 [amb.mice.alt](04-mic-e.md#amb.mice.alt) reports. In
 `/A=12/A=000001 /A=000002`, `/A=12!W12! !W34!` and `/A=12PHG5132` the
@@ -645,7 +664,9 @@ finding at the byte after `12` is the only one there. The `ambiguous`
 findings of the other occurrences, at `/A=000002` and `!W34!`, stay,
 unless their own first byte is reported. An earlier draft gave the
 `ambiguous` finding at that byte as well, and a later one named only
-the findings of those items and runs.
+the findings of those items and runs. This paragraph also named the
+runs of [amb.ext.count](#amb.ext.count), which no longer gives a
+finding.
 
 **[agreed]** As the author decided, a malformed run cut short by the
 end of the field has its `syntax` finding where the missing byte was
@@ -1142,8 +1163,7 @@ saying that a second one cannot follow, or that an extension later in
 the comment does not count. UAP says one, directly after the symbol
 (UAP 3.1, 3.2, 5.15).
 
-**Readings.** (a) One, at the slot. (b) A chain: a further extension
-directly after the slot's one.
+**Readings.** (a) One, at the slot.
 
 **[agreed]** As the author decided, extensions found anywhere in the
 comment are decoder behaviour, not a reading
@@ -1168,48 +1188,56 @@ shape away from the slot are as likely to be part of other text, such
 as a pair of frequencies or a date, and no decoder read searches for
 one there.
 
-**Reading taken.** **[proposed]** (a). Most read decoders agree.
+**[agreed]** As the author decided, a chain, a further extension
+directly after the slot's one, is decoder behaviour as well, not a
+reading ([README section 3](README.md#3-tokenizer-model)). P. 45/27
+names one 7-byte field and one field that may follow it, BRG/NRQ after
+a course and speed, which 7.4 reads; p. 46/28 calls 7 bytes the rule
+for data extensions; the diagrams of p. 51/33 show one extension and
+then the comment; and the further data that p. 34/20 lets a comment
+carry do not include an extension. A second extension adds a place
+that the document never mentions. Of the decoders read, none chains
+two 7-byte extensions: Dire Wolf and aprslib read only BRG/NRQ after a
+course and speed, and the course and speed that Xastir reads after its
+DFS form needs a `'/'` after that form (table below). Such chains are
+a candidate for a deviation recogniser
+([README section 6](README.md#6-open-items)); here they are comment
+text with no finding. An earlier draft listed the chain as reading
+(b), and section 11 asked whether it was a reading of the document's
+text.
 
-**In the bytes.** Visible, under the test of
-[README section 3](README.md#3-tokenizer-model). A run in the comment
-that fits a form of step 3 of 7.1 with no `syntax` or `value` finding
-of that form is comment text here, and an extension under reading (b)
-when it directly follows the slot's extension. Reading (b) leaves the
-rest of the comment as it is, so it accepts what this reading accepts.
-Such a run gets an `ambiguous` finding at its first byte. The search
-therefore looks only at the start of a comment that directly follows
-the slot's extension, in a report that carries a position. This is the
-same kind of run that [amb.ext.compressed](#amb.ext.compressed)
-reports at the start of the comment after a compressed block (6.5).
-An earlier draft also gave the finding to a run with a
-marker anywhere in the comment of every such report, a compressed one
-included, under reading (c), and gave it to a course and speed only at
-the start of the comment; those sentences carried the label of a
-proposal.
+**Reading taken.** (a), the one listed reading
+([README section 3](README.md#3-tokenizer-model)). Most read decoders
+agree. An earlier draft carried it as a proposal, beside reading (b).
+
+**In the bytes.** No `ambiguous` finding. The slot is the fixed spot of
+an extension, so a run in the comment that fits a form of step 3 of
+7.1, directly after the slot's extension or later, is comment text,
+and no listed reading takes it as an extension
+([README section 3](README.md#3-tokenizer-model), Fixed spots and
+repeats). The run at the start of the comment after a compressed block
+is the question of [amb.ext.compressed](#amb.ext.compressed) (6.5),
+whose search is the only one for such a run.
 **[agreed]** It does not cover the comment of a report without a
 position, such as a telemetry report: no reading gives such a report a
 data extension, so no rule makes a run there one.
-A run that overlaps another token found in the comment (8.2), or
-whose bytes carry the finding of 7.4, still gets this finding:
-findings from different rules on one byte are not merged
-([README section 3](README.md#3-tokenizer-model), One byte may carry
-several findings). An earlier draft gave no further finding in those
-two cases, and a later one carried this sentence as a proposal. A run
-that starts inside a base-91 telemetry block is not looked for, since
-the block's bytes belong to the block (8.2); an earlier draft looked
-for such runs there too. An
-earlier draft also treated the question as not visible, on the grounds
-that such a run cannot be told from text; that is the case the finding
-marks.
 
-The finding is on the rule this reading gives the first byte of the
-run: `cmt.text`, or the item found in the comment (8.2) that the byte
-lies in. A run that already carries the `ambiguous` finding of 6.5 does
-not get it a second time: both entries give the same finding, of the
-same rule, kind and offset, which is given once
-([README section 3](README.md#3-tokenizer-model), Placing a finding).
-An earlier draft reported the run under the rule of the extension form
-it fits, the rule of the other reading.
+An earlier draft gave a run in the comment that fits a form of step 3
+with no `syntax` or `value` finding of that form an `ambiguous` finding
+at its first byte when it directly followed the slot's extension,
+under reading (b): the search looked only at the start of such a
+comment, in a report that carries a position, and the finding was on
+the rule this reading gave the run's first byte. A run that overlapped
+another token found in the comment, or whose bytes carried the finding
+of 7.4, still got it; a run that started inside a base-91 telemetry
+block was not looked for; and a run that also carried the finding of
+6.5 got it once. A still earlier draft also gave the finding
+to a run with a marker anywhere in the comment of every such report, a
+compressed one included, under reading (c), and gave it to a course
+and speed only at the start of the comment; those sentences carried
+the label of a proposal. Earlier drafts also treated the question as
+not visible, and reported the run under the rule of the extension form
+it fits.
 
 | Decoder | Reads | Where |
 |---|---|---|
@@ -1253,6 +1281,17 @@ them as an extension, or would fail on them. This differs from
 extension that the reading accepts, and a finding would mark every
 extension.
 
+The finding is on the rule this reading gives the first byte of the
+run: `cmt.text`, or the item found in the comment (8.2) that the byte
+lies in ([README section 3](README.md#3-tokenizer-model), Placing a
+finding). A run that overlaps another token found in the comment still
+gets it: findings from different rules on one byte are not merged
+(README section 3, One byte may carry several findings). A run that
+would start inside a base-91 telemetry block is not looked for, since
+the block's bytes belong to the block (8.2). These sentences stood in
+[amb.ext.count](#amb.ext.count) while that entry gave the same finding
+directly after the slot's extension.
+
 | Decoder | Reads | Where |
 |---|---|---|
 | FAP | Reads an extension after the block. | `parseaprs`, FAP.pm:2642 |
@@ -1274,35 +1313,47 @@ part, and courses above 360. Course 000 means unknown in general and a
 fixed station in a DF report (p. 45/27, p. 52/34).
 
 **Readings.** (a) Each part three digits, three dots or three spaces,
-independently. (b) Any mix of digits, dots and spaces per byte. (c) Only
-the three listed forms.
+independently. (c) Only the three listed forms.
 
-**Reading taken.** **[proposed]** (a). Parts of different kinds give an
-`unstated` finding; course or direction above 360 a `value` finding. A
-seven-byte run with `'/'` at offset 3 and only digits, dots and spaces
-that fails (a) is comment text with an `ambiguous` finding, because
-reading (b) would take it. The meaning of 000 is left to decoding.
+**[agreed]** As the author decided, any mix of digits, dots and spaces
+per byte, such as `8.8/036` or `340/0.0`, is a relaxed number, a byte
+pattern outside every form the document defines; reading it is
+decoder behaviour, left to the deviation recognisers
+([README section 3](README.md#3-tokenizer-model), Kinds by situation).
+At the slot such a run is comment text with no finding. An earlier
+draft listed it as reading (b), which gave such a run an `ambiguous`
+finding at its first byte, and section 11 asked whether it was a
+reading of the document's text or a wider form.
 
-**In the bytes.** Visible. A run that only reading (b) accepts gets the
-`ambiguous` finding above; parts of different kinds an `unstated`
+**Reading taken.** **[agreed]** (a). As the author decided, course and
+speed are two values, each three digits, `'...'` or three `SP`
+(p. 45/27), and parts of different kinds give an `unstated` finding.
+That finding applies README section 3, Kinds by situation: a
+combination of pieces that are each allowed and about which the
+document says nothing, and a mixture of forms that are each allowed
+where the document says nothing of it. A course or direction above 360
+gives a `value` finding. The meaning of 000 is left to decoding. In a
+weather report the parts of `ext.dirspd` are read item by item, and
+parts of different kinds give no finding
+([06-weather section 5.1](06-weather.md#51-uncompressed-position)).
+An earlier draft carried (a) as a proposal.
+
+**In the bytes.** Visible. Parts of different kinds give an `unstated`
 finding; a course above 360 a `value` finding, which alone is given
 ([README section 3](README.md#3-tokenizer-model), Precedence).
 By the test of README section 3, at the slot:
 
-- A run with `'/'` at offset 3 and only digits, dots and spaces, in
-  which a part mixes kinds, fails (a) and is comment text. (b) takes it
-  as course and speed and accepts the report, since the comment limits
-  with and without an extension are seven bytes apart (p. 50/32),
-  unless its course part is three digits above 360, where (b) would
-  give `value`. Where (b) accepts, the run gets `ambiguous` at its
-  first byte; otherwise no finding.
-- Parts of different kinds are read by (a) and (b) as course and speed
-  with the `unstated` finding. (c) reads the seven bytes as the start of
+- Parts of different kinds are read by (a) as course and speed with
+  the `unstated` finding. (c) reads the seven bytes as the start of
   the comment, and accepts the report, since the comment limits with
   and without an extension are seven bytes apart (p. 50/32). They get
   `ambiguous` at their first byte beside the `unstated` finding, unless
   the course gives `value`, which then alone is given.
-- Parts of one kind each are read alike by all three readings.
+- Parts of one kind each are read alike by both readings.
+- A run with `'/'` at offset 3 and only digits, dots and spaces, in
+  which a part mixes kinds, is comment text under both readings, with
+  no finding. An earlier draft gave it `ambiguous` at its first byte
+  where reading (b) accepted it.
 
 | Decoder | Reads | Where |
 |---|---|---|
@@ -1541,7 +1592,15 @@ limit given as 57 bytes (p. 35/21), which is none of these
 **Readings.** (a) Over the limit is out of range. (b) The limit is
 advice only.
 
-**Reading taken.** **[proposed]** (a): a `value` finding.
+**Reading taken.** (a): a `value` finding. A comment longer than its
+limit is a delimited field longer than a stated length, and the
+narrowest reading that the text supports is taken
+([README section 3](README.md#3-tokenizer-model), Kinds by situation:
+the bullet on lengths and the bullet on the narrowest reading). The
+pages that question the limit tell receivers nothing; where a page
+does tell them to accept longer text, the length still gives `value`
+(the same section). An earlier draft carried this reading as a
+proposal.
 
 Which bytes count is not part of this question. Items found in the
 comment, telemetry and the DAO included, count, as 8.1 states
@@ -1705,13 +1764,26 @@ sentence as a decision of this entry.
 [README section 3](README.md#3-tokenizer-model): (b) takes a match
 outside free text as the marker, and since the marker only flags the
 packet and leaves the bytes to the field they lie in, (b) accepts the
-packet wherever this reading does. **[proposed]** The finding at the
-first `'!'` is not given where the reading already reports the bytes:
-when one of the three bytes carries a `syntax` or `value` finding, or
-the match lies in a residue, including the field of a format not read
-yet ([README section 3](README.md#3-tokenizer-model), Precedence). An
-earlier draft gave it with no further condition. A match in the address header is outside the
-search; see section 11.
+packet wherever this reading does. The finding at the first `'!'` is
+not given where the reading already reports the bytes: where one of
+the three bytes carries a `syntax` or `value` finding of the rule whose
+token holds that byte, such as a malformed latitude or a pair of a
+base-91 telemetry block, or the finding of a field missing at that byte
+([README section 3](README.md#3-tokenizer-model), Precedence). A
+finding of another rule at that byte, such as the length limit of the
+comment around a block, is an independent defect and leaves the
+`ambiguous` finding in place (the same paragraph). **[proposed]** Nor
+is it given where the match lies in a residue, or in the field of an
+unknown data type, which is one [`dti.unknown`](01-frame.md#dti.unknown)
+token and not a residue: residue bytes are bytes whose rule cannot be
+told (README section 3, Output), and no format tells the rule of the
+bytes of an undispatched field, so for either, whether the match lies
+in free text cannot be decided. An earlier draft gave the finding
+with no further condition, and a later one withheld it on any `syntax`
+or `value` finding at the three bytes, and in a residue, including the
+field of a format not read yet, as one proposal; every format is now
+read. A match in the address header is outside the search; see
+section 11.
 
 | Decoder | Reads | Where |
 |---|---|---|
@@ -1891,25 +1963,23 @@ the page.
   It is settled by [README section 3](README.md#3-tokenizer-model): a
   form that the text describes is a form the document defines and gets
   no finding, and the separate ID marks it (8.2).
-- Whether reading (b) of [amb.ext.count](#amb.ext.count), a chain of
-  extensions, is a reading of the document's text or decoder
-  behaviour, the test that reading (c) failed. P. 45/27 names one
-  extension field, and BRG/NRQ (7.4) as the only field that follows
-  one. Of the decoders in the table of that entry, only Xastir reads
-  more than one: a course and speed after its DFS form, and PHG or RNG
-  anywhere. A candidate for review; until then (b) stays a listed
-  reading and gives its finding.
+- An earlier list held as open whether reading (b) of
+  [amb.ext.count](#amb.ext.count), a chain of extensions, is a reading
+  of the document's text or decoder behaviour, the test that reading
+  (c) failed. The author decided that it is decoder behaviour: the
+  chain gives no finding and is a candidate for a deviation recogniser
+  (amb.ext.count).
 - Whether `'!x!'` in the address header, which an address only
   APRS-IS can carry may hold ([`addr.is`](01-frame.md#addr.is)), is
   searched for and gives a finding
   ([amb.cmt.noarchive](#amb.cmt.noarchive)). The search covers the
   information field only.
-- Whether reading (b) of [amb.ext.csespd](#amb.ext.csespd), any mix of
-  digits, dots and spaces per byte, is a reading of the document's text
-  or a wider form that README section 3 leaves to the deviation
-  recognisers. In the second case the slot is a place where a form is
-  recognised by its shape alone, and the `ambiguous` finding that (b)
-  gives to such a run goes.
+- An earlier list held as open whether reading (b) of
+  [amb.ext.csespd](#amb.ext.csespd), any mix of digits, dots and spaces
+  per byte, is a reading of the document's text or a wider form that
+  README section 3 leaves to the deviation recognisers. The author
+  decided the second: such a run is comment text with no finding
+  (amb.ext.csespd).
 - An earlier list held as open whether a `'/A='` that starts neither
   altitude form, or one followed by a further digit
   ([amb.cmt.alt](#amb.cmt.alt)), keeps its `syntax` finding, which

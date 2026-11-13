@@ -14,7 +14,6 @@ from qua_network.legacy.fields import (
     brgnrq_shape,
     cmp_block,
     comment,
-    csespd_mixed,
     emit_ext,
     lat,
     lon,
@@ -201,18 +200,13 @@ def _uncompressed(scan, dti, p, end, depth, kind, freq_name):
             scan.find("cmt.text", "ambiguous", p)  # amb.ext.area
         if area_high(line, p, end):
             scan.find("cmt.text", "ambiguous", p)  # amb.area.symbol
-        if x is None:
-            m = csespd_mixed(line, p, end)
-            if m is not None:
-                scan.find("cmt.text", "ambiguous", m)  # amb.ext.csespd
-        else:
+        if x is not None:
             emit_ext(scan, x, depth)
             p += x.n
             if code == 0x40 and x.rule == "ext.csespd" and _STORM.match(line, p, end):
                 if table in b"/\\":
-                    # Storm data (06 section 8), then the comment; it does not
-                    # follow the slot's extension, so no course and speed is
-                    # looked for at its start.
+                    # Storm data (06 section 8), then the comment; no run is
+                    # looked for at its start (02 amb.ext.count).
                     p = weather_storm(scan, p, end, depth)
                     return comment(scan, p, end, depth, 36, kind + ".cmt", b91=False, start_cse=False, freq_name=freq_name)
                 if table in _UNC_OVERLAY:
@@ -227,7 +221,9 @@ def _uncompressed(scan, dti, p, end, depth, kind, freq_name):
     has_ext = x is not None or p > slot
     limit = 36 if has_ext else 43
     extra = _braces(scan, p, end, depth, table, code, line_area)
-    cmt = comment(scan, p, end, depth, limit, kind + ".cmt", b91=False, extra=extra, freq_name=freq_name)
+    # The slot is the only place of an extension: no run after it is looked
+    # for (02 amb.ext.count).
+    cmt = comment(scan, p, end, depth, limit, kind + ".cmt", b91=False, extra=extra, start_cse=False, freq_name=freq_name)
     if table in _UNC_OVERLAY:
         _overlay(scan, slot, p, end, code, "cmt.text" if x is None else x.rule)
     if storm_at is not None:

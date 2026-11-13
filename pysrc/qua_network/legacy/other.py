@@ -240,7 +240,8 @@ def _cap_item(scan, s, e, depth):
         # A count's set is the digits, which lie inside the visible bytes.
         bad = next((i for i in range(a, b) if line[i] not in DIGITS), None)
     else:
-        bad = _visible_bad(line, a, b)
+        # A value holds no further '=' (amb.cap.form, reading (c)).
+        bad = next((i for i in range(a, b) if not 0x21 <= line[i] <= 0x7E or line[i] == 0x3D), None)
     if bad is not None:
         scan.find("cap.value", "syntax", bad)
 
@@ -338,17 +339,19 @@ def _footprint(scan, p, end, depth):
         if e > i:
             _coord(scan, rule, i, e, limit, d)
         else:
-            # A part that is missing: syntax on qry.fp where it was expected.
-            scan.find("qry.fp", "syntax", i)
+            # A part that is missing gives syntax on its own rule where it
+            # was expected (README section 3, When a fixed field is present).
+            scan.missing(rule, i)
         if c < 0:
-            # The ',' after it is missing, at the end of the field.
-            scan.find("qry.fp", "syntax", end)
+            # The ',' after it is missing, at the end of the field: a count
+            # finding on qry.fp, none when a part is missing at that byte.
+            scan.missing("qry.fp", end)
             scan.tok("qry.fp", p, end, depth)
             return
         i = c + 1
     e = min(i + 4, end)
     if e == i:
-        scan.find("qry.fp", "syntax", i)
+        scan.missing("qry.radius", i)
     else:
         scan.tok("qry.radius", i, e, d)
         bad = next((j for j in range(i, e) if line[j] not in DIGITS), None)

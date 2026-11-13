@@ -94,10 +94,11 @@ def _value_len(line, v, end, rule, width, runs):
 
 def _first_bad(b, rule):
     """Offset in the value b of a leading element (6.2), or in a part of
-    the wind field (5.1), of the first byte that fails: a value starting with
-    '.' or SP is fill throughout, any other holds digits (after the sign of a
-    temperature). len(b) when the bytes present fit and the value is cut
-    short."""
+    the wind field (5.1), of the first byte that fails. The first byte selects
+    the form, '.' the dots and SP the spaces; any other selects none, and the
+    digits (after the sign of a temperature) are the form taken by default
+    (README section 3, Forms that can stand at one place). len(b) when the
+    bytes present fit and the value is cut short."""
     if not b:
         return 0
     if b[0] in b". ":
@@ -353,29 +354,33 @@ def complete(scan, p, end, depth, block=None, obj_cmt=False):
 def _wind(scan, p, end, depth):
     """The wind field at p, present by its '/' (5.1): a 7-byte ext.dirspd
     token, cut short by end, with one syntax finding at the first byte that
-    fails. Returns whether it matches, and so has read c and s (6.2)."""
+    fails. Returns whether it matches, and so has read c and s (6.2): it
+    does when its direction part fits, whatever its speed part."""
     line = scan.line
     e = min(p + 7, end)
     scan.tok("ext.dirspd", p, e, depth)
     x = dirspd(line, p, end)
     if x is not None:
         for f in x.findings:
-            # Parts of different kinds give unstated only: a reading that
-            # takes only the listed forms fails the required wind field.
-            if f[1] != "ambiguous":
+            # Each part takes the unknown forms of its weather item on its
+            # own (5.1), so parts of different kinds give no finding; only
+            # a direction above 360 does.
+            if f[1] == "value":
                 scan.find(*f)
         return True
+    matched = True
     for v in (p, p + 4):
         b = line[v : min(v + 3, e)]
         i = _first_bad(b, None)
         if i < len(b) or len(b) < 3:
             scan.find("ext.dirspd", "syntax", v + i)
+            matched = v != p
             break
     d = line[p : p + 3]
     if _digits(d) and int(d) > 360:
         # Independent of a fault in the speed (README section 3, Precedence).
         scan.find("ext.dirspd", "value", p)
-    return False
+    return matched
 
 
 def _cmpwind(scan, block):

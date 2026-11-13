@@ -63,6 +63,10 @@ class Scan:
             self._missing.add(offset)
             self.find(rule, "syntax", offset)
 
+    def missed(self, offset):
+        """Whether a missing field gave its finding at offset (missing)."""
+        return offset in self._missing
+
     def withdraw(self, kind, offsets):
         """Take back the findings of kind at offsets, where a rule already
         reports those bytes (README section 3, Precedence). They stay seen, so

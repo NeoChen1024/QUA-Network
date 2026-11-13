@@ -82,8 +82,9 @@ offset 10 is present but is not `':'`, the `msg.sep` token keeps it,
 and the text is still read from offset 11 and classified by section
 2.1.
 
-**[proposed]** The `unstated` finding for other printable bytes of the
-name part is given once, at the first of them.
+**[agreed]** As the author decided, the `unstated` finding for other
+printable bytes of the name part is given once, at the first of them
+([amb.msg.addressee](#amb.msg.addressee)).
 
 ### 2.1 Kind of packet
 
@@ -490,11 +491,19 @@ not a free-text field: a `'!x!'` in it is no token and gets the
   ([README section 3](README.md#3-tokenizer-model): Letter case,
   Placing a finding, Precedence). An earlier draft gave such an
   addressee no finding.
-  **[proposed]** (a). Other printable
-  bytes in the name are reported as `unstated` rather than `syntax`: the
-  document states no byte set for the name, so they lie outside a list
-  it does not close
-  ([README section 3](README.md#3-tokenizer-model), Kinds by situation).
+  **[agreed]** (a), as decided by the author. Other printable bytes in
+  the name are reported as `unstated` rather than `syntax`. p. 93/71
+  gives the addressee its width and padding but no byte set, and
+  p. 109/85 describes a message sender's address, to which the
+  acknowledgement is addressed, as possibly longer than six
+  alphanumeric characters, in lower case or with an SSID that is not
+  numeric, which is the basis for letters, digits and `'-'`, without
+  excluding other bytes. Another printable byte is thus
+  one the document gives no rule for
+  ([README section 3](README.md#3-tokenizer-model), Output: the
+  `unstated` kind; Kinds by situation). An earlier draft gave as the
+  reason that such bytes lie outside a list the document does not
+  close; an addressee is not a code of such a list.
   An interior space, a `':'` inside the 9 bytes, or a separator before
   offset 10 gives `syntax`, and that finding alone is given, although
   (b) may accept the bytes
@@ -531,17 +540,21 @@ not a free-text field: a `'!x!'` in it is no token and gets the
   does not.
 - **Readings.** (a) Text bytes as defined in section 1, limit in bytes,
   over-length a `value` finding. (b) Limit in characters. (c) No limit.
-- **Taken.** **[proposed]** (a). The diagram's byte row gives 0-67
+- **Taken.** (a). The diagram's byte row gives 0-67
   (p. 93/71). That the limit counts bytes, not characters, follows
-  [README section 3](README.md#3-tokenizer-model) (Length limits).
-  `'|'` and `'~'` are text bytes. Text over 67 bytes gives `value`, as
-  a field longer than its stated length (Kinds by situation), and that
-  finding alone is given, also when (b) or (c) would accept it
-  (Precedence). Where (a) accepts the text, so do (b) and (c); no
-  `ambiguous` finding. The page also tells receivers to handle longer
-  text, which the Kinds bullet for a departure from a sending rule that
-  receivers are told to accept would report as `syntax`; which bullet
-  applies is open (section 12).
+  [README section 3](README.md#3-tokenizer-model) (Length limits), and
+  a limit is taken over none as the narrowest reading the text supports
+  (Kinds by situation). `'|'` and `'~'` are text bytes. Text over 67
+  bytes gives `value`, as a field longer than its stated length (Kinds
+  by situation), and that finding alone is given, also when (b) or (c)
+  would accept it (Precedence). The page also tells receivers to handle
+  longer text, as p. 96/74 and p. 97/75 do for bulletins; as the author
+  decided, a length over a stated limit stays `value` there too, and is
+  not a departure from a sending rule that receivers are told to accept
+  (Kinds by situation, the length bullet). Where (a) accepts the text,
+  so do (b) and (c); no `ambiguous` finding. An earlier draft carried
+  (a) as **[proposed]** and left open which of the two bullets applies
+  to over-long text.
 - **Decoders.** FAP accepts bytes 0x20-0x7E and 0x80-0xFE, at least one
   (FAP.pm:1358); an empty text fails. Dire Wolf's message structure
   leaves room for the rest of a 256-byte field, with a comment that the
@@ -1037,10 +1050,9 @@ admit `'}'`. 12b has the same pairing (12b PDF 95, 97).
 
 - Whether a C1 control (U+0080 to U+009F) counts as a printable UTF-8
   character ([amb.msg.text](#amb.msg.text)).
-- Whether message or bulletin text over 67 bytes, which p. 93/71,
-  p. 96/74 and p. 97/75 tell receivers to handle, is a field over its stated length (`value`) or a
-  departure from a sending rule that receivers are told to accept
-  (`syntax`): both are bullets of Kinds by situation in
-  [README section 3](README.md#3-tokenizer-model)
-  ([amb.msg.text](#amb.msg.text)).
+- An earlier list held as open whether message or bulletin text over
+  67 bytes, which p. 93/71, p. 96/74 and p. 97/75 tell receivers to
+  handle, gives `value` or `syntax`. The author decided `value`
+  ([README section 3](README.md#3-tokenizer-model), Kinds by
+  situation; [amb.msg.text](#amb.msg.text)).
 - The corpus questions of section 10.

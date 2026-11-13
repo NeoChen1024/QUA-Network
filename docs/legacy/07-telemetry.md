@@ -98,9 +98,13 @@ without naming a format, and `'!x!'`. **[agreed]** A DAO shape in it
 is text, with no finding: p. 35/21 places the DAO in a position
 comment, and a telemetry report has no position. An earlier draft
 searched `tlm.cmt` for every item of 02 section 8.2, as any `cmt.text`
-then was, the DAO included. **[agreed]** The search
-of [amb.ext.count](02-fields.md#amb.ext.count) does not cover it: a
-report without a position has no data extension under any reading. No
+then was, the DAO included. **[agreed]** No data
+extension is looked for in it, nor the run that
+[amb.ext.compressed](02-fields.md#amb.ext.compressed) looks for: a
+report without a position has no data extension under any reading. An
+earlier wording named the search of
+[amb.ext.count](02-fields.md#amb.ext.count), which no longer searches
+past the slot. No
 base-91 block (section 3) and no frequency
 ([09-other.md section 7](09-other.md#7-frequency-specification)) is
 looked for in it, since neither chapter names it. An intermediate
@@ -145,10 +149,10 @@ Finding a block:
 - In Mic-E, the device suffix is taken off first and only the bytes before
   it are searched ([04-mic-e.md](04-mic-e.md#amb.mice.pipe)).
 - **[agreed]** The bytes of a block belong to the block. The DAO, the
-  altitude and the extension-shaped runs of
-  [amb.ext.count](02-fields.md#amb.ext.count) are not looked for inside
-  it. Its pairs are not free text, although the block stands inside a
-  comment, so a `'!x!'` among them is a match outside free text: no
+  altitude and the extension-shaped run of
+  [amb.ext.compressed](02-fields.md#amb.ext.compressed) are not looked
+  for inside it. Its pairs are not free text, although the block stands
+  inside a comment, so a `'!x!'` among them is a match outside free text: no
   token, and an `ambiguous` finding at its first `'!'`
   ([amb.cmt.noarchive](02-fields.md#amb.cmt.noarchive)). P. 88/68
   places the block before any DAO; no listed reading, of
@@ -166,7 +170,9 @@ Finding a block:
   block was recorded too, both with an `ambiguous` finding, and left
   open in [02-fields section 11](02-fields.md#11-open-items) whether
   that was wanted. A later one also labelled the decision in those two
-  places of 02.
+  places of 02. This bullet named the runs of
+  [amb.ext.count](02-fields.md#amb.ext.count) until that entry stopped
+  looking for runs.
 - Whether a run that fits `tlm.b91` at its place is a block, or comment
   text of the same shape, is stated in
   [amb.tlm.b91.order](#amb.tlm.b91.order) (In the bytes). An earlier
@@ -267,7 +273,8 @@ the byte counts on p. 91/71, which include it:
 
 The document notes that these limits are widely ignored (p. 91/71); an
 over-long field still gives `value`, as for any field over a stated
-limit.
+limit, also where receivers are told to accept longer text
+([README section 3](README.md#3-tokenizer-model), Kinds by situation).
 
 Field counts and empty fields, by
 [README section 3](README.md#3-tokenizer-model) (Kinds by situation). A
@@ -604,8 +611,15 @@ the [README](README.md#4-decoders-consulted), not run.
   ([README section 3](README.md#3-tokenizer-model), Kinds by
   situation); an earlier draft gave the empty A1 field `value`.
   (a), the narrower of the two (README section 3, Kinds by situation),
-  as `value` findings. **[proposed]** Empty fields after A1 allowed,
-  as the byte counts include the comma. **[agreed]** An empty list gives `unstated`: the document
+  as `value` findings. Empty fields after A1 are allowed: p. 91/71
+  states that its byte counts include the comma, so the 1 byte at the
+  low end of the counts of A2 to B8 is the comma alone, and a field
+  within its stated length gives no finding
+  ([README section 2](README.md#2-conventions), Rules: a rule that
+  restates an unambiguous statement carries no label;
+  [README section 3](README.md#3-tokenizer-model), Kinds by
+  situation). An earlier draft carried this sentence as a proposal.
+  **[agreed]** An empty list gives `unstated`: the document
   says nothing about where the list may stop. Visible in the bytes. Reading (b)
   would accept the over-long and extra fields, but the `value` or
   `syntax` finding alone is given, with no `ambiguous` beside it
@@ -741,9 +755,13 @@ messages, and the field limits are each kept separately, so a 68-byte
 text is reported once, by `msg.text`, and no finding is given here.
 Where limits nest, each is checked on its own rule
 ([README section 3](README.md#3-tokenizer-model), Length limits),
-which (b) would contradict. Whether the excess over 67 bytes is `value` or
-`syntax` is the question of [amb.msg.text](08-message.md#amb.msg.text),
-which this entry follows.
+which (b) would contradict. The excess over 67 bytes is `value`: a
+length over a stated limit stays `value` even where receivers are told
+to accept longer text
+([README section 3](README.md#3-tokenizer-model), Kinds by situation;
+[amb.msg.text](08-message.md#amb.msg.text)). An earlier draft left
+whether it is `value` or `syntax` to amb.msg.text, which this entry
+followed.
 
 Origin: already in APRS 1.0.1: the same byte counts on 1.0.1 PDF p. 79
 and the 67-byte message text on PDF p. 81, and both again in Appendix 1

@@ -478,6 +478,10 @@ with the same kind:
   such bytes per field as a statistic of its own, outside the findings.
 - A departure from a stated sending rule that receivers are told to
   accept, such as the case of a locator or of `MHz`: `syntax`.
+  **[agreed]** A length over a stated limit stays `value`, by the
+  bullet on lengths above, even where receivers are told to accept
+  longer text, as they are for message and bulletin text (p. 93/71,
+  p. 96/74, p. 97/75) and for telemetry names and units (p. 91/71).
 - **[agreed]** Letter case. Case is significant (section 2). Where the
   document states a case as a sending rule that receivers are told to
   accept, another case is recognised and gives `syntax`, as above.

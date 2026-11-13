@@ -116,11 +116,25 @@ tokenizer finds the boundaries only.
 | <a id="wx.raw.ultpkt"></a>`wx.raw.ultpkt` | Ultimeter packet marker | `ULTW` at offsets 1-4. | Required for `wx.raw.ultpkt.dti` | Fixed 4 bytes | p. 82/62 |
 | <a id="wx.raw.data"></a>`wx.raw.data` | Station output | All remaining bytes, content not defined by APRS12c. Starts at offset 2 (`!!`), 5 (`$ULTW`) or 1 (`#`, `*`). | Required, at least 1 byte | End of information field | p. 82/62, p. 132/108 |
 
-**[proposed]** `wx.raw.data` is one token. The tokenizer checks no byte
-set, length or structure in it and reports no finding on its content,
-because APRS12c states none. An empty `wx.raw.data` gives a `syntax`
-finding (the diagram gives it a length of `n` and every example has
-content).
+`wx.raw.data` is one token. The tokenizer checks no byte set, length or
+structure in it and reports no finding on its content, because APRS12c
+states none: the tokenizer finds boundaries and checks the bytes and
+ranges that the document states, and reading a station's own layout
+there would add a form the document never mentions, which is decoder
+behaviour, not a reading
+([README section 3](README.md#3-tokenizer-model)).
+
+**[agreed]** An empty `wx.raw.data` is a missing field and gives a
+`syntax` finding at the end of the information field (README section 3,
+Kinds by situation: an empty required field). The data column is the
+report's only content, and the diagram does not mark it optional
+(p. 82/62, p. 132/108). The `inv.data` of
+[09-other section 6](09-other.md#6-invalid-or-test-data) has the same
+`1 | n` diagram and is read as possibly empty: p. 123/99 makes that
+field a catch-all for data that fits no format, so it has no content
+that it must carry. An earlier draft carried this paragraph and the one
+before it as one **[proposed]** item, on the grounds that the diagram
+gives the data a length of `n` and every example has content.
 
 ## 4. Positionless weather report
 
@@ -167,11 +181,18 @@ present, with its finding at the first byte that fails or, when those
 fit, at the end of the field (README section 3, Output). A direction of
 three digits above 360 keeps its `value` finding when the speed part
 fails, since the two are independent defects (README section 3,
-Precedence). **[proposed]** Within a 3-byte part, the first byte that
-fails is found as for a leading element of a positionless report
-(section 6.2): a part that starts with `'.'` or `SP` fails at the
-first byte that differs from it, and any other part at its first byte
-that is not a digit.
+Precedence).
+
+**[agreed]** A 3-byte part has three forms and no selector rule. Its
+first byte selects the form, `'.'` the dots and `SP` the spaces; any
+other first byte selects neither, and the part takes the digits, the
+form taken by default ([README section 3](README.md#3-tokenizer-model),
+Forms that can stand at one place). The finding is at the first byte
+where the selected form fails: a part that starts with `'.'` or `SP`
+fails at the first byte that differs from it, and any other part at its
+first byte that is not a digit. A leading element of a positionless
+report is read the same way (section 6.2). An earlier draft carried
+this as **[proposed]**, stated by reference to section 6.2.
 
 For a missing wind field the tokenizer reports `syntax` against
 `ext.dirspd` at the first byte after the symbol code, where the field
@@ -184,13 +205,21 @@ its bytes were read as weather data; they gave `syntax` at the first
 byte after the symbol code and a residue there, where the first byte
 at fault came later.
 
-A wind field whose two parts are of different kinds gets the
-`unstated` finding of [02-fields section 7.3](02-fields.md#73-values)
-and no `ambiguous` finding: the reading of
+**[agreed]** In a weather report, the two parts of the wind field are
+the wind direction and wind speed items that it replaces (p. 85/65),
+and each item may be written as dots or spaces when it is not known
+(p. 84/64). Each part takes its forms on its own, so a wind field whose
+two parts are of different kinds, such as `.../000` or `220/...`, is a
+form that the text describes and gets no finding (README section 3, A
+form that the text describes). A direction of three digits above 360
+still gives `value`
+([02-fields section 7.3](02-fields.md#73-values)). An earlier draft
+gave such a wind field the `unstated` finding of that section, as for
+a course and speed whose parts are of different kinds, and no
+`ambiguous` finding: the reading of
 [amb.ext.csespd](02-fields.md#amb.ext.csespd) that takes only the
-listed forms would fail the required wind field here, so it does not
-accept the report ([README section 3](README.md#3-tokenizer-model), the
-other reading counts only when it accepts the whole report).
+listed forms would fail the required wind field here, so it did not
+accept the report.
 
 ### 5.2 Compressed position
 
@@ -293,10 +322,16 @@ When several places are missing at one byte, only the first gives its
 finding, and a residue that starts there gives none (README section 3,
 Missing fields at one byte). A present leading element is 4 bytes wide
 whatever follows the letter, the width of its row in section 6.1
-(README section 3, Output). **[proposed]** A value that starts with
-`'.'` or `SP` fails at the first byte that differs from it; any other
-value fails at its first byte that is not a digit (after the sign of a
-temperature).
+(README section 3, Output). **[agreed]** The value of a leading element
+has no selector rule either: as for a part of the wind field
+(section 5.1), its first byte selects the form, `'.'` the dots and `SP`
+the spaces, and any other first byte selects neither, so the value
+takes the digits, after the sign of a temperature, the form taken by
+default ([README section 3](README.md#3-tokenizer-model), Forms that can
+stand at one place). A value that starts with `'.'` or `SP` then fails
+at the first byte that differs from it, and any other value at its
+first byte that is not a digit (after the sign of a temperature). An
+earlier draft carried this as **[proposed]**.
 
 A leading element whose value does not fit gives one `syntax` finding
 against its ID at the first byte that fails, the token is kept, and the
@@ -328,10 +363,17 @@ wind field matches when it is an `ext.dirspd` (section 5.1), or when its
 (section 5.2, [amb.wx.cmpwind](#amb.wx.cmpwind)). Where it does not
 match, it has read nothing, and a `c` element is `wx.wdir` with no
 finding of this kind. Either way an `s` there is snowfall
-([amb.wx.order](#amb.wx.order)). **[proposed]** An `ext.dirspd` that is
-present by the test of section 5.1 but whose bytes give `syntax` does
-not match: like the `cmp.cs` token of the last step, which also gives
-`syntax`, it has read nothing.
+([amb.wx.order](#amb.wx.order)). **[agreed]** An `ext.dirspd` that is
+present by the test of section 5.1 matches when its direction part fits
+(three digits, `'...'` or three `SP`), whatever its speed part. One
+whose direction part gives `syntax` has read nothing, like the `cmp.cs`
+token of the last step, whose `c` byte fits no kind; a speed part that
+gives `syntax`, like a `cs` token whose `s` byte fails, leaves the
+direction read. An earlier draft, as **[proposed]**, made an
+`ext.dirspd` whose bytes give `syntax` anywhere not match, and compared
+it with the `cmp.cs` token of the last step on the grounds that both
+give `syntax`; a `cs` token of a kind whose `s` byte fails still
+matches, so the comparison held only for the direction.
 
 The weather data ends at the first byte, after the leading elements,
 that does not start an element of section 6.1. A letter that APRS12c
@@ -468,24 +510,37 @@ its first byte (README section 3, Kinds by situation: a byte pattern
 outside every form). An earlier draft accepted such a value with
 `unstated` at the marker byte, and ended the storm data at any field
 that did not match, with the bytes from there on read as the comment.
-**[proposed]** A required field whose marker byte is not at its place
-is missing: it gives `syntax` against its ID at that byte (README
-section 3, When a fixed field is present: the marker byte is the
-test), the storm data ends there, and the bytes from there on are the comment. Bytes
-after the last storm field are the comment of the report, read by
-[`cmt.text`](02-fields.md#cmt.text) and the rules of the carrying
-format.
+
+A required field whose marker byte is not at its place is missing: it
+uses no byte and gives `syntax` against its ID at that byte
+([README section 3](README.md#3-tokenizer-model), When a fixed field is
+present: the marker byte is the test). **[agreed]** The storm data ends
+there, and the bytes from there on are the comment. The marker bytes do
+not identify their fields: `'/'` marks the storm type, the sustained
+wind and the pressure. Reading on after a gap would take a pressure for
+a sustained wind, or comment text that starts with `'/'` for a storm
+field. Bytes after the last storm field are the comment of the report,
+read by [`cmt.text`](02-fields.md#cmt.text) and the rules of the
+carrying format. An earlier draft carried the rule for a missing field
+and its end of the storm data as one **[proposed]** item.
 
 **[proposed]** The comment after the storm fields has the length limit
 that the carrying format sets for a comment after a data extension (36
-bytes in 03 and 05). That comment does not directly follow the
-extension slot, so no run in it gets a finding of
-[amb.ext.count](02-fields.md#amb.ext.count): neither a course and speed
-nor a run that begins with a marker. An earlier draft still gave a run
-with a marker that finding, under reading (c) of that entry, which
-looked for such runs anywhere in a comment; reading (c) adds a search
-that the document never mentions and is recorded there as decoder
-behaviour ([README section 3](README.md#3-tokenizer-model)).
+bytes in 03 and 05).
+
+No run in that comment gets a finding of
+[amb.ext.count](02-fields.md#amb.ext.count), neither a course and speed
+nor a run that begins with a marker: that entry gives none for a run
+after the slot's extension, and bytes of an extension's shape there are
+comment text ([README section 3](README.md#3-tokenizer-model), Fixed
+spots and repeats). An earlier draft still gave a run with a marker
+that finding, under reading (c) of that entry, which looked for such
+runs anywhere in a comment; reading (c) adds a search that the document
+never mentions and is recorded there as decoder behaviour (README
+section 3). The chain of reading (b), a further extension directly
+after the slot's one, is recorded there as decoder behaviour too; it
+never reached this comment, which does not directly follow the
+extension.
 
 ## 9. Ambiguities
 

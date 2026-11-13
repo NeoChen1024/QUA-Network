@@ -315,10 +315,19 @@ the [README](README.md#4-decoders-consulted), not run.
   bytes as the test: six digits at offsets 11 to 16 were the
   timestamp, and any other bytes were a missing timestamp that used no
   byte, with the position read from offset 11. It was dropped because
-  it contradicts the 7-byte field that the diagram fixes, which the
-  Output rule keeps as a token when its bytes are wrong, and it lost
-  the position after a malformed timestamp such as a corrupted
-  `111111z`. A draft before that stopped at a missing timestamp and
+  the format gives the timestamp no presence test: p. 76/58 draws the
+  object with the 7 bytes always there and says that an object always
+  has a timestamp, and nothing in those bytes marks them as present, as
+  the `'/'` at offset 3 of the wind field of a complete weather report
+  does ([06-weather section 5.1](06-weather.md#51-uncompressed-position)).
+  Six digits are the timestamp's value, not a marker, so the test took
+  a malformed timestamp for a missing one and lost the position after
+  it, as after a corrupted `111111z`. The note first gave as the reason
+  that the test contradicted the Output rule; it does not, since Output
+  applies to a field once it is present and an entry may name the test
+  that makes a fixed field present
+  ([README section 3](README.md#3-tokenizer-model), When a fixed field
+  is present). A draft before that stopped at a missing timestamp and
   made the bytes from offset 11 to the end of the field a `residue`
   that names `obj.time`, leaving the position to a deviation
   recogniser.

@@ -493,9 +493,11 @@ field is stated in [03-position.md](03-position.md#3-df-reports).
 - The length limit of a comment is given by the format file, in bytes
   (the diagrams count bytes, p. 50/32). The bytes counted are those of
   the `cmt.text` token, items found inside it included, less those of
-  its `cmt.dao` tokens (next item). A longer comment is a `value`
-  finding at the first byte past the limit (README section 3, Length
-  limits and Kinds by situation). See [amb.cmt.length](#amb.cmt.length).
+  its `cmt.dao` tokens (next item). A DAO shape inside a base-91
+  telemetry block is no `cmt.dao` token (8.2), so its bytes count with
+  the block's. A longer comment is a `value` finding at the first byte
+  past the limit (README section 3, Length limits and Kinds by
+  situation). See [amb.cmt.length](#amb.cmt.length).
 - **[proposed]** p. 35/21 is the page that exempts the DAO: it lets the
   option extend beyond a "viewable" limit of 57 bytes, since legacy
   systems do not use those bytes. That limit is not one of the comment
@@ -512,10 +514,24 @@ field is stated in [03-position.md](03-position.md#3-df-reports).
   whole `cmt.text` token of any format, and let a format name further
   free-text fields to be searched the same way.
 - **[proposed]** Within those fields each item is searched for
-  independently of the others, and each occurrence it takes is a token
-  one level deeper than the field.
+  independently of the others, outside a base-91 telemetry block
+  (below), and each occurrence it takes is a token one level deeper
+  than the field.
 - **[proposed]** When occurrences of two items overlap, both are
   recorded, each with an `ambiguous` finding.
+- The bytes of a base-91 telemetry block
+  ([`tlm.b91`](07-telemetry.md#tlm.b91)) belong to the block, as
+  [07-telemetry section 3](07-telemetry.md#3-base-91-comment-telemetry)
+  decides and gives the reasons. The altitude, the DAO and the
+  extension-shaped runs of [amb.ext.count](#amb.ext.count) are not
+  looked for inside it, so no occurrence of them overlaps a block, and
+  a `'!x!'` among its pairs lies outside free text
+  ([amb.cmt.noarchive](#amb.cmt.noarchive)). The block is found first,
+  with every DAO candidate of the field, since one may follow it.
+  An earlier draft searched each item inside a block as well, so that a
+  DAO candidate or `'!x!'` there overlapped the block and both got an
+  `ambiguous` finding. A later one labelled this bullet as a decision
+  of this section.
 - An item that the document lets stand anywhere in its field, as it
   does the altitude, the DAO and `'!x!'`, is recorded at every
   occurrence, and two or more occurrences in one field give an
@@ -531,9 +547,9 @@ Where each item is looked for:
 
 | Item | Fields | Place in the field | Source |
 |---|---|---|---|
-| [`cmt.alt`](#cmt.alt), [`cmt.alt.neg`](#cmt.alt.neg) | The comment of a position report ([`pos.cmt`](03-position.md#pos.cmt), [`pos.cmpcmt`](03-position.md#pos.cmpcmt), [`df.cmt`](03-position.md#df.cmt)), the Mic-E free text ([04-mic-e section 5](04-mic-e.md#5-status-text)), [`obj.cmt`](05-object-item.md#obj.cmt), [`item.cmt`](05-object-item.md#item.cmt), [`tlm.cmt`](07-telemetry.md#tlm.cmt). | Anywhere | p. 43/27 |
-| [`cmt.dao`](#cmt.dao) | The position comments of the row above: all of them but `tlm.cmt`. | Anywhere | p. 35/21; p. 76/58, p. 80/62 |
-| [`cmt.noarchive`](#cmt.noarchive) | Every free-text field, the information field searched ([amb.cmt.noarchive](#amb.cmt.noarchive)). | Anywhere | p. 110/86 |
+| [`cmt.alt`](#cmt.alt), [`cmt.alt.neg`](#cmt.alt.neg) | The comment of a position report ([`pos.cmt`](03-position.md#pos.cmt), [`pos.cmpcmt`](03-position.md#pos.cmpcmt), [`df.cmt`](03-position.md#df.cmt)), the Mic-E free text ([04-mic-e section 5](04-mic-e.md#5-status-text)), [`obj.cmt`](05-object-item.md#obj.cmt), [`item.cmt`](05-object-item.md#item.cmt), [`tlm.cmt`](07-telemetry.md#tlm.cmt), [`grid.cmt`](03-position.md#grid.cmt). | Anywhere outside a `tlm.b91` block | p. 43/27 |
+| [`cmt.dao`](#cmt.dao) | The position comments of the row above: all of them but `tlm.cmt` and `grid.cmt`. | Anywhere outside a `tlm.b91` block | p. 35/21; p. 76/58, p. 80/62 |
+| [`cmt.noarchive`](#cmt.noarchive) | Every free-text field, the information field searched ([amb.cmt.noarchive](#amb.cmt.noarchive)). | Anywhere outside a `tlm.b91` block | p. 110/86 |
 | [`tlm.b91`](07-telemetry.md#tlm.b91) | `pos.cmt`, `pos.cmpcmt`, `df.cmt` and the Mic-E free text ([07-telemetry section 3](07-telemetry.md#3-base-91-comment-telemetry)). | After the free text | p. 88/68 |
 | Data extensions ([7.1](#71-the-extension-slot)) | The slot after an uncompressed position; the start of the Mic-E free text ([amb.mice.extension](04-mic-e.md#amb.mice.extension)). | Fixed | p. 45/27 |
 | Frequencies (`freq.*`) | As [09-other section 7](09-other.md#7-frequency-specification) lists. | Start | p. 113/89 |
@@ -550,14 +566,17 @@ format. The extension-shaped runs that
 [amb.ext.count](#amb.ext.count) reports are looked for as that entry
 states. Weather and storm data are read by
 [06-weather.md](06-weather.md), and the parts of a Mic-E status text by
-[04-mic-e.md](04-mic-e.md). Whether the comment of a Maidenhead beacon,
-[`grid.cmt`](03-position.md#grid.cmt), holds the altitude or the DAO
-is open ([03-position section 9](03-position.md#9-open-items)).
+[04-mic-e.md](04-mic-e.md). **[agreed]** The comment of a Maidenhead
+beacon, [`grid.cmt`](03-position.md#grid.cmt), holds the altitude and
+`'!x!'`, not the DAO; the reasons are given in
+[03-position section 5](03-position.md#5-maidenhead-locator-beacon).
+An earlier draft left this open
+([03-position section 9](03-position.md#9-open-items)).
 
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|
-| <a id="cmt.alt"></a>`cmt.alt` | Altitude | `'/A='`, then six digits: feet. The byte after them is not a digit. | No | Fixed, 9 bytes | p. 43/27; UAP 3.4 |
-| <a id="cmt.alt.neg"></a>`cmt.alt.neg` | Negative altitude | `'/A=-'`, then five digits. The byte after them is not a digit. | No | Fixed, 9 bytes | p. 43/27; UAP 3.4 |
+| <a id="cmt.alt"></a>`cmt.alt` | Altitude | `'/A='`, then six digits: feet. The byte after them is not a digit. | No | Fixed, 9 bytes; a malformed run ends sooner (below) | p. 43/27; UAP 3.4 |
+| <a id="cmt.alt.neg"></a>`cmt.alt.neg` | Negative altitude | `'/A=-'`, then five digits. The byte after them is not a digit. | No | Fixed, 9 bytes; a malformed run ends sooner (below) | p. 43/27; UAP 3.4 |
 | <a id="cmt.dao"></a>`cmt.dao` | Datum and added precision | `'!'`, datum byte `D`, latitude byte `A`, longitude byte `O`, `'!'`, in one of the forms of 8.3. | No | Fixed, 5 bytes | p. 35/21 to p. 37/23; UAP 3.5 |
 | <a id="cmt.noarchive"></a>`cmt.noarchive` | No-archive marker | `'!x!'`, with a literal lower-case `'x'`. | No | Fixed, 3 bytes | p. 110/86, p. 155/131; UAP 3.7 |
 
@@ -569,13 +588,46 @@ finding. See [amb.cmt.alt](#amb.cmt.alt).
 `'/A='` declares the altitude
 ([README section 3](README.md#3-tokenizer-model), Classes that a
 keyword declares), so a `'/A='` that does not start either form, and a
-form followed by a further digit, give a `syntax` finding on `cmt.alt`
-at the `'/'`. **[proposed]** The bytes of such a run stay comment
-text, with no `cmt.alt` token. An earlier draft carried the `syntax`
+form followed by a further digit, are a malformed altitude, with one
+`syntax` finding. **[agreed]** Its token is `cmt.alt`, or
+`cmt.alt.neg` when the byte after `'='` is `'-'`, and covers `'/A='`
+(or `'/A=-'`) and the digits after it, up to the width of the form:
+six digits, or five after the `'-'`. The `syntax` finding goes at the
+first byte that does not fit, where the token ends: a non-digit, the
+place where a digit was expected when the field ends first, or a
+digit after the full width. The bytes after the token are comment
+text ([README section 3](README.md#3-tokenizer-model), Items that stop
+fitting). For example, `/A=590 OL` gives a `cmt.alt` token over `/A=590` and the
+finding at the `SP`, `/A=------` a `cmt.alt.neg` token over `/A=-` and
+the finding at the second `'-'`, and `/A=00000070cm` a `cmt.alt` token
+over `/A=000000` and the finding at the `'7'`. An earlier draft gave the
+finding on `cmt.alt` at the `'/'` and no token, leaving the bytes of
+the run as comment text. An earlier draft also carried the `syntax`
 finding as part of the proposal of the paragraph above, and listed in
 section 11 whether `'/A='` is a keyword or the altitude a form
 recognised by its shape alone, which would have left such a run as
 text with no finding; the author decided that it is a keyword.
+
+The `syntax` finding of a malformed run is on the rule of its token:
+`cmt.alt.neg` when the byte after `'='` is `'-'`, `cmt.alt` otherwise.
+That is the most specific rule whose bytes are at fault
+([README section 3](README.md#3-tokenizer-model), Placing a finding).
+`/A=-1234x` thus gives a `cmt.alt.neg` token over `/A=-1234` and the
+finding on `cmt.alt.neg` at the `'x'`.
+
+**[agreed]** As the author decided, where the `syntax` finding of a
+malformed run falls on the first byte of another item, or of a run
+that [amb.ext.count](#amb.ext.count) or, in Mic-E,
+[amb.mice.extension](04-mic-e.md#amb.mice.extension) or
+[amb.mice.alt](04-mic-e.md#amb.mice.alt) reports, no
+`ambiguous` finding is given at that byte, since this reading already
+reports it ([README section 3](README.md#3-tokenizer-model),
+Precedence). In
+`/A=12/A=000001 /A=000002`, `/A=12!W12! !W34!` and `/A=12PHG5132` the
+finding at the byte after `12` is the only one there. The `ambiguous`
+findings of the other occurrences, at `/A=000002` and `!W34!`, stay,
+unless their own first byte is reported. An earlier draft gave the
+`ambiguous` finding at that byte as well.
 
 `cmt.dao`: every candidate is recorded; more than one gives an
 `ambiguous` finding on each, at the candidate's first `'!'`, under the
@@ -1098,7 +1150,10 @@ data extension, so no rule makes a run there one.
 token found in the comment (8.2), or whose bytes carry the finding of
 7.4, still gets this finding: findings from different rules on one
 byte are not merged ([README section 3](README.md#3-tokenizer-model)).
-An earlier draft gave no further finding in those two cases. An
+An earlier draft gave no further finding in those two cases. A run
+that starts inside a base-91 telemetry block is not looked for, since
+the block's bytes belong to the block (8.2); an earlier draft looked
+for such runs there too. An
 earlier draft also treated the question as not visible, on the grounds
 that such a run cannot be told from text; that is the case the finding
 marks.
@@ -1477,7 +1532,8 @@ allows give a `syntax` finding, although every read decoder accepts
 the first six: `'/A='` declares the altitude, so the fault is reported
 inside it ([README section 3](README.md#3-tokenizer-model), Classes
 that a keyword declares). An earlier draft carried this sentence as a
-proposal.
+proposal. The finding is at the first digit past the form, where the
+token of the run ends ([`cmt.alt`](#cmt.alt)).
 
 **In the bytes.** Visible. Repeated altitudes get `ambiguous` findings
 (8.2); a malformed one gets the `syntax` finding above, which alone is
@@ -1487,7 +1543,12 @@ Precedence). With two or more well-formed occurrences, of `cmt.alt` or
 which accepts them, so each occurrence gets `ambiguous` at its `'/'`. A
 single well-formed occurrence is read alike by all three readings and
 gets no finding. A malformed run is not an occurrence and does not
-count towards the repetition (README section 3).
+count towards the repetition (README section 3). This still holds now
+that such a run has a token ([`cmt.alt`](#cmt.alt)): the token marks
+where the fault lies, and no listed reading takes its bytes as an
+altitude value to choose among. An occurrence that starts at the byte
+where a malformed run's `syntax` finding falls gets no `ambiguous`
+finding there ([`cmt.alt`](#cmt.alt)).
 
 | Decoder | Reads | Where |
 |---|---|---|
@@ -1524,7 +1585,9 @@ in the table below limits the DAO to the end of the comment.
 [README section 3](README.md#3-tokenizer-model) (Fixed spots and
 repeats) gives for an item that p. 35/21 lets stand anywhere in the
 position comment; an earlier draft took (a) as a proposal of its own.
-**[proposed]** The candidates are those of the forms of 8.3.
+A DAO shape inside a base-91 telemetry block is no candidate: the
+block's bytes belong to the block (8.2). **[proposed]** The candidates
+are those of the forms of 8.3.
 
 **In the bytes.** Visible: several candidates give `ambiguous` findings,
 and the forms that 8.3 marks give `unstated` findings. Whether a single
@@ -1579,6 +1642,15 @@ anywhere else in the information field gives `ambiguous` (8.2). In
 base-91 fields the bytes `'!'` and `'x'` are digits, so a run there can
 be part of the coordinates rather than a marker. An earlier draft
 searched free-text fields only and gave no finding elsewhere.
+The pairs of a base-91 telemetry block
+([`tlm.b91`](07-telemetry.md#tlm.b91)) are not free text, although
+the block stands inside a comment, as
+[07-telemetry section 3](07-telemetry.md#3-base-91-comment-telemetry)
+decides: a `'!x!'` among them is a match outside free text, with no
+token and an `ambiguous` finding at its first `'!'` (8.2). An earlier
+draft took such a match as a `cmt.noarchive` token that overlapped the
+block, both with an `ambiguous` finding. A later one labelled this
+sentence as a decision of this entry.
 
 **In the bytes.** Visible under the test of
 [README section 3](README.md#3-tokenizer-model): (b) takes a match
@@ -1719,15 +1791,20 @@ the page.
 - The severity of comment bytes outside the stated set
   ([amb.cmt.bytes](#amb.cmt.bytes)): `syntax` as read now, or a weaker
   kind if the corpus shows Latin-1 text is common.
-- Whether a DAO candidate inside a [`tlm.b91`](07-telemetry.md#tlm.b91)
-  block is still a candidate. Under 8.2 it is, with an `ambiguous`
-  finding on both.
+- An earlier list held as open whether a DAO candidate inside a
+  [`tlm.b91`](07-telemetry.md#tlm.b91) block is still a candidate,
+  which 8.2 then made it, with an `ambiguous` finding on both. The
+  author decided that the bytes of a block belong to the block: no item
+  is looked for inside it, and a `'!x!'` there lies outside free text
+  ([07-telemetry section 3](07-telemetry.md#3-base-91-comment-telemetry);
+  8.2).
 - **[open]** A block followed by one of several DAO candidates: under
   reading (c) of [amb.cmt.dao](#amb.cmt.dao) that candidate is text, so
   the run is not a block
   ([amb.tlm.b91.order](07-telemetry.md#amb.tlm.b91.order)). Whether the
   block then gets an `ambiguous` finding is not decided; the tokenizer
-  gives none.
+  gives none. The candidates in question lie outside the block; none
+  is looked for inside it (8.2).
 - **[open]** The height code of [`ext.dfs`](#ext.dfs). Its table on
   p. 48/30 ends at `'9'` and no sentence there extends it, while the
   same page says that the DFS format replaces the power code of PHG

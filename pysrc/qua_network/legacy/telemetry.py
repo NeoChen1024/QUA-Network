@@ -18,14 +18,12 @@ _SV = ("syntax", "value")
 _RUN = re.compile(rb"(?=\|([!-{]*)\|)")
 
 
-def b91_block(scan, s, e, depth, daos):
-    """Tokenize the tlm.b91 block of the comment line[s:e], if there is one.
+def b91_span(line, s, e, daos):
+    """(start, end) of the tlm.b91 block of the comment line[s:e], or None.
 
     daos are the cmt.dao candidates of the comment, as (offset, kind). A
     run is a block only when nothing follows it but an optional DAO
-    candidate (amb.tlm.b91.order). Returns (start, end) of the block or None.
-    """
-    line = scan.line
+    candidate (amb.tlm.b91.order)."""
     dao_at = {i for i, _ in daos}
     for m in _RUN.finditer(line, s, e):
         n = len(m.group(1))
@@ -33,16 +31,28 @@ def b91_block(scan, s, e, depth, daos):
             continue
         bs = m.start()
         be = bs + n + 2
-        if not (be == e or (be + 5 == e and be in dao_at)):
-            continue
-        scan.tok("tlm.b91", bs, be, depth)
-        d = depth + 1
-        for k in range(n // 2):
-            rule = "tlm.b91.seq" if k == 0 else "tlm.b91.bits" if k == 6 else "tlm.b91.analog"
-            p = bs + 1 + 2 * k
-            scan.tok(rule, p, p + 2, d)
-        return bs, be
+        if be == e or (be + 5 == e and be in dao_at):
+            return bs, be
     return None
+
+
+def b91_block(scan, s, e, depth, daos, span=None):
+    """Tokenize the tlm.b91 block of the comment line[s:e], if there is one.
+
+    span is the block's extent when the caller has already found it with
+    b91_span. Returns (start, end) of the block or None."""
+    if span is None:
+        span = b91_span(scan.line, s, e, daos)
+    if span is None:
+        return None
+    bs, be = span
+    scan.tok("tlm.b91", bs, be, depth)
+    d = depth + 1
+    for k in range((be - bs - 2) // 2):
+        rule = "tlm.b91.seq" if k == 0 else "tlm.b91.bits" if k == 6 else "tlm.b91.analog"
+        p = bs + 1 + 2 * k
+        scan.tok(rule, p, p + 2, d)
+    return span
 
 
 # --- Numbers (tlm.analog, tlm.eqns.coef) --------------------------------

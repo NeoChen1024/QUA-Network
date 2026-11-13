@@ -144,17 +144,40 @@ Finding a block:
   comment can be a block ([amb.tlm.b91.where](#amb.tlm.b91.where)).
 - In Mic-E, the device suffix is taken off first and only the bytes before
   it are searched ([04-mic-e.md](04-mic-e.md#amb.mice.pipe)).
-- **[proposed]** A block is one of the items found inside a comment of
-  [02-fields.md](02-fields.md#82-items-found-inside-a-comment) section
-  8.2, searched for independently of the others. A
-  [`cmt.dao`](02-fields.md#cmt.dao) candidate that overlaps a block is
-  therefore recorded too, and both get an `ambiguous` finding. Whether
-  that is wanted is open in [02-fields.md](02-fields.md#11-open-items).
+- **[agreed]** The bytes of a block belong to the block. The DAO, the
+  altitude and the extension-shaped runs of
+  [amb.ext.count](02-fields.md#amb.ext.count) are not looked for inside
+  it. Its pairs are not free text, although the block stands inside a
+  comment, so a `'!x!'` among them is a match outside free text: no
+  token, and an `ambiguous` finding at its first `'!'`
+  ([amb.cmt.noarchive](02-fields.md#amb.cmt.noarchive)). P. 88/68
+  places the block before any DAO; no listed reading, of
+  [amb.cmt.dao](02-fields.md#amb.cmt.dao),
+  [amb.tlm.b91.order](#amb.tlm.b91.order) or any other entry, puts a
+  DAO inside a block; and every decoder read takes the block out of
+  the comment before it looks for a DAO (amb.tlm.b91.order). The block
+  is found first, with every DAO candidate of the comment, since one
+  may follow it
+  ([02-fields section 8.2](02-fields.md#82-items-found-inside-a-comment)).
+  02 section 8.2 and amb.cmt.noarchive apply this bullet and cite it.
+  An earlier draft made the block one of the items of 02 section 8.2
+  searched independently of the others, so that a
+  [`cmt.dao`](02-fields.md#cmt.dao) candidate or `'!x!'` overlapping a
+  block was recorded too, both with an `ambiguous` finding, and left
+  open in [02-fields section 11](02-fields.md#11-open-items) whether
+  that was wanted. A later one also labelled the decision in those two
+  places of 02.
+- Whether a run that fits `tlm.b91` at its place is a block, or comment
+  text of the same shape, is stated in
+  [amb.tlm.b91.order](#amb.tlm.b91.order) (In the bytes). An earlier
+  draft stated it here.
 - The bytes of a block count towards the comment's length limit, as the
   bytes of every item found inside a field do
   ([README section 3](README.md#3-tokenizer-model), Length limits);
   whether those of a DAO count is decided in
-  [amb.cmt.length](02-fields.md#amb.cmt.length).
+  [amb.cmt.length](02-fields.md#amb.cmt.length). A DAO shape inside a
+  block is no [`cmt.dao`](02-fields.md#cmt.dao) token, so its bytes
+  count with the block's.
 
 Where blocks are looked for:
 
@@ -192,12 +215,18 @@ another case and the rest of it would fit that message
 [README section 3](README.md#3-tokenizer-model), Letter case). The
 four keywords declare the class
 ([README section 3](README.md#3-tokenizer-model), Classes that a
-keyword declares), as do the addressees `BLN` and `NWS-`, which stand
-before the text and which 08 tests first, so the text of a bulletin or
-NWS bulletin is never a definition message; any other addressee does
-not change the reading. An earlier draft carried the sentence on the
-addressees as a proposal. An earlier draft gave an addressee starting
-with `NWS_`, `SKY`, `CWA` or `BOM` the `ambiguous` finding of
+keyword declares), as do the addressees `BLN` and `NWS-`. An
+addressee keyword declares its class inside the `':'` class of the
+data type identifier and stands before the text in the bytes, so it is
+the innermost class declared when the text is read, and neither a
+bulletin nor an NWS bulletin names a field for a telemetry keyword. The
+text of a bulletin or NWS bulletin is therefore never a definition
+message (README section 3, the rule there on several keywords in one
+packet; [08 section 2.1](08-message.md#21-kind-of-packet)); any other
+addressee does not change the reading. An earlier draft carried the
+sentence on the addressees as a proposal, and a later one called the
+addressee keyword the first keyword in the bytes. An earlier draft gave an
+addressee starting with `NWS_`, `SKY`, `CWA` or `BOM` the `ambiguous` finding of
 [amb.nws.addressee](08-message.md#amb.nws.addressee) in a definition
 message; the reading of that entry that took such an addressee as an
 NWS bulletin was dropped as decoder behaviour.
@@ -496,12 +525,18 @@ the [README](README.md#4-decoders-consulted), not run.
   8.2), so the readings divide no bytes differently, and there is no
   `ambiguous` finding ([README section 3](README.md#3-tokenizer-model)). An earlier draft gave one at the first `'|'` of
   a run followed by text, which only the dropped part of reading (b)
-  took as a block.
+  took as a block. **[proposed]** Whether a run that fits `tlm.b91` at
+  its place is a block, or comment text of the same shape, is inherent
+  ([README section 3](README.md#3-tokenizer-model)): every block
+  carries the question, and the bytes of one packet cannot narrow it.
+  It is taken silently. An earlier draft stated this in section 3.
 - **Decoders.** All read accept either order and text after the block:
   FAP takes the block out first and then looks for a DAO in the rest
-  (`FAP.pm:1199-1207`); Dire Wolf matches each anywhere
-  (`decode_aprs.c:4701`, `decode_aprs.c:4732`); aprslib takes the block
-  and then a DAO (`common.py:124-127`); pdn-aprs finds the block first
+  (`FAP.pm:1199-1207`); Dire Wolf matches each anywhere, the block
+  first, and cuts the block out of the comment before it looks for the
+  DAO (`decode_aprs.c:4701-4715`, `decode_aprs.c:4732`); aprslib
+  takes the block and then a DAO (`common.py:124-127`); pdn-aprs finds
+  the block first
   and then the last DAO outside it (`comment.rs:179-181`,
   `find_dao`, `comment.rs:622`).
 - **Corpus question.** In comments with both, which comes first, and what

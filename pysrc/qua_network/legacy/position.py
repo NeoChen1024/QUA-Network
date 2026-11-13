@@ -9,12 +9,14 @@ from qua_network.legacy.fields import (
     LOWER,
     SYM_TABLE,
     UPPER,
+    _altitudes,
     area_literal,
     brgnrq_shape,
     cmp_block,
     comment,
     csespd_mixed,
     emit_ext,
+    item_overlaps,
     lat,
     lon,
     missing,
@@ -79,7 +81,7 @@ def position(scan, start, end, depth):
         scan.residue(p, end, depth, "pos.form")
         cmt = None
     if cmt is not None:
-        texts.append((cmt.start, cmt.end))
+        texts.extend(cmt.texts())
     noarchive_outside(scan, start, end, texts)
 
 
@@ -258,8 +260,14 @@ def grid(scan, start, end, depth):
         p += 1
     texts = []
     if p < end:
+        # The comment holds the altitude and '!x!', not the DAO (03 section
+        # 5). It has no byte set of its own, so it is not read as cmt.text.
         scan.tok("grid.cmt", p, end, depth)
-        noarchive_in(scan, p, end, depth + 1)
+        items, alt_faults = _altitudes(scan, p, end, depth + 1)
+        items += noarchive_in(scan, p, end, depth + 1)
+        item_overlaps(scan, items)
+        # 02 cmt.alt: no ambiguous finding where a malformed altitude reports the byte.
+        scan.withdraw("ambiguous", alt_faults)
         texts.append((p, end))
     noarchive_outside(scan, start, end, texts)
 

@@ -8,7 +8,7 @@ callers (the format readers) decide what follows.
 
 import re
 
-from qua_network.legacy.telemetry import b91_block
+from qua_network.legacy.telemetry import b91_block, b91_span
 
 SP = 0x20
 DIGITS = frozenset(b"0123456789")
@@ -535,35 +535,68 @@ def dao_candidates(line, s, e):
     return out
 
 
-def _altitudes(scan, s, e, d):
-    """cmt.alt and cmt.alt.neg; returns the spans of the occurrences."""
+def _altitudes(scan, s, e, d, skip=None):
+    """cmt.alt and cmt.alt.neg in line[s:e]; returns the spans of the
+    well-formed occurrences, and the offsets inside the field of the syntax
+    findings of malformed runs.
+
+    '/A=' declares the altitude (README section 3, Classes that a keyword
+    declares). A run that stops fitting its form keeps a token up to its last
+    fitting byte, with its syntax finding on the rule of the token at the
+    first byte that does not fit; it is not an occurrence for the repetition
+    rule (02 cmt.alt). Where that byte starts another item, the caller takes
+    back the ambiguous findings there once the field is read (02 cmt.alt;
+    README section 3, Precedence). A '/A=' inside skip, the (start, end) of
+    a base-91 telemetry block, is the block's (07 section 3)."""
     line = scan.line
     occ = []
+    faults = set()
     i = line.find(b"/A=", s, e)
     while i >= 0:
+        if skip is not None and skip[0] <= i < skip[1]:
+            i = line.find(b"/A=", i + 1, e)
+            continue
         j = i + 3
-        nxt = i + 9
-        if _digits(line[j:nxt]) and nxt <= e and (nxt == e or line[nxt] not in DIGITS):
-            occ.append(("cmt.alt", i))
-        elif line[j : j + 1] == b"-" and _digits(line[j + 1 : nxt]) and nxt <= e and (nxt == e or line[nxt] not in DIGITS):
-            occ.append(("cmt.alt.neg", i))
+        neg = j < e and line[j] == 0x2D
+        rule = "cmt.alt.neg" if neg else "cmt.alt"
+        k = j + 1 if neg else j
+        q = k
+        while q < k + (5 if neg else 6) and q < e and line[q] in DIGITS:
+            q += 1
+        scan.tok(rule, i, q, d)
+        if q == i + 9 and (q == e or line[q] not in DIGITS):
+            occ.append((rule, i))
         else:
-            scan.find("cmt.alt", "syntax", i)
+            scan.find(rule, "syntax", q)
+            if q < e:
+                faults.add(q)
         i = line.find(b"/A=", i + 1, e)
-    for rule, i in occ:
-        scan.tok(rule, i, i + 9, d)
-        if len(occ) > 1:
+    if len(occ) > 1:
+        for rule, i in occ:
             scan.find(rule, "ambiguous", i)
-    return [(rule, i, i + 9) for rule, i in occ]
+    return [(rule, i, i + 9) for rule, i in occ], faults
 
 
 class Comment:
-    """What comment() found: its extent, the bytes it counts and its DAOs."""
+    """What comment() found: its extent, the bytes it counts, its DAOs and
+    the extent of its base-91 telemetry block, or None."""
 
-    __slots__ = ("start", "end", "counted", "daos")
+    __slots__ = ("start", "end", "counted", "daos", "block")
 
-    def __init__(self, start, end, counted, daos):
-        self.start, self.end, self.counted, self.daos = start, end, counted, daos
+    def __init__(self, start, end, counted, daos, block=None):
+        self.start, self.end, self.counted, self.daos, self.block = start, end, counted, daos, block
+
+    def texts(self):
+        """The free-text spans of the comment: all of it but the block, whose
+        pairs are not free text (02 amb.cmt.noarchive)."""
+        return text_spans(self.start, self.end, self.block)
+
+
+def text_spans(s, e, block):
+    """line[s:e] less the span block, as a list of (start, end)."""
+    if block is None:
+        return [(s, e)]
+    return [(a, b) for a, b in ((s, block[0]), (block[1], e)) if a < b]
 
 
 def comment(
@@ -595,8 +628,11 @@ def comment(
     holds (rule, start, end) of items the format itself found in the comment
     and has tokenized, for the overlap rule of 8.2. start_cse=False leaves out
     the course and speed at the comment start, for a report in which 7.1
-    would not try that form at a slot. Returns a Comment, or None when the
-    comment is empty."""
+    would not try that form at a slot. The bytes of a base-91 telemetry
+    block belong to the block: no other item, and no extension-shaped run, is
+    looked for inside it, and a '!x!' there is left to noarchive_outside
+    through Comment.texts() (07 section 3). Returns a Comment, or None when
+    the comment is empty."""
     if s >= end:
         return None
     line = scan.line
@@ -606,10 +642,15 @@ def comment(
         # One syntax finding per field, at its first failing byte.
         scan.find("cmt.text", "syntax", s + bad[0])
     d = depth + 1
-    items = _altitudes(scan, s, end, d)
-
-    # DAO candidates (8.3); the bytes of all of them are not counted.
+    # The block is found first, with every DAO candidate, since one may
+    # follow it; the other searches leave its bytes alone (07 section 3).
     daos = dao_candidates(line, s, end) if dao else []
+    span = b91_span(line, s, end, daos) if b91 else None
+    if span is not None:
+        daos = [(i, k) for i, k in daos if not span[0] <= i < span[1]]
+    items, alt_faults = _altitudes(scan, s, end, d, span)
+
+    # DAO candidates (8.3) outside the block; their bytes are not counted.
     dao_bytes = set()
     for i, k in daos:
         scan.tok("cmt.dao", i, i + 5, d)
@@ -631,26 +672,14 @@ def comment(
             if (n < len(daos) - 1 and b_ok) or (n > 0 and c_ok):
                 scan.find("cmt.dao", "ambiguous", i)
 
-    if b91:
-        blk = b91_block(scan, s, end, d, daos)
-        if blk:
-            items.append(("tlm.b91",) + blk)
+    if span is not None:
+        b91_block(scan, s, end, d, daos, span)
+        items.append(("tlm.b91",) + span)
 
-    items.extend(noarchive_in(scan, s, end, d))
+    items.extend(noarchive_in(scan, s, end, d, span))
     items.extend(extra)
 
-    # Occurrences of two different items that overlap (8.2).
-    if len(items) > 1:
-        items.sort(key=lambda t: t[1])
-        for a in range(len(items)):
-            ra, sa, ea = items[a]
-            for b in range(a + 1, len(items)):
-                rb, sb, eb = items[b]
-                if sb >= ea:
-                    break
-                if _item(ra) != _item(rb):
-                    scan.find(ra, "ambiguous", sa)
-                    scan.find(rb, "ambiguous", sb)
+    item_overlaps(scan, items)
 
     # amb.ext.count / amb.ext.compressed: a step-3 form that fits cleanly.
     # A course and speed, which has no marker, counts only at the comment
@@ -659,6 +688,8 @@ def comment(
     # Placing a finding): an item that byte lies in, else cmt.text.
     for m in _STEP3_AT.finditer(line, s, end) if ext_search else ():
         x = step3(line, m.start(), end)
+        if span is not None and span[0] <= m.start() < span[1]:
+            continue
         if x is not None and x.clean() and (x.rule != "ext.csespd" or (x.start == s and start_cse)):
             at = next((r for r, a, b in items if a <= x.start < b), "cmt.text")
             scan.find(at, "ambiguous", x.start)
@@ -673,7 +704,10 @@ def comment(
         from qua_network.legacy.other import frequency
 
         frequency(scan, s, end, d, freq_name)
-    return Comment(s, end, counted, daos)
+    # 02 cmt.alt: no ambiguous finding where a malformed altitude reports the
+    # byte, whichever search of the field gave it.
+    scan.withdraw("ambiguous", alt_faults)
+    return Comment(s, end, counted, daos, span)
 
 
 def _past_limit(s, end, skip, limit):
@@ -692,13 +726,32 @@ def _item(rule):
     return "cmt.alt" if rule.startswith("cmt.alt") else rule
 
 
-def noarchive_in(scan, s, e, d):
-    """cmt.noarchive tokens in the free-text field line[s:e]; returns their spans."""
+def item_overlaps(scan, items):
+    """Occurrences of two different items that overlap (02 section 8.2): an
+    ambiguous finding on each. items holds (rule, start, end) and is sorted
+    in place."""
+    items.sort(key=lambda t: t[1])
+    for a in range(len(items)):
+        ra, sa, ea = items[a]
+        for b in range(a + 1, len(items)):
+            rb, sb, _ = items[b]
+            if sb >= ea:
+                break
+            if _item(ra) != _item(rb):
+                scan.find(ra, "ambiguous", sa)
+                scan.find(rb, "ambiguous", sb)
+
+
+def noarchive_in(scan, s, e, d, skip=None):
+    """cmt.noarchive tokens in the free-text field line[s:e]; returns their
+    spans. A match inside skip, the span of a base-91 telemetry block, is not
+    free text and is left to noarchive_outside (amb.cmt.noarchive)."""
     line = scan.line
     nx = []
     i = line.find(b"!x!", s, e)
     while i >= 0 and i + 3 <= e:
-        nx.append(i)
+        if skip is None or not skip[0] <= i < skip[1]:
+            nx.append(i)
         i = line.find(b"!x!", i + 1, e)
     for i in nx:
         scan.tok("cmt.noarchive", i, i + 3, d)

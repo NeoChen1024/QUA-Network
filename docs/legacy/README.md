@@ -269,7 +269,46 @@ with `'?'` is not a keyword class: the query type is the text itself
 ([08-message section 2.1](08-message.md#21-kind-of-packet), case 5;
 [09-other section 4.1](09-other.md#41-directed-queries)). The D-STAR
 marker and the prefixes of the data extensions are decided in their
-own entries.
+own entries. **[agreed]** As the author decided, when the bytes of one
+packet match several keywords, the classes nest. The first keyword in
+the bytes declares a class. A later keyword counts only in a field
+that the innermost class holding that field names for it (Where
+comment items are looked for; Obsolete and nested forms), and then
+declares a class inside that one; in any other field its bytes are
+whatever that field holds. The data type identifier `':'` thus
+declares the `':'` class, an addressee `BLN` or `NWS-` declares the
+bulletin or NWS bulletin class inside it, and a telemetry keyword at
+the start of a bulletin's text is bulletin text, since the bulletin
+class names no field for it
+([08-message section 2.1](08-message.md#21-kind-of-packet)). Two
+altitudes in one comment each declare a class inside the class that
+holds the comment, not one inside the other. An earlier draft let the first
+keyword in the bytes declare the class and counted a later keyword
+only in a field that this class named for it. The data type
+identifier comes first in the bytes of every packet, so that wording
+did not say how an addressee keyword after it declares a class, and
+the files called the addressee the first keyword. A later draft
+nested each class inside the one declared before it, which put a
+second altitude of a comment inside the first.
+
+**[agreed]** Items that stop fitting. As the author decided, an item
+that a keyword declares in free text, and whose bytes stop fitting its
+form, ends at its last fitting byte, and at the latest where its width
+ends. Its one `syntax`
+finding goes at the first byte that does not fit, which is where its
+token ends: a byte of the wrong class, the place where a byte was
+expected when the field ends first, or a byte that the form excludes
+right after its width, such as a seventh digit after the six of an
+altitude. The bytes after the token are text of the field again.
+Unlike a field whose extent the format fixes (Output), such an item
+does not keep its full width. The altitude after its keyword `'/A='`
+is the case in point ([02-fields section 8.2](02-fields.md#cmt.alt)).
+A form recognised by its shape alone is not such an item: the
+paragraph on such forms above decides whether bytes that do not fit
+it are the form or text. An earlier draft stated this paragraph for
+any item found in free text. A later one said that in free text such
+a form that does not fit is always text, which the fixed places and
+delimiters of that paragraph do not bear out.
 
 **[agreed]** Symbols that a format names. Where the diagram or the
 rule text of a format fixes the symbol table byte, that byte is

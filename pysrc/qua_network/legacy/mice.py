@@ -13,10 +13,12 @@ from qua_network.legacy.fields import (
     DIGITS,
     SP,
     SYM_TABLE,
+    _altitudes,
     bad_text_bytes,
     dao_candidates,
     emit_ext,
     is_b91,
+    item_overlaps,
     lat,
     lon,
     noarchive_in,
@@ -24,10 +26,11 @@ from qua_network.legacy.fields import (
     step3,
     sym_code,
     sym_table,
+    text_spans,
 )
 from qua_network.legacy.model import Scan
 from qua_network.legacy.other import frequency
-from qua_network.legacy.telemetry import b91_block
+from qua_network.legacy.telemetry import b91_block, b91_span
 from qua_network.legacy.weather import carriers as weather_carriers
 
 _BAD = ("syntax", "value")
@@ -309,8 +312,7 @@ def _after_prefix(scan, p, end, d, prefix):
 
     texts = []
     if p < te:
-        _free_text(scan, p, te, d, alt)
-        texts.append((p, te))
+        texts = _free_text(scan, p, te, d, alt)
     if te < end:
         scan.tok("mice.type.suffix", te, end, d)
     return texts
@@ -324,7 +326,7 @@ def _tail_ok(line, q, te):
     daos = dao_candidates(line, q, te)
     if any(i == q and i + 5 == te for i, _ in daos):
         return True
-    blk = b91_block(Scan(line), q, te, 0, daos)
+    blk = b91_span(line, q, te, daos)
     return blk is not None and blk[0] == q
 
 
@@ -348,35 +350,10 @@ def _grid_other_symbol(line, p, te):
     return False
 
 
-def _cmt_altitudes(scan, s, e, d):
-    """cmt.alt and cmt.alt.neg as 02 section 8.2 finds them in a comment."""
-    line = scan.line
-    occ = []
-    i = line.find(b"/A=", s, e)
-    while i >= 0:
-        j, nxt = i + 3, i + 9
-        tail_ok = nxt <= e and (nxt == e or line[nxt] not in DIGITS)
-        if tail_ok and all(c in DIGITS for c in line[j:nxt]):
-            occ.append(("cmt.alt", i))
-        elif tail_ok and line[j] == 0x2D and all(c in DIGITS for c in line[j + 1 : nxt]):
-            occ.append(("cmt.alt.neg", i))
-        else:
-            scan.find("cmt.alt", "syntax", i)
-        i = line.find(b"/A=", i + 1, e)
-    for rule, i in occ:
-        scan.tok(rule, i, i + 9, d)
-        if len(occ) > 1:
-            scan.find(rule, "ambiguous", i)
-    return [(rule, i, i + 9) for rule, i in occ]
-
-
-def _same_item(rule):
-    return "cmt.alt" if rule.startswith("cmt.alt") else rule
-
-
 def _free_text(scan, s, e, d, alt_at_start):
     """The free text between the parts, read as a position comment
-    (04 section 5) with no length limit."""
+    (04 section 5) with no length limit. Returns its free-text spans: all of
+    it but a base-91 telemetry block (02 amb.cmt.noarchive)."""
     line = scan.line
     scan.tok("cmt.text", s, e, d)
     # One syntax finding, at the first byte outside the set (README section
@@ -385,8 +362,13 @@ def _free_text(scan, s, e, d, alt_at_start):
     if bad:
         scan.find("cmt.text", "syntax", s + bad[0])
     dd = d + 1
-    items = _cmt_altitudes(scan, s, e, dd)
+    # The block is found first, with every DAO candidate, since one may
+    # follow it; the other searches leave its bytes alone (07 section 3).
     daos = dao_candidates(line, s, e)
+    span = b91_span(line, s, e, daos)
+    if span is not None:
+        daos = [(i, k) for i, k in daos if not span[0] <= i < span[1]]
+    items, alt_faults = _altitudes(scan, s, e, dd, span)
     for i, k in daos:
         scan.tok("cmt.dao", i, i + 5, dd)
         if k:
@@ -396,23 +378,19 @@ def _free_text(scan, s, e, d, alt_at_start):
         # amb.cmt.dao: with no limit, reading (b) or (c) always accepts.
         for i, _ in daos:
             scan.find("cmt.dao", "ambiguous", i)
-    blk = b91_block(scan, s, e, dd, daos)
-    if blk:
-        items.append(("tlm.b91",) + blk)
-    items.extend(noarchive_in(scan, s, e, dd))
-    items.sort(key=lambda t: t[1])
-    for a in range(len(items)):
-        ra, sa, ea = items[a]
-        for b in range(a + 1, len(items)):
-            rb, sb, _ = items[b]
-            if sb >= ea:
-                break
-            if _same_item(ra) != _same_item(rb):
-                scan.find(ra, "ambiguous", sa)
-                scan.find(rb, "ambiguous", sb)
+    if span is not None:
+        b91_block(scan, s, e, dd, daos, span)
+        items.append(("tlm.b91",) + span)
+    items.extend(noarchive_in(scan, s, e, dd, span))
+    item_overlaps(scan, items)
+
+    # A malformed altitude is the item up to its last fitting byte (README
+    # section 3, Items that stop fitting), so its bytes are not free text either.
+    taken = [(a, b) for _, a, b in items]
+    taken += [(t.start, t.end) for t in scan.tokens if t.depth == dd and t.rule in ("cmt.alt", "cmt.alt.neg")]
 
     def in_text(i, j):
-        return not any(i < ie and is_ < j for _, is_, ie in items)
+        return not any(i < ie and is_ < j for is_, ie in taken)
 
     # amb.mice.extension: a later run of a marked extension, and a standard
     # position anywhere in the text. These findings and that of amb.mice.alt
@@ -433,6 +411,9 @@ def _free_text(scan, s, e, d, alt_at_start):
 
     # 09 section 7 at the start of the free text, after its syntax findings.
     frequency(scan, s, e, dd)
+    # 02 cmt.alt: no ambiguous finding where a malformed altitude reports the byte.
+    scan.withdraw("ambiguous", alt_faults)
+    return text_spans(s, e, span)
 
 
 def _position_fits(line, i):

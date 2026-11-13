@@ -111,7 +111,7 @@ by [01-frame.md](01-frame.md#dti).
 | <a id="grid.dti"></a>`grid.dti` | Identifier | `[`, 1 byte. | yes | 1 byte | p. 31/17; p. 42/26; p. 51/33 |
 | <a id="grid.loc"></a>`grid.loc` | Locator | Two letters `A`–`R`, two digits, then optionally two letters `A`–`X`: 4 or 6 bytes. The letter ranges are those of the Maidenhead system, which APRS12c refers to but does not state ([amb.grid.range](#amb.grid.range)). The same letters in lower case are recognised and give `syntax`, except in a destination, which 01-frame holds to the AX.25 form ([amb.grid.case](#amb.grid.case)). Used here, by [`stat.grid`](09-other.md#stat.grid), by [`mice.grid`](04-mic-e.md#mice.grid) and by [`dest.grid`](01-frame.md#dest.grid). | yes | 4 or 6 bytes ([amb.grid.form](#amb.grid.form)) | p. 42/26; p. 51/33; p. 105/81; p. 106/82; p. 150/126; p. 152/128 |
 | <a id="grid.close"></a>`grid.close` | Closing bracket | `]`, 1 byte, directly after `grid.loc`. A `]` after six locator-shaped bytes makes all six the locator ([amb.grid.range](#amb.grid.range)). | no | 1 byte | p. 51/33 |
-| <a id="grid.cmt"></a>`grid.cmt` | Comment | Any bytes to the end of the field. No limit beyond that of [`line.info`](01-frame.md#line.info). | no | end of field | p. 51/33 |
+| <a id="grid.cmt"></a>`grid.cmt` | Comment | Any bytes to the end of the field, holding the altitude and `'!x!'` (below). No limit beyond that of [`line.info`](01-frame.md#line.info). | no | end of field | p. 51/33 |
 
 In a beacon, a lower-case letter in the locator, in the first pair and
 in the subsquare alike, is recognised and gives `syntax` at the first
@@ -146,9 +146,25 @@ a `]` they give `syntax`. With a `]` after the six bytes no
 the locator ([amb.grid.range](#amb.grid.range)). An earlier draft
 added that reading (a) of amb.grid.case, which rejected the lower-case
 letters, then failed and did not count.
-**[proposed]** `grid.cmt` is a free-text field for
-[`cmt.noarchive`](02-fields.md#cmt.noarchive); the other items of
-02 section 8.2 are not searched in it.
+
+**[agreed]** `grid.cmt` holds the altitude
+([`cmt.alt`](02-fields.md#cmt.alt),
+[`cmt.alt.neg`](02-fields.md#cmt.alt.neg)) and
+[`cmt.noarchive`](02-fields.md#cmt.noarchive), not the DAO. The
+beacon diagram calls the field a comment (p. 51/33), and p. 43/27
+places the altitude in the comment without naming a format, as for
+[`tlm.cmt`](07-telemetry.md#tlm.cmt). The DAO belongs to a position
+comment (p. 35/21), and a beacon is not a position report: the
+glossary defines one by its latitude and longitude (p. 147/123), and
+p. 33/19 lists the locator among the status formats. The other items
+of [02-fields section 8.2](02-fields.md#82-items-found-inside-a-comment)
+are not looked for in it. `grid.cmt` states no byte set and is not read
+as [`cmt.text`](02-fields.md#cmt.text), so the items are its only
+checks: a malformed altitude gives `syntax`
+([README section 3](README.md#3-tokenizer-model), Classes that a
+keyword declares). An earlier draft proposed that `grid.cmt` be a
+free-text field for `'!x!'` only, and left the altitude and the DAO
+open in section 9.
 
 ## 6. Raw NMEA
 
@@ -479,8 +495,10 @@ followed by `]`, the tokenizer gives `ambiguous` at byte 5.
 first byte where the readings divide
 ([README section 3](README.md#3-tokenizer-model), Placing a finding). (b)
 would end the locator after 4 bytes and read bytes 5 and 6 as the start
-of `grid.cmt`, which accepts any bytes, so (b) accepts every such
-beacon that (a) accepts. With a `]` after the locator both readings
+of `grid.cmt`. Two letters start neither an altitude nor `'!x!'`, the
+only items read there (section 5), so the comment gives the same
+findings under both readings and (b) accepts every such beacon that
+(a) accepts. With a `]` after the locator both readings
 agree. Bytes 5 and 6 in range include lower-case letters, which are
 recognised and give `syntax` ([amb.grid.case](#amb.grid.case)); then
 (a) does not accept the beacon, and its `syntax` finding at the first
@@ -743,13 +761,6 @@ p. 40). 12b carries both unchanged.
   against it. An earlier version of this item also named the Maidenhead
   letter ranges ([amb.grid.range](#amb.grid.range)); they count as
   stated, since the document names their source (README section 3).
-- Whether [`grid.cmt`](#grid.cmt) holds the altitude or the DAO.
-  P. 43/27 places the altitude in "the comment" without naming a
-  format, which is why [`tlm.cmt`](07-telemetry.md#tlm.cmt) reads it,
-  and p. 51/33 calls the bytes after a locator a comment; p. 35/21
-  places the DAO in a position comment, and whether a locator beacon
-  is a position report in that sense is not stated. Section 5
-  searches `grid.cmt` for `'!x!'` only. Which fields the chapters name
-  for these items, under
-  [README section 3](README.md#3-tokenizer-model) (Where comment items
-  are looked for), is not decided for this field.
+- An earlier list held as open whether [`grid.cmt`](#grid.cmt) holds
+  the altitude or the DAO. The author decided that it holds the
+  altitude and `'!x!'`, not the DAO (section 5).

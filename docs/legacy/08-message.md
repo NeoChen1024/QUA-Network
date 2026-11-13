@@ -92,10 +92,22 @@ order and stops at the first that applies (reading:
 [amb.msg.order](#amb.msg.order)). Cases 1, 2 and 4 apply
 [README section 3](README.md#3-tokenizer-model) (Classes that a
 keyword declares): the addressees `BLN` and `NWS-` and the four
-telemetry keywords declare their classes, and an addressee keyword,
-which stands before the text, decides the class before the text is
-tested. **[proposed]** The order of cases 3, 5 and 6 among the tests
-of the text. An earlier draft carried the whole order as a proposal.
+telemetry keywords declare their classes. An addressee keyword
+declares its class inside the `':'` class of the data type identifier
+and stands before the text in the bytes, so it is the innermost class
+declared, and the text is then read inside that class: neither a
+bulletin nor an NWS bulletin names a field for a telemetry keyword, so
+in their text the keyword is text (README section 3, the rule there
+on several keywords in one packet). An earlier draft called the
+addressee keyword the first keyword in the bytes. The order of cases 3, 4 and 5 among
+the tests of the text, with case 6 last, applies README section 3
+(Forms that can stand at one place). The three tests are disjoint by
+their first byte: `'a'` or `'r'` for an acknowledgement or rejection,
+`'P'`, `'U'`, `'E'` or `'B'` for a telemetry keyword, and `'?'` for a
+directed query. Their order therefore changes no result, and case 6,
+which takes any text, is the wildcard that covers them and comes last.
+An earlier draft carried the whole order as a proposal; a later one
+still carried the order of cases 3, 5 and 6 as one.
 
 1. The addressee starts with `BLN`: a bulletin or announcement, section 6.
 2. The addressee starts with `NWS-`: an NWS bulletin, section 7.
@@ -112,10 +124,11 @@ of the text. An earlier draft carried the whole order as a proposal.
    p. 103/79): read there. If it does not match, go on to 6.
 6. Otherwise: a message, section 3.
 
-In cases 1 and 2 the text can get an `ambiguous` finding where it has
-the shape that case 3, 4 or 5 tests and the packet, read as that kind,
-would give no `syntax` or `value` finding of its own
-([amb.msg.order](#amb.msg.order)).
+The text of cases 1 and 2 gets no finding for having the shape that
+case 3, 4 or 5 tests. An earlier draft gave it an `ambiguous` finding
+where the packet, read as that kind, would give no `syntax` or `value`
+finding of its own, from a reading of
+[amb.msg.order](#amb.msg.order) since dropped.
 
 A finding "of its own" is one that the other reading gives and this
 reading does not: this reading gives no finding of the same kind at the
@@ -138,33 +151,37 @@ byte and length rules, and the message identifier; 07 tokenizes inside
 `msg.text`. In case 5 the text from offset 11 is 09's, at the level of
 the addressee, with no `msg.text` token; it is still message text for
 the length limit of `msg.text`, whose `value` finding this file gives,
-as in case 4 and as [amb.msg.order](#amb.msg.order) assumes. A message
-whose text starts
+as in case 4 and as reading (c) of [amb.bln.forms](#amb.bln.forms)
+assumes. An earlier draft named [amb.msg.order](#amb.msg.order) here,
+for a reading of that entry since dropped. A message whose text starts
 with one of the four keywords in another case is read here as a
 message; whether it gets the `ambiguous` finding of
 [amb.tlm.keyword](07-telemetry.md#amb.tlm.keyword) is 07's to decide.
 
-**[proposed]** The other readings in this file. Under the conditions
-"read as that kind" and "read as a message by section 2.1 from case 3
-on", the other reading reads the whole field after the identifier, its
-addressee as `msg.addr`. Its rule IDs differ from this reading's; a
-`syntax` or `value` finding is its own when this reading gives no
-finding of the same kind at the same offset, as
+**[proposed]** The other readings in this file. Under the condition
+"read as a message by section 2.1 from case 3 on", the other reading
+reads the whole field after the identifier, its addressee as
+`msg.addr`. Its rule IDs differ from this reading's; a `syntax` or
+`value` finding is its own when this reading gives no finding of the
+same kind at the same offset, as
 [README section 3](README.md#3-tokenizer-model) (Which findings are
 the other reading's own) has it for every other reading. A text that
 matches a directed query gets no `syntax` or `value` finding from the
-rows of [09-other.md section 4.1](09-other.md#41-directed-queries), which give
-none to a matching text; the `value` finding of the `msg.text` length
-limit (case 5) is the only one it can give. Whether a definition message (case 4) gives one is 07's to decide. The
-bytes that the precedence rule looks at are: the text from offset 11
-for [amb.msg.order](#amb.msg.order) and [amb.msg.ack](#amb.msg.ack);
-and the addressee for [amb.bln.forms](#amb.bln.forms). The `ambiguous`
-findings are given against `bln.text` or `nws.text` at offset 11
-([amb.msg.order](#amb.msg.order)) and `bln.addr` at offset 4
-([amb.bln.forms](#amb.bln.forms)). An earlier draft also gave one
-against `msg.addr` at offset 1 for an addressee starting with `NWS_`,
-`SKY`, `CWA` or `BOM`, from a reading of
-[amb.nws.addressee](#amb.nws.addressee) since dropped.
+rows of [09-other.md section 4.1](09-other.md#41-directed-queries),
+which give none to a matching text; the `value` finding of the
+`msg.text` length limit (case 5) is the only one it can give. Whether
+a definition message (case 4) gives one is 07's to decide. The bytes
+that the precedence rule looks at are: the text from offset 11 for
+[amb.msg.ack](#amb.msg.ack); and the addressee for
+[amb.bln.forms](#amb.bln.forms). The `ambiguous` finding of
+amb.bln.forms is given against `bln.addr` at offset 4. An earlier
+draft also gave one against `msg.addr` at offset 1 for an addressee
+starting with `NWS_`, `SKY`, `CWA` or `BOM`, from a reading of
+[amb.nws.addressee](#amb.nws.addressee) since dropped. A later draft
+also had the condition "read as that kind", and gave findings against
+`bln.text` or `nws.text` at offset 11 with the text from offset 11 as
+the bytes of precedence, from a reading of
+[amb.msg.order](#amb.msg.order) since dropped.
 
 ## 3. Messages
 
@@ -664,42 +681,61 @@ not a free-text field: a `'!x!'` in it is no token and gets the
   acknowledgement; a message's text may start with `'?'` or a telemetry
   keyword.
 - **Readings.** (a) Addressee first, then the shape of the text, as in
-  section 2.1. (b) Text first.
-- **Taken.** (a), which applies
-  [README section 3](README.md#3-tokenizer-model) (Classes that a
-  keyword declares): the addressees `BLN` and `NWS-` declare their
-  classes, and the addressee, fixed by position, stands before the
-  text, which is then read inside the class. Bulletins are also never
-  acknowledged (p. 94/72), so an acknowledgement shape in a bulletin is
-  bulletin text. An earlier draft took (a) as a proposal of its own.
-- **In the bytes.** **[proposed]** Visible, under the test of
-  [README section 3](README.md#3-tokenizer-model), for a bulletin or an
-  NWS bulletin whose text reading (b) would classify by its shape: text
-  that has the exact shape of an acknowledgement or rejection
-  (section 4), that starts with an upper-case telemetry keyword and fits
+  section 2.1. **[agreed]** As the author decided, (b), the text
+  tested first, is not a listed reading; an earlier draft listed it.
+  (b) reads differently from (a) only on a bulletin or NWS
+  bulletin, and there it contradicts the document: p. 96/74 and
+  p. 97/75 define those classes by the addressee, p. 96/74 lets
+  bulletin text hold any printable character and p. 97/75 gives NWS
+  text no form of its own, and each kind that (b) would put in their
+  place needs a station as its addressee. A definition message is addressed to the
+  station whose telemetry it describes (p. 90/70), a directed query to
+  the station queried (p. 103/79), and an acknowledgement or rejection
+  answers only a message addressed to the station that sends it, never
+  a bulletin (p. 94/72). pdn-aprs and Xastir test the acknowledgement
+  and rejection shapes before the addressee (Decoders); (b) is that
+  decoder behaviour, not a listed reading, and gives no finding
+  ([README section 3](README.md#3-tokenizer-model)).
+- **Taken.** (a), the one listed reading (README section 3). It
+  applies [README section 3](README.md#3-tokenizer-model) (Classes
+  that a keyword declares): the addressees `BLN` and `NWS-` declare
+  their classes inside the `':'` class of the data type identifier, and
+  the addressee, fixed by position, stands before the text in the
+  bytes, so its class is the innermost one declared and the text is
+  then read inside it. Neither class names a field for a telemetry
+  keyword, so in their text it is text (README section 3, the rule on
+  several keywords in one packet). An earlier draft called the
+  addressee keyword the first keyword in the bytes. The shapes of an acknowledgement
+  and of a directed query are not keywords; a class before them takes
+  the bytes, so they are text too (README section 3, the rule on forms
+  recognised by their shape alone). An earlier draft took (a) as a
+  proposal of its own.
+- **In the bytes.** No `ambiguous` finding: no listed reading remains
+  that would divide the bytes differently
+  ([README section 3](README.md#3-tokenizer-model)). A trailing `'{'`
+  in a bulletin is bulletin text, and in an NWS bulletin an `nws.ref`,
+  as [amb.bln.ref](#amb.bln.ref) decides. A packet whose addressee
+  starts with neither `BLN` nor `NWS-` is classified by its text
+  (section 2.1). An earlier draft called the question not visible. A
+  later one gave a bulletin or NWS bulletin whose text had the exact
+  shape of an acknowledgement or rejection, started with an upper-case
+  telemetry keyword and fitted
   [07 section 4](07-telemetry.md#4-telemetry-definition-messages), or
-  that matches a directed query
-  ([09-other.md section 4.1](09-other.md#41-directed-queries)), where
-  the packet read as that kind, its addressee as `msg.addr` and its text
-  under the `msg.text` length limit included, would give no `syntax` or
-  `value` finding of its own. That text stays `bln.text` or `nws.text`,
-  with an `ambiguous` finding at offset 11, unless this reading already
-  gives a
-  `syntax` or `value` finding on those bytes. Other text falls through
-  the text tests of (b) to the addressee, so both readings make it a
-  bulletin and it gets no finding here; a trailing `'{'` is bulletin
-  text, or an `nws.ref` in an NWS bulletin, as
-  [amb.bln.ref](#amb.bln.ref) decides. A packet whose addressee starts with
-  neither `BLN` nor `NWS-` is classified by its text under both
-  readings. An earlier draft called the question not visible.
+  matched a directed query, an `ambiguous` finding against `bln.text`
+  or `nws.text` at offset 11, from reading (b), where the packet read
+  as that kind gave no `syntax` or `value` finding of its own.
 - **Decoders.** Dire Wolf tests `BLN`, `NWS`, other weather prefixes,
   telemetry keywords, `'?'`, then `ack`/`rej` (decode_aprs.c:1870-1996).
   pdn-aprs tests `ack`/`rej` first, then bulletins, telemetry and queries
   (message.rs:66-104). Xastir extracts the identifier, then tests
   `ack`, `rej`, `TACTICAL`, `BLN`, then messages to itself, then NWS
   (db.c:13789-14306). aprslib tests bulletins first (message.py:27-43).
-- **Corpus.** Counts of bulletin and NWS packets whose text has an
-  acknowledgement shape or starts with `'?'`.
+- **Corpus.** Counts of bulletin and NWS packets whose text has the
+  shape of an acknowledgement or rejection, starts with a telemetry
+  keyword, or matches a directed query: the senders who mean another
+  kind there, for the deviation recognisers. An earlier list asked only
+  for the acknowledgement shape and a leading `'?'`, as a measure of
+  the finding of reading (b).
 
 <a id="amb.bln.forms"></a>
 ### amb.bln.forms
@@ -712,6 +748,17 @@ not a free-text field: a `'!x!'` in it is no token and gets the
 - **Readings.** (a) An empty name is a general bulletin; a group name is
   1-5 bytes. (b) Any `BLN` prefix is a bulletin and the rest is free.
   (c) Only the three defined shapes are bulletins; others are messages.
+  **[agreed]** As the author decided, reading (c) stays a listed
+  reading: it reads the three definitions of
+  p. 96/74 and p. 97/75 literally, on a question that the text leaves
+  open, whether a `BLN` addressee of another shape is a bulletin at
+  all, as reading (b) of [amb.nts.prefix](#amb.nts.prefix) does for
+  the field count. It contradicts no statement of the document and adds
+  nothing that the document does not mention
+  ([README section 3](README.md#3-tokenizer-model), on listed
+  readings). This settles whether (c) stays beside the dropped reading
+  (b) of [amb.msg.order](#amb.msg.order), which contradicts p. 96/74
+  and p. 97/75.
 - **Taken.** (a), with other `BLN` shapes read as bulletins and given
   `unstated` (section 6): a shape outside the forms the document defines,
   at a place it leaves open, in a field whose extent is fixed

@@ -69,8 +69,8 @@ def _keyword_case(scan, s, end, depth):
 
 def _read(scan, s, end, depth, texts, by_addressee):
     """Read the field line[s:end]. by_addressee=False reads it as a message
-    by section 2.1 from case 3 on, whatever the addressee, for the other
-    readings of amb.msg.order and amb.bln.forms.
+    by section 2.1 from case 3 on, whatever the addressee, for reading (c)
+    of amb.bln.forms.
     Returns the kind decided, or None when the field ends before the text."""
     line = scan.line
     a0 = s + 1
@@ -426,8 +426,6 @@ def _bulletin(scan, s, t0, end, depth, texts):
     if not (line[p] in _DIGITS or line[p] in _UPPER and all(b == SP for b in line[p + 1 : s + 10])):
         # amb.bln.forms: reading (c) takes the packet as a message.
         _other_reading(scan, s, end, depth, s + 1, s + 10, "bln.addr", p, ("ack", "tlm", "qry", "msg"))
-    # amb.msg.order: reading (b) classifies the text first.
-    _other_reading(scan, s, end, depth, t0, end, "bln.text", t0, ("ack", "tlm", "qry"))
 
 
 def _nws(scan, s, t0, end, depth, texts):
@@ -450,8 +448,8 @@ def _nws(scan, s, t0, end, depth, texts):
         if not _reported(scan, ref, end):
             scan.find("nws.ref", "ambiguous", ref)
     # Any severity word is allowed (section 7, nws.level): p. 97/75 lists
-    # them with "such as ... etc.", so no reading limits the words.
-    _other_reading(scan, s, end, depth, t0, end, "nws.text", t0, ("ack", "tlm", "qry"))
+    # them with "such as ... etc.", so no reading limits the words. The
+    # text gets no finding for the shape of another kind (amb.msg.order).
 
 
 # --- Obsolete bulletin without an identifier (section 9) ----------------

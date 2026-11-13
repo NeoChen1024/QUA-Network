@@ -53,6 +53,13 @@ class Scan:
             self._seen.add(f)
             self.findings.append(f)
 
+    def withdraw(self, kind, offsets):
+        """Take back the findings of kind at offsets, where a rule already
+        reports those bytes (README section 3, Precedence). They stay seen, so
+        a later identical finding is not given either."""
+        if offsets:
+            self.findings = [f for f in self.findings if f.kind != kind or f.offset not in offsets]
+
     def retag(self, start, depth, rule):
         """Give the identifier token at (start, depth) the rule of the format
         the packet is classified as (README section 3)."""

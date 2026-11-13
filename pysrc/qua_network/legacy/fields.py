@@ -67,6 +67,26 @@ def timestamp7(scan, s, end, depth):
     return e, e == s + 7
 
 
+def timestamp8(scan, s, end, depth):
+    """time.mdhm: eight digits, month, day, hour and minute.
+
+    Returns (end of the token, True when all eight bytes were present)."""
+    line = scan.line
+    e = min(s + 8, end)
+    scan.tok("time.mdhm", s, e, depth)
+    b = line[s:e]
+    bad = next((i for i, c in enumerate(b) if c not in DIGITS), None)
+    if bad is None and e < s + 8:
+        bad = e - s
+    if bad is not None:
+        scan.find("time.mdhm", "syntax", s + bad)
+    for i, (lo, hi) in enumerate(((1, 12), (1, 31), (0, 23), (0, 59))):
+        part = b[2 * i : 2 * i + 2]
+        if len(part) == 2 and _digits(part) and not lo <= int(part) <= hi:
+            scan.find("time.mdhm", "value", s + 2 * i)
+    return e, e == s + 8
+
+
 # --- Latitude and longitude (02 section 3) ------------------------------
 
 _LAT_AMB = (6, 5, 3, 2)
@@ -279,6 +299,11 @@ def _csespd(line, p, end, rule="ext.csespd"):
             # amb.ext.csespd: reading (c) takes only the listed forms.
             f.append((rule, "ambiguous", p))
     return Ext(rule, p, 7, f)
+
+
+def dirspd(line, p, end):
+    """ext.dirspd at p: the layout and findings of ext.csespd (7.2, 7.3)."""
+    return _csespd(line, p, end, "ext.dirspd")
 
 
 def csespd_mixed(line, p, end):

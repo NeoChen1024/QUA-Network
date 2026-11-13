@@ -27,8 +27,8 @@ from qua_network.legacy.fields import (
 )
 from qua_network.legacy.model import Scan
 from qua_network.legacy.telemetry import b91_block
+from qua_network.legacy.weather import carriers as weather_carriers
 
-WEATHER = "06-weather"
 _BAD = ("syntax", "value")
 
 # --- Destination address (04 section 3) ---------------------------------
@@ -465,7 +465,6 @@ def read(scan, start, end, depth):
     fixed(scan, start, end, depth)
     texts = status(scan, start, end, depth)
     if start + 9 < end and line[start + 7] == 0x5F:
-        # amb.wx.carriers: whether the status text, read as weather data,
-        # gives an ambiguous finding is for 06, which has no reader yet.
-        scan.unread.append(WEATHER)
+        # amb.wx.carriers: reading (a) would read the status text as weather.
+        weather_carriers(scan, start + 9, end, "wx.pos", wind=False)
     noarchive_outside(scan, start, end, texts)

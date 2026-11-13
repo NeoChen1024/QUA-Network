@@ -281,9 +281,10 @@ bytes to read. Bytes that (b) would read as an ordinary comment get the
 ([README section 3](README.md#3-tokenizer-model), Precedence). No
 `ambiguous` finding here. **[proposed]** Where 06 reads the bytes as
 weather, (b) reads them as weather too; the two readings differ only
-on bytes that fail as weather. The `ambiguous` finding that 06 gives
-at a table byte other than `/` or `\` comes from the readings of
-[amb.wx.symbol](06-weather.md#amb.wx.symbol), not from this entry.
+on bytes that fail as weather. A table byte other than `/` or `\`
+gives no `ambiguous` finding either: with its reading (b) dropped,
+[amb.wx.symbol](06-weather.md#amb.wx.symbol) is not visible. An earlier
+draft said 06 gave one there.
 
 **Decoders (read).** FAP sends the rest to the weather parser whenever
 the symbol code is `_` (FAP.pm:2624–2628, 2641–2645). Dire Wolf does the

@@ -26,17 +26,17 @@ from qua_network.legacy.fields import (
     sym_table,
     timestamp7,
 )
-from qua_network.legacy.model import UNREAD, Scan
+from qua_network.legacy.model import Scan
+from qua_network.legacy.weather import complete as weather_complete
+from qua_network.legacy.weather import storm as weather_storm
 
-WEATHER = "06-weather"
 _STORM = re.compile(rb"/(?:TS|HC|TD)")
 
 
-def _to_weather(scan, start, p, end, depth):
+def _to_weather(scan, start, p, end, depth, block=None):
     """pos.wx: the bytes after the position block are 06's (wx.pos)."""
     scan.retag(start, depth, "wx.pos")
-    scan.residue(p, end, depth, UNREAD)
-    scan.unread.append(WEATHER)
+    weather_complete(scan, p, end, depth, block)
 
 
 def read(scan, start, end, depth):
@@ -117,10 +117,10 @@ def _uncompressed(scan, start, p, end, depth):
         emit_ext(scan, x, depth)
         p += x.n
         if code == 0x40 and x.rule == "ext.csespd" and _STORM.match(line, p, end):
-            # Storm data (06 section 8).
-            scan.residue(p, end, depth, UNREAD)
-            scan.unread.append(WEATHER)
-            return None
+            # Storm data (06 section 8), then the comment; it does not follow the
+            # slot's extension, so no course and speed is looked for at its start.
+            p = weather_storm(scan, slot - 11, p, end, depth)
+            return _freq_items(scan, comment(scan, p, end, depth, 36, "pos.cmt", start_cse=False))
 
     # Bearing and NRQ (02 section 7.4, 03 section 3).
     limit, limit_rule = (36, "pos.cmt") if x else (43, "pos.cmt")
@@ -155,7 +155,7 @@ def _compressed(scan, start, p, end, depth):
     if e is None:
         return None
     if wx:
-        _to_weather(scan, start, e, end, depth)
+        _to_weather(scan, start, e, end, depth, p)
         return None
     # amb.pos.cmpext: a clean extension at the comment start is reported by
     # the search of comment(), at the same byte and rule.

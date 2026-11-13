@@ -26,9 +26,11 @@ from qua_network.legacy.fields import (
     sym_table,
     timestamp7,
 )
-from qua_network.legacy.model import UNREAD, Scan
+from qua_network.legacy.model import Scan
+from qua_network.legacy.weather import carriers as weather_carriers
+from qua_network.legacy.weather import complete as weather_complete
+from qua_network.legacy.weather import storm as weather_storm
 
-WEATHER = "06-weather"
 _STORM = re.compile(rb"/(?:TS|HC|TD)")
 _ITEM_END = re.compile(rb"[!_]")
 # freq.objname (09 section 7): the two shapes of a 9-byte frequency name.
@@ -154,12 +156,11 @@ def _body(scan, dti, q, end, depth, kind, freq_name, texts):
             _pending(scan, FREQ)
 
 
-def _to_weather(scan, dti, p, end, depth):
+def _to_weather(scan, dti, p, end, depth, block=None):
     """05 section 7: the bytes after the position block are 06's (wx.obj)."""
     if dti is not None:
         scan.retag(dti, depth, "wx.obj")
-    scan.residue(p, end, depth, UNREAD)
-    _pending(scan, WEATHER)
+    weather_complete(scan, p, end, depth, block, obj_cmt=block is not None)
 
 
 def _uncompressed(scan, dti, p, end, depth, kind):
@@ -179,9 +180,6 @@ def _uncompressed(scan, dti, p, end, depth, kind):
         if kind == "obj":
             _to_weather(scan, dti, p, end, depth)
             return None
-        # amb.wx.carriers: whether the item read as weather would give an
-        # ambiguous finding is for 06 to decide.
-        _pending(scan, WEATHER)
 
     slot = p
     x = None
@@ -213,10 +211,10 @@ def _uncompressed(scan, dti, p, end, depth, kind):
             emit_ext(scan, x, depth)
             p += x.n
             if code == 0x40 and x.rule == "ext.csespd" and _STORM.match(line, p, end):
-                # Storm data (06 section 8).
-                scan.residue(p, end, depth, UNREAD)
-                _pending(scan, WEATHER)
-                return None
+                # Storm data (06 section 8), then the comment; it does not follow the
+                # slot's extension, so no course and speed is looked for at its start.
+                p = weather_storm(scan, slot - 11, p, end, depth)
+                return comment(scan, p, end, depth, 36, kind + ".cmt", b91_kind="unstated", start_cse=False)
             # Bearing and NRQ are not read here; bytes of their shape that a
             # reading of amb.ext.brgnrq would take are comment text.
             brg = brgnrq_shape(line, p, end)
@@ -235,6 +233,9 @@ def _uncompressed(scan, dti, p, end, depth, kind):
         rest = cmt.counted if cmt else 0
         if x.rule != "ext.phgr" or x.n + rest <= 43 or rest > limit:
             scan.find(x.rule, "ambiguous", slot)
+    if code == 0x5F and slot < end:
+        # amb.wx.carriers: an item that reading (a) would read as weather.
+        weather_carriers(scan, slot, end, "wx.obj")
     return cmt
 
 
@@ -247,18 +248,19 @@ def _compressed(scan, dti, q, end, depth, kind):
     if e is None:
         return None
     if wx:
-        _to_weather(scan, dti, e, end, depth)
+        _to_weather(scan, dti, e, end, depth, q)
         return None
     table, code = line[q], line[q + 9]
-    if code == 0x5F and e < end:
-        _pending(scan, WEATHER)  # amb.wx.carriers, as above
     area = table == 0x5C and code == 0x6C
     if area and area_bad(line, e, end) is None:
         # 02 section 6.5: at a slot of this report 7.1 would try ext.area.
         scan.find("ext.area", "ambiguous", e)
     extra = _braces(scan, e, end, depth, table, code, False)
     # amb.ext.compressed: 7.1 would try no course and speed in a \l report.
-    return comment(scan, e, end, depth, 43, kind + ".cmt", b91_kind="unstated", extra=extra, start_cse=not area)
+    cmt = comment(scan, e, end, depth, 43, kind + ".cmt", b91_kind="unstated", extra=extra, start_cse=not area)
+    if code == 0x5F and e < end:
+        weather_carriers(scan, e, end, "wx.obj", block=q)  # amb.wx.carriers, as above
+    return cmt
 
 
 # --- Corridor width and signpost (05 sections 4 and 5) ------------------

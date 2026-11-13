@@ -2,15 +2,23 @@
 """Tokenize one TNC2 line under the reading of docs/legacy/."""
 
 from qua_network.legacy.frame import header, info_field
+from qua_network.legacy.message import read as read_message
 from qua_network.legacy.mice import read as read_mice
 from qua_network.legacy.model import Scan
 from qua_network.legacy.objects import read as read_objects
 from qua_network.legacy.position import read as read_position
+from qua_network.legacy.weather import read as read_weather
 
 # Format readers by the docs/legacy file that specifies them. A format with
 # no reader yet leaves its field after byte 0 as residue, and the packet
 # has no verdict (Scan.unread).
-READERS = {"03-position": read_position, "04-mic-e": read_mice, "05-object-item": read_objects}
+READERS = {
+    "03-position": read_position,
+    "04-mic-e": read_mice,
+    "05-object-item": read_objects,
+    "06-weather": read_weather,
+    "08-message": read_message,
+}
 
 
 def tokenize(line, readers=READERS):

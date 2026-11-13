@@ -56,6 +56,24 @@ AX.25 address. The tokenizer does not check it as a callsign and reports
 no `is-only` finding for it. UAP 2.5.2 notes that addressees of Internet
 services need not be callsigns.
 
+**[proposed]** Where the findings of the addressee go. The 9 bytes are
+one fixed field, so one `syntax` finding is given for them, at the first
+byte that fails, under the rule of the name part (`msg.addr.name`,
+`bln.group` or `nws.level`). For a `SP` inside the name that byte is the
+first byte after the padding has begun that is not `SP`. A `msg.addr`
+or `nws.addr` whose name part starts with `SP` has no name, whatever
+follows, so its finding is at that `SP`, where the name was expected.
+The `unstated` finding for other printable bytes is given once, at the
+first of them. A field that ends inside the 9 bytes gives `syntax` at
+its end against `msg.addr`, `bln.addr` or `nws.addr`, unless a byte
+before its end already failed; this includes a field that ends where
+the name part would start, which gives that finding and no finding for
+the missing name. A field that ends at offset 10 gives `syntax` against
+`msg.sep` at offset 10. Nothing after that is read.
+When the byte at offset 10 is present but is not `':'`, the `msg.sep`
+token keeps it, and the text is still read from offset 11 and classified
+by section 2.1.
+
 ### 2.1 Kind of packet
 
 **[proposed]** After the separator the tokenizer decides the kind of
@@ -95,6 +113,41 @@ The token of byte 0 carries the identifier rule of the kind decided:
 ([README section 3](README.md#3-tokenizer-model)). It is assigned once
 the kind is decided.
 
+**[proposed]** Tokens of cases 4 and 5. In case 4 this file delimits
+the text as in section 3: a `msg.text` token up to the first `'{'`, its
+byte and length rules, and the message identifier; 07 tokenizes inside
+`msg.text`. In case 5 the text from offset 11 is 09's, at the level of
+the addressee, with no `msg.text` token; it is still message text for
+the length limit of `msg.text`, whose `value` finding this file gives,
+as in case 4 and as [amb.msg.order](#amb.msg.order) assumes. A message
+whose text starts
+with one of the four keywords in another case is read here as a
+message; whether it gets the `ambiguous` finding of
+[amb.tlm.keyword](07-telemetry.md#amb.tlm.keyword) is 07's to decide.
+
+**[proposed]** The other readings in this file. Under the conditions
+"read as that kind" and "read as a message by section 2.1 from case 3
+on", the other reading reads the whole field after the identifier, its
+addressee as `msg.addr`. Its rule IDs differ from this reading's, so a
+`syntax` or `value` finding is its own when this reading gives no
+finding of the same kind at the same offset. A text that matches a
+directed query gets no `syntax` or `value` finding from the rows of
+[09-other.md section 4.1](09-other.md#41-directed-queries), which give
+none to a matching text; the `value` finding of the `msg.text` length
+limit (case 5) is the only one it can give. Whether a definition message (case 4) gives one is 07's to decide. The
+bytes that the precedence rule looks at are: the text from offset 11
+for [amb.msg.order](#amb.msg.order) and [amb.msg.ack](#amb.msg.ack);
+the addressee for [amb.bln.forms](#amb.bln.forms) and for an `NWS-`
+word that is not listed ([amb.nws.addressee](#amb.nws.addressee)); and
+the whole field after the identifier for an addressee that starts with
+`NWS_`, `SKY`, `CWA` or `BOM`, since reading (c) of that entry would
+read every byte of it differently. That last finding is given in cases
+3, 5 and 6, and is 07's to decide in case 4. The `ambiguous` findings
+are given against `bln.text` or `nws.text` at offset 11
+([amb.msg.order](#amb.msg.order)), `bln.addr` at offset 4
+([amb.bln.forms](#amb.bln.forms)), and `nws.level` at offset 5 or
+`msg.addr` at offset 1 ([amb.nws.addressee](#amb.nws.addressee)).
+
 ## 3. Messages
 
 | ID | Field | Layout | Required | Ends at | Source |
@@ -114,6 +167,22 @@ contains `'}'`, and the plain form otherwise. Reading:
 A trailing CR, LF or `SP` is part of the field: after a message number it
 makes the number fail (`syntax`), and in text without a number it gives
 `syntax` for CR and LF only.
+
+**[proposed]** Findings of the identifier parts. `msg.id` gives `value`
+at its sixth byte when it starts with six or more letters or digits, and
+`syntax` at its first byte that is not a letter or digit; both can be
+given. A `'{'` with nothing after it gives `syntax` against `msg.id` at
+the end of the field. `msg.id.mm` and `msg.id.aa` follow the same
+pattern: `value` at the first byte past 2 letters or digits; `value` at
+the first byte of the part when it is all letters or digits but shorter
+than allowed, which for an empty `msg.id.mm` is the `'}'`; and `syntax`
+at the first other byte, a second `'}'` included.
+
+**[proposed]** `msg.text` (except in case 4 of section 2.1),
+[`bln.text`](#bln.text), [`nws.text`](#nws.text) and, in an NTS line,
+each [`nts.field`](#nts.field) are free-text fields for the no-archive
+marker: a `'!x!'` inside one is a
+[`cmt.noarchive`](02-fields.md#cmt.noarchive) token one level below it.
 
 ## 4. Acknowledgements and rejections
 
@@ -194,6 +263,12 @@ gives the `ambiguous` finding of [amb.bln.forms](#amb.bln.forms), at
 offset 4, where the packet read as a message would give no `syntax` or
 `value` finding of its own.
 
+**[proposed]** The `unstated` finding against `bln.addr` is at offset 4,
+the first byte that fits none of the three forms. The `bln.group` token
+of such an addressee runs from offset 4 to the first `SP`, and the rest
+is `msg.addr.pad`; an addressee with `SP` at offset 4 has no `bln.group`
+token. Its bytes are checked as for `msg.addr.name`.
+
 APRS12c also describes how a receiver files, replaces, clears and
 announces bulletins, keyed by sender and identifier, and how often
 bulletins and announcements are sent (p. 96/74, p. 99/77). These are
@@ -211,6 +286,14 @@ for repeated acknowledgements and their spacing (p. 94/72).
 | [`msg.sep`](#msg.sep) | Separator | `':'` at offset 10. | Required | Fixed 1 byte | p. 97/75 |
 | <a id="nws.text"></a>`nws.text` | Bulletin text | From offset 11. Text bytes, no length limit. Its inner structure is defined outside APRS12c and is not tokenized. | Required | End of information field, or `nws.ref` | p. 97/75 |
 | <a id="nws.ref"></a>`nws.ref` | Reference identifier | `'{'` followed by 1-5 letters or digits at the very end of the field; not to be acknowledged. The tokenizer reports `ambiguous` at the `'{'`: the bytes are also valid bulletin text, which has no length limit. Reading: [amb.bln.ref](#amb.bln.ref). | Optional | End of information field | p. 97/75 |
+
+**[proposed]** "Other bytes as for `msg.addr.name`" in the `nws.level`
+row means bytes outside its own set of letters and digits: they get the
+findings that `msg.addr.name` gives a byte outside its set. A `'-'`
+therefore gives `unstated` in `nws.level`, although `msg.addr.name`
+allows it. An empty `nws.text`, also one followed by `nws.ref`, gives
+`syntax` against `nws.text` at offset 11; under precedence, an
+`nws.ref` that starts there then gets no `ambiguous` finding.
 
 ## 8. NTS radiograms
 
@@ -243,6 +326,16 @@ required, and that there are at most six text lines, are rules about a
 set of packets; the tokenizer reads one packet at a time and does not
 check them.
 
+**[proposed]** The count is of `nts.field` tokens, as the table says.
+An empty field, between two `nts.sep` bytes or between one and the
+prefix or the end of `msg.text`, has no token and does not count: a
+`'#'` line with an empty field, such as a missing time, has 7 fields
+and gives `syntax`, and so does a type `1` line with nothing after the
+prefix. A byte that is not a text byte inside an `nts.field` gets the
+`syntax` finding of `msg.text`, which encloses it, and no second one
+against `nts.field`; the `nts.field` row states the same byte set
+less the separator.
+
 ## 9. Obsolete bulletin form
 
 Some stations sent bulletins and announcements without the `':'` data
@@ -252,6 +345,11 @@ as status reports (p. 98/76). APRS12c gives no layout for it.
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|
 | <a id="bln.obsolete"></a>`bln.obsolete` | Obsolete bulletin | An information field that starts with `BLN` followed by a digit or an upper-case letter, handed here by [01-frame.md](01-frame.md#7-data-type-identifier) because `'B'` is not an assigned identifier. There is no identifier byte: one token covering the whole field at depth 0, with nothing tokenized inside it; the tokenizer reports `obsolete`. Reading: [amb.bln.obsolete](#amb.bln.obsolete). | - | End of information field | p. 98/76 |
+
+**[proposed]** Since nothing is tokenized inside `bln.obsolete`, it is
+not a free-text field: a `'!x!'` in it is no token and gets the
+`ambiguous` finding of
+[amb.cmt.noarchive](02-fields.md#amb.cmt.noarchive).
 
 ## 10. Ambiguities
 

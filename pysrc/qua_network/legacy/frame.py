@@ -4,13 +4,15 @@ and third-party payloads: docs/legacy/01-frame.md."""
 
 import re
 
+from qua_network.legacy.message import obsolete as obsolete_bulletin
+from qua_network.legacy.message import obsolete_accepts as obsolete_bulletin_accepts
 from qua_network.legacy.model import UNREAD
 from qua_network.legacy.objects import obsolete as obsolete_object
 from qua_network.legacy.objects import obsolete_accepts as obsolete_object_accepts
 from qua_network.legacy.position import nmea_accepts
 from qua_network.tnc2 import header_spans
 
-OBSOLETE_FORMS = "obsolete bulletin (08)"
+OBSOLETE_FORMS = "obsolete object or bulletin (05, 08)"
 
 # --- Addresses (01 section 3) -------------------------------------------
 
@@ -319,10 +321,14 @@ def info_field(scan, start, end, depth, readers, tp_level=0):
     rule, where, finding = dispatch(line[start:end])
     if rule is None:
         # The obsolete object and bulletin without an identifier are tried
-        # first, in that order (01 section 7). Until both readers exist the
-        # field may still be one of them, so the packet gets no verdict yet.
+        # first, in that order (01 section 7). Without both readers the
+        # field may still be one of them, so the packet gets no verdict; the
+        # bulletin is tried only once the object reader has declined it.
         if "05-object-item" in readers and obsolete_object_accepts(line, start, end):
             obsolete_object(scan, start, end, depth)
+            return
+        if "05-object-item" in readers and "08-message" in readers and obsolete_bulletin_accepts(line, start, end):
+            obsolete_bulletin(scan, start, end, depth)
             return
         scan.tok("dti.unknown", start, end, depth)
         scan.find("dti", finding, start)

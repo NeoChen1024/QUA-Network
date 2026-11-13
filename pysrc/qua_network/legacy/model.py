@@ -53,6 +53,14 @@ class Scan:
             self._seen.add(f)
             self.findings.append(f)
 
+    def retag(self, start, depth, rule):
+        """Give the identifier token at (start, depth) the rule of the format
+        the packet is classified as (README section 3)."""
+        for i, t in enumerate(self.tokens):
+            if t.start == start and t.depth == depth and t.end == start + 1:
+                self.tokens[i] = t._replace(rule=rule)
+                return
+
     def residue(self, start, end, depth, stop):
         if end > start:
             self.tok("residue", start, end, depth, stop)

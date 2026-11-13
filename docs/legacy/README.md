@@ -4,7 +4,7 @@
 |---|---|
 | Status | Draft. Not frozen. Items carry the labels **[agreed]**, **[proposed]** and **[open]** with the meaning given in the RFC. |
 | Reference | `APRS12c.pdf` in submodule `3rdparty/aprsspec`, commit `5830d42f`. See [RFC Appendix D](../rfc/qua-network-rfc-0.md#appendix-d-reference-documents). |
-| Used by | `qua-legacy-tokenize` and `qua-legacy-fields` (package `qua_network.legacy`), RFC section 15, step 4. They read 01-frame so far; the other files have no reader yet. |
+| Used by | `qua-legacy-tokenize` and `qua-legacy-fields` (package `qua_network.legacy`), RFC section 15, step 4. They read 01-frame, 02-fields, 03-position and the comment telemetry block of 07-telemetry section 3; the other files have no reader yet. |
 
 ## 1. Purpose
 
@@ -239,15 +239,23 @@ An entry that cites a decoder names it and the function or line it read.
 | [07-telemetry.md](07-telemetry.md) | Telemetry reports, base-91 comment telemetry, telemetry definition messages. | `tlm` |
 | [08-message.md](08-message.md) | Messages, acknowledgements, bulletins, announcements, NWS bulletins, NTS. | `msg`, `bln`, `nws`, `nts` |
 | [09-other.md](09-other.md) | Status reports, capabilities, general and directed queries, user-defined data, test packets, frequency specifications in comments. | `stat`, `cap`, `qry`, `udf`, `inv`, `freq` |
+| [examples.json](examples.json) | The expected verdict and findings of each example packet of APRS12c, by page and digest. | — |
 
 ## 6. Open items
 
-- Readers for the formats of 02 to 09; until one exists, a field of
+- Readers for the formats of 04 to 09; until one exists, a field of
   that format is left as an `unread` residue and its packet has no
   verdict. The obsolete object and bulletin without an identifier
-  (01-frame section 7) are tried only once 05 and 08 have readers.
+  (01-frame section 7) are tried only once 05 and 08 have readers. The
+  same holds for the parts of a 03 report that another file reads: the
+  weather data after a `_` symbol and storm data (06), and a frequency
+  at the start of a comment (09 section 7), which is detected but not
+  yet read.
 - The check of the document's own example packets against this reading
-  (RFC section 15, step 4).
+  (RFC section 15, step 4). [examples.json](examples.json) holds the
+  verdict this reading gives each example, derived from these files
+  without running the tokenizer, and `qua-legacy-examples check`
+  compares. Examples of formats without a reader are still pending.
 - Deviation recognisers and the divergence catalogue entries they belong
   to (RFC Appendix E).
 - APRS12c is itself a draft with known issues. When a later draft of the

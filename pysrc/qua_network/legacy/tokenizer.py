@@ -3,11 +3,12 @@
 
 from qua_network.legacy.frame import header, info_field
 from qua_network.legacy.model import Scan
+from qua_network.legacy.position import read as read_position
 
 # Format readers by the docs/legacy file that specifies them. A format with
 # no reader yet leaves its field after byte 0 as residue, and the packet
 # has no verdict (Scan.unread).
-READERS = {}
+READERS = {"03-position": read_position}
 
 
 def tokenize(line, readers=READERS):

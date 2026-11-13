@@ -46,7 +46,7 @@ symbol code.
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|
 | <a id="pos.dti"></a>`pos.dti` | Identifier | `!` or `=` (no timestamp), `/` or `@` (timestamp). `=` and `@` mark a station that handles messages; the tokenizer records which. | yes | 1 byte | p. 31/17; p. 50/32 |
-| <a id="pos.time"></a>`pos.time` | Timestamp | After `/` or `@` only: [`time.dhm`](02-fields.md#time.dhm) or [`time.hms`](02-fields.md#time.hms), 7 bytes. Missing, or in the [`time.mdhm`](02-fields.md#time.mdhm) form, gives `syntax`. | for `/`, `@` | 7 bytes | p. 38/22; p. 50/32; p. 59/41 |
+| <a id="pos.time"></a>`pos.time` | Timestamp | After `/` or `@` only: [`time.dhm`](02-fields.md#time.dhm) or [`time.hms`](02-fields.md#time.hms), 7 bytes. Missing, or in the [`time.mdhm`](02-fields.md#time.mdhm) form, gives `syntax`. **[proposed]** A missing timestamp gives the finding where it was expected, and nothing else. Eight digits are the `time.mdhm` form: an 8-byte `time.mdhm` token, the `syntax` finding at its first byte, and the position read after it. | for `/`, `@` | 7 bytes | p. 38/22; p. 50/32; p. 59/41 |
 | <a id="pos.form"></a>`pos.form` | Form selector | Not a token. The next byte picks the form: a digit gives `pos.unc`; `/`, `\`, `A`–`Z` or `a`–`j` gives `pos.cmp`. Any other byte gives `syntax` and the rest of the field is `residue`. | yes | — | p. 50/32; p. 55/37; p. 125/101 ([amb.pos.form](#amb.pos.form)) |
 | <a id="pos.unc"></a>`pos.unc` | Uncompressed position | Not a token; the sequence [`lat`](02-fields.md#lat) (8 bytes), [`sym.table`](02-fields.md#sym.table) (1), [`lon`](02-fields.md#lon) (9), [`sym.code`](02-fields.md#sym.code) (1). Position ambiguity is read by [`lat.amb`](02-fields.md#lat.amb) and [`lon.amb`](02-fields.md#lon.amb). | one of the two forms | 19 bytes | p. 39/23; p. 40/24; p. 50/32 |
 | <a id="pos.cmp"></a>`pos.cmp` | Compressed position | [`cmp.block`](02-fields.md#cmp.block), 13 bytes. | one of the two forms | 13 bytes | p. 55/37; p. 59/41 |
@@ -109,7 +109,10 @@ by [01-frame.md](01-frame.md#dti).
 | <a id="grid.cmt"></a>`grid.cmt` | Comment | Any bytes to the end of the field. No limit beyond that of [`line.info`](01-frame.md#line.info). | no | end of field | p. 51/33 |
 
 In a beacon, a locator with lower-case letters gives `unstated`: this
-format states no case rule. **[proposed]** A beacon gets `ambiguous` at
+format states no case rule. **[proposed]** When the first four bytes
+fail, the extent is still taken from what follows: six bytes when
+bytes 5 and 6 are letters followed by `]` or in range, else four. The
+first failing byte alone gives `syntax`. **[proposed]** A beacon gets `ambiguous` at
 byte 5, the first byte after a 4-byte locator, when bytes 5 and 6 are
 both letters and a reading listed would divide them differently from
 this one: a 6-byte locator with no `]` after it
@@ -118,7 +121,13 @@ this one: a 6-byte locator with no `]` after it
 `syntax`, [amb.grid.range](#amb.grid.range)), and a
 subsquare that holds a lower-case letter after an upper-case first pair
 ([amb.grid.case](#amb.grid.case)). One finding is given however many
-of these hold.
+of these hold. **[proposed]** With a `]` after the six bytes none of
+these holds: every reading takes the six bytes as the locator
+([amb.grid.range](#amb.grid.range)), and reading (a) of amb.grid.case,
+which rejects the lower-case letters, then fails and does not count.
+**[proposed]** `grid.cmt` is a free-text field for
+[`cmt.noarchive`](02-fields.md#cmt.noarchive); the other items of
+02 section 8.2 are not searched in it.
 
 ## 6. Raw NMEA
 
@@ -128,7 +137,7 @@ of these hold.
 | <a id="nmea.addr"></a>`nmea.addr` | Address field | 5 bytes, each `A`–`Z`: talker and sentence type. Anything else gives `syntax`. Any talker and type are accepted; the five recommended types (GGA, GLL, RMC, VTG, WPL) are noted, others give no finding ([amb.nmea.sentence](#amb.nmea.sentence)). | yes | `,` | p. 42/26; p. 52/34 |
 | <a id="nmea.field"></a>`nmea.field` | Data field | `,` then zero or more bytes 0x20–0x7E other than `,`, `*` and `$`. One token per field; the content is not checked ([amb.nmea.sentence](#amb.nmea.sentence)). | yes, at least one | `,`, `*` or end of field | p. 42/26; p. 52/34 |
 | <a id="nmea.cks"></a>`nmea.cks` | Checksum | `*` then two hex digits, `0`–`9` or `A`–`F`, as in three of the four examples. Their value is compared with the exclusive-or of every byte after `$` and before `*`; a mismatch gives `value` at the first hex digit. Hex digits `a`–`f` give `unstated`, and the value is still compared. A missing checksum gives no finding ([amb.nmea.checksum](#amb.nmea.checksum)). | no | 2 bytes after `*` | p. 52/34 |
-| <a id="nmea.end"></a>`nmea.end` | Sentence terminator | CR, LF or both after the last field or the checksum. Gives `unstated`. | no | end of field | — |
+| <a id="nmea.end"></a>`nmea.end` | Sentence terminator | CR, LF or both after the last field or the checksum. Gives `unstated`. **[proposed]** Any other bytes after the checksum are a residue that names `nmea.cks`, with `syntax` at the first of them. | no | end of field | — |
 | <a id="nmea.len"></a>`nmea.len` | Sentence length | Not a token. The bytes after `$` up to `nmea.end` or the end of the field number 25 to 209; outside that range gives `value` at `nmea.dti`. | — | — | p. 52/34 |
 
 ## 7. Ambiguities

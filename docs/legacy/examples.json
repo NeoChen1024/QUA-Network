@@ -1,0 +1,4195 @@
+{
+ "about": "Expected verdicts of the example packets of APRS12c under the reading in docs/legacy/. Examples are named by PDF page and the first 8 hex digits of the BLAKE3 digest of their extracted bytes (qua-legacy-examples extract); the bytes are not stored here. Derived from the documents in docs/legacy/ alone, without running the tokenizer, so that the list can check it.",
+ "examples": [
+  {
+   "id": "p12-6663387d",
+   "page": 12,
+   "printed": "2",
+   "kind": "fragment",
+   "note": "Generic primary-table symbol pair shown alone."
+  },
+  {
+   "id": "p12-d815d504",
+   "page": 12,
+   "printed": "2",
+   "kind": "fragment",
+   "note": "Symbol table/code pair (alternate table) from the notation conventions."
+  },
+  {
+   "id": "p29-eb358d2f",
+   "page": 29,
+   "printed": "19",
+   "kind": "fragment",
+   "note": "A list of generic destination address prefixes with a wildcard suffix; destination addresses, not an information field."
+  },
+  {
+   "id": "p34-3f1b1907",
+   "page": 34,
+   "printed": "20",
+   "kind": "template",
+   "note": "Bearing/NRQ layout with named placeholders."
+  },
+  {
+   "id": "p42-1d257b03",
+   "page": 42,
+   "printed": "26",
+   "kind": "fragment",
+   "note": "Symbol table/code pair shown alone."
+  },
+  {
+   "id": "p42-67226a4f",
+   "page": 42,
+   "printed": "26",
+   "kind": "fragment",
+   "note": "Grid-square symbol pair shown alone."
+  },
+  {
+   "id": "p42-800263ba",
+   "page": 42,
+   "printed": "26",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [
+    "obsolete dti @0"
+   ],
+   "basis": [
+    "01-frame.md#dti",
+    "03-position.md#grid.dti",
+    "03-position.md#grid.loc",
+    "03-position.md#grid.close",
+    "03-position.md#amb.grid.form"
+   ],
+   "note": "Whole information field of a locator beacon: 6-byte locator in range, closed by ']', no comment. The '[' identifier is obsolete; the bracket makes both locator readings agree, so no ambiguous finding.",
+   "doubt": "The obsolete finding is placed on the dispatch rule id 'dti' (01-frame section 7 table); a checker might record it under grid.dti instead."
+  },
+  {
+   "id": "p42-d0556ef6",
+   "page": 42,
+   "printed": "26",
+   "kind": "fragment",
+   "note": "Symbol pair (house) shown alone after a status locator example."
+  },
+  {
+   "id": "p43-5d95fbd7",
+   "page": 43,
+   "printed": "27",
+   "kind": "template",
+   "note": "Negative altitude layout with placeholders."
+  },
+  {
+   "id": "p43-686e67e7",
+   "page": 43,
+   "printed": "27",
+   "kind": "fragment",
+   "note": "Altitude comment item shown alone, not a whole information field."
+  },
+  {
+   "id": "p43-e207f56c",
+   "page": 43,
+   "printed": "27",
+   "kind": "template",
+   "note": "Altitude layout with 'a' placeholders for digits."
+  },
+  {
+   "id": "p45-9991af56",
+   "page": 45,
+   "printed": "27",
+   "kind": "template",
+   "note": "Layout of the 7-byte area object data extension; yy and xx are placeholders."
+  },
+  {
+   "id": "p45-f21a7042",
+   "page": 45,
+   "printed": "27",
+   "kind": "fragment",
+   "note": "Unknown course/speed value shown alone (data extension placeholder dots)."
+  },
+  {
+   "id": "p48-3f1b1907",
+   "page": 48,
+   "printed": "30",
+   "kind": "template",
+   "note": "Bearing/NRQ layout with named placeholders."
+  },
+  {
+   "id": "p49-672ef59f",
+   "page": 49,
+   "printed": "31",
+   "kind": "fragment",
+   "note": "Piece of the area descriptor name (colour part) shown alone."
+  },
+  {
+   "id": "p49-9991af56",
+   "page": 49,
+   "printed": "31",
+   "kind": "template",
+   "note": "Same area object extension layout with placeholders, repeated on another page."
+  },
+  {
+   "id": "p49-f21a7042",
+   "page": 49,
+   "printed": "31",
+   "kind": "fragment",
+   "note": "Unknown course/speed value shown alone."
+  },
+  {
+   "id": "p50-0ba46744",
+   "page": 50,
+   "printed": "32",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [
+    "discouraged time.dhm @7"
+   ],
+   "basis": [
+    "03-position.md#pos.time",
+    "02-fields.md#time.dhm",
+    "03-position.md#pos.unc",
+    "03-position.md#pos.cmt"
+   ],
+   "note": "Same as the previous with local-time indicator '/' at offset 7, which the reading marks discouraged only."
+  },
+  {
+   "id": "p50-957d266d",
+   "page": 50,
+   "printed": "32",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "03-position.md#pos.time",
+    "02-fields.md#time.dhm",
+    "03-position.md#pos.unc",
+    "03-position.md#pos.cmt"
+   ],
+   "note": "Timestamped position, zulu DHM 09/23:45 in range; slot at 27 fits no extension; 8-byte comment."
+  },
+  {
+   "id": "p50-95ba2d55",
+   "page": 50,
+   "printed": "32",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "03-position.md#pos.unc",
+    "02-fields.md#sym.code"
+   ],
+   "note": "Plain uncompressed position with primary-table symbol 'n' and no comment."
+  },
+  {
+   "id": "p50-a00be565",
+   "page": 50,
+   "printed": "32",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "02-fields.md#lat",
+    "02-fields.md#lat.amb",
+    "02-fields.md#lon.amb",
+    "02-fields.md#amb.lat.ambiguity"
+   ],
+   "note": "Position ambiguity level 4: latitude minute digits blanked contiguously from the right, longitude blanked at the same four places; no comment. Spaces are real SP bytes in the example (rendered with a visible-space sign)."
+  },
+  {
+   "id": "p50-e27b3050",
+   "page": 50,
+   "printed": "32",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "03-position.md#pos.unc",
+    "03-position.md#pos.cmt",
+    "02-fields.md#cmt.alt",
+    "02-fields.md#amb.cmt.alt"
+   ],
+   "note": "Uncompressed position, comment from offset 20 holds one well-formed altitude item at offset 25 ending the field; a single occurrence gives no finding."
+  },
+  {
+   "id": "p50-f4372a29",
+   "page": 50,
+   "printed": "32",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "03-position.md#pos.dti",
+    "03-position.md#pos.unc",
+    "02-fields.md#lat",
+    "02-fields.md#lon",
+    "02-fields.md#sym.table",
+    "02-fields.md#sym.code",
+    "03-position.md#pos.ext",
+    "03-position.md#pos.cmt",
+    "02-fields.md#cmt.text"
+   ],
+   "note": "Uncompressed position without timestamp; slot bytes fit no extension, so an 11-byte comment starts at offset 20, within 43."
+  },
+  {
+   "id": "p51-022b1bc5",
+   "page": 51,
+   "printed": "33",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "02-fields.md#time.hms",
+    "03-position.md#pos.ext",
+    "02-fields.md#ext.dfs"
+   ],
+   "note": "HMS stamp, DFS extension at offset 27 with digit codes and directivity 0, no comment."
+  },
+  {
+   "id": "p51-56e1887a",
+   "page": 51,
+   "printed": "33",
+   "kind": "partial",
+   "note": "Weather report example with an ellipsis in the middle of the data."
+  },
+  {
+   "id": "p51-67eb45f9",
+   "page": 51,
+   "printed": "33",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "03-position.md#pos.ext",
+    "02-fields.md#ext.phg",
+    "02-fields.md#amb.ext.phg"
+   ],
+   "note": "Position with PHG extension at offset 20, all codes digits, directivity 2; only 7 bytes so not PHGR; no comment."
+  },
+  {
+   "id": "p51-7c8e8470",
+   "page": 51,
+   "printed": "33",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [
+    "obsolete dti @0"
+   ],
+   "basis": [
+    "01-frame.md#dti",
+    "03-position.md#grid.dti",
+    "03-position.md#grid.loc",
+    "03-position.md#grid.close",
+    "03-position.md#grid.cmt",
+    "03-position.md#amb.grid.form"
+   ],
+   "note": "Locator beacon: 6-byte locator in Maidenhead ranges, ']' at offset 7, free comment from offset 8. Obsolete identifier only.",
+   "doubt": "Rule id of the obsolete finding taken as 'dti' (finding given by the dispatch rules); could be recorded as grid.dti."
+  },
+  {
+   "id": "p51-7d8b5ae4",
+   "page": 51,
+   "printed": "33",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [
+    "discouraged time.dhm @7"
+   ],
+   "basis": [
+    "03-position.md#pos.time",
+    "02-fields.md#time.dhm",
+    "03-position.md#pos.ext",
+    "02-fields.md#ext.csespd"
+   ],
+   "note": "Local-time DHM stamp (discouraged '/'), course/speed 088/036 at offset 27, no comment."
+  },
+  {
+   "id": "p51-a293471b",
+   "page": 51,
+   "printed": "33",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "02-fields.md#time.dhm",
+    "03-position.md#pos.ext",
+    "02-fields.md#ext.rng"
+   ],
+   "note": "Zulu DHM stamp, RNG extension (four digits) at offset 27, no comment."
+  },
+  {
+   "id": "p51-b4b48aa2",
+   "page": 51,
+   "printed": "33",
+   "kind": "partial",
+   "note": "Timestamped weather report example with an ellipsis."
+  },
+  {
+   "id": "p51-e0a3f655",
+   "page": 51,
+   "printed": "33",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "02-fields.md#time.hms",
+    "03-position.md#pos.ext",
+    "02-fields.md#ext.phg"
+   ],
+   "note": "HMS stamp 23:45:17, PHG extension at offset 27, no comment."
+  },
+  {
+   "id": "p51-f01879bf",
+   "page": 51,
+   "printed": "33",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [
+    "obsolete dti @0"
+   ],
+   "basis": [
+    "01-frame.md#dti",
+    "03-position.md#grid.loc",
+    "03-position.md#grid.close"
+   ],
+   "note": "Locator beacon with a 4-byte locator closed by ']' and no comment.",
+   "doubt": "Rule id of the obsolete finding taken as 'dti'."
+  },
+  {
+   "id": "p52-501c2031",
+   "page": 52,
+   "printed": "34",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [
+    "discouraged dti @0"
+   ],
+   "basis": [
+    "01-frame.md#dti",
+    "03-position.md#nmea.dti",
+    "03-position.md#nmea.field",
+    "03-position.md#nmea.cks",
+    "03-position.md#nmea.len"
+   ],
+   "note": "Raw NMEA VTG (any type accepted); empty fields allowed; computed checksum 0x69 matches; 33 bytes after '$'.",
+   "doubt": "Rule id of the discouraged finding: dti or nmea.dti."
+  },
+  {
+   "id": "p52-b231cd58",
+   "page": 52,
+   "printed": "34",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "03-position.md#df.sym",
+    "03-position.md#df.ext",
+    "03-position.md#df.brg",
+    "02-fields.md#ext.brgnrq",
+    "03-position.md#amb.df.ext"
+   ],
+   "note": "DF report: symbol '/\\', course/speed at 20, bearing 270 and NRQ 729 at 27, no comment."
+  },
+  {
+   "id": "p52-e2b2377e",
+   "page": 52,
+   "printed": "34",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "03-position.md#df.sym",
+    "03-position.md#df.ext",
+    "03-position.md#df.brg",
+    "02-fields.md#ext.csespd"
+   ],
+   "note": "Same DF report with course 000 (fixed station), which is in range."
+  },
+  {
+   "id": "p52-e905baa8",
+   "page": 52,
+   "printed": "34",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [
+    "discouraged dti @0"
+   ],
+   "basis": [
+    "01-frame.md#dti",
+    "03-position.md#nmea.dti",
+    "03-position.md#nmea.field",
+    "03-position.md#nmea.cks",
+    "03-position.md#amb.nmea.checksum",
+    "03-position.md#nmea.len"
+   ],
+   "note": "Raw NMEA GLL with no checksum, which gives no finding; 41 bytes after '$'.",
+   "doubt": "Rule id of the discouraged finding: dti or nmea.dti."
+  },
+  {
+   "id": "p52-ee7f86c6",
+   "page": 52,
+   "printed": "34",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [
+    "discouraged dti @0"
+   ],
+   "basis": [
+    "01-frame.md#dti",
+    "03-position.md#nmea.dti",
+    "03-position.md#nmea.addr",
+    "03-position.md#nmea.field",
+    "03-position.md#nmea.cks",
+    "03-position.md#nmea.len",
+    "03-position.md#amb.nmea.checksum"
+   ],
+   "note": "Raw NMEA GGA; XOR of bytes between '$' and '*' computed from scratch is 0x62, matching the upper-case digits; 65 bytes after '$', within 25-209.",
+   "doubt": "The discouraged finding comes from the dispatch table; it may be recorded under nmea.dti rather than dti."
+  },
+  {
+   "id": "p52-f45b6734",
+   "page": 52,
+   "printed": "34",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [
+    "discouraged dti @0"
+   ],
+   "basis": [
+    "01-frame.md#dti",
+    "03-position.md#nmea.dti",
+    "03-position.md#nmea.cks",
+    "03-position.md#nmea.len"
+   ],
+   "note": "Raw NMEA RMC; computed checksum 0x52 matches; 68 bytes after '$'.",
+   "doubt": "Rule id of the discouraged finding: dti or nmea.dti."
+  },
+  {
+   "id": "p53-de5181d4",
+   "page": 53,
+   "printed": "35",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "02-fields.md#time.dhm",
+    "03-position.md#df.sym",
+    "03-position.md#df.ext",
+    "03-position.md#df.brg"
+   ],
+   "note": "Timestamped DF report, zulu stamp; course/speed at 27, bearing/NRQ at 34."
+  },
+  {
+   "id": "p53-fd904b19",
+   "page": 53,
+   "printed": "35",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "02-fields.md#time.dhm",
+    "03-position.md#df.ext",
+    "03-position.md#df.brg",
+    "02-fields.md#ext.csespd"
+   ],
+   "note": "Timestamped DF report with course and speed both 000, then bearing/NRQ."
+  },
+  {
+   "id": "p55-c0ea7c5d",
+   "page": 55,
+   "printed": "37",
+   "kind": "template",
+   "note": "Compressed block layout with letter placeholders."
+  },
+  {
+   "id": "p56-7b094bbe",
+   "page": 56,
+   "printed": "38",
+   "kind": "fragment",
+   "note": "Compressed longitude XXXX computed in the worked base-91 example."
+  },
+  {
+   "id": "p57-e6fb3d2e",
+   "page": 57,
+   "printed": "39",
+   "kind": "fragment",
+   "note": "Compressed cs bytes for a radio range, shown alone."
+  },
+  {
+   "id": "p58-7b094bbe",
+   "page": 58,
+   "printed": "40",
+   "kind": "fragment",
+   "note": "Compressed longitude XXXX inside the 13-byte compressed block table."
+  },
+  {
+   "id": "p59-120c38ed",
+   "page": 59,
+   "printed": "41",
+   "kind": "packet",
+   "verdict": "conform-ambiguous",
+   "findings": [
+    "ambiguous cmp.cs.alt @11"
+   ],
+   "basis": [
+    "02-fields.md#cmp.cs.alt",
+    "02-fields.md#amb.cmp.cs",
+    "02-fields.md#cmp.t"
+   ],
+   "note": "T value 50 has GGA bits 10, so cs is altitude; c='S' also lies in the course range, which the literal-order reading would take as course/speed.",
+   "doubt": "Rule id carried by the ambiguous finding assumed to be the token id cmp.cs.alt; 02 section 6.3 names the token, not the finding id explicitly."
+  },
+  {
+   "id": "p59-15f67e79",
+   "page": 59,
+   "printed": "41",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "03-position.md#pos.time",
+    "02-fields.md#time.dhm",
+    "02-fields.md#cmp.block",
+    "02-fields.md#cmp.cs.rng"
+   ],
+   "note": "Timestamped compressed position with range, block at offsets 8-20."
+  },
+  {
+   "id": "p59-544f08a7",
+   "page": 59,
+   "printed": "41",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "03-position.md#pos.cmp",
+    "02-fields.md#cmp.block",
+    "02-fields.md#cmp.cs.none",
+    "02-fields.md#amb.cmp.filler",
+    "03-position.md#pos.cmpcmt",
+    "03-position.md#amb.pos.cmpext"
+   ],
+   "note": "Compressed position, c is SP at 11 so s and T are fillers (both base-91); 7-byte comment from 14 fits no extension. Latitude and longitude values within range."
+  },
+  {
+   "id": "p59-7343b5e7",
+   "page": 59,
+   "printed": "41",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "02-fields.md#cmp.block",
+    "02-fields.md#cmp.cs.crs",
+    "02-fields.md#cmp.t"
+   ],
+   "note": "Compressed position with course/speed; T value 58 has NMEA bits 11 (not GGA) and bit 6 clear."
+  },
+  {
+   "id": "p59-f0210c5b",
+   "page": 59,
+   "printed": "41",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "02-fields.md#cmp.block",
+    "02-fields.md#cmp.cs.rng",
+    "02-fields.md#cmp.t"
+   ],
+   "note": "Compressed position with c='{' (range) and T value 0, so no GGA conflict."
+  },
+  {
+   "id": "p68-0a62cbc7",
+   "page": 68,
+   "printed": "50",
+   "kind": "fragment",
+   "note": "Two cells of the Mic-E SP+28 speed table row joined by the extraction."
+  },
+  {
+   "id": "p68-8d3a4994",
+   "page": 68,
+   "printed": "50",
+   "kind": "fragment",
+   "note": "Two cells of the Mic-E SP+28 speed table row joined by the extraction."
+  },
+  {
+   "id": "p69-1259ff42",
+   "page": 69,
+   "printed": "51",
+   "kind": "fragment",
+   "note": "Two cells of the Mic-E DC+28 course/speed table row joined by the extraction."
+  },
+  {
+   "id": "p69-18888f13",
+   "page": 69,
+   "printed": "51",
+   "kind": "fragment",
+   "note": "Two cells of the Mic-E DC+28 course/speed table row joined by the extraction."
+  },
+  {
+   "id": "p69-32f1ef22",
+   "page": 69,
+   "printed": "51",
+   "kind": "fragment",
+   "note": "Two characters from a Mic-E longitude encoding table row; the leading underscore is not a weather identifier here."
+  },
+  {
+   "id": "p69-3454bb03",
+   "page": 69,
+   "printed": "51",
+   "kind": "fragment",
+   "note": "Two cells of the Mic-E DC+28 course/speed table row joined by the extraction."
+  },
+  {
+   "id": "p69-4674c595",
+   "page": 69,
+   "printed": "51",
+   "kind": "fragment",
+   "note": "Two cells of the Mic-E DC+28 course/speed table row joined by the extraction."
+  },
+  {
+   "id": "p69-71dbfcb0",
+   "page": 69,
+   "printed": "51",
+   "kind": "fragment",
+   "note": "Row of the Mic-E course encoding table, not a packet."
+  },
+  {
+   "id": "p69-7a5d2451",
+   "page": 69,
+   "printed": "51",
+   "kind": "fragment",
+   "note": "Two cells of the Mic-E DC+28 course/speed table row joined by the extraction."
+  },
+  {
+   "id": "p69-85e8aaee",
+   "page": 69,
+   "printed": "51",
+   "kind": "fragment",
+   "note": "Two characters from a Mic-E longitude encoding table row; starts with the telemetry identifier byte only by chance."
+  },
+  {
+   "id": "p69-89d35038",
+   "page": 69,
+   "printed": "51",
+   "kind": "fragment",
+   "note": "Two cells of the Mic-E DC+28 course/speed table row joined by the extraction."
+  },
+  {
+   "id": "p69-8fa9a5d7",
+   "page": 69,
+   "printed": "51",
+   "kind": "fragment",
+   "note": "Two characters from a Mic-E longitude encoding table row, not a packet."
+  },
+  {
+   "id": "p69-b0806873",
+   "page": 69,
+   "printed": "51",
+   "kind": "fragment",
+   "note": "Two cells of the Mic-E DC+28 course/speed table row joined by the extraction."
+  },
+  {
+   "id": "p69-f94a6773",
+   "page": 69,
+   "printed": "51",
+   "kind": "fragment",
+   "note": "Two cells of the Mic-E DC+28 course/speed table row joined by the extraction."
+  },
+  {
+   "id": "p71-85c385bd",
+   "page": 71,
+   "printed": "53",
+   "kind": "fragment",
+   "note": "First bytes of a Mic-E information field in the decoding walkthrough; the text layer lost the leading backtick identifier and shows a space that the 9-byte count does not allow (the bytes should be backtick, then the eight bytes without the space). Even restored it is presented as the first 9 bytes only, with no Mic-E destination."
+  },
+  {
+   "id": "p71-c725c82f",
+   "page": 71,
+   "printed": "53",
+   "kind": "fragment",
+   "note": "A Mic-E destination address used to illustrate decoding, not an information field."
+  },
+  {
+   "id": "p72-51a94581",
+   "page": 72,
+   "printed": "54",
+   "kind": "fragment",
+   "note": "The hex telemetry part of a Mic-E status text (flag byte and five two-digit hex channels), shown on its own. It is not a whole information field; it only happens to start with the 0x27 identifier byte."
+  },
+  {
+   "id": "p72-d3cabcff",
+   "page": 72,
+   "printed": "54",
+   "kind": "fragment",
+   "note": "Mic-E longitude bytes d+28 m+28 h+28 shown alone."
+  },
+  {
+   "id": "p72-fade3895",
+   "page": 72,
+   "printed": "54",
+   "kind": "fragment",
+   "note": "Prose sentence about Mic-E telemetry hex channels captured between two highlighted bytes."
+  },
+  {
+   "id": "p73-67226a4f",
+   "page": 73,
+   "printed": "55",
+   "kind": "fragment",
+   "note": "Symbol pair shown alone."
+  },
+  {
+   "id": "p73-c708777b",
+   "page": 73,
+   "printed": "55",
+   "kind": "fragment",
+   "note": "Mic-E status text with the TM-D700 prefix byte and a locator; a piece of a Mic-E field, not a packet."
+  },
+  {
+   "id": "p73-ed577404",
+   "page": 73,
+   "printed": "55",
+   "kind": "fragment",
+   "note": "Mic-E status text with the TH-D7 prefix byte and a locator; a piece of a Mic-E field that happens to start with the status identifier byte."
+  },
+  {
+   "id": "p74-aef9b685",
+   "page": 74,
+   "printed": "56",
+   "kind": "fragment",
+   "note": "Mic-E status-text altitude after the TH-D7 prefix byte; a piece of a Mic-E field."
+  },
+  {
+   "id": "p74-e1cb92d5",
+   "page": 74,
+   "printed": "56",
+   "kind": "fragment",
+   "note": "Mic-E status-text altitude, base-91 metres plus closing brace, shown alone."
+  },
+  {
+   "id": "p74-e962d6be",
+   "page": 74,
+   "printed": "56",
+   "kind": "fragment",
+   "note": "Mic-E status-text altitude after the TM-D700 prefix byte; a piece of a Mic-E field."
+  },
+  {
+   "id": "p76-b6bbb8f0",
+   "page": 76,
+   "printed": "58",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "05-object-item.md#obj.name",
+    "05-object-item.md#obj.state",
+    "05-object-item.md#obj.time",
+    "02-fields.md#time.dhm",
+    "05-object-item.md#obj.pos",
+    "02-fields.md#lat",
+    "02-fields.md#lon",
+    "02-fields.md#sym.table",
+    "02-fields.md#sym.code",
+    "05-object-item.md#obj.ext",
+    "02-fields.md#ext.csespd",
+    "05-object-item.md#amb.area.symbol",
+    "02-fields.md#amb.ext.slot"
+   ],
+   "note": "A live object with an uncompressed position, symbol / >, and course/speed 088/036 at offsets 37-43. The extension also has the shape of an area descriptor with colour '/0', but every course/speed extension has that shape and the symbol decides, so there is no finding."
+  },
+  {
+   "id": "p76-c0ea7c5d",
+   "page": 76,
+   "printed": "58",
+   "kind": "template",
+   "note": "Compressed block layout with placeholders."
+  },
+  {
+   "id": "p76-e24e25bc",
+   "page": 76,
+   "printed": "58",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "05-object-item.md#obj.state",
+    "05-object-item.md#obj.time",
+    "05-object-item.md#obj.pos",
+    "02-fields.md#ext.csespd",
+    "05-object-item.md#amb.area.symbol"
+   ],
+   "note": "The same object as the previous example, killed ('_' at offset 10). Everything else is laid out the same way, with no findings."
+  },
+  {
+   "id": "p76-f6ea4373",
+   "page": 76,
+   "printed": "58",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [
+    "discouraged obj.pos @18"
+   ],
+   "basis": [
+    "05-object-item.md#2-object-report",
+    "05-object-item.md#obj.pos",
+    "02-fields.md#cmp.block",
+    "02-fields.md#cmp.table",
+    "02-fields.md#cmp.lat",
+    "02-fields.md#cmp.lon",
+    "02-fields.md#cmp.cs.crs",
+    "02-fields.md#64-the-t-byte",
+    "02-fields.md#amb.cmp.cs"
+   ],
+   "note": "An object with a compressed block at offsets 18-30: table '/', latitude value 15427503 and longitude value 20427156, both in range, symbol code '>', c '7' read as course/speed, T '[' (value 58: GGA bits 11, not the altitude source; bits 7-6 clear). Nothing follows the block. A compressed object gives the discouraged finding at the first byte of the position.",
+   "doubt": "The reading does not name the rule ID that carries the discouraged finding for a compressed object. Section 2 says it is placed at the first byte of obj.pos; the code might label it cmp.block instead."
+  },
+  {
+   "id": "p77-1e767c26",
+   "page": 77,
+   "printed": "59",
+   "kind": "fragment",
+   "note": "Symbol pair shown alone."
+  },
+  {
+   "id": "p77-27da3918",
+   "page": 77,
+   "printed": "59",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [
+    "discouraged item.dti @0"
+   ],
+   "basis": [
+    "05-object-item.md#item.dti",
+    "05-object-item.md#item.name",
+    "05-object-item.md#item.state",
+    "05-object-item.md#item.pos",
+    "02-fields.md#lat",
+    "02-fields.md#lon",
+    "02-fields.md#sym.code"
+   ],
+   "note": "A live item: the 6-byte name with an embedded space at offsets 1-6, '!' at 7, an uncompressed position at 8-26, symbol / A, and no comment. Every item report gets the discouraged finding at byte 0."
+  },
+  {
+   "id": "p77-39ab6610",
+   "page": 77,
+   "printed": "59",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [
+    "discouraged item.dti @0"
+   ],
+   "basis": [
+    "05-object-item.md#item.dti",
+    "05-object-item.md#item.name",
+    "05-object-item.md#item.pos",
+    "02-fields.md#cmp.block",
+    "02-fields.md#cmp.cs.none",
+    "02-fields.md#amb.cmp.filler",
+    "05-object-item.md#2-object-report"
+   ],
+   "note": "An item with a 5-byte name, '!' at 6, and a compressed block at 7-19: table '\\', symbol code '9'. c is SP at offset 17, so the s and T bytes ('s', 'T') are fillers; both are base-91 digits, so they give no finding. There is no comment.",
+   "doubt": "Section 2 gives the compressed-position discouraged finding to objects and gives items one at item.dti. I read this as no second discouraged finding at the item's compressed position (offset 7). If the code applies the object rule to items too, it would add one at 7."
+  },
+  {
+   "id": "p77-74f2d37b",
+   "page": 77,
+   "printed": "59",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [
+    "discouraged item.dti @0"
+   ],
+   "basis": [
+    "05-object-item.md#item.dti",
+    "05-object-item.md#item.state",
+    "05-object-item.md#item.pos"
+   ],
+   "note": "The killed form of the first-aid item ('_' at offset 7 ends the name). It is otherwise the same as the live example."
+  },
+  {
+   "id": "p77-98f539ed",
+   "page": 77,
+   "printed": "59",
+   "kind": "fragment",
+   "note": "Two bytes shown alone in the object chapter."
+  },
+  {
+   "id": "p77-c0ea7c5d",
+   "page": 77,
+   "printed": "59",
+   "kind": "template",
+   "note": "Compressed block layout with placeholders."
+  },
+  {
+   "id": "p77-d0147407",
+   "page": 77,
+   "printed": "59",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [
+    "discouraged item.dti @0"
+   ],
+   "basis": [
+    "05-object-item.md#item.dti",
+    "05-object-item.md#item.name",
+    "02-fields.md#lat.amb",
+    "02-fields.md#lon.amb",
+    "02-fields.md#amb.lat.ambiguity",
+    "02-fields.md#sym.table"
+   ],
+   "note": "An item with an 8-byte name that contains '/', '!' at offset 9, and a latitude at 10-17 with all four minute digits blanked (ambiguity level 4, blanks contiguous from the right, degrees kept). The longitude at 19-27 blanks the same four digits, which is no more than the latitude's level. The symbol is \\ d. The only finding is the item discouraged finding."
+  },
+  {
+   "id": "p77-fefa0428",
+   "page": 77,
+   "printed": "59",
+   "kind": "fragment",
+   "note": "Symbol pair shown alone."
+  },
+  {
+   "id": "p78-0739c724",
+   "page": 78,
+   "printed": "60",
+   "kind": "template",
+   "note": "The generic area-object layout. Lower-case letters stand for latitude and longitude digits, there is no timestamp, and the script-l symbol and Tyy/Cxx descriptor were also lost in extraction."
+  },
+  {
+   "id": "p78-18d9814e",
+   "page": 78,
+   "printed": "60",
+   "kind": "fragment",
+   "note": "Area colour code shown alone."
+  },
+  {
+   "id": "p78-237f62c7",
+   "page": 78,
+   "printed": "60",
+   "kind": "fragment",
+   "note": "Area colour code shown alone."
+  },
+  {
+   "id": "p78-26e85293",
+   "page": 78,
+   "printed": "60",
+   "kind": "fragment",
+   "note": "Area colour code shown alone."
+  },
+  {
+   "id": "p78-2ba7f504",
+   "page": 78,
+   "printed": "60",
+   "kind": "fragment",
+   "note": "Area colour code shown alone."
+  },
+  {
+   "id": "p78-2fd1dc31",
+   "page": 78,
+   "printed": "60",
+   "kind": "fragment",
+   "note": "Area colour code shown alone."
+  },
+  {
+   "id": "p78-63f5b069",
+   "page": 78,
+   "printed": "60",
+   "kind": "fragment",
+   "note": "Area colour code shown alone."
+  },
+  {
+   "id": "p78-66ed93d5",
+   "page": 78,
+   "printed": "60",
+   "kind": "fragment",
+   "note": "Area colour code shown alone."
+  },
+  {
+   "id": "p78-672ef59f",
+   "page": 78,
+   "printed": "60",
+   "kind": "fragment",
+   "note": "Part of the area descriptor colour field shown alone."
+  },
+  {
+   "id": "p78-6bed5d57",
+   "page": 78,
+   "printed": "60",
+   "kind": "fragment",
+   "note": "Area colour code shown alone."
+  },
+  {
+   "id": "p78-78f8245d",
+   "page": 78,
+   "printed": "60",
+   "kind": "fragment",
+   "note": "Area colour code shown alone."
+  },
+  {
+   "id": "p78-9991af56",
+   "page": 78,
+   "printed": "60",
+   "kind": "template",
+   "note": "Area object extension layout with placeholders, cited in the object chapter."
+  },
+  {
+   "id": "p78-c9684568",
+   "page": 78,
+   "printed": "60",
+   "kind": "fragment",
+   "note": "Area colour code shown alone."
+  },
+  {
+   "id": "p80-0a33962e",
+   "page": 80,
+   "printed": "62",
+   "kind": "fragment",
+   "note": "Symbol pair shown alone."
+  },
+  {
+   "id": "p80-303b1cfb",
+   "page": 80,
+   "printed": "62",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [
+    "discouraged item.dti @0"
+   ],
+   "basis": [
+    "05-object-item.md#item.dti",
+    "05-object-item.md#item.name",
+    "05-object-item.md#obj.signpost",
+    "05-object-item.md#amb.area.braces",
+    "02-fields.md#71-the-extension-slot"
+   ],
+   "note": "A signpost item: a 6-byte name with a space, '!' at 7, a position at 8-26 with symbol \\ m, and the comment at 27-30 holding a 2-character signpost in braces. The signpost stands at the start of the comment, so it gets no ambiguous finding. The comment is shorter than seven bytes, so no extension is read."
+  },
+  {
+   "id": "p80-60f004da",
+   "page": 80,
+   "printed": "62",
+   "kind": "text-layer",
+   "verdict": "syntax",
+   "findings": [
+    "syntax obj.time @11"
+   ],
+   "basis": [
+    "05-object-item.md#obj.time",
+    "05-object-item.md#amb.obj.time",
+    "05-object-item.md#err.obj.time",
+    "05-object-item.md#err.area.gap",
+    "README.md#3-tokenizer-model"
+   ],
+   "note": "The extraction lost the script-l symbol code and the line-area descriptor with its 100-mile corridor in braces, which should follow the longitude directly. The example also has no timestamp: the name fills offsets 1-9 and the latitude starts at 11. Under the reading taken, that gives a syntax finding at offset 11, and parsing stops there. The restored packet would still get the same verdict.",
+   "doubt": "The rule ID of the missing-timestamp finding is not named. amb.obj.time places it at offset 11. If the code reads the seven bytes as time.dhm by the 02-fields rule, it might report time.dhm at offset 15 ('.') or offset 17 instead."
+  },
+  {
+   "id": "p80-6e46dd10",
+   "page": 80,
+   "printed": "62",
+   "kind": "fragment",
+   "note": "Area object corridor-width delimiters in a comment, shown alone."
+  },
+  {
+   "id": "p80-7016dbbe",
+   "page": 80,
+   "printed": "62",
+   "kind": "text-layer",
+   "verdict": "syntax",
+   "findings": [
+    "syntax sym.code @36"
+   ],
+   "basis": [
+    "05-object-item.md#obj.pos",
+    "02-fields.md#sym.code",
+    "README.md#3-tokenizer-model",
+    "05-object-item.md#err.area.gap",
+    "05-object-item.md#4-area-objects"
+   ],
+   "note": "The extraction dropped the script-l symbol code, which is printed outside the Courier font, and the area descriptor that follows it. The original packet ends with the longitude, then the byte 'l', then the 7-byte descriptor (710/310 in the first SEARCH example, 8101310 in the second), with no gap. As extracted, the 19-byte position ends at the longitude, so the symbol code is missing at offset 36, the end of the field.",
+   "doubt": "I put the missing-byte finding on sym.code at the end-of-line offset, as README section 3 says. The code might attach it to obj.pos instead."
+  },
+  {
+   "id": "p82-46394ef6",
+   "page": 82,
+   "printed": "62",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [
+    "discouraged dti @0"
+   ],
+   "basis": [
+    "06-weather.md#wx.raw.ultpkt.dti",
+    "06-weather.md#wx.raw.ultpkt",
+    "06-weather.md#wx.raw.data",
+    "06-weather.md#amb.wx.rawdti",
+    "01-frame.md#7-data-type-identifier",
+    "01-frame.md#amb.dti.shared"
+   ],
+   "note": "Ultimeter packet form: the ULTW marker is at offsets 1-4 and the data starts at offset 5. Byte 5 is a digit, not a letter followed by a comma, so the NMEA reading cannot apply and amb.wx.rawdti gives no ambiguous finding.",
+   "doubt": "Rule ID of the discouraged finding: 'dti' or possibly wx.raw.ultpkt.dti."
+  },
+  {
+   "id": "p82-5e7064e9",
+   "page": 82,
+   "printed": "62",
+   "kind": "fragment",
+   "note": "Weather symbol pair shown alone."
+  },
+  {
+   "id": "p82-6df44cba",
+   "page": 82,
+   "printed": "62",
+   "kind": "fragment",
+   "note": "Symbol pair shown alone."
+  },
+  {
+   "id": "p82-9bc094ba",
+   "page": 82,
+   "printed": "62",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [
+    "discouraged dti @0"
+   ],
+   "basis": [
+    "06-weather.md#wx.raw.ultlog.dti",
+    "06-weather.md#wx.raw.ultlog",
+    "06-weather.md#wx.raw.data",
+    "06-weather.md#amb.wx.rawdti",
+    "06-weather.md#amb.wx.status",
+    "01-frame.md#7-data-type-identifier",
+    "01-frame.md#amb.dti.shared"
+   ],
+   "note": "Ultimeter logging form: two exclamation marks, then station output that the reading does not inspect. The second '!' cannot start a position, so no ambiguous finding. The byte-0 token carries wx.raw.ultlog.dti.",
+   "doubt": "The discouraged finding is given by the dti rules of 01-frame section 7; I name its rule ID 'dti'. An implementation could report it under the identifier rule wx.raw.ultlog.dti instead."
+  },
+  {
+   "id": "p82-cb42af64",
+   "page": 82,
+   "printed": "62",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [
+    "discouraged dti @0"
+   ],
+   "basis": [
+    "06-weather.md#wx.raw.peet",
+    "06-weather.md#wx.raw.data",
+    "06-weather.md#amb.wx.status",
+    "01-frame.md#7-data-type-identifier"
+   ],
+   "note": "Peet Bros raw form with a '#' identifier. The station output from offset 1 is one wx.raw.data token, and the reading checks nothing inside it.",
+   "doubt": "Rule ID of the discouraged finding: 'dti' (01-frame section 7) or possibly wx.raw.peet."
+  },
+  {
+   "id": "p82-d291287a",
+   "page": 82,
+   "printed": "62",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [
+    "discouraged dti @0"
+   ],
+   "basis": [
+    "06-weather.md#wx.raw.peet",
+    "06-weather.md#wx.raw.data",
+    "06-weather.md#err.wx.object-dti",
+    "01-frame.md#err.dti.star",
+    "01-frame.md#7-data-type-identifier"
+   ],
+   "note": "Peet Bros raw form with a '*' identifier. Under the erratum, '*' is the Peet form, not a weather object.",
+   "doubt": "Rule ID of the discouraged finding: 'dti' or possibly wx.raw.peet."
+  },
+  {
+   "id": "p83-69692c4d",
+   "page": 83,
+   "printed": "63",
+   "kind": "packet",
+   "verdict": "conform-ambiguous",
+   "findings": [
+    "discouraged dti @0",
+    "ambiguous wx.sw @46"
+   ],
+   "basis": [
+    "06-weather.md#wx.pl",
+    "02-fields.md#time.mdhm",
+    "06-weather.md#wx.wdir",
+    "06-weather.md#wx.hum",
+    "06-weather.md#wx.baro",
+    "06-weather.md#7-software-and-unit-codes",
+    "06-weather.md#amb.wx.tail",
+    "06-weather.md#err.wx.software-case",
+    "06-weather.md#amb.wx.status",
+    "06-weather.md#amb.wx.letters"
+   ],
+   "note": "Positionless report: the MDHM stamp at 1-8 is in range, and the leading c, s, g and t elements are at 9, 13, 17 and 21. Next come r, p, P, h and b; the 5-digit pressure is at 40-45. The 4-byte tail at offset 46 begins with a letter. Its last three bytes are the listed unit RSW, so it splits as software code w (added by the erratum) plus that unit. A tail of 3 or 4 bytes that starts with a letter always gets the ambiguous finding against wx.sw. The 'w' is not followed by a digit, so amb.wx.letters gives nothing.",
+   "doubt": "Rule ID of the discouraged finding: 'dti' or possibly wx.pl."
+  },
+  {
+   "id": "p84-9478efcc",
+   "page": 84,
+   "printed": "64",
+   "kind": "packet",
+   "verdict": "conform-ambiguous",
+   "findings": [
+    "discouraged dti @0",
+    "ambiguous wx.sw @29"
+   ],
+   "basis": [
+    "06-weather.md#wx.pl",
+    "02-fields.md#time.mdhm",
+    "06-weather.md#6-weather-data-elements",
+    "06-weather.md#amb.wx.unknown",
+    "06-weather.md#wx.rainmid",
+    "06-weather.md#7-software-and-unit-codes",
+    "06-weather.md#amb.wx.tail",
+    "06-weather.md#amb.wx.status"
+   ],
+   "note": "The dots here are unknown fill, not an ellipsis. The c, s, g and t values are each three dots, which is allowed, at offsets 9, 13, 17 and 21, and the rain-since-midnight element is at 25. The 3-byte tail at offset 29 is not a listed unit, nor a listed unit after its first byte, and its first byte is not a listed software code. It is read as a 3-byte wx.unit and gets the two-way-split ambiguous finding against wx.sw. Its first letter is undefined but is not followed by a digit, so amb.wx.letters gives nothing.",
+   "doubt": "Rule ID of the discouraged finding: 'dti' or possibly wx.pl."
+  },
+  {
+   "id": "p85-2d0ba2c9",
+   "page": 85,
+   "printed": "65",
+   "kind": "packet",
+   "verdict": "conform-ambiguous",
+   "findings": [
+    "ambiguous wx.sw @56"
+   ],
+   "basis": [
+    "03-position.md#pos.wx",
+    "06-weather.md#wx.pos",
+    "02-fields.md#ext.dirspd",
+    "06-weather.md#6-weather-data-elements",
+    "06-weather.md#7-software-and-unit-codes",
+    "06-weather.md#amb.wx.tail",
+    "06-weather.md#err.wx.software-case"
+   ],
+   "note": "Complete weather report (symbol '_' at 19): wind at 20, elements g,t,r,p,P,h,b from 27 to 55, 4-byte tail at 56 split as software 'w' plus listed unit RSW; a 3-4 byte tail starting with a letter always gives the tail ambiguity."
+  },
+  {
+   "id": "p85-765678b8",
+   "page": 85,
+   "printed": "65",
+   "kind": "packet",
+   "verdict": "syntax",
+   "findings": [
+    "syntax wx.unit @50"
+   ],
+   "basis": [
+    "06-weather.md#err.wx.unknown-example",
+    "06-weather.md#amb.wx.unknown",
+    "06-weather.md#amb.wx.comment",
+    "06-weather.md#7-software-and-unit-codes"
+   ],
+   "note": "Same report with pressure unknown; the PDF text layer itself has dot, SP, three dots, so the pressure value mixes fill kinds, 'b' starts no element, the data ends at 50 and the 10 remaining bytes are no valid tail: residue named after wx.unit with syntax.",
+   "doubt": "The gap is an erratum of the document (err.wx.unknown-example), not of the extraction; the erratum says the reading takes it as five dots, which would give conform-ambiguous with 'ambiguous wx.sw @56'. Given here on the bytes as printed."
+  },
+  {
+   "id": "p86-13fbec7a",
+   "page": 86,
+   "printed": "66",
+   "kind": "text-layer",
+   "verdict": "syntax",
+   "findings": [
+    "syntax cmp.block @11"
+   ],
+   "basis": [
+    "02-fields.md#cmp.block",
+    "02-fields.md#cmp.cs",
+    "06-weather.md#err.wx.cmp-example"
+   ],
+   "note": "Extraction cut the compressed weather example at the escaped underscore; the printed field continues with the '_' symbol, cs, T and the weather data and tail. As extracted the block stops after the symbol code '>' at 10, so cs and T are missing from offset 11. The finding is on cmp.block under the short-block rule of 02 section 6.2, written after this entry was first derived.",
+   "doubt": "Rule id of a missing-byte finding inside the 13-byte block (cmp.cs vs cmp.block) is not stated explicitly; placed at the first missing byte."
+  },
+  {
+   "id": "p86-1792492f",
+   "page": 86,
+   "printed": "66",
+   "kind": "packet",
+   "verdict": "conform-ambiguous",
+   "findings": [
+    "ambiguous wx.sw @63"
+   ],
+   "basis": [
+    "06-weather.md#wx.pos",
+    "02-fields.md#time.dhm",
+    "02-fields.md#ext.dirspd",
+    "06-weather.md#wx.temp",
+    "06-weather.md#amb.wx.tail"
+   ],
+   "note": "Timestamped complete weather report; negative temperature form at 38 is valid; tail of 4 bytes at 63 gets the tail ambiguity."
+  },
+  {
+   "id": "p86-23d25634",
+   "page": 86,
+   "printed": "66",
+   "kind": "packet",
+   "verdict": "conform-ambiguous",
+   "findings": [
+    "unstated wx.sw @48",
+    "ambiguous wx.baro @48"
+   ],
+   "basis": [
+    "06-weather.md#wx.obj",
+    "06-weather.md#53-object",
+    "02-fields.md#ext.dirspd",
+    "06-weather.md#wx.gust",
+    "06-weather.md#wx.baro",
+    "06-weather.md#7-software-and-unit-codes",
+    "06-weather.md#err.wx.object-baro",
+    "06-weather.md#amb.wx.width",
+    "06-weather.md#amb.wx.required"
+   ],
+   "note": "A weather object (byte 0 carries wx.obj). Wind 220/004 is at 37-43 and gust g005 at 44-47. The pressure element at 48 has only four digits, so it does not start an element, and the data ends there. The 5-byte tail splits into software code 'b' (not in the software list, so unstated) and unit 0990. Reading (b) of amb.wx.width would take the short pressure as the element and leave an empty tail with no finding of its own, so the tail gets an ambiguous finding at its first byte, against wx.baro. The missing temperature gives no finding in a complete report.",
+   "doubt": "err.wx.object-baro describes only the tail split and does not mention the ambiguous finding. I took that finding from the second condition of amb.wx.width."
+  },
+  {
+   "id": "p86-6938eb8a",
+   "page": 86,
+   "printed": "66",
+   "kind": "text-layer",
+   "verdict": "syntax",
+   "findings": [
+    "syntax cmp.block @17"
+   ],
+   "basis": [
+    "02-fields.md#cmp.block",
+    "02-fields.md#cmp.code"
+   ],
+   "note": "Extraction cut the timestamped compressed weather example before its '_' symbol code; the printed field continues with symbol, cs, T, weather data and tail. As extracted the block ends after the longitude, so the symbol code expected at 17 is missing. The finding is on cmp.block under the short-block rule of 02 section 6.2, written after this entry was first derived.",
+   "doubt": "Rule id for the missing byte (cmp.code vs cmp.block) not stated explicitly."
+  },
+  {
+   "id": "p86-929283de",
+   "page": 86,
+   "printed": "66",
+   "kind": "packet",
+   "verdict": "syntax",
+   "findings": [
+    "syntax obj.time @11"
+   ],
+   "basis": [
+    "06-weather.md#err.wx.object-time",
+    "05-object-item.md#amb.obj.time",
+    "05-object-item.md#obj.time",
+    "README.md#3-tokenizer-model"
+   ],
+   "note": "A weather object printed without the timestamp that the diagram requires. The latitude begins at offset 11, so the reading gives a syntax finding there and stops parsing. The packet is not classified as weather, and no ambiguous finding is given beside the syntax finding (precedence).",
+   "doubt": "The rule ID for the missing timestamp is not stated (obj.time assumed), as for the FLIGHTPTH example."
+  },
+  {
+   "id": "p87-002c2ca5",
+   "page": 87,
+   "printed": "67",
+   "kind": "template",
+   "note": "Storm data radius-of-hurricane-winds field: marker byte and RRR placeholder."
+  },
+  {
+   "id": "p87-1aef2969",
+   "page": 87,
+   "printed": "67",
+   "kind": "template",
+   "note": "Storm radius field with placeholders; its first byte only happens to be an identifier."
+  },
+  {
+   "id": "p87-53735b44",
+   "page": 87,
+   "printed": "67",
+   "kind": "template",
+   "note": "Storm type field layout with placeholder letters."
+  },
+  {
+   "id": "p87-5e5dc26e",
+   "page": 87,
+   "printed": "67",
+   "kind": "fragment",
+   "note": "Hurricane symbol pair shown alone."
+  },
+  {
+   "id": "p87-93c9c4f1",
+   "page": 87,
+   "printed": "67",
+   "kind": "template",
+   "note": "Storm pressure field with placeholders."
+  },
+  {
+   "id": "p87-a632755e",
+   "page": 87,
+   "printed": "67",
+   "kind": "template",
+   "note": "Storm wind field with placeholders."
+  },
+  {
+   "id": "p87-c6bf203c",
+   "page": 87,
+   "printed": "67",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "06-weather.md#8-storm-data",
+    "02-fields.md#time.dhm",
+    "02-fields.md#ext.csespd",
+    "06-weather.md#storm.type",
+    "06-weather.md#storm.rgale"
+   ],
+   "note": "The same storm one report later: timestamp day 10 at 00:45 UTC, symbol / @, and storm fields at the same offsets as the previous example. All values are in range."
+  },
+  {
+   "id": "p87-d812cd78",
+   "page": 87,
+   "printed": "67",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "06-weather.md#8-storm-data",
+    "06-weather.md#amb.storm.placement",
+    "02-fields.md#ext.csespd",
+    "06-weather.md#storm.type",
+    "06-weather.md#storm.wind",
+    "06-weather.md#storm.gust",
+    "06-weather.md#storm.press",
+    "06-weather.md#storm.rhurr",
+    "06-weather.md#storm.rts",
+    "06-weather.md#storm.rgale",
+    "02-fields.md#amb.ext.brgnrq"
+   ],
+   "note": "A storm object with symbol \\ @. Course/speed is at 37-43, then the storm type HC at 44, sustained wind at 47, gust at 51, pressure at 55, hurricane radius at 60, tropical-storm radius at 64 and the optional gale radius at 68. Nothing follows the gale radius, so there is no comment. The eight bytes after the extension do not fit the bearing/NRQ form."
+  },
+  {
+   "id": "p87-da41c00f",
+   "page": 87,
+   "printed": "67",
+   "kind": "fragment",
+   "note": "Storm symbol pair shown alone."
+  },
+  {
+   "id": "p87-f2202cd4",
+   "page": 87,
+   "printed": "67",
+   "kind": "fragment",
+   "note": "A storm type code shown alone."
+  },
+  {
+   "id": "p88-4d8eabb7",
+   "page": 88,
+   "printed": "68",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "07-telemetry.md#tlm.dti",
+    "07-telemetry.md#tlm.seq",
+    "07-telemetry.md#tlm.analog",
+    "07-telemetry.md#tlm.digital",
+    "01-frame.md#7-data-type-identifier"
+   ],
+   "note": "Telemetry report: the sequence '#' plus three digits and a comma is at 1-5, five three-digit analog values are at 6-25, and the eight bits are at 26-33. There is no comment."
+  },
+  {
+   "id": "p88-dbc24148",
+   "page": 88,
+   "printed": "68",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "07-telemetry.md#tlm.seq",
+    "07-telemetry.md#amb.tlm.seq",
+    "07-telemetry.md#err.tlm.seq",
+    "07-telemetry.md#tlm.analog",
+    "07-telemetry.md#tlm.digital"
+   ],
+   "note": "The sequence is MIC with no comma (offsets 1-4), and the analog values start at offset 5. Reading (c) would take the first value into the sequence and then need the comment to supply a fifth value and the bits. The comment is empty, so (c) fails and no ambiguous finding is given at offset 5."
+  },
+  {
+   "id": "p88-dd128438",
+   "page": 88,
+   "printed": "68",
+   "kind": "template",
+   "note": "Diagram cell for the telemetry sequence number; xxx is a placeholder."
+  },
+  {
+   "id": "p88-ff5a53e8",
+   "page": 88,
+   "printed": "68",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [
+    "unstated tlm.analog @6",
+    "unstated tlm.analog @11",
+    "unstated tlm.analog @15",
+    "unstated tlm.analog @21",
+    "unstated tlm.analog @26"
+   ],
+   "basis": [
+    "07-telemetry.md#tlm.analog",
+    "07-telemetry.md#amb.tlm.value",
+    "07-telemetry.md#err.tlm.analog",
+    "07-telemetry.md#tlm.digital"
+   ],
+   "note": "The sequence is 3 digits. All five analog values are decimals and one is negative, so each is the relaxed number and gives unstated. The digital value is at 31-38, with no comment.",
+   "doubt": "The reading does not state where the unstated finding goes; I put it at the first byte of each value. The relaxed grammar puts its optional '-' before 'digits'; I read the sign as applying to the decimal forms as well, as err.tlm.analog implies for the negative value. Otherwise the fifth value would give syntax."
+  },
+  {
+   "id": "p91-4865eaf1",
+   "page": 91,
+   "printed": "71",
+   "kind": "partial",
+   "note": "PARM diagram column: comma and name placeholder with ellipsis."
+  },
+  {
+   "id": "p91-5e324ba9",
+   "page": 91,
+   "printed": "71",
+   "kind": "partial",
+   "note": "UNIT diagram column: comma and unit placeholder with ellipsis."
+  },
+  {
+   "id": "p91-5e9532b9",
+   "page": 91,
+   "printed": "71",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "08-message.md#21-kind-of-packet",
+    "07-telemetry.md#4-telemetry-definition-messages",
+    "07-telemetry.md#tlm.parm",
+    "07-telemetry.md#tlm.parm.name"
+   ],
+   "note": "PARM definition message to a 9-byte addressee; 10 names, each within its channel limit (7,5,5,4,3,5,4,3,3,3 against 7,6,5,5,4,5,4,3,3,3); text 56 bytes. byte 0 carries tlm.def.dti."
+  },
+  {
+   "id": "p91-b3535868",
+   "page": 91,
+   "printed": "71",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "08-message.md#21-kind-of-packet",
+    "07-telemetry.md#tlm.unit",
+    "07-telemetry.md#tlm.unit.label"
+   ],
+   "note": "UNIT definition message; 10 units/labels each within its limit; text 51 bytes. byte 0 carries tlm.def.dti."
+  },
+  {
+   "id": "p91-fd19ea7b",
+   "page": 91,
+   "printed": "71",
+   "kind": "partial",
+   "note": "UNIT diagram column: comma and label placeholder with ellipsis."
+  },
+  {
+   "id": "p92-49b7ffd6",
+   "page": 92,
+   "printed": "72",
+   "kind": "fragment",
+   "note": "EQNS diagram cell: comma and coefficient letter a."
+  },
+  {
+   "id": "p92-9028106c",
+   "page": 92,
+   "printed": "72",
+   "kind": "fragment",
+   "note": "EQNS diagram cell: comma and coefficient letter c."
+  },
+  {
+   "id": "p92-cd369c43",
+   "page": 92,
+   "printed": "72",
+   "kind": "packet",
+   "verdict": "conform-ambiguous",
+   "findings": [
+    "ambiguous tlm.bits.title @24"
+   ],
+   "basis": [
+    "07-telemetry.md#tlm.bits.sense",
+    "07-telemetry.md#tlm.bits.title",
+    "07-telemetry.md#amb.tlm.bitsep",
+    "07-telemetry.md#err.tlm.bits"
+   ],
+   "note": "BITS message: eight bits at 16-23, then a title that starts with a comma, which the reading keeps in the title (20 bytes, within 23) with an ambiguous finding at that comma."
+  },
+  {
+   "id": "p92-f4eb34d6",
+   "page": 92,
+   "printed": "72",
+   "kind": "fragment",
+   "note": "EQNS diagram cell: comma and coefficient letter b."
+  },
+  {
+   "id": "p92-fed8aaaa",
+   "page": 92,
+   "printed": "72",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "08-message.md#21-kind-of-packet",
+    "07-telemetry.md#tlm.eqns",
+    "07-telemetry.md#tlm.eqns.coef",
+    "07-telemetry.md#amb.tlm.eqns"
+   ],
+   "note": "EQNS definition message with 15 coefficients, all of the relaxed-number shape (integers, decimals, leading point, leading minus); text 47 bytes.",
+   "doubt": "tlm.eqns.coef takes 'the relaxed number of tlm.analog'; in tlm.analog the relaxed form gives unstated, but amb.tlm.eqns says a list up to 15 has no finding, so I read coefficients as giving no unstated finding. If the unstated were inherited, each non-three-digit coefficient would carry one (no verdict effect)."
+  },
+  {
+   "id": "p93-10ea8752",
+   "page": 93,
+   "printed": "71",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "08-message.md#msg.text",
+    "08-message.md#msg.id.open",
+    "08-message.md#msg.id"
+   ],
+   "note": "Same message with a 3-digit message number."
+  },
+  {
+   "id": "p93-1e84a313",
+   "page": 93,
+   "printed": "71",
+   "kind": "packet",
+   "verdict": "syntax",
+   "findings": [
+    "syntax msg.sep @10"
+   ],
+   "basis": [
+    "08-message.md#msg.sep",
+    "08-message.md#err.msg.email-example"
+   ],
+   "note": "E-mail example with 5 filler spaces after a 5-byte name: the addressee is 10 bytes, so offset 10 is a space, not the separator. The rest is read as message text."
+  },
+  {
+   "id": "p93-bbc831ce",
+   "page": 93,
+   "printed": "71",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "08-message.md#msg.addr",
+    "08-message.md#msg.sep",
+    "08-message.md#msg.text"
+   ],
+   "note": "Message to a 4-letter addressee padded with 5 spaces; text without identifier."
+  },
+  {
+   "id": "p94-06d34440",
+   "page": 94,
+   "printed": "72",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "08-message.md#msg.rej.kw",
+    "08-message.md#msg.ack.num"
+   ],
+   "note": "Rejection; same shape as the acknowledgement."
+  },
+  {
+   "id": "p94-42c04b4c",
+   "page": 94,
+   "printed": "72",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "08-message.md#4-acknowledgements-and-rejections",
+    "08-message.md#msg.ack.kw",
+    "08-message.md#msg.ack.num"
+   ],
+   "note": "Acknowledgement to a 9-byte addressee with no padding; byte 0 carries msg.dti."
+  },
+  {
+   "id": "p96-cc044551",
+   "page": 96,
+   "printed": "74",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "08-message.md#bln.ann",
+    "08-message.md#bln.text"
+   ],
+   "note": "Announcement: upper-case letter identifier and 5 spaces; text 41 bytes."
+  },
+  {
+   "id": "p96-d15ecacd",
+   "page": 96,
+   "printed": "74",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "08-message.md#bln.addr",
+    "08-message.md#bln.num",
+    "08-message.md#bln.text",
+    "08-message.md#err.bln.padding-marks"
+   ],
+   "note": "General bulletin: digit identifier and 5 spaces; text 26 bytes. byte 0 carries bln.dti."
+  },
+  {
+   "id": "p97-053690b8",
+   "page": 97,
+   "printed": "75",
+   "kind": "packet",
+   "verdict": "conform-ambiguous",
+   "findings": [
+    "ambiguous nws.ref @43"
+   ],
+   "basis": [
+    "08-message.md#nws.addr",
+    "08-message.md#nws.level",
+    "08-message.md#nws.text",
+    "08-message.md#nws.ref",
+    "08-message.md#amb.bln.ref"
+   ],
+   "note": "NWS bulletin with a listed severity word; the trailing brace and 5 letters/digits are nws.ref, which always gets ambiguous since NWS text has no length limit. byte 0 carries nws.dti."
+  },
+  {
+   "id": "p97-18140b7b",
+   "page": 97,
+   "printed": "75",
+   "kind": "fragment",
+   "note": "Reference identifier of the NWS example quoted alone in the note."
+  },
+  {
+   "id": "p97-2b9cd28d",
+   "page": 97,
+   "printed": "75",
+   "kind": "packet",
+   "verdict": "syntax",
+   "findings": [
+    "syntax msg.sep @10"
+   ],
+   "basis": [
+    "08-message.md#bln.group",
+    "08-message.md#msg.sep",
+    "08-message.md#err.bln.group-example"
+   ],
+   "note": "Group bulletin with 5 spaces after a 6-byte prefix: 11 bytes before the colon, so offset 10 is a space. Addressee bytes 1-9 read as BLN, digit, group name and 3 spaces."
+  },
+  {
+   "id": "p98-c6ec05bf",
+   "page": 98,
+   "printed": "76",
+   "kind": "template",
+   "note": "NTS serialization: message identifier marker with xxxxx placeholder."
+  },
+  {
+   "id": "p102-4482b984",
+   "page": 102,
+   "printed": "78",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "09-other.md#stat.time",
+    "09-other.md#stat.text",
+    "02-fields.md#time.dhm"
+   ],
+   "note": "Status reply with a DHM zulu timestamp (valid day/hour/minute) and 18 bytes of text."
+  },
+  {
+   "id": "p102-502159f6",
+   "page": 102,
+   "printed": "78",
+   "kind": "text-layer",
+   "verdict": "syntax",
+   "findings": [
+    "syntax qry.fp @6"
+   ],
+   "basis": [
+    "09-other.md#qry.type",
+    "09-other.md#qry.end",
+    "09-other.md#qry.fp",
+    "09-other.md#4-general-queries"
+   ],
+   "note": "Query and typical-response columns of the example table joined into one line by the extraction; the bytes should be two separate packets, the query alone and the reply. As extracted: a valid query type and closing mark, then spaces and the reply, which are no footprint: syntax and residue from offset 6. The query alone would conform.",
+   "doubt": "Section 4 says bytes after qry.end that are not a footprint give syntax and form residue but names no rule ID; qry.fp (or qry.lat, since the first byte is a valid north sign) is my guess."
+  },
+  {
+   "id": "p102-533f7733",
+   "page": 102,
+   "printed": "78",
+   "kind": "text-layer",
+   "verdict": "syntax",
+   "findings": [
+    "syntax qry.fp @7"
+   ],
+   "basis": [
+    "09-other.md#qry.type",
+    "09-other.md#qry.end",
+    "09-other.md#qry.fp"
+   ],
+   "note": "Query and typical-response columns of the example table joined into one line by the extraction; the bytes should be two separate packets, the query alone and the reply. As extracted: IGATE query and closing mark, then spaces and the capabilities reply: syntax and residue from offset 7. The query alone would conform.",
+   "doubt": "Rule ID for the trailing residue is not named; qry.fp chosen."
+  },
+  {
+   "id": "p102-6edb70d3",
+   "page": 102,
+   "printed": "78",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "09-other.md#qry.dti",
+    "09-other.md#qry.type",
+    "09-other.md#qry.end"
+   ],
+   "note": "General query of type APRS, named in the prose after the example table; a complete field.",
+   "doubt": "It is quoted in running text rather than as an example; if the check treats it as a fragment, the verdict is moot."
+  },
+  {
+   "id": "p102-9b579dc5",
+   "page": 102,
+   "printed": "78",
+   "kind": "text-layer",
+   "verdict": "syntax",
+   "findings": [
+    "syntax qry.fp @25"
+   ],
+   "basis": [
+    "09-other.md#qry.fp",
+    "09-other.md#qry.lat",
+    "09-other.md#qry.lon",
+    "09-other.md#qry.radius"
+   ],
+   "note": "Query and typical-response columns of the example table joined into one line by the extraction; the bytes should be two separate packets, the query alone and the reply. As extracted: footprint with a space-signed latitude, minus-signed longitude and 4-digit radius is valid (offsets 6-24), then spaces and the reply after the radius: syntax and residue from 25. The query alone would conform.",
+   "doubt": "Rule ID for bytes after qry.radius is not named in section 4; qry.fp chosen."
+  },
+  {
+   "id": "p102-b46a7fa8",
+   "page": 102,
+   "printed": "78",
+   "kind": "partial",
+   "note": "Weather query merged with a cut-off weather reply (ellipsis)."
+  },
+  {
+   "id": "p102-cb2f0f29",
+   "page": 102,
+   "printed": "78",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "09-other.md#stat.dti",
+    "09-other.md#stat.text"
+   ],
+   "note": "Status reply without timestamp or locator; text 17 bytes."
+  },
+  {
+   "id": "p102-e914b60d",
+   "page": 102,
+   "printed": "78",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "03-position.md#pos.time",
+    "02-fields.md#time.dhm",
+    "03-position.md#pos.unc"
+   ],
+   "note": "Query response: timestamped position, zulu stamp day 09 05:56, symbol '/>', no comment."
+  },
+  {
+   "id": "p103-063741e7",
+   "page": 103,
+   "printed": "79",
+   "kind": "text-layer",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "08-message.md#21-kind-of-packet",
+    "09-other.md#41-directed-queries",
+    "09-other.md#amb.qry.dir",
+    "08-message.md#msg.text"
+   ],
+   "note": "Directed-query and typical-response columns joined into one line by the extraction; the bytes should be the query message alone and the reply as a separate packet. As extracted (APRST query; the trace reply follows): the text does not match the directed-query rows, so 08 reads it as a message with no finding; text 57 bytes.",
+   "doubt": "Directed-query fall-through to message gives no finding (amb.qry.dir reading (d))."
+  },
+  {
+   "id": "p103-0e64d91f",
+   "page": 103,
+   "printed": "79",
+   "kind": "text-layer",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "08-message.md#21-kind-of-packet",
+    "09-other.md#41-directed-queries",
+    "09-other.md#amb.qry.dir",
+    "08-message.md#msg.text"
+   ],
+   "note": "Directed-query and typical-response columns joined into one line by the extraction; the bytes should be the query message alone and the reply as a separate packet. As extracted (APRSP query; the position reply follows): the text does not match the directed-query rows, so 08 reads it as a message with no finding; text 49 bytes.",
+   "doubt": "Directed-query fall-through to message gives no finding (amb.qry.dir reading (d))."
+  },
+  {
+   "id": "p103-25f9e665",
+   "page": 103,
+   "printed": "79",
+   "kind": "text-layer",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "08-message.md#21-kind-of-packet",
+    "09-other.md#41-directed-queries",
+    "09-other.md#amb.qry.dir",
+    "08-message.md#msg.text"
+   ],
+   "note": "Directed-query and typical-response columns joined into one line by the extraction; the bytes should be the query message alone and the reply as a separate packet. As extracted (APRSO query; the object reply follows): the text does not match the directed-query rows, so 08 reads it as a message with no finding; text 59 bytes, within 67.",
+   "doubt": "Directed-query fall-through to message gives no finding (amb.qry.dir reading (d))."
+  },
+  {
+   "id": "p103-31943b1e",
+   "page": 103,
+   "printed": "79",
+   "kind": "text-layer",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "08-message.md#21-kind-of-packet",
+    "09-other.md#41-directed-queries",
+    "09-other.md#amb.qry.dir",
+    "08-message.md#msg.text",
+    "08-message.md#msg.id"
+   ],
+   "note": "Directed-query and typical-response columns joined into one line by the extraction; the bytes should be the query message alone and the reply as a separate packet. As extracted (APRSM query; the reply message and its number follow): the text does not match the directed-query rows, so 08 reads it as a message with text up to the brace (40 bytes) and message number 003; no finding.",
+   "doubt": "Directed-query fall-through to message gives no finding (amb.qry.dir reading (d))."
+  },
+  {
+   "id": "p103-5af73ecc",
+   "page": 103,
+   "printed": "79",
+   "kind": "partial",
+   "note": "APRSD directed query merged with its reply, which ends in an ellipsis."
+  },
+  {
+   "id": "p103-7f1314c2",
+   "page": 103,
+   "printed": "79",
+   "kind": "text-layer",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "08-message.md#21-kind-of-packet",
+    "09-other.md#41-directed-queries",
+    "09-other.md#amb.qry.dir",
+    "08-message.md#msg.text"
+   ],
+   "note": "Directed-query and typical-response columns joined into one line by the extraction; the bytes should be the query message alone and the reply as a separate packet. As extracted (PING? query; the trace reply follows): the text does not match the directed-query rows, so 08 reads it as a message with no finding; text 57 bytes.",
+   "doubt": "Directed-query fall-through to message gives no finding (amb.qry.dir reading (d))."
+  },
+  {
+   "id": "p103-8f83872f",
+   "page": 103,
+   "printed": "79",
+   "kind": "text-layer",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "08-message.md#21-kind-of-packet",
+    "09-other.md#41-directed-queries",
+    "09-other.md#amb.qry.dir",
+    "08-message.md#msg.text"
+   ],
+   "note": "Directed-query and typical-response columns joined into one line by the extraction; the bytes should be the query message alone and the reply as a separate packet. As extracted (APRSH query with heard call; the extracted text continues with padding, a colon and the reply): the text does not match the directed-query rows (bytes other than trailing spaces follow the call), so 08 reads it as a message with no finding; the text is 66 bytes, within 67.",
+   "doubt": "Directed-query fall-through to message gives no finding (amb.qry.dir reading (d))."
+  },
+  {
+   "id": "p103-e4563d03",
+   "page": 103,
+   "printed": "79",
+   "kind": "text-layer",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "08-message.md#21-kind-of-packet",
+    "09-other.md#41-directed-queries",
+    "09-other.md#amb.qry.dir",
+    "08-message.md#msg.text"
+   ],
+   "note": "Directed-query and typical-response columns joined into one line by the extraction; the bytes should be the query message alone and the reply as a separate packet. As extracted (APRSS query; the status reply follows): the text does not match the directed-query rows, so 08 reads it as a message with no finding; text 48 bytes.",
+   "doubt": "Directed-query fall-through to message gives no finding (amb.qry.dir reading (d))."
+  },
+  {
+   "id": "p104-4482b984",
+   "page": 104,
+   "printed": "80",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "09-other.md#stat.time",
+    "02-fields.md#time.dhm",
+    "09-other.md#stat.text"
+   ],
+   "note": "Status report with DHM zulu timestamp; text 18 bytes, within 55."
+  },
+  {
+   "id": "p104-cded90a3",
+   "page": 104,
+   "printed": "80",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "09-other.md#stat.text"
+   ],
+   "note": "Status report without timestamp; text 18 bytes."
+  },
+  {
+   "id": "p106-07ae787f",
+   "page": 106,
+   "printed": "82",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "09-other.md#stat.grid",
+    "03-position.md#grid.loc",
+    "02-fields.md#sym.table",
+    "02-fields.md#sym.code"
+   ],
+   "note": "Status with 6-byte locator (letters in range) and primary-table symbol, ending the field."
+  },
+  {
+   "id": "p106-6412c3dd",
+   "page": 106,
+   "printed": "82",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "09-other.md#stat.grid",
+    "09-other.md#stat.beam"
+   ],
+   "note": "Status with locator and symbol, then a space and a beam heading/power trailer: heading letter B, power byte 7 in range; stat.beam token inside the text."
+  },
+  {
+   "id": "p106-64db0851",
+   "page": 106,
+   "printed": "82",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "09-other.md#stat.grid",
+    "09-other.md#stat.text",
+    "09-other.md#stat.freq"
+   ],
+   "note": "Status with locator and symbol, then a space and short text (9 bytes counting the space, within 54); no frequency at the text start."
+  },
+  {
+   "id": "p106-cc4cdd6a",
+   "page": 106,
+   "printed": "82",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "09-other.md#stat.grid",
+    "09-other.md#amb.stat.grid"
+   ],
+   "note": "Status with 4-byte locator: the 6-byte try fails at the table byte, the 4-byte one matches, symbol, end of field."
+  },
+  {
+   "id": "p107-5c7a7e09",
+   "page": 107,
+   "printed": "83",
+   "kind": "fragment",
+   "note": "Source path header alone (TNC-2 address header ending in the colon), no information field; the example of the header diagram. Read as a line it would have an empty line.info."
+  },
+  {
+   "id": "p108-7d218a8e",
+   "page": 108,
+   "printed": "84",
+   "kind": "fragment",
+   "note": "Third-party header alone (inner TNC-2 header ending in the colon), shown without the brace identifier or an information field."
+  },
+  {
+   "id": "p108-acab60c9",
+   "page": 108,
+   "printed": "84",
+   "kind": "fragment",
+   "note": "The third-party network identifier shown alone."
+  },
+  {
+   "id": "p109-194378e4",
+   "page": 109,
+   "printed": "85",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [
+    "is-only addr.is @-15",
+    "is-only addr.is @11"
+   ],
+   "basis": [
+    "01-frame.md#8-third-party-payloads",
+    "01-frame.md#tp.src",
+    "01-frame.md#tp.dest",
+    "01-frame.md#tp.net",
+    "01-frame.md#tp.gate",
+    "01-frame.md#tp.info",
+    "01-frame.md#addr.is",
+    "08-message.md#msg.id"
+   ],
+   "note": "Third-party packet: outer header with placeholder destination; '}' at 0, inner source 1-9, '>' 10, inner destination 11-16 (placeholder, addr.is), network id TCPIP 17-22, gateway with '*' 23-29, ':' at 30, inner message from 31 (addressee, text with a triple space, number 001). byte 0 carries tp.dti.",
+   "doubt": "Outer destination at line offset 6 with information at 21, written as -15. The lower-case destination is a placeholder; both is-only findings come from reading it literally. The inner destination is classified with the inner ':' identifier, dest.altnet."
+  },
+  {
+   "id": "p109-4de3f7ea",
+   "page": 109,
+   "printed": "85",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "08-message.md#msg.addr",
+    "08-message.md#msg.text",
+    "08-message.md#msg.id",
+    "01-frame.md#err.tp.example"
+   ],
+   "note": "Message to a 5-letter addressee padded with 4 spaces, text with a double space, message number 001.",
+   "doubt": "The PDF shows the gap in the text at different widths in the four copies (err.tp.example); the verdict does not depend on it."
+  },
+  {
+   "id": "p109-7af0b532",
+   "page": 109,
+   "printed": "85",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [
+    "is-only addr.is @-20"
+   ],
+   "basis": [
+    "01-frame.md#addr.is",
+    "01-frame.md#path.digi",
+    "01-frame.md#path.used",
+    "08-message.md#msg.id"
+   ],
+   "note": "Full line after removal of the encapsulation: path TCPIP then gateway marked used; information field is the numbered message.",
+   "doubt": "Destination at line offset 10, information at 30: -20. Placeholder destination read literally."
+  },
+  {
+   "id": "p109-a0b832f7",
+   "page": 109,
+   "printed": "85",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [
+    "is-only addr.is @-23"
+   ],
+   "basis": [
+    "01-frame.md#addr.is",
+    "01-frame.md#dest.altnet",
+    "01-frame.md#path.digi",
+    "08-message.md#msg.id"
+   ],
+   "note": "Full line: AX.25 source with SSID 14, destination with a lower-case placeholder suffix (not AX.25 form, so addr.is and class dest.altnet), two WIDEn-N path entries; the information field is the numbered message.",
+   "doubt": "Header offsets are given relative to the first information byte, so the destination (line offset 10, information at 33) is -23. The destination is a placeholder for a software identifier; read literally it is an APRS-IS-only address and not dest.tocall."
+  },
+  {
+   "id": "p109-e15390bb",
+   "page": 109,
+   "printed": "85",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [
+    "is-only addr.is @-23"
+   ],
+   "basis": [
+    "01-frame.md#addr.is",
+    "08-message.md#msg.ack.kw",
+    "08-message.md#msg.ack.num"
+   ],
+   "note": "Full line: acknowledgement 001 to a 9-byte addressee with no padding.",
+   "doubt": "Destination at line offset 6, information at 29: -23. Placeholder destination read literally."
+  },
+  {
+   "id": "p114-26c5ae36",
+   "page": 114,
+   "printed": "90",
+   "kind": "template",
+   "note": "Narrow-band tone-burst second-field layout with a range placeholder; the underscore stands for a space."
+  },
+  {
+   "id": "p114-49373d47",
+   "page": 114,
+   "printed": "90",
+   "kind": "template",
+   "note": "Tone-and-simplex comment layout with a placeholder and a description."
+  },
+  {
+   "id": "p114-5c14fc37",
+   "page": 114,
+   "printed": "90",
+   "kind": "template",
+   "note": "Optional second 10-byte comment field. The leading underscore stands for a space, as the page explains; the rest are placeholders."
+  },
+  {
+   "id": "p114-64de6422",
+   "page": 114,
+   "printed": "90",
+   "kind": "template",
+   "note": "Narrow-band tone second-field layout with placeholders; the underscore stands for a space."
+  },
+  {
+   "id": "p114-6e708dce",
+   "page": 114,
+   "printed": "90",
+   "kind": "template",
+   "note": "Second-field layout (CTCSS tone and offset) with a placeholder; the underscore stands for a space."
+  },
+  {
+   "id": "p114-861d72a2",
+   "page": 114,
+   "printed": "90",
+   "kind": "template",
+   "note": "Layout of a frequency object comment with placeholders, followed by descriptive text."
+  },
+  {
+   "id": "p114-8f25c6f6",
+   "page": 114,
+   "printed": "90",
+   "kind": "fragment",
+   "note": "A second 10-byte comment field, tone off with forced simplex, followed by its description. The underscore stands for a space and is not a weather identifier."
+  },
+  {
+   "id": "p114-9255be01",
+   "page": 114,
+   "printed": "90",
+   "kind": "template",
+   "note": "East/west range second-field layout with placeholders; the underscore stands for a space."
+  },
+  {
+   "id": "p114-9966c85a",
+   "page": 114,
+   "printed": "90",
+   "kind": "template",
+   "note": "Tone-and-positive-offset second-field layout with a placeholder; the underscore stands for a space."
+  },
+  {
+   "id": "p114-ac71db55",
+   "page": 114,
+   "printed": "90",
+   "kind": "template",
+   "note": "Second-field layout (1750 Hz tone burst and range) with a range placeholder; the underscore stands for a space."
+  },
+  {
+   "id": "p114-af73a78d",
+   "page": 114,
+   "printed": "90",
+   "kind": "template",
+   "note": "Second-field layout (DCS code and range) with placeholders; the underscore stands for a space."
+  },
+  {
+   "id": "p114-b3b1bc94",
+   "page": 114,
+   "printed": "90",
+   "kind": "template",
+   "note": "Tone-only comment layout with a placeholder and a description."
+  },
+  {
+   "id": "p114-da87f21d",
+   "page": 114,
+   "printed": "90",
+   "kind": "template",
+   "note": "Tone-and-range comment layout with placeholders and a description."
+  },
+  {
+   "id": "p114-e74769c3",
+   "page": 114,
+   "printed": "90",
+   "kind": "template",
+   "note": "Alternate receive frequency second-field layout; F digits are placeholders."
+  },
+  {
+   "id": "p115-11a3cae6",
+   "page": 115,
+   "printed": "91",
+   "kind": "template",
+   "note": "Raw comment layout for a frequency object, with placeholders and a description."
+  },
+  {
+   "id": "p115-2391b034",
+   "page": 115,
+   "printed": "91",
+   "kind": "template",
+   "note": "Raw comment layout for a frequency object (tone, range, standard offsets) with placeholders."
+  },
+  {
+   "id": "p115-45b30ad9",
+   "page": 115,
+   "printed": "91",
+   "kind": "template",
+   "note": "Frequency layout after DFS, placeholders."
+  },
+  {
+   "id": "p115-4b181fed",
+   "page": 115,
+   "printed": "91",
+   "kind": "template",
+   "note": "Frequency layout after course/speed, placeholders."
+  },
+  {
+   "id": "p115-54991609",
+   "page": 115,
+   "printed": "91",
+   "kind": "template",
+   "note": "Frequency-in-comment layout with placeholders and prose."
+  },
+  {
+   "id": "p115-892baab1",
+   "page": 115,
+   "printed": "91",
+   "kind": "template",
+   "note": "Raw comment layout for a tone-only frequency object, with a placeholder."
+  },
+  {
+   "id": "p115-8ca14395",
+   "page": 115,
+   "printed": "91",
+   "kind": "template",
+   "note": "Frequency layout without delimiter, placeholders and prose."
+  },
+  {
+   "id": "p115-9997eef7",
+   "page": 115,
+   "printed": "91",
+   "kind": "fragment",
+   "note": "Box drawing of a radio front panel; not a packet."
+  },
+  {
+   "id": "p115-a467cbdc",
+   "page": 115,
+   "printed": "91",
+   "kind": "template",
+   "note": "Frequency layout after PHG, placeholders."
+  },
+  {
+   "id": "p115-a57582e5",
+   "page": 115,
+   "printed": "91",
+   "kind": "template",
+   "note": "Frequency layout with space delimiter, placeholders and prose."
+  },
+  {
+   "id": "p115-ca7c3a57",
+   "page": 115,
+   "printed": "91",
+   "kind": "template",
+   "note": "Frequency layout without delimiter after PHG, placeholders."
+  },
+  {
+   "id": "p116-09d95815",
+   "page": 116,
+   "printed": "92",
+   "kind": "template",
+   "note": "The second frequency-object layout, with an offset placeholder in place of the range, and other placeholders as above."
+  },
+  {
+   "id": "p116-89009732",
+   "page": 116,
+   "printed": "92",
+   "kind": "template",
+   "note": "The frequency-object layout. The name, coordinates, network and meeting parts are placeholders (F, x, y, DD, hh), with trailing dots."
+  },
+  {
+   "id": "p117-087b5e1d",
+   "page": 117,
+   "printed": "93",
+   "kind": "template",
+   "note": "The EchoLink object layout. Its coordinates use dashes for the blanked hundredths, which the text says to replace with spaces, and it has frequency, tone, status and callsign placeholders."
+  },
+  {
+   "id": "p118-12c5670e",
+   "page": 118,
+   "printed": "94",
+   "kind": "template",
+   "note": "An EchoLink object layout variant with offset and status-byte placeholders; the coordinates and frequency are placeholders too."
+  },
+  {
+   "id": "p118-5fc2441a",
+   "page": 118,
+   "printed": "94",
+   "kind": "template",
+   "note": "The IRLP object layout with placeholder coordinates (dashes to be replaced by spaces), frequency, tone, offset and status."
+  },
+  {
+   "id": "p118-91138d5a",
+   "page": 118,
+   "printed": "94",
+   "kind": "template",
+   "note": "EchoLink Mic-E layout: placeholder destination LLLLLL and placeholder longitude, speed, frequency, tone and range bytes."
+  },
+  {
+   "id": "p118-eee3e721",
+   "page": 118,
+   "printed": "94",
+   "kind": "fragment",
+   "note": "Box drawing of a radio front panel; not a packet."
+  },
+  {
+   "id": "p119-315f80e9",
+   "page": 119,
+   "printed": "95",
+   "kind": "template",
+   "note": "The WiRES object example. It has real coordinates and a real frequency, but the offset and status fields are placeholders (capital X's, STTS) followed by trailing dots, so it is a layout, not a packet.",
+   "doubt": "This one could also be read as a packet whose comment happens to contain placeholder text. I classed it as a template because of the oXXX and STTS placeholders."
+  },
+  {
+   "id": "p119-deb1ff03",
+   "page": 119,
+   "printed": "95",
+   "kind": "template",
+   "note": "The Winlink object layout with placeholder coordinates (dashes), frequency and offset, and the generic word for a comment."
+  },
+  {
+   "id": "p121-31693a90",
+   "page": 121,
+   "printed": "97",
+   "kind": "fragment",
+   "note": "The two-byte prefix of experimental user-defined packets, quoted in prose."
+  },
+  {
+   "id": "p121-9f7a7af1",
+   "page": 121,
+   "printed": "97",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "09-other.md#udf.dti",
+    "09-other.md#udf.user",
+    "09-other.md#udf.type",
+    "09-other.md#udf.data"
+   ],
+   "note": "User-defined packet: user ID Q, type 1, data."
+  },
+  {
+   "id": "p121-cf1c34aa",
+   "page": 121,
+   "printed": "97",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "09-other.md#udf.user",
+    "09-other.md#udf.data"
+   ],
+   "note": "Experimental user-defined packet: user ID '{', type z, data."
+  },
+  {
+   "id": "p122-4f8d8755",
+   "page": 122,
+   "printed": "98",
+   "kind": "template",
+   "note": "Row of the user-ID table (header, author, description joined by the extraction); in the header x stands for any packet type."
+  },
+  {
+   "id": "p122-554846b7",
+   "page": 122,
+   "printed": "98",
+   "kind": "fragment",
+   "note": "Row of the user-ID table: a 2-byte user-defined header with author and description columns joined by the extraction; not a packet."
+  },
+  {
+   "id": "p122-5a280afe",
+   "page": 122,
+   "printed": "98",
+   "kind": "fragment",
+   "note": "Row of the user-ID table: a 2-byte user-defined header with author and description columns joined by the extraction; not a packet."
+  },
+  {
+   "id": "p122-6a05e942",
+   "page": 122,
+   "printed": "98",
+   "kind": "fragment",
+   "note": "Row of the user-ID table: a 2-byte user-defined header with author and description columns joined by the extraction; not a packet."
+  },
+  {
+   "id": "p122-735a67d8",
+   "page": 122,
+   "printed": "98",
+   "kind": "template",
+   "note": "Row of the user-ID table (header, author, description joined by the extraction); in the header x stands for any packet type."
+  },
+  {
+   "id": "p122-746b7597",
+   "page": 122,
+   "printed": "98",
+   "kind": "fragment",
+   "note": "Row of the user-ID table: a 2-byte user-defined header with author and description columns joined by the extraction; not a packet."
+  },
+  {
+   "id": "p122-857e88f8",
+   "page": 122,
+   "printed": "98",
+   "kind": "fragment",
+   "note": "Row of the user-ID table: a 2-byte user-defined header with author and description columns joined by the extraction; not a packet."
+  },
+  {
+   "id": "p122-85d91c14",
+   "page": 122,
+   "printed": "98",
+   "kind": "fragment",
+   "note": "Row of the user-ID table: a 2-byte user-defined header with author and description columns joined by the extraction; not a packet."
+  },
+  {
+   "id": "p122-914a54c7",
+   "page": 122,
+   "printed": "98",
+   "kind": "template",
+   "note": "Row of the user-ID table (header, author, description joined by the extraction); in the header n stands for the line number."
+  },
+  {
+   "id": "p122-a68f2b99",
+   "page": 122,
+   "printed": "98",
+   "kind": "fragment",
+   "note": "Row of the user-ID table: a 2-byte user-defined header with author and description columns joined by the extraction; not a packet."
+  },
+  {
+   "id": "p122-cb5c5dc8",
+   "page": 122,
+   "printed": "98",
+   "kind": "fragment",
+   "note": "Row of the user-ID table: a 2-byte user-defined header with author and description columns joined by the extraction; not a packet."
+  },
+  {
+   "id": "p122-cbdaf64e",
+   "page": 122,
+   "printed": "98",
+   "kind": "fragment",
+   "note": "Row of the user-ID table: a 2-byte user-defined header with author and description columns joined by the extraction; not a packet."
+  },
+  {
+   "id": "p122-de08f1b7",
+   "page": 122,
+   "printed": "98",
+   "kind": "fragment",
+   "note": "Row of the user-ID table: a 2-byte user-defined header with author and description columns joined by the extraction; not a packet."
+  },
+  {
+   "id": "p122-f8df1301",
+   "page": 122,
+   "printed": "98",
+   "kind": "fragment",
+   "note": "Row of the user-ID table: a 2-byte user-defined header with author and description columns joined by the extraction; not a packet."
+  },
+  {
+   "id": "p122-fc66f84d",
+   "page": 122,
+   "printed": "98",
+   "kind": "fragment",
+   "note": "Row of the user-ID table: a 2-byte user-defined header with author and description columns joined by the extraction; not a packet."
+  },
+  {
+   "id": "p122-fcc7d1fb",
+   "page": 122,
+   "printed": "98",
+   "kind": "template",
+   "note": "Row of the user-ID table (header, author, description joined by the extraction); in the header nn stands for a 2-byte descriptor."
+  },
+  {
+   "id": "p123-7f45f710",
+   "page": 123,
+   "printed": "99",
+   "kind": "fragment",
+   "note": "NMEA sentence name shown alone."
+  },
+  {
+   "id": "p123-d0a5f321",
+   "page": 123,
+   "printed": "99",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "09-other.md#inv.dti",
+    "09-other.md#inv.data"
+   ],
+   "note": "Invalid/test data packet: any bytes after the comma identifier, no finding."
+  },
+  {
+   "id": "p124-6663387d",
+   "page": 124,
+   "printed": "100",
+   "kind": "fragment",
+   "note": "Generic symbol pair shown alone."
+  },
+  {
+   "id": "p124-d815d504",
+   "page": 124,
+   "printed": "100",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p125-1a6834eb",
+   "page": 125,
+   "printed": "101",
+   "kind": "partial",
+   "note": "Position example ending in an ellipsis."
+  },
+  {
+   "id": "p125-40233d8e",
+   "page": 125,
+   "printed": "101",
+   "kind": "partial",
+   "note": "Overlay example ending in an ellipsis."
+  },
+  {
+   "id": "p125-6663387d",
+   "page": 125,
+   "printed": "101",
+   "kind": "fragment",
+   "note": "Generic symbol pair shown alone."
+  },
+  {
+   "id": "p125-b4ada7ce",
+   "page": 125,
+   "printed": "101",
+   "kind": "packet",
+   "verdict": "syntax",
+   "findings": [
+    "syntax cmp.block @13"
+   ],
+   "basis": [
+    "02-fields.md#err.cmp.overlayexample",
+    "02-fields.md#cmp.block",
+    "02-fields.md#cmp.t",
+    "02-fields.md#cmp.table"
+   ],
+   "note": "Compressed overlay example with only 12 bytes after the identifier (document erratum, rendered page agrees): read by the fixed layout, table 'B', lat and lon shifted by one, symbol '7', cs 'P[' and the T byte missing at offset 13 (end of field). The finding is on cmp.block under the short-block rule of 02 section 6.2, written after this entry was first derived.",
+   "doubt": "Whether the missing-byte finding is recorded as cmp.t or as cmp.block; offset is the end of the field per the missing-byte rule."
+  },
+  {
+   "id": "p125-d815d504",
+   "page": 125,
+   "printed": "101",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p126-43bc3c86",
+   "page": 126,
+   "printed": "102",
+   "kind": "partial",
+   "note": "Alternate-table example ending in an ellipsis."
+  },
+  {
+   "id": "p126-d4d52ee4",
+   "page": 126,
+   "printed": "102",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "02-fields.md#cmp.table",
+    "02-fields.md#cmp.block",
+    "02-fields.md#cmp.cs.crs",
+    "02-fields.md#amb.sym.overlay"
+   ],
+   "note": "Compressed position with lower-case table 'd' (overlay 3), course/speed, non-GGA T; overlay capability not checked."
+  },
+  {
+   "id": "p127-316b5107",
+   "page": 127,
+   "printed": "103",
+   "kind": "packet",
+   "verdict": "conform",
+   "findings": [],
+   "basis": [
+    "03-position.md#pos.unc",
+    "02-fields.md#lat",
+    "02-fields.md#lon",
+    "02-fields.md#sym.code"
+   ],
+   "note": "Information field of the symbol-precedence example: plain position with symbol '/j', no comment. The header symbols shown beside it are not checked by the tokenizer."
+  },
+  {
+   "id": "p132-c0ea7c5d",
+   "page": 132,
+   "printed": "108",
+   "kind": "template",
+   "note": "Compressed block layout with placeholders."
+  },
+  {
+   "id": "p134-002c2ca5",
+   "page": 134,
+   "printed": "110",
+   "kind": "template",
+   "note": "Storm data radius field from the Appendix 1 diagram: marker byte and placeholder."
+  },
+  {
+   "id": "p134-1aef2969",
+   "page": 134,
+   "printed": "110",
+   "kind": "template",
+   "note": "Storm radius field with placeholders."
+  },
+  {
+   "id": "p134-4865eaf1",
+   "page": 134,
+   "printed": "110",
+   "kind": "partial",
+   "note": "Appendix PARM diagram column with ellipsis."
+  },
+  {
+   "id": "p134-53735b44",
+   "page": 134,
+   "printed": "110",
+   "kind": "template",
+   "note": "Storm type field with placeholders."
+  },
+  {
+   "id": "p134-93c9c4f1",
+   "page": 134,
+   "printed": "110",
+   "kind": "template",
+   "note": "Storm pressure field with placeholders."
+  },
+  {
+   "id": "p134-a632755e",
+   "page": 134,
+   "printed": "110",
+   "kind": "template",
+   "note": "Storm wind field with placeholders."
+  },
+  {
+   "id": "p134-d2c4632b",
+   "page": 134,
+   "printed": "110",
+   "kind": "template",
+   "note": "Sequence-number cell from the Appendix 1 telemetry diagram; nnn is a placeholder."
+  },
+  {
+   "id": "p135-49b7ffd6",
+   "page": 135,
+   "printed": "111",
+   "kind": "fragment",
+   "note": "Appendix EQNS diagram cell (coefficient a)."
+  },
+  {
+   "id": "p135-5e324ba9",
+   "page": 135,
+   "printed": "111",
+   "kind": "partial",
+   "note": "Appendix UNIT diagram column with ellipsis."
+  },
+  {
+   "id": "p135-9028106c",
+   "page": 135,
+   "printed": "111",
+   "kind": "fragment",
+   "note": "Appendix EQNS diagram cell (coefficient c)."
+  },
+  {
+   "id": "p135-f4eb34d6",
+   "page": 135,
+   "printed": "111",
+   "kind": "fragment",
+   "note": "Appendix EQNS diagram cell (coefficient b)."
+  },
+  {
+   "id": "p135-fd19ea7b",
+   "page": 135,
+   "printed": "111",
+   "kind": "partial",
+   "note": "Appendix UNIT diagram column with ellipsis."
+  },
+  {
+   "id": "p139-0016e3c9",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p139-0657d5b6",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p139-0e21525a",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p139-12673c7d",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p139-127314b9",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p139-18d9814e",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p139-19afc2cd",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p139-1d0097d9",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p139-1d257b03",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p139-1f4c7055",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p139-237f62c7",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p139-26e85293",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p139-2ba7f504",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p139-2d26a4f0",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p139-2dabc595",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p139-2e181288",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p139-2fd1dc31",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p139-3c72a19b",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p139-3cea97c8",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p139-4a9be472",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p139-4ae3592a",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p139-4c6e1e2b",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p139-548f0da5",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p139-56b59cf6",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p139-588a59eb",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p139-591c4888",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p139-5d1e58a6",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p139-5e5dc26e",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p139-63f5b069",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p139-64a8e64a",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p139-656e4e26",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p139-657d2d24",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p139-65bc04d3",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p139-6663387d",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol pair shown alone."
+  },
+  {
+   "id": "p139-66ed93d5",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p139-672ef59f",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p139-6bed5d57",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p139-74734db3",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p139-78f8245d",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p139-7a8f8d5f",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p139-7d88cbae",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p139-804024e6",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p139-8572fe3f",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p139-87db6c9f",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p139-92a1451e",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p139-97ab4983",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p139-98f539ed",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p139-9b0635b9",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p139-a14bf3ad",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p139-af772733",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p139-b2d967eb",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p139-b4ccb465",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p139-b843feaf",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p139-bea1ab28",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p139-c1f5f8b7",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p139-c5d15e4f",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p139-c8a9a6da",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p139-c9684568",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p139-cac42e0c",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p139-cbe1a845",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p139-cdda6d3e",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p139-d0556ef6",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p139-d815d504",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p139-da41c00f",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p139-e30cd01e",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p139-f53df1f4",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p139-f807131f",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p139-fb723f0f",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p139-fda66ee4",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p139-fefa0428",
+   "page": 139,
+   "printed": "115",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p140-0655c1a7",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p140-096b5a2f",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p140-13f63342",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p140-16ae3401",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p140-1ab927b8",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p140-1cfd38f2",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p140-1e767c26",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p140-1f89cd5f",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p140-225172f5",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p140-26fba8f4",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p140-2a8c2aa7",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p140-2c19604b",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p140-2cb6792c",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p140-2d7315db",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p140-2eefc2be",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p140-30877579",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p140-374495ec",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p140-47955eed",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p140-4a55e3fd",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p140-4c4c1b5d",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p140-4da5f109",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p140-4e83aefd",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p140-558c6fa6",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p140-56ae4b12",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p140-57df41f6",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p140-5dd0ed80",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p140-5e7064e9",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p140-6104d0aa",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p140-6211f0e7",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p140-6663387d",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol pair shown alone."
+  },
+  {
+   "id": "p140-667ce4a7",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p140-67226a4f",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p140-673c70bd",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p140-6a80171d",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p140-6df44cba",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p140-6e2c0ef1",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p140-71f45c6e",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p140-77d9ecca",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p140-789ee3b2",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p140-7c177309",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p140-7cf89035",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p140-7d5828e8",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p140-7dfbe208",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p140-867339f6",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p140-879c2464",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p140-8ef01a8a",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p140-8fddeeec",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p140-9523705d",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p140-99373bca",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p140-9bedad50",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p140-9fe1baa5",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p140-b4f5713d",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p140-baac221d",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p140-c166c333",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p140-c1cb3a64",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p140-cfccd11b",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p140-d23fb12a",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p140-d37c8aa1",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p140-d6a25bd9",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p140-d815d504",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p140-de7dfcbc",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p140-e1ca8110",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p140-e40d850d",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p140-e8ca0f43",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p140-ec8de07e",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p140-ed5ec5d3",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p140-f5fab5ef",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p140-fe088f2f",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p140-ff9e7c6a",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p140-ffc325e0",
+   "page": 140,
+   "printed": "116",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p141-09546398",
+   "page": 141,
+   "printed": "117",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p141-0a33962e",
+   "page": 141,
+   "printed": "117",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p141-125544a6",
+   "page": 141,
+   "printed": "117",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p141-13b159ed",
+   "page": 141,
+   "printed": "117",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p141-176d833d",
+   "page": 141,
+   "printed": "117",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p141-1ab5e355",
+   "page": 141,
+   "printed": "117",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p141-1ef3c895",
+   "page": 141,
+   "printed": "117",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p141-296e1b1a",
+   "page": 141,
+   "printed": "117",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p141-2cbbd9a9",
+   "page": 141,
+   "printed": "117",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p141-350c4314",
+   "page": 141,
+   "printed": "117",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p141-3b67894e",
+   "page": 141,
+   "printed": "117",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p141-412cfcae",
+   "page": 141,
+   "printed": "117",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p141-4e1142ae",
+   "page": 141,
+   "printed": "117",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p141-5188df6e",
+   "page": 141,
+   "printed": "117",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p141-53489048",
+   "page": 141,
+   "printed": "117",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p141-56d37ce6",
+   "page": 141,
+   "printed": "117",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p141-582a43f4",
+   "page": 141,
+   "printed": "117",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p141-6541afc9",
+   "page": 141,
+   "printed": "117",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p141-6663387d",
+   "page": 141,
+   "printed": "117",
+   "kind": "fragment",
+   "note": "Symbol pair shown alone."
+  },
+  {
+   "id": "p141-6c1a7aab",
+   "page": 141,
+   "printed": "117",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p141-6ef44c9c",
+   "page": 141,
+   "printed": "117",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p141-703353f7",
+   "page": 141,
+   "printed": "117",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p141-72f1c618",
+   "page": 141,
+   "printed": "117",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p141-795f2c39",
+   "page": 141,
+   "printed": "117",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p141-7e16835f",
+   "page": 141,
+   "printed": "117",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p141-86774c5f",
+   "page": 141,
+   "printed": "117",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p141-8946f77b",
+   "page": 141,
+   "printed": "117",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p141-8df4419f",
+   "page": 141,
+   "printed": "117",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p141-8e193749",
+   "page": 141,
+   "printed": "117",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p141-950dfb76",
+   "page": 141,
+   "printed": "117",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p141-9c1ba1a8",
+   "page": 141,
+   "printed": "117",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p141-a681b660",
+   "page": 141,
+   "printed": "117",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p141-a87946a9",
+   "page": 141,
+   "printed": "117",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p141-b0d04c15",
+   "page": 141,
+   "printed": "117",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p141-b765a9a8",
+   "page": 141,
+   "printed": "117",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p141-bd0549cd",
+   "page": 141,
+   "printed": "117",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p141-c4287923",
+   "page": 141,
+   "printed": "117",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p141-c510457b",
+   "page": 141,
+   "printed": "117",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p141-c57c6a35",
+   "page": 141,
+   "printed": "117",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p141-c837948d",
+   "page": 141,
+   "printed": "117",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p141-d119a6f8",
+   "page": 141,
+   "printed": "117",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p141-d7ad492e",
+   "page": 141,
+   "printed": "117",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p141-d815d504",
+   "page": 141,
+   "printed": "117",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p141-dfa3f28c",
+   "page": 141,
+   "printed": "117",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p141-e6225491",
+   "page": 141,
+   "printed": "117",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p141-e737fb2e",
+   "page": 141,
+   "printed": "117",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p141-f7c62785",
+   "page": 141,
+   "printed": "117",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p141-fe386ba4",
+   "page": 141,
+   "printed": "117",
+   "kind": "fragment",
+   "note": "Symbol table entry."
+  },
+  {
+   "id": "p148-6663387d",
+   "page": 148,
+   "printed": "124",
+   "kind": "fragment",
+   "note": "Symbol pair shown alone."
+  },
+  {
+   "id": "p148-d815d504",
+   "page": 148,
+   "printed": "124",
+   "kind": "fragment",
+   "note": "Symbol pair (alternate table) from a symbol table, shown alone."
+  },
+  {
+   "id": "p151-242ee579",
+   "page": 151,
+   "printed": "127",
+   "kind": "fragment",
+   "note": "A generic destination prefix in the change history; not an information field."
+  },
+  {
+   "id": "p151-2eefc2be",
+   "page": 151,
+   "printed": "127",
+   "kind": "fragment",
+   "note": "DF symbol pair shown alone."
+  },
+  {
+   "id": "p151-f21a7042",
+   "page": 151,
+   "printed": "127",
+   "kind": "fragment",
+   "note": "Revision-history mention of the unknown course/speed form."
+  },
+  {
+   "id": "p152-2f1145ba",
+   "page": 152,
+   "printed": "128",
+   "kind": "fragment",
+   "note": "Revision-history mention of the unknown weather value form."
+  },
+  {
+   "id": "p152-77ae990d",
+   "page": 152,
+   "printed": "128",
+   "kind": "template",
+   "note": "Field layout with 'p' placeholders."
+  },
+  {
+   "id": "p152-c166c333",
+   "page": 152,
+   "printed": "128",
+   "kind": "fragment",
+   "note": "Symbol pair named in the revision history."
+  },
+  {
+   "id": "p153-2d26a4f0",
+   "page": 153,
+   "printed": "129",
+   "kind": "fragment",
+   "note": "Symbol pair shown alone in the revision history."
+  },
+  {
+   "id": "p153-93c9c4f1",
+   "page": 153,
+   "printed": "129",
+   "kind": "template",
+   "note": "Field layout with 'p' placeholders in the revision history."
+  }
+ ]
+}

@@ -5,9 +5,10 @@ and third-party payloads: docs/legacy/01-frame.md."""
 import re
 
 from qua_network.legacy.model import UNREAD
+from qua_network.legacy.position import nmea_accepts
+from qua_network.tnc2 import header_spans
 
 OBSOLETE_FORMS = "obsolete forms (05, 08)"
-from qua_network.tnc2 import header_spans
 
 # --- Addresses (01 section 3) -------------------------------------------
 
@@ -327,6 +328,9 @@ def info_field(scan, start, end, depth, readers, tp_level=0):
         return
     if finding:
         scan.find("dti", finding, start)
+    if rule == "wx.raw.ultpkt.dti" and nmea_accepts(line, start, end):
+        # amb.dti.shared: the field is also a raw NMEA sentence.
+        scan.find("wx.raw.ultpkt", "ambiguous", start + 1)
     if rule == "tp.dti":
         third_party(scan, start, end, depth, readers, tp_level)
         return

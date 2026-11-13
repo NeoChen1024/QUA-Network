@@ -39,6 +39,7 @@ uv pip install --python .venv/bin/python -e .
 | `qua-spec-extract` | Extract the reference PDFs to Markdown under `work/`, for reading and search. |
 | `qua-legacy-tokenize` | Show how the legacy tokenizer reads packets: tokens, findings, verdict. |
 | `qua-legacy-fields` | Field inventory of the corpus under the legacy reading: presence, sizes and findings per rule. |
+| `qua-legacy-examples` | Collect the example packets of APRS12c and check them against the expectation list. |
 
 Each command documents its options under `--help`. The raw corpus lives in
 `corpus/` and derived products in `work/`; neither is in Git.

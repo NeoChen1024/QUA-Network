@@ -687,8 +687,11 @@ a position. **[proposed]** A field that starts `$ULTW` is also an NMEA
 sentence in one case: when byte 5 is a letter `A`–`Z` and byte 6 is
 `,`, the five bytes after `$` are a valid
 [`nmea.addr`](03-position.md#nmea.addr). A hex digit `A`–`F` after
-`ULTW` can therefore start either. Where (b), reading the whole field
-as NMEA by 03-position, would itself give no `syntax` or `value`
+`ULTW` can therefore start either. **[proposed]** So can any other
+letter there: [`wx.raw.data`](06-weather.md#wx.raw.data) checks no
+byte, so the Ultimeter reading accepts every such field, and the
+condition below does not depend on byte 5 beyond its being a letter.
+Where (b), reading the whole field as NMEA by 03-position, would itself give no `syntax` or `value`
 finding, the field gets `ambiguous` at offset 1, the finding that
 [amb.wx.rawdti](06-weather.md#amb.wx.rawdti) gives against
 `wx.raw.ultpkt`. Every other field divides the same way under both

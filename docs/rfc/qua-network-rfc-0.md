@@ -1500,8 +1500,13 @@ commands.
 - `qua-legacy-fields`: field inventory over the corpus under that reading:
   per rule, the packets carrying it, token count, byte length
   distribution and bytes outside 7-bit ASCII; verdicts and findings with
-  example packets. So far only the frame of 01-frame is read; every
-  format after the data type identifier is left as unread residue.
+  example packets. So far 01-frame, 02-fields and 03-position are read,
+  with the base-91 comment telemetry of 07; the other formats are left as
+  unread residue, and their packets have no verdict yet.
+- `qua-legacy-examples`: collects the example packets of APRS12c from
+  the working copy under `work/` and checks the verdict of each against
+  a project-owned expectation list, which names the examples by page and
+  digest and does not hold their bytes.
 
 ## Appendix D. Reference documents
 

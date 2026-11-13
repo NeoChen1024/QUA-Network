@@ -345,6 +345,31 @@ def area_literal(line, p, end):
     return end - p >= 7 and _AREA_LITERAL.match(line, p) is not None
 
 
+def area_bad(line, p, end):
+    """ext.area at p: None when the seven bytes fit the descriptor, else the
+    offset of the first byte that does not fit (end when the field is cut
+    short there)."""
+    for i in range(7):
+        if p + i >= end:
+            return end
+        c = line[p + i]
+        if i == 3:
+            ok = c in b"/1"
+        elif i == 4:
+            ok = c in DIGITS if line[p + 3] == 0x2F else 0x30 <= c <= 0x35
+        else:
+            ok = c in DIGITS
+        if not ok:
+            return p + i
+    return None
+
+
+def area_high(line, p, end):
+    """Seven bytes at p that fit ext.area with a colour of 10 to 15, which no
+    form of step 3 of 7.1 takes (amb.area.symbol)."""
+    return end - p >= 7 and line[p + 3] == 0x31 and area_bad(line, p, end) is None
+
+
 _BRG = re.compile(rb"/([0-9]{3})/[0-9]{3}")
 
 
@@ -478,13 +503,18 @@ class Comment:
         self.start, self.end, self.counted, self.daos = start, end, counted, daos
 
 
-def comment(scan, s, end, depth, limit, limit_rule, b91=True, freq=True):
+def comment(scan, s, end, depth, limit, limit_rule, b91=True, freq=True, b91_kind=None, extra=(), start_cse=True):
     """cmt.text from s to end with the items of 02 section 8.2.
 
     limit and limit_rule are the format's length limit and the rule that
     reports it; b91 searches base-91 telemetry (07), freq looks for a
-    frequency at the start (09 section 7). Returns a Comment, or None when
-    the comment is empty."""
+    frequency at the start (09 section 7). b91_kind, when given, is the kind
+    of finding a telemetry block gets in this format (07 section 3). extra
+    holds (rule, start, end) of items the format itself found in the comment
+    and has tokenized, for the overlap rule of 8.2. start_cse=False leaves out
+    the course and speed at the comment start, for a report in which 7.1
+    would not try that form at a slot. Returns a Comment, or None when the
+    comment is empty."""
     if s >= end:
         return None
     line = scan.line
@@ -514,8 +544,11 @@ def comment(scan, s, end, depth, limit, limit_rule, b91=True, freq=True):
         blk = b91_block(scan, s, end, d, daos)
         if blk:
             items.append(("tlm.b91",) + blk)
+            if b91_kind:
+                scan.find("tlm.b91", b91_kind, blk[0])
 
     items.extend(noarchive_in(scan, s, end, d))
+    items.extend(extra)
 
     # Occurrences of two different items that overlap (8.2).
     if len(items) > 1:
@@ -535,7 +568,7 @@ def comment(scan, s, end, depth, limit, limit_rule, b91=True, freq=True):
     # start; the forms with a three-letter marker count anywhere.
     for m in _STEP3_AT.finditer(line, s, end):
         x = step3(line, m.start(), end)
-        if x is not None and x.clean() and (x.rule != "ext.csespd" or x.start == s):
+        if x is not None and x.clean() and (x.rule != "ext.csespd" or (x.start == s and start_cse)):
             scan.find(x.rule, "ambiguous", x.start)
 
     if counted > limit:
@@ -553,6 +586,19 @@ def comment(scan, s, end, depth, limit, limit_rule, b91=True, freq=True):
 
 
 FREQ = "09-other (frequency)"
+
+# A tone, offset or range item as freq.obj reads it, with no leading SP,
+# followed by SP or the end of the text (09 section 7, amb.freq.nofreq).
+# The forms that 09 recognises with an unstated finding are included.
+_FREQ_ITEM = re.compile(rb"(?:[TtCcDd][0-9]{3}|[Tt]off|[1l]750|[+-][0-9]{3}|[RNSEW][0-9]{2,3}[mk])(?: |\Z)")
+
+
+def freq_items_start(line, s, end):
+    """Whether the text line[s:end] starts with a left-justified frequency
+    item, which a reading of amb.freq.nofreq would take outside a
+    frequency-named object. Shape only: whether that reading gives a finding
+    of its own on the text is for the 09 reader to decide."""
+    return _FREQ_ITEM.match(line, s, end) is not None
 
 
 def _item(rule):

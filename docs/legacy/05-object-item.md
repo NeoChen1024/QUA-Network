@@ -38,7 +38,7 @@ p. 132/108).
 | <a id="obj.name"></a>`obj.name` | Object name | Offsets 1 to 9, each byte 0x20–0x7E. Trailing SP are padding and not part of the name; case is significant. Nine SP give a `syntax` finding ([amb.obj.name](#amb.obj.name)). | Required | 9 bytes | p. 76/58 |
 | <a id="obj.state"></a>`obj.state` | Live or killed | Offset 10: `'*'` live, `'_'` killed. Any other byte gives a `syntax` finding ([amb.obj.name](#amb.obj.name)). | Required | 1 byte | p. 76/58 |
 | <a id="obj.time"></a>`obj.time` | Timestamp | Offsets 11 to 17: [`time.dhm`](02-fields.md#time.dhm) or [`time.hms`](02-fields.md#time.hms). **[proposed]** Required ([amb.obj.time](#amb.obj.time)). | Required | 7 bytes | p. 76/58, p. 153/129 |
-| <a id="obj.pos"></a>`obj.pos` | Position | From offset 18. A digit there starts an uncompressed position: [`lat`](02-fields.md#lat), [`sym.table`](02-fields.md#sym.table), [`lon`](02-fields.md#lon), [`sym.code`](02-fields.md#sym.code), 19 bytes. Otherwise a compressed block, [`cmp.block`](02-fields.md#cmp.block), 13 bytes. | Required | 19 or 13 bytes | p. 55/37, p. 76/58 |
+| <a id="obj.pos"></a>`obj.pos` | Position | From offset 18. A digit there starts an uncompressed position: [`lat`](02-fields.md#lat), [`sym.table`](02-fields.md#sym.table), [`lon`](02-fields.md#lon), [`sym.code`](02-fields.md#sym.code), 19 bytes. A byte in the set of [`cmp.table`](02-fields.md#cmp.table) starts a compressed block, [`cmp.block`](02-fields.md#cmp.block), 13 bytes. **[proposed]** `obj.pos` is the selector rule of [02-fields section 6.1](02-fields.md#61-telling-the-two-position-forms-apart): any other byte there is a `syntax` finding on `obj.pos` at that byte, and the bytes from it to the end of the field are a `residue` that names `obj.pos`. | Required | 19 or 13 bytes | p. 55/37, p. 76/58 |
 | <a id="obj.ext"></a>`obj.ext` | Data extension | After an uncompressed position only: [`ext.csespd`](02-fields.md#ext.csespd), [`ext.phg`](02-fields.md#ext.phg) or [`ext.phgr`](02-fields.md#ext.phgr), [`ext.rng`](02-fields.md#ext.rng), [`ext.dfs`](02-fields.md#ext.dfs) or the area descriptor [`ext.area`](02-fields.md#ext.area) (section 4). | Optional | 7 bytes; 9 for `ext.phgr` | p. 76/58, p. 33/19 |
 | <a id="obj.cmt"></a>`obj.cmt` | Comment | The rest, read as [`cmt.text`](02-fields.md#cmt.text) with the comment items of [02-fields.md](02-fields.md#82-items-found-inside-a-comment) section 8, the braces of sections 4 and 5 below, a frequency at its start ([09-other.md](09-other.md#7-frequency-specification)), and base-91 telemetry, which gives `unstated` here ([amb.tlm.b91.where](07-telemetry.md#amb.tlm.b91.where)). At most 36 bytes after an extension, the 9-byte [`ext.phgr`](02-fields.md#ext.phgr) included, as in [amb.pos.cmtlen](03-position.md#amb.pos.cmtlen), and 43 without; **[proposed]** 43 after a compressed position ([err.obj.cmplen](#err.obj.cmplen)). A longer comment gives a `value` finding. | Optional | End of information field | p. 76/58, p. 132/108 |
 
@@ -52,6 +52,27 @@ After a compressed position no data extension follows; the block's own
 `cs` bytes, [`cmp.cs`](02-fields.md#cmp.cs), carry course and speed or
 range (p. 76/58). Seven bytes there that look like an extension are
 comment text.
+
+**[proposed]** Bearing and NRQ,
+[`ext.brgnrq`](02-fields.md#ext.brgnrq), are not read in object or item
+reports: `obj.ext` does not list them,
+[02-fields section 7.2](02-fields.md#72-fields) gives the field to DF
+reports, and [03-position section 3](03-position.md#3-df-reports)
+defines a DF report as a position report. Eight bytes of their shape
+directly after the extension are comment text. The document does not
+say this outright: 02 section 7.4 speaks of "a report" with the DF
+symbol, without naming a format. A reading that follows those words
+lets an object or item carry bearing and NRQ wherever one of the
+readings of [amb.ext.brgnrq](02-fields.md#amb.ext.brgnrq) would put
+them: with the DF symbol `/\` after an `ext.csespd` (all three of its
+readings) or after another extension (its reading (a)), and under
+another symbol after an `ext.csespd` (its reading (c)). In those cases,
+when the bearing is at most 360, the 8 bytes get an `ambiguous` finding
+on `ext.brgnrq` at their first byte; with a larger bearing that reading
+gives `value` and does not count. No comment limit is stated for an
+object or item that carries bearing and NRQ, so no length finding
+counts against that reading. Whether objects and items carry the field
+is listed in section 10.
 
 APRS 1.1 calls compressed objects not recommended on RF, and the item
 format not recommended on RF altogether (p. 76/58, p. 77/59).
@@ -77,7 +98,7 @@ and a comment. It has no timestamp (p. 77/59, p. 132/108).
 | <a id="item.dti"></a>`item.dti` | Data type identifier | `')'` at offset 0. Gives a `discouraged` finding (section 2). | Required | 1 byte | p. 31/17, p. 77/59 |
 | <a id="item.name"></a>`item.name` | Item name | From offset 1: bytes 0x20–0x7E other than `'!'` and `'_'`, 3 to 9 of them. **[proposed]** A name of 1 or 2 bytes, or of more than 9, gives a `value` finding; an empty name, or no `'!'` or `'_'` at all, a `syntax` finding ([amb.item.name](#amb.item.name)). | Required | The first `'!'` or `'_'` | p. 77/59 |
 | <a id="item.state"></a>`item.state` | Live or killed | `'!'` live, `'_'` killed. | Required | 1 byte | p. 77/59 |
-| <a id="item.pos"></a>`item.pos` | Position | As `obj.pos`, directly after `item.state`. | Required | 19 or 13 bytes | p. 77/59 |
+| <a id="item.pos"></a>`item.pos` | Position | As `obj.pos`, directly after `item.state`. **[proposed]** `item.pos` is the selector rule here and carries the `syntax` finding and the `residue`. | Required | 19 or 13 bytes | p. 77/59 |
 | <a id="item.ext"></a>`item.ext` | Data extension | As `obj.ext`. | Optional | 7 bytes | p. 77/59 |
 | <a id="item.cmt"></a>`item.cmt` | Comment | As `obj.cmt`. | Optional | End of information field | p. 77/59, p. 132/108 |
 
@@ -112,6 +133,37 @@ The tokenizer checks the digits and does not compute the offsets. The
 scale is in [err.area.sender](#err.area.sender), and the stated size
 range in [err.area.size](#err.area.size).
 
+**[proposed]** Details of the descriptor:
+
+- The symbol is matched on its bytes: the table identifier
+  ([`sym.table`](02-fields.md#sym.table) or
+  [`cmp.table`](02-fields.md#cmp.table)) is the byte `'\'` itself and
+  the code is `'l'`. An overlay character in place of `'\'` also
+  selects the alternate table (02 section 4), but this section and
+  02 section 7.1 name the byte `'\'`, and nothing extends the area
+  object to overlays as [06-weather section 2](06-weather.md#2-recognition)
+  does for the weather symbol. An overlaid `'l'` is read as any other
+  symbol. The same holds for the signpost symbol `'\'` `'m'`
+  (section 5). Whether an overlaid symbol should count is listed in
+  section 10.
+- An object or item with the `\l` symbol that ends at the symbol code
+  has no descriptor and no finding for one, as an object that ends at
+  the `'_'` symbol is no weather report (section 7).
+- Otherwise the `ext.area` token covers the seven bytes after the
+  symbol code, or the bytes up to the end of the field when there are
+  fewer, with one `syntax` finding on `ext.area` at the first byte that
+  does not fit, at the end of the field when it is cut short. The
+  parts are tokens as far as their bytes are present. The comment
+  follows the seven bytes and has the limit after an extension.
+- The corridor width is read when the first byte of the descriptor is
+  `'1'` or `'6'`, whether or not a later part fits.
+- After a compressed block there is no descriptor (02 section 7.1).
+  Seven bytes directly after the block that fit `ext.area` get the
+  `ambiguous` finding of
+  [02-fields section 6.5](02-fields.md#65-what-follows-the-block), since
+  7.1 would try that form at a slot of a `\l` report. A course and
+  speed there gets no finding, since 7.1 would not try one.
+
 ## 5. Signposts
 
 | ID | Field | Layout | Required | Ends at | Source |
@@ -139,6 +191,13 @@ depth 0, and the object field tokens of
 No `obj.dti` token is given, and byte 0 is the first byte of `obj.name`
 at depth 1. [01-frame.md](01-frame.md#7-data-type-identifier) states
 the same.
+
+**[proposed]** Match. A field matches `obj.obsolete` when the fields
+from `obj.name` to the position are complete and give no `syntax`
+finding; a `value` finding there, and any finding after the position,
+do not prevent the match. The `obsolete` finding is on `obj.obsolete`
+at offset 0. An obsolete object with symbol code `'_'` is read as in
+section 7, but there is no identifier byte to carry `wx.obj`.
 
 ## 7. Weather and storm data on objects
 
@@ -185,6 +244,14 @@ the [README](README.md#4-decoders-consulted), not run.
   ([README section 3](README.md#3-tokenizer-model), Precedence). Where
   offsets 11 to 17 hold a timestamp, reading (b) detects it too and the
   readings agree, since no position starts with six digits.
+  **[proposed]** That shape is the test: when offsets 11 to 16 are
+  digits, the bytes are the timestamp and are read by
+  [`time.dhm`](02-fields.md#time.dhm) or
+  [`time.hms`](02-fields.md#time.hms), which report a wrong seventh
+  byte, a value out of range, or a field that ends inside them. Any
+  other bytes there are a missing timestamp: the `syntax` finding on
+  `obj.time` at offset 11, and the bytes from offset 11 to the end of
+  the field are a `residue` that names `obj.time`.
 - **Decoders.**
 
   | Decoder | Reads | Where |
@@ -222,7 +289,16 @@ the [README](README.md#4-decoders-consulted), not run.
   recogniser. No other reading is listed, so the entry gives no
   `ambiguous` finding. An earlier draft gave one at a `'*'` or `'_'`
   inside the name where reading (b) would have parsed the rest of the
-  report from there.
+  report from there. **[proposed]** The finding for nine SP is at
+  offset 1. After a `syntax` finding on `obj.state` the report is read
+  on from offset 11, since the layout fixes where each field starts.
+  **[proposed]** p. 76/58 and p. 77/59 state the byte set of object
+  and item names as printable ASCII, where the comment, message and
+  status text admit UTF-8 as well; the names are not a field where
+  printable ASCII is only recommended, so the exemption of
+  [README section 3](README.md#3-tokenizer-model) does not apply. A
+  byte above 0x7E in a name gives `syntax` at that byte, and the
+  nine-byte length counts bytes.
 - **Decoders.** FAP: nine bytes 0x20–0x7E, then `'*'` or `'_'`
   (`FAP.pm:1237`). Dire Wolf: copies nine bytes, trims trailing spaces,
   notes a bad state byte and continues (`decode_aprs.c:2156-2167`).
@@ -256,7 +332,13 @@ the [README](README.md#4-decoders-consulted), not run.
   giving `value`, as a field outside its stated length; an empty name or
   no terminator gives `syntax`. Each is a finding at the bytes
   concerned. No other reading is listed, so there is no `ambiguous`
-  finding.
+  finding. **[proposed]** Placement: a name of 1 or 2 bytes gives the
+  `value` finding at its first byte, offset 1; a name of more than 9
+  bytes gives it at its tenth byte, the first past the limit; an empty
+  name gives `syntax` at offset 1, where the terminator stands. With no
+  terminator, where the name ends cannot be told: the bytes from offset
+  1 to the end of the field are a `residue` that names `item.name`, and
+  the `syntax` finding is at the end of the field.
 - **Decoders.** FAP: 3 to 9 bytes, then `'!'` or `'_'`
   (`_item_to_decimal`, `FAP.pm:1449`). Dire Wolf: the first `'!'` or
   `'_'` within nine bytes, no minimum (`aprs_item`,
@@ -506,6 +588,14 @@ and p. 82, rendered).
   document's words, and are given for every packet. Whether a
   q-construct in the path should limit them to packets heard on RF is
   open.
+- Whether object and item reports carry bearing and NRQ
+  ([`ext.brgnrq`](02-fields.md#ext.brgnrq)), and with which rule ID and
+  comment limit; the reading taken and its `ambiguous` finding are in
+  section 2.
+- Whether an overlay character on the alternate table, with code `'l'`
+  or `'m'`, makes an area object or a signpost (section 4). If the
+  author takes that as a listed reading, such reports become visible
+  cases of it.
 - ebarkie/aprs has no object or item decoder in the files read. The
   object and item handling of aprs-parser-rs was not read, apart from
   the area descriptor test cited in

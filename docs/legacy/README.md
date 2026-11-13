@@ -4,7 +4,7 @@
 |---|---|
 | Status | Draft. Not frozen. Items carry the labels **[agreed]**, **[proposed]** and **[open]** with the meaning given in the RFC. |
 | Reference | `APRS12c.pdf` in submodule `3rdparty/aprsspec`, commit `5830d42f`. See [RFC Appendix D](../rfc/qua-network-rfc-0.md#appendix-d-reference-documents). |
-| Used by | `qua-legacy-tokenize` and `qua-legacy-fields` (package `qua_network.legacy`), RFC section 15, step 4. They read 01-frame, 02-fields, 03-position and the comment telemetry block of 07-telemetry section 3; the other files have no reader yet. |
+| Used by | `qua-legacy-tokenize` and `qua-legacy-fields` (package `qua_network.legacy`), RFC section 15, step 4. They read 01-frame, 02-fields, 03-position, 04-mic-e, 05-object-item and the comment telemetry block of 07-telemetry section 3; the other files have no reader yet. |
 
 ## 1. Purpose
 
@@ -243,14 +243,23 @@ An entry that cites a decoder names it and the function or line it read.
 
 ## 6. Open items
 
-- Readers for the formats of 04 to 09; until one exists, a field of
-  that format is left as an `unread` residue and its packet has no
-  verdict. The obsolete object and bulletin without an identifier
-  (01-frame section 7) are tried only once 05 and 08 have readers. The
-  same holds for the parts of a 03 report that another file reads: the
-  weather data after a `_` symbol and storm data (06), and a frequency
-  at the start of a comment (09 section 7), which is detected but not
-  yet read.
+- Readers for the formats of 06 to 09; until one exists, a field
+  of that format is left as an `unread` residue and its packet has no
+  verdict. Of the obsolete forms without an identifier (01-frame
+  section 7) the object is read; a field that is no obsolete object
+  has no verdict until 08 reads the bulletin. The same holds for the
+  parts of a 03, 04 or 05 report that another file reads: the weather data
+  after a `_` symbol and storm data (06), and a frequency at the start
+  of a comment, of the free text of a Mic-E status text, or the items
+  of a comment after a frequency name (09 section 7), which are
+  detected but not yet read. So is a left-justified tone, offset or
+  range item at the start of a 03 or 05 comment outside a
+  frequency-named object or item, whose `ambiguous` finding
+  ([amb.freq.nofreq](09-other.md#amb.freq.nofreq)) depends on how 09
+  reads the items. An item with symbol code `_` and bytes
+  after its position, and a Mic-E report with that symbol and a status
+  text, have no verdict until 06 can decide the `ambiguous` finding of
+  [amb.wx.carriers](06-weather.md#amb.wx.carriers).
 - The check of the document's own example packets against this reading
   (RFC section 15, step 4). [examples.json](examples.json) holds the
   verdict this reading gives each example, derived from these files

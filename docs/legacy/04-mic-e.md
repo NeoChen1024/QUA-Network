@@ -34,6 +34,12 @@ which is offset 0. Destination bytes are numbered 1 to 6.
 The token of byte 0 carries `mice.dti`, so that the tokens show the
 packet as Mic-E ([README section 3](README.md#3-tokenizer-model)).
 
+**[proposed]** `mice.fixed` has no token of its own: its eight parts
+(section 4) are one-byte tokens at the level of `mice.dti`. When the
+field ends early, the parts present keep their tokens and checks, and
+the one `syntax` finding on `mice.fixed` is placed where the first
+missing byte was expected.
+
 **[proposed]** The data type identifier alone makes a packet Mic-E
 ([amb.mice.recognition](#amb.mice.recognition)). A destination that does not
 fit section 3 gives `syntax` findings on the destination rules; the
@@ -99,6 +105,23 @@ Checks on the six bytes taken together:
   document calls the result unknown, and no comment type has that code
   ([amb.mice.dest](#amb.mice.dest)).
 
+**[proposed]** Tokens and rules. The `dest.mice` token of 01-frame is
+the `mice.dest` field, and the six parts are tokens one level below it.
+A byte outside the set of its position, and a blank in byte 1 or 2,
+give their finding on the rule of the part. The checks on the six
+bytes together give theirs on `mice.dest`: a blank followed by a digit
+at that blank; degrees out of range at byte 1; tens of minutes out of
+range, and minutes other than zero with 90 degrees, at byte 3; a
+mixture of bits at the first of bytes 1 to 3 whose one bit is of the
+other kind than the first. A callsign part of other than six bytes,
+which only an address that APRS-IS alone can carry may have, gives one
+`syntax` finding on `mice.dest`: where the missing byte was expected
+when it is shorter, at the seventh byte when it is longer, and the
+bytes past the sixth are then a residue one level below `dest.mice`.
+The SSID keeps the `dest.ssid` token of 01-frame. `mice.dest.ssid`
+names its `obsolete` finding, at the `'-'`, which is not given where
+`addr.ssid` already reports the suffix.
+
 ## 4. Information field
 
 Offsets 1 to 6 carry the longitude, speed and course, each byte offset by
@@ -121,7 +144,9 @@ The course is 100 × ((n mod 10) mod 4) of `mice.dc` plus the value of
 `mice.se`. 0 means unknown and 360 north (p. 67/49). A course from 361
 to 399 can be coded and gives a `value` finding. Any speed the three bytes
 can code lies in 0 to 799 knots, the stated range, so speed needs no
-check.
+check. **[proposed]** The course finding is on `mice.dc`, at its byte,
+and is not given when `mice.dc` or `mice.se` already gives a finding
+of its own.
 
 **[proposed]** Either coding of `mice.sp` and of `mice.dc` is accepted in
 any combination, with no finding ([amb.mice.scheme](#amb.mice.scheme)).
@@ -171,6 +196,63 @@ A standard APRS position inside the status text, which p. 72/54 says
 overrides the encoded one, is not read as a position; its bytes are free
 text with an `ambiguous` finding when they would be accepted as a
 position ([amb.mice.extension](#amb.mice.extension)).
+
+**[proposed]** How the tokenizer applies this section:
+
+- The parts are read in this order: the prefix or `mice.tlm`, the
+  altitude, then the suffix from the last bytes, then the locator, the
+  data extension and the free text, which ends where the suffix
+  starts. The free text is one [`cmt.text`](02-fields.md#cmt.text)
+  token beside the other parts, with the items of
+  [02-fields section 8.2](02-fields.md#82-items-found-inside-a-comment)
+  one level below it.
+- A `'}'` three bytes after the place of the altitude makes the four
+  bytes `mice.alt`. A byte before the `'}'` that is not a
+  [`b91.digit`](02-fields.md#b91.digit) gives `syntax` at the first
+  such byte. Such an altitude still stands at the start in the sense
+  of [amb.mice.alt](#amb.mice.alt).
+- After `mice.tlm` the bytes are read as status text whose prefix
+  `mice.tlm` replaces: an altitude and a locator may follow it
+  directly, and there is no suffix.
+- A fifth or sixth locator byte outside `'A'`–`'X'`, in either case,
+  is not a subsquare letter
+  ([amb.grid.range](03-position.md#amb.grid.range)): the six bytes are
+  not a locator, and only the four-byte locator is tried, which `/G`
+  must follow directly. A `/G` after such bytes does not close them
+  the way the `']'` of a beacon does. Reading (b) of amb.grid.range,
+  any letter, would take the six bytes as the locator. Where they are
+  two upper-case letters, two digits and two upper-case letters, then
+  `/G`, then the SP or what needs no SP (below), they are free text
+  with an `ambiguous` finding on `mice.grid` at the fifth byte.
+  Otherwise reading (b) gives a `syntax` finding of its own and there
+  is no finding.
+- `mice.grid` gives at most one `syntax` finding: at its first byte
+  that is lower case or outside its range, else at the byte after the
+  `'G'` when free text follows there without the SP. Nothing, or only
+  a [`tlm.b91`](07-telemetry.md#tlm.b91) block or a DAO, before the
+  suffix needs no SP. A SP directly after `/G` belongs to `mice.grid`
+  whatever follows it, also when nothing, or only those parts or the
+  suffix, follows; it is never free text of its own.
+- The `ambiguous` findings of section 7 are given on these rules:
+  `mice.type.prefix` at offset 9 ([amb.mice.byte9](#amb.mice.byte9));
+  `mice.grid` at the first locator byte
+  ([amb.mice.grid](#amb.mice.grid)), or at the fifth for
+  amb.grid.range (above); `mice.alt` at the first byte of
+  the match ([amb.mice.alt](#amb.mice.alt)); for
+  [amb.mice.extension](#amb.mice.extension), the rule of the extension
+  form, or `mice.status` for a position, at the first byte of the run.
+- Free text, in the tests of [amb.mice.alt](#amb.mice.alt) and
+  [amb.mice.extension](#amb.mice.extension), is the `cmt.text` token
+  less the items found in it.
+- In the status text the search of
+  [amb.mice.extension](#amb.mice.extension) takes the place of that of
+  [amb.ext.count](02-fields.md#amb.ext.count). A course and speed is
+  not a Mic-E extension form, so seven bytes of its shape give no
+  finding, at the start of the free text or later.
+- The status text has no length limit, so the conditions of
+  [amb.cmt.dao](02-fields.md#amb.cmt.dao) and
+  [amb.ext.phg](02-fields.md#amb.ext.phg) that compare a comment with
+  its limit always hold here.
 
 ## 6. APRS-IS transport
 
@@ -486,7 +568,14 @@ the [README](README.md#4-decoders-consulted), not run.
   so a `syntax` or `value` finding elsewhere in the status text is
   given by both and does not suppress the `ambiguous` finding. When an
   altitude stands at the start, both readings take that one and a later
-  match is text under both, with no finding. An earlier draft gave the
+  match is text under both, with no finding. **[proposed]** That holds
+  also for an altitude at the start with a `syntax` finding, a byte
+  before the `'}'` that is not a base-91 digit: the `'}'` fixes the
+  extent of the field at the start, a place both readings give the
+  altitude, so both take the four bytes as the altitude, and its
+  finding is one that both give. The readings differ only in whether a
+  later match can be the altitude when none stands at the start.
+  An earlier draft gave the
   finding for every later match, and a later one withheld it wherever
   the status text had a `syntax` or `value` finding.
 - **Decoders.** Dire Wolf: only at the start of what is left once a

@@ -6,6 +6,7 @@ import re
 from qua_network.legacy.fields import (
     CMP_TABLE,
     DIGITS,
+    FREQ,
     LOWER,
     UPPER,
     area_literal,
@@ -14,6 +15,7 @@ from qua_network.legacy.fields import (
     comment,
     csespd_mixed,
     emit_ext,
+    freq_items_start,
     lat,
     lon,
     missing,
@@ -135,7 +137,7 @@ def _uncompressed(scan, start, p, end, depth):
         elif brg is not None and df_sym != df_ext and brg <= 360:
             scan.find("df.notdf", "ambiguous", p)
 
-    cmt = comment(scan, p, end, depth, limit, limit_rule)
+    cmt = _freq_items(scan, comment(scan, p, end, depth, limit, limit_rule))
     if x is not None and x.h_alpha:
         # amb.ext.phg: reading (b) takes the extension as comment text, within
         # the limit without an extension (43).
@@ -157,7 +159,15 @@ def _compressed(scan, start, p, end, depth):
         return None
     # amb.pos.cmpext: a clean extension at the comment start is reported by
     # the search of comment(), at the same byte and rule.
-    return comment(scan, e, end, depth, 40, "pos.cmpcmt")
+    return _freq_items(scan, comment(scan, e, end, depth, 40, "pos.cmpcmt"))
+
+
+def _freq_items(scan, cmt):
+    """amb.freq.nofreq: a tone, offset or range item at the comment start,
+    whose finding 09 decides; the packet waits for that reader."""
+    if cmt is not None and freq_items_start(scan.line, cmt.start, cmt.end) and FREQ not in scan.unread:
+        scan.unread.append(FREQ)
+    return cmt
 
 
 # --- Agrelo DF (03 section 4) -------------------------------------------

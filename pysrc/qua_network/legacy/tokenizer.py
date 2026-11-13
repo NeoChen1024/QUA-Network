@@ -6,7 +6,9 @@ from qua_network.legacy.message import read as read_message
 from qua_network.legacy.mice import read as read_mice
 from qua_network.legacy.model import Scan
 from qua_network.legacy.objects import read as read_objects
+from qua_network.legacy.other import read as read_other
 from qua_network.legacy.position import read as read_position
+from qua_network.legacy.telemetry import read as read_telemetry
 from qua_network.legacy.weather import read as read_weather
 
 # Format readers by the docs/legacy file that specifies them. A format with
@@ -17,7 +19,9 @@ READERS = {
     "04-mic-e": read_mice,
     "05-object-item": read_objects,
     "06-weather": read_weather,
+    "07-telemetry": read_telemetry,
     "08-message": read_message,
+    "09-other": read_other,
 }
 
 

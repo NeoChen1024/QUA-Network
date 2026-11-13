@@ -142,7 +142,8 @@ word that is not listed ([amb.nws.addressee](#amb.nws.addressee)); and
 the whole field after the identifier for an addressee that starts with
 `NWS_`, `SKY`, `CWA` or `BOM`, since reading (c) of that entry would
 read every byte of it differently. That last finding is given in cases
-3, 5 and 6, and is 07's to decide in case 4. The `ambiguous` findings
+3, 5 and 6, and is 07's to decide in case 4
+([07 section 4](07-telemetry.md#4-telemetry-definition-messages)). The `ambiguous` findings
 are given against `bln.text` or `nws.text` at offset 11
 ([amb.msg.order](#amb.msg.order)), `bln.addr` at offset 4
 ([amb.bln.forms](#amb.bln.forms)), and `nws.level` at offset 5 or

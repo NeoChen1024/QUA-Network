@@ -10,7 +10,6 @@ import re
 
 from qua_network.legacy.fields import (
     DIGITS,
-    FREQ,
     SP,
     SYM_TABLE,
     bad_text_bytes,
@@ -26,6 +25,7 @@ from qua_network.legacy.fields import (
     sym_table,
 )
 from qua_network.legacy.model import Scan
+from qua_network.legacy.other import frequency
 from qua_network.legacy.telemetry import b91_block
 from qua_network.legacy.weather import carriers as weather_carriers
 
@@ -190,7 +190,6 @@ _AX = frozenset(b"ABCDEFGHIJKLMNOPQRSTUVWX")
 _ALT_RUN = re.compile(rb"[!-{]{3}\}")
 _MARKED = re.compile(rb"(?=PHG|RNG|DFS)")
 _POSITION = re.compile(rb"(?=[0-9]{2}[0-9 ]{2}\.[0-9 ]{2}[NS].[0-9]{3}[0-9 ]{2}\.[0-9 ]{2}[EW].)", re.S)
-_FREQ_START = re.compile(rb"[/ ]?(?:[0-9A-O ][0-9 ]{2}\.[0-9]{2}[0-9 ][MmGg][Hh][Zz]|D-STAR)")
 
 
 def status(scan, start, end, depth):
@@ -417,8 +416,8 @@ def _free_text(scan, s, e, d, alt_at_start):
             if in_text(m.start(), m.end()):
                 scan.find("mice.alt", "ambiguous", m.start())
 
-    if _FREQ_START.match(line, s, e):
-        scan.unread.append(FREQ)
+    # 09 section 7 at the start of the free text, after its syntax findings.
+    frequency(scan, s, e, dd)
 
 
 def _position_fits(line, i):

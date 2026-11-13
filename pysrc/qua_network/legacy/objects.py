@@ -7,7 +7,6 @@ import re
 from qua_network.legacy.fields import (
     CMP_TABLE,
     DIGITS,
-    FREQ,
     area_bad,
     area_high,
     area_literal,
@@ -16,7 +15,6 @@ from qua_network.legacy.fields import (
     comment,
     csespd_mixed,
     emit_ext,
-    freq_items_start,
     lat,
     lon,
     missing,
@@ -39,13 +37,6 @@ _CORRIDOR = re.compile(rb"\{[0-9]+\}")
 # A signpost: 1 to 3 bytes 0x20-0x7E other than '{' and '}', in braces.
 _SIGNPOST = re.compile(rb"\{[\x20-\x7a\x7c\x7e]{1,3}\}")
 _AREA_PARTS = (("area.type", 0, 1), ("area.lat", 1, 3), ("area.color", 3, 5), ("area.lon", 5, 7))
-
-
-def _pending(scan, what):
-    """A part of the packet that another file's reader decides is not read
-    yet, so the packet has no verdict."""
-    if what not in scan.unread:
-        scan.unread.append(what)
 
 
 def read(scan, start, end, depth):
@@ -140,9 +131,9 @@ def _body(scan, dti, q, end, depth, kind, freq_name, texts):
     """The position at q and what follows it; kind is "obj" or "item"."""
     c = scan.line[q]
     if c in DIGITS:
-        cmt = _uncompressed(scan, dti, q, end, depth, kind)
+        cmt = _uncompressed(scan, dti, q, end, depth, kind, freq_name)
     elif c in CMP_TABLE:
-        cmt = _compressed(scan, dti, q, end, depth, kind)
+        cmt = _compressed(scan, dti, q, end, depth, kind, freq_name)
     else:
         # 02 section 6.1: neither form can be delimited.
         scan.find(kind + ".pos", "syntax", q)
@@ -150,10 +141,6 @@ def _body(scan, dti, q, end, depth, kind, freq_name, texts):
         cmt = None
     if cmt is not None:
         texts.append((cmt.start, cmt.end))
-        if freq_name or freq_items_start(scan.line, cmt.start, cmt.end):
-            # freq.obj after a frequency name; elsewhere amb.freq.nofreq,
-            # whose finding depends on how 09 reads the items (09 section 7).
-            _pending(scan, FREQ)
 
 
 def _to_weather(scan, dti, p, end, depth, block=None):
@@ -163,7 +150,7 @@ def _to_weather(scan, dti, p, end, depth, block=None):
     weather_complete(scan, p, end, depth, block, obj_cmt=block is not None)
 
 
-def _uncompressed(scan, dti, p, end, depth, kind):
+def _uncompressed(scan, dti, p, end, depth, kind, freq_name):
     line = scan.line
     p, ok, level = lat(scan, p, end, depth)
     if not ok or missing(scan, "sym.table", p, end):
@@ -214,7 +201,7 @@ def _uncompressed(scan, dti, p, end, depth, kind):
                 # Storm data (06 section 8), then the comment; it does not follow the
                 # slot's extension, so no course and speed is looked for at its start.
                 p = weather_storm(scan, slot - 11, p, end, depth)
-                return comment(scan, p, end, depth, 36, kind + ".cmt", b91_kind="unstated", start_cse=False)
+                return comment(scan, p, end, depth, 36, kind + ".cmt", b91_kind="unstated", start_cse=False, freq_name=freq_name)
             # Bearing and NRQ are not read here; bytes of their shape that a
             # reading of amb.ext.brgnrq would take are comment text.
             brg = brgnrq_shape(line, p, end)
@@ -225,7 +212,7 @@ def _uncompressed(scan, dti, p, end, depth, kind):
     has_ext = x is not None or p > slot
     limit = 36 if has_ext else 43
     extra = _braces(scan, p, end, depth, table, code, line_area)
-    cmt = comment(scan, p, end, depth, limit, kind + ".cmt", b91_kind="unstated", extra=extra)
+    cmt = comment(scan, p, end, depth, limit, kind + ".cmt", b91_kind="unstated", extra=extra, freq_name=freq_name)
     if x is not None and x.h_alpha:
         # amb.ext.phg: reading (b) takes the extension as comment text, within
         # the limit without an extension (43). A length finding that both
@@ -239,7 +226,7 @@ def _uncompressed(scan, dti, p, end, depth, kind):
     return cmt
 
 
-def _compressed(scan, dti, q, end, depth, kind):
+def _compressed(scan, dti, q, end, depth, kind, freq_name):
     line = scan.line
     wx = kind == "obj" and end - q > 13 and line[q + 9] == 0x5F
     if kind == "obj":
@@ -257,7 +244,7 @@ def _compressed(scan, dti, q, end, depth, kind):
         scan.find("ext.area", "ambiguous", e)
     extra = _braces(scan, e, end, depth, table, code, False)
     # amb.ext.compressed: 7.1 would try no course and speed in a \l report.
-    cmt = comment(scan, e, end, depth, 43, kind + ".cmt", b91_kind="unstated", extra=extra, start_cse=not area)
+    cmt = comment(scan, e, end, depth, 43, kind + ".cmt", b91_kind="unstated", extra=extra, start_cse=not area, freq_name=freq_name)
     if code == 0x5F and e < end:
         weather_carriers(scan, e, end, "wx.obj", block=q)  # amb.wx.carriers, as above
     return cmt

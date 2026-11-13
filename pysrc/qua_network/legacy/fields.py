@@ -414,7 +414,6 @@ def emit_ext(scan, x, depth):
 
 # Overlapping matches of every step-3 form, and of the comment items.
 _STEP3_AT = re.compile(rb"(?=[0-9. ]{3}/[0-9. ]{3}|PHG|RNG|DFS)")
-_FREQ_START = re.compile(rb"[/ ]?(?:[0-9A-O ][0-9 ]{2}\.[0-9]{2}[0-9 ][MmGg][Hh][Zz]|D-STAR)")
 
 
 def bad_text_bytes(b):
@@ -528,12 +527,28 @@ class Comment:
         self.start, self.end, self.counted, self.daos = start, end, counted, daos
 
 
-def comment(scan, s, end, depth, limit, limit_rule, b91=True, freq=True, b91_kind=None, extra=(), start_cse=True):
+def comment(
+    scan,
+    s,
+    end,
+    depth,
+    limit,
+    limit_rule,
+    b91=True,
+    freq=True,
+    b91_kind=None,
+    extra=(),
+    start_cse=True,
+    freq_name=False,
+    ext_search=True,
+):
     """cmt.text from s to end with the items of 02 section 8.2.
 
     limit and limit_rule are the format's length limit and the rule that
     reports it; b91 searches base-91 telemetry (07), freq looks for a
-    frequency at the start (09 section 7). b91_kind, when given, is the kind
+    frequency at the start (09 section 7), and freq_name says that the
+    comment belongs to an object or item named as a frequency, whose items
+    are left-justified (09 freq.obj). b91_kind, when given, is the kind
     of finding a telemetry block gets in this format (07 section 3). extra
     holds (rule, start, end) of items the format itself found in the comment
     and has tokenized, for the overlap rule of 8.2. start_cse=False leaves out
@@ -591,7 +606,7 @@ def comment(scan, s, end, depth, limit, limit_rule, b91=True, freq=True, b91_kin
     # amb.ext.count / amb.ext.compressed: a step-3 form that fits cleanly.
     # A course and speed, which has no marker, counts only at the comment
     # start; the forms with a three-letter marker count anywhere.
-    for m in _STEP3_AT.finditer(line, s, end):
+    for m in _STEP3_AT.finditer(line, s, end) if ext_search else ():
         x = step3(line, m.start(), end)
         if x is not None and x.clean() and (x.rule != "ext.csespd" or (x.start == s and start_cse)):
             scan.find(x.rule, "ambiguous", x.start)
@@ -605,25 +620,14 @@ def comment(scan, s, end, depth, limit, limit_rule, b91=True, freq=True, b91_kin
                     scan.find(limit_rule, "value", i)
                     break
 
-    if freq and _FREQ_START.match(line, s, end):
-        scan.unread.append(FREQ)
+    if freq:
+        # 09 section 7, after every syntax or value finding of the comment,
+        # which its ambiguous findings defer to. other.py builds on this
+        # module, so it is imported here.
+        from qua_network.legacy.other import frequency
+
+        frequency(scan, s, end, d, freq_name)
     return Comment(s, end, counted, daos)
-
-
-FREQ = "09-other (frequency)"
-
-# A tone, offset or range item as freq.obj reads it, with no leading SP,
-# followed by SP or the end of the text (09 section 7, amb.freq.nofreq).
-# The forms that 09 recognises with an unstated finding are included.
-_FREQ_ITEM = re.compile(rb"(?:[TtCcDd][0-9]{3}|[Tt]off|[1l]750|[+-][0-9]{3}|[RNSEW][0-9]{2,3}[mk])(?: |\Z)")
-
-
-def freq_items_start(line, s, end):
-    """Whether the text line[s:end] starts with a left-justified frequency
-    item, which a reading of amb.freq.nofreq would take outside a
-    frequency-named object. Shape only: whether that reading gives a finding
-    of its own on the text is for the 09 reader to decide."""
-    return _FREQ_ITEM.match(line, s, end) is not None
 
 
 def _item(rule):

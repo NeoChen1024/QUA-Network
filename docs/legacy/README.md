@@ -4,7 +4,7 @@
 |---|---|
 | Status | Draft. Not frozen. Items carry the labels **[agreed]**, **[proposed]** and **[open]** with the meaning given in the RFC. |
 | Reference | `APRS12c.pdf` in submodule `3rdparty/aprsspec`, commit `5830d42f`. See [RFC Appendix D](../rfc/qua-network-rfc-0.md#appendix-d-reference-documents). |
-| Used by | `qua-legacy-tokenize` and `qua-legacy-fields` (package `qua_network.legacy`), RFC section 15, step 4. They read 01-frame, 02-fields, 03-position, 04-mic-e, 05-object-item, 06-weather, 08-message and the comment telemetry block of 07-telemetry section 3; the other files have no reader yet. |
+| Used by | `qua-legacy-tokenize` and `qua-legacy-fields` (package `qua_network.legacy`), RFC section 15, step 4. They read 01-frame, 02-fields, 03-position, 04-mic-e, 05-object-item, 06-weather, 07-telemetry, 08-message and 09-other. |
 
 ## 1. Purpose
 
@@ -243,29 +243,12 @@ An entry that cites a decoder names it and the function or line it read.
 
 ## 6. Open items
 
-- Readers for the formats of 07 and 09; until one exists, a field
-  of that format is left as an `unread` residue and its packet has no
-  verdict. Both obsolete forms without an identifier (01-frame
-  section 7) are read. A `':'` packet that 08 hands to 07 or 09 (a
-  telemetry definition message, a directed query) has no verdict until
-  that file reads it, and neither has a message whose text starts with
-  a telemetry keyword in another case
-  ([amb.tlm.keyword](07-telemetry.md#amb.tlm.keyword)), or a bulletin
-  or NWS bulletin whose other reading under 08 section 2.1 is a
-  definition message. The same holds for the
-  parts of a 03, 04 or 05 report that 09 reads: a frequency at the start
-  of a comment, of the free text of a Mic-E status text, or the items
-  of a comment after a frequency name (09 section 7), which are
-  detected but not yet read. So is a left-justified tone, offset or
-  range item at the start of a 03 or 05 comment outside a
-  frequency-named object or item, whose `ambiguous` finding
-  ([amb.freq.nofreq](09-other.md#amb.freq.nofreq)) depends on how 09
-  reads the items.
-- The check of the document's own example packets against this reading
-  (RFC section 15, step 4). [examples.json](examples.json) holds the
+- The example packets of APRS12c are checked against this reading
+  (RFC section 15, step 4): [examples.json](examples.json) holds the
   verdict this reading gives each example, derived from these files
   without running the tokenizer, and `qua-legacy-examples check`
-  compares. Examples of formats without a reader are still pending.
+  compares. When a file changes, the entries it decides are derived
+  again in the same way, not copied from the tokenizer's output.
 - Deviation recognisers and the divergence catalogue entries they belong
   to (RFC Appendix E).
 - APRS12c is itself a draft with known issues. When a later draft of the

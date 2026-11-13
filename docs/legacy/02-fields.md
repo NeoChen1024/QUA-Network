@@ -901,10 +901,12 @@ finding at its first byte. A run that already carries the `ambiguous`
 finding of 6.5 does not get it a second time: both entries report the
 run under the rule of the form it fits, at the same byte. This is the
 same kind of run that [amb.ext.compressed](#amb.ext.compressed) reports
-after a compressed block. **[proposed]** The search covers every comment
-in which the items of 8.2 are searched, including that of a compressed
-report, since reading (c) takes a run with a marker anywhere in a
-comment.
+after a compressed block. **[proposed]** The search covers the comment
+of every report that carries a position, including a compressed one,
+since reading (c) takes a run with a marker anywhere in such a comment.
+**[agreed]** It does not cover the comment of a report without a
+position, such as a telemetry report: no reading gives such a report a
+data extension, so no rule makes a run there one.
 **[proposed]** A run that overlaps another
 token found in the comment (8.2), or whose bytes carry the finding of
 7.4, still gets this finding: findings from different rules on one

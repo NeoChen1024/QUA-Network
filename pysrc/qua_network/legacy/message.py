@@ -11,10 +11,11 @@ from qua_network.legacy.fields import (
     noarchive_in,
     noarchive_outside,
 )
-from qua_network.legacy.model import UNREAD, Scan
-
-TELEMETRY = "07-telemetry"
-QUERY = "09-other"
+from qua_network.legacy.model import Scan
+from qua_network.legacy.other import directed
+from qua_network.legacy.telemetry import KEYWORDS as _TLM_KW
+from qua_network.legacy.telemetry import definition as tlm_definition
+from qua_network.legacy.telemetry import keyword_case as tlm_keyword_case
 
 _ALNUM = frozenset(b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789")
 _NAME = _ALNUM | {0x2D}
@@ -25,7 +26,6 @@ _TEXT_MAX = 67
 
 # Section 4: the keyword and a msg.ack.num, nothing else.
 _ACK = re.compile(rb"(?:ack|rej)(?:[A-Za-z0-9]{1,5}|[A-Za-z0-9]{2}\}(?:[A-Za-z0-9]{2})?)")
-_TLM_KW = (b"PARM.", b"UNIT.", b"EQNS.", b"BITS.")
 # 09 section 4.1, reading (a) of amb.qry.dir: mark, type, optional SP,
 # optional heard station, optional trailing SP; no '{' can match.
 _QUERY = re.compile(rb"\?(?:APRS[DHMOPST]|PING\?) ?(?:[A-Za-z0-9-]{1,9})? *")
@@ -35,12 +35,6 @@ _NWS_OTHER = (b"NWS_", b"SKY", b"CWA", b"BOM")
 # Section 8: the type byte and the number of fields it allows.
 _NTS = {ord("#"): (8, 8), ord("A"): (1, 4), ord("P"): (1, 1), ord("S"): (1, 1), ord("R"): (4, 4)}
 _NTS.update({c: (1, 1) for c in b"123456"})
-
-
-def _pending(scan, what):
-    """A part that another file's reader decides; the packet has no verdict."""
-    if what not in scan.unread:
-        scan.unread.append(what)
 
 
 def read(scan, start, end, depth):
@@ -95,16 +89,16 @@ def _read(scan, s, end, depth, texts, by_addressee):
     elif kind == "qry":
         # 09 section 4.1 reads the text from offset 11.
         scan.retag(s, depth, "qry.dir.dti")
-        scan.residue(t0, end, depth, UNREAD)
-        _pending(scan, QUERY)
+        directed(scan, t0, end, depth)
         # Section 2.1, case 5: the text is message text for the length limit.
         if end - t0 > _TEXT_MAX:
             scan.find("msg.text", "value", t0 + _TEXT_MAX)
     else:
         _message(scan, s, t0, end, depth, texts, kind)
-    if by_addressee and kind != "tlm" and line.startswith(_NWS_OTHER, a0, end):
+    if by_addressee and line.startswith(_NWS_OTHER, a0, end):
         # amb.nws.addressee, reading (c): an NWS bulletin, which accepts any
-        # text bytes and has no length limit or message identifier.
+        # text bytes and has no length limit or message identifier. In case
+        # 4 the findings of 07 section 4 are among those it looks at.
         if not _reported(scan, a0, end):
             scan.find("msg.addr", "ambiguous", a0)
     return kind
@@ -141,15 +135,12 @@ def _other_reading(scan, s, end, depth, lo, hi, rule, at, kinds):
     """Give rule an ambiguous finding at `at` when the field read as a
     message from case 3 on is of one of kinds and gives no syntax or value
     finding of its own, unless this reading reports line[lo:hi] already.
-    A definition message (case 4) has no reader yet, so whether it gives a
-    finding of its own is open and the packet waits for 07."""
+    A definition message (case 4) is read by 07 section 4 inside _read, so
+    its findings are among those compared."""
     if _reported(scan, lo, hi):
         return
     kind, own = _as_message(scan, s, end, depth)
     if own or kind not in kinds:
-        return
-    if kind == "tlm":
-        _pending(scan, TELEMETRY)
         return
     # A text that matches a directed query gives no syntax or value finding
     # under 09 section 4.1, whose rows have none for it; the length limit of
@@ -287,17 +278,15 @@ def _message(scan, s, t0, end, depth, texts, kind):
     if kind == "tlm":
         # Case 4: 07 section 4 reads the text inside msg.text.
         scan.retag(s, depth, "tlm.def.dti")
-        scan.residue(t0, te, depth + 1, UNREAD)
-        _pending(scan, TELEMETRY)
+        tlm_definition(scan, t0, te, depth + 1)
     else:
         if not _nts(scan, t0, te, depth, texts) and te > t0:
             texts.append((t0, te))
             noarchive_in(scan, t0, te, depth + 1)
-        head = line[t0 : min(t0 + 5, te)]
-        if head.upper() in _TLM_KW:
-            # amb.tlm.keyword: whether the text read as a definition message
-            # fits is for 07 to decide.
-            _pending(scan, TELEMETRY)
+        if tlm_keyword_case(scan, t0, te, depth + 1):
+            # amb.tlm.keyword: reading (b) takes the text as the definition
+            # message of its keyword in upper case, and accepts it.
+            scan.find("msg.text", "ambiguous", t0)
         if te - t0 >= 3 and _ACK.fullmatch(line[t0 : t0 + 3].lower() + line[t0 + 3 : end]):
             # amb.msg.ack: reading (b) folds the case of the keyword.
             if not _reported(scan, t0, end):

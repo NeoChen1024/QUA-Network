@@ -48,6 +48,43 @@ a report that ends early gives `syntax` at the first missing field. A
 comment that starts with `','` or SP gives an `ambiguous` finding at that
 byte ([amb.tlm.count](#amb.tlm.count)).
 
+**[proposed]** Positions of findings, where the rows leave them open:
+
+- `tlm.seq`: a digit run longer than three gives `value` at its fourth
+  digit, a shorter one at its first digit; a byte that fits neither
+  form gives `syntax` there, and `'#'` directly followed by `','` gives
+  it at that `','`. **[proposed]** That byte is the first one at which
+  the bytes stop fitting both `'#'` and digits and `'#MIC'`, the later
+  of the two places where the forms stop matching: `#MIX,` gives it at
+  the `'X'`, `#M12,` at the `'1'`, and `#MI,` at the `','` where `'C'`
+  was expected. A field that does not start with `'#'` gives it at its
+  first byte. The `','` fixes the extent of the field. When no `','`
+  follows and the field is not `'#'` followed only by digits, nothing
+  delimits the sequence, and the bytes from offset 1 to the end are
+  residue; this includes a field that does not start with `'#'`, such
+  as a `'T'` followed by plain text.
+- `tlm.analog` and `tlm.eqns.coef`: `syntax` is at the first byte where
+  the bytes stop fitting the relaxed number, or at the `','` or end of
+  the text when a byte is missing there (an empty value, `1.`, `-`). The
+  optional `'-'` may stand before each of the three forms, as the value
+  `-7.3` of the third example on p. 88/68 requires. The `unstated`
+  finding of a relaxed analog value is at its first byte. A value that
+  runs to the end of the field with no `','` after it gives `syntax` at
+  the end.
+- `tlm.cmt` carries the `ambiguous` finding of
+  [amb.tlm.count](#amb.tlm.count).
+
+**[proposed]** `tlm.cmt` is searched for the items of
+[02-fields.md](02-fields.md#82-items-found-inside-a-comment) section
+8.2, as any `cmt.text` is, with no length limit. **[agreed]** The search
+of [amb.ext.count](02-fields.md#amb.ext.count) does not cover it: a
+report without a position has no data extension under any reading. No
+base-91 block (section 3) and no frequency
+([09-other.md section 7](09-other.md#7-frequency-specification)) is
+looked for in it. An intermediate draft extended that search to
+`tlm.cmt`; it was dropped when 02 limited the search to reports that
+carry a position.
+
 The original range of an analog value is 000 to 255; version 1.2 allows
 000 to 999 (p. 88/68, p. 157/133), so no three-digit value gives a
 finding. Which byte of `tlm.digital` is B1 is not stated in the report
@@ -124,6 +161,14 @@ another case and the rest of it would fit that message
 ([amb.tlm.keyword](#amb.tlm.keyword)). Bulletin and NWS
 addressees are tested first by 08, so their text is never a definition
 message; any other addressee does not change the reading.
+**[proposed]** An addressee starting with `NWS_`, `SKY`, `CWA` or `BOM`
+gets the `ambiguous` finding of
+[amb.nws.addressee](08-message.md#amb.nws.addressee) in a definition
+message as in cases 3, 5 and 6 of 08 section 2.1: when the field after
+the identifier has no `syntax` or `value` finding, those of this
+section included. Reading (c) of that entry takes the text as an NWS
+bulletin and gives none of the findings of this section, so a field
+that has one of them is reported by it alone (Precedence).
 
 Each list token below includes the comma before it, as the diagrams
 count it. The bytes of a field are those that
@@ -159,6 +204,17 @@ sixteenth in `EQNS.`, gives `syntax`. A keyword with nothing after it
 gives an `unstated` finding, since the list's earliest stopping point is
 not stated ([amb.tlm.meta](#amb.tlm.meta)).
 
+**[proposed]** Positions and kinds of these findings. The `syntax`
+finding of an extra field is given once, against the field's rule at
+the `','` that starts the first extra field; the fields after it keep
+their tokens. The `unstated` finding of an empty list is against
+`tlm.parm`, `tlm.unit` or `tlm.eqns`, at the byte after the keyword. An
+A1 field that is empty with a `','` after it is shorter than its stated
+length and gives `value` at that `','`. A coefficient that fits the
+relaxed number gives no finding: unlike `tlm.analog`, `tlm.eqns.coef`
+has no stricter form beside it. A `BITS.` text that ends before the
+eighth bit gives `syntax` at its end against `tlm.bits.sense`.
+
 ## 5. Ambiguities
 
 Decoder behaviour below was read in the source at the commits listed in
@@ -184,15 +240,30 @@ the [README](README.md#4-decoders-consulted), not run.
   except for `MIC` with no `','` after it: it would run the sequence on
   to the first `','`, taking the first analog value with it, and so
   read one analog field fewer. Under the test of README section 3 that
-  counts only where reading (c) still accepts the report: the first
-  value is all digits, and the comment starts with zero or more digits,
-  a `','` and eight bytes `'0'` or `'1'`, which reading (c) takes as
-  the end of the fifth value and the digital value. There an
-  `ambiguous` finding is given at offset 5, the byte after `MIC`. In
-  every other such report reading (c) fails, and there is no finding. A
-  `syntax` or `value` finding that both readings give on the same bytes
-  elsewhere in the report does not suppress the `ambiguous` finding. An
-  earlier draft withheld it wherever the report had such a finding.
+  counts only where reading (c) still accepts the report: where it
+  gives no `syntax` or `value` finding of its own. **[proposed]** A
+  finding is its own unless this reading gives the same finding, the
+  same rule, kind and offset; both readings use the `tlm.*` rules, so
+  the two failing at one byte under different rules are two findings,
+  and reading (c) fails. Reading (c) accepts, for example, a report
+  whose first value is all digits and whose comment starts with the
+  rest of a relaxed number (zero or more digits, then optionally `'.'`
+  and digits), a `','` and eight bytes `'0'` or `'1'`, which it takes
+  as the end of the fifth value and the digital value. There an `ambiguous` finding is given at
+  offset 5, the byte after `MIC`. A `syntax` or `value` finding that
+  both readings give on the same bytes elsewhere in the report does not
+  suppress the `ambiguous` finding. **[proposed]** That includes a
+  report that ends early at the same byte under both readings, such as
+  `T#MIC199,000,255,073`: both give `syntax` against `tlm.analog` at
+  the end, which is not reading (c)'s own. An earlier draft withheld
+  the finding wherever the report had such a finding. Another earlier
+  draft listed the accepting comment shapes as digits, `','` and eight
+  bits only, and said that reading (c) fails in every other report;
+  that left out a fifth value with a `'.'` and the shared findings, and
+  was replaced by the test above. **[proposed]** A `syntax` or `value`
+  finding that this reading alone gives does suppress it (Precedence):
+  for example a digital value with a digit other than `'0'` or `'1'`,
+  which reading (c) takes into its fifth value and accepts.
 - **Decoders.**
 
   | Decoder | Reads | Where |
@@ -378,7 +449,14 @@ the [README](README.md#4-decoders-consulted), not run.
   of [`msg.text`](08-message.md#msg.text), does not suppress the
   `ambiguous` finding. An earlier draft gave the finding for every such
   keyword. Whether the addressee sends telemetry cannot be seen in the
-  packet and gives no finding.
+  packet and gives no finding. **[proposed]** The finding is against
+  [`msg.text`](08-message.md#msg.text), the field the bytes belong to
+  under this reading. **[proposed]** A finding of reading (b) is its own
+  unless this reading gives the same rule, kind and offset. A byte that
+  `msg.text` rejects under both readings and that a field of section 4
+  also rejects, such as a control byte among the eight bits of
+  `Bits.`, gives reading (b) a finding of its own under the field's
+  rule, and there is no `ambiguous` finding.
 - **Decoders.** Dire Wolf: exact; the definitions are stored for the
   addressee (`decode_aprs.c:1935-1953`). aprslib: exact (`telemetry.py:46`).
   pdn-aprs: exact (`telemetry_metadata`, `message.rs:197-202`). FAP: any

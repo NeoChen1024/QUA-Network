@@ -49,6 +49,29 @@ neither, then text. A report with a locator has no timestamp.
 | <a id="stat.beam"></a>`stat.beam` | Beam heading and power | The last 3 bytes of `stat.text` when they are `^`, then a heading byte (a digit or `A`–`Z`), then a power byte 0x31–0x4B (`1` to `9`, `:` to `@`, `A` to `K`). A depth + 1 token inside `stat.text`. Any other last 3 bytes are plain text. | no | end of field | p. 105/81 |
 | <a id="stat.freq"></a>`stat.freq` | Frequency in status text | The rules of section 7 apply at the start of `stat.text`, after the leading `SP` when there is a `stat.grid`. | no | — | p. 111/87; p. 115/91 |
 
+**[proposed]** Tokens. A `stat.time` is a
+[`time.dhm`](02-fields.md#time.dhm) token, as a position timestamp is in
+03. A `stat.grid` token covers the locator and the symbol, with
+[`grid.loc`](03-position.md#grid.loc), [`sym.table`](02-fields.md#sym.table)
+and [`sym.code`](02-fields.md#sym.code) one level deeper; a locator
+letter that fails gives one `syntax` finding on `stat.grid`, at the first
+such letter. The `ambiguous` finding of [amb.stat.time](#amb.stat.time)
+is given on `stat.time`. `stat.text` is a free-text field for
+[`cmt.noarchive`](02-fields.md#cmt.noarchive); the other items of
+02 section 8.2 and [`tlm.b91`](07-telemetry.md#tlm.b91) are not looked
+for in it. `stat.beam` and the tokens of section 7 lie one level below
+`stat.text`. No other field of this file is named a free-text field:
+`udf.data` holds data whose meaning its user defines, and `inv.data`
+holds bytes sent as invalid or for a test. A `'!x!'` in either is
+therefore a match outside free text, and gets the `ambiguous` finding
+that the **[agreed]** search of
+[02 section 8.2](02-fields.md#82-items-found-inside-a-comment) gives
+there. The "No finding" of the `inv.data` row and the "no finding" for
+bytes outside `SP` to `~` in `udf.data` concern the bytes of those
+fields, which this file does not check; they do not exempt the fields
+from that search, which covers the whole information field.
+**[agreed]** Neither field counts as free text for this search.
+
 ## 3. Station capabilities
 
 | ID | Field | Layout | Required | Ends at | Source |
@@ -59,6 +82,20 @@ neither, then text. A report with a locator has no timestamp.
 | <a id="cap.token"></a>`cap.token` | Token | 1 or more bytes 0x21–0x7E other than `,` and `=` ([amb.cap.form](#amb.cap.form)). | yes | `=`, `,` or end of field | p. 101/77 |
 | <a id="cap.value"></a>`cap.value` | Value | 1 or more bytes 0x21–0x7E other than `,`. An `=` with nothing after it gives `syntax`. For the tokens `MSG_CNT` and `LOC_CNT` the value is a count, so digits; any other byte gives `syntax`, as a byte outside the set ([README section 3](README.md#3-tokenizer-model)). | no | `,` or end of field | p. 101/77 |
 | <a id="cap.pad"></a>`cap.pad` | Padding | One or more `SP` before or after a token or value. A token of its own; gives `ambiguous` at its first byte where the field read with the spaces as padding would give no `syntax` or `value` finding of its own ([amb.cap.form](#amb.cap.form)). | no | the next byte that is not `SP` | — |
+
+**[proposed]** Tokens. Each item is a `cap.item` token at the level of
+`cap.sep`, with its `cap.pad`, `cap.token` and `cap.value` one level
+deeper; the `=` has no token. A token runs from its first to its last
+byte that is not `SP` before the first `=`, and a value likewise after
+it, so a `SP` inside one is a byte outside its set and gives `syntax`
+there. An item of `SP` only is empty and has no `cap.pad`: `syntax` on
+`cap.item` at its first byte, or where it was expected when it has no
+bytes. Only `SP` before `=` gives `syntax` on `cap.token` at the
+item's first byte; nothing or only `SP` after it gives `syntax` on
+`cap.value` at the byte after `=`. Reading (b) of
+[amb.cap.form](#amb.cap.form) divides the bytes as this reading does, so
+it has no finding of its own and every `cap.pad` gets its `ambiguous`
+finding.
 
 ## 4. General queries
 
@@ -74,6 +111,33 @@ neither, then text. A report with a locator has no timestamp.
 
 Bytes after `qry.end` that are not a footprint, or after `qry.radius`,
 give `syntax` and form `residue`.
+
+**[proposed]** Tokens and findings. `qry.type` runs from offset 1 to the
+first `?`; a byte that is not an upper-case letter gives one `syntax`
+finding, at the first such byte, and an empty type gives it at offset 1.
+With no `?` in the field, the type is the run of letters from offset 1,
+possibly empty, `qry.end` gives `syntax` where the `?` was expected,
+and the rest is residue; an empty type and the missing `?` then both
+give their finding at offset 1. The bytes after `qry.end` are a
+footprint when they start with a number of the `qry.lat` form, with or
+without its sign byte; other bytes give `syntax` on `qry.fp` at their
+first byte and are residue. A `qry.fp` token covers the parts present,
+with `qry.lat`, `qry.lon` and `qry.radius` one level deeper.
+`qry.lat` and `qry.lon` each run to the next `,`, or to the end of the
+field when there is none, and keep their token when their bytes are
+wrong: one `syntax` finding, at the first byte that fails, where a sign
+that is missing or `+` fails at the first byte of the coordinate, and a
+`value` finding when the number is well formed and over its limit.
+`qry.radius` is a fixed 4-byte field and takes up to 4 bytes after the
+second `,`: a byte that is not a digit, or a missing digit at the end of
+the field, gives one `syntax` finding on `qry.radius` at the first such
+byte. A part with no bytes at all, between two `,` or after the last
+one, is missing, and a missing `,` is missing at the end of the field:
+each gives `syntax` on `qry.fp` where it was expected. Bytes after the
+4 bytes of the radius, a fifth digit as well as text, cannot be counted
+against the fixed field; they give `syntax` on `qry.fp` at their first
+byte and are residue. This is how the "any other length" of the
+`qry.radius` row is reported for a radius that is too long.
 
 ### 4.1 Directed queries
 
@@ -91,6 +155,10 @@ match the rows below is not a directed query; 08 reads it as a message.
 | <a id="qry.dir.sep"></a>`qry.dir.sep` | Separator | One `SP` between `qry.dir.type` and `qry.dir.call`; may be absent ([amb.qry.dir](#amb.qry.dir)). | no | 1 byte | p. 103/79 |
 | <a id="qry.dir.call"></a>`qry.dir.call` | Heard station | 1 to 9 letters, digits or `-`. Meaningful for `APRSH`; with another type it gives `unstated`. | no | `SP` or end of field | p. 101/77; p. 103/79 |
 | <a id="qry.dir.pad"></a>`qry.dir.pad` | Padding | `SP` bytes after `qry.dir.call`, to the end of the field. No finding ([amb.qry.dir](#amb.qry.dir)). | no | end of field | p. 103/79 |
+
+**[proposed]** With no `qry.dir.call`, every `SP` after `qry.dir.type`
+is `qry.dir.pad`; `qry.dir.sep` is only a `SP` directly before a
+`qry.dir.call`.
 
 A directed query carries no message identifier (p. 101/77, p. 103/79):
 a text with `{` does not match the rows above and is read as a message.
@@ -115,7 +183,9 @@ where APRS12c only recommends printable ASCII. An earlier draft gave
 gave such bytes no finding, since many senders put UTF-8 there and the
 finding would bury the others.
 
-A field shorter than 3 bytes gives `syntax`. The list of assigned user
+A field shorter than 3 bytes gives `syntax`; **[proposed]** on the
+first of `udf.user` and `udf.type` that is missing, at the end of the
+field. The list of assigned user
 IDs (p. 122/98) is not checked: the document says there is no mechanism
 to reserve a code.
 
@@ -141,6 +211,12 @@ gives depth + 1 tokens there. It is looked for:
   prefix, altitude, locator and any data extension
   ([04-mic-e.md section 5](04-mic-e.md#5-status-text));
 - at the start of status text (`stat.freq`).
+
+**[proposed]** A DF report is a position report
+([03-position.md section 3](03-position.md#3-df-reports)), so its
+comment, [`df.cmt`](03-position.md#df.cmt), is the `cmt.text` of a
+position report after its data extension and its bearing and NRQ, and
+a frequency is looked for at its start as at the start of `pos.cmt`.
 
 Nowhere else in a comment is it looked for. A weather report has no
 comment ([amb.wx.comment](06-weather.md#amb.wx.comment)), so no
@@ -168,6 +244,30 @@ text and gives `ambiguous` at its leading `SP`, where reading the items
 in any order would give no `syntax` or `value` finding of its own
 ([amb.freq.items](#amb.freq.items)). The text after the last item is
 comment text.
+
+**[proposed]** Tokens and findings. The tokens of this section lie one
+level below the comment or text. An item token includes its leading
+`SP`, so `freq.rx` is 10 bytes and a 2-digit `freq.range` 5; a
+left-justified item has none. `freq.dstar` does not include the `SP`
+before it; its 7-byte form ends with the `SP` after `D-STAR`, and
+`D-STAR` followed by neither `SP` nor `>` is text. In the access
+repeater name the callsign is 1 to 6 upper-case letters or digits,
+padded with `SP` to 6 bytes, and the module is an upper-case letter;
+other bytes leave `D-STAR>` and what follows as text. `freq.dstar`
+stands directly after the frequency or after its `freq.offset`, with no
+`freq.rx` or `freq.tone` before it (section 10), and no item is looked
+for after it. A `freq.range` whose letter is already taken ends the
+items and is not out of order. Only a tone or an offset can be out of
+order: `freq.rx` stands only directly after a frequency, and
+`freq.range` is last. The `ambiguous` findings of
+[amb.freq.items](#amb.freq.items) and
+[amb.freq.nofreq](#amb.freq.nofreq) are given on the rule of the item
+that the other reading would take. The `unstated` findings of
+`freq.tone` and `freq.range` are at the first byte of the item after its
+`SP`, and the `syntax` finding of [amb.freq.case](#amb.freq.case) at the
+first byte of `MHz` that differs. `freq.objname` and `freq.obj` give no
+token: the name stays [`obj.name`](05-object-item.md#obj.name) or
+[`item.name`](05-object-item.md#item.name).
 
 ## 8. Ambiguities
 
@@ -263,6 +363,13 @@ p. 105/81, which lets letters be received in lower case, so it is not
 a listed reading here
 ([README section 3](README.md#3-tokenizer-model)) and that finding is
 not given.
+
+**[agreed]** A first-pair letter outside `A`–`R` is recognised, and its
+`syntax` finding stays. Status texts that name a DMR talkgroup, such as
+`TG4605` followed by `SP`, have the shape of a 4-byte locator with an
+overlay symbol and get that finding. They are outside the document,
+and the finding is kept on purpose: it shows how a form defined by
+shape alone catches unrelated text.
 
 **In the bytes.** **[proposed]** No `ambiguous` finding. An earlier
 draft gave one at offset 1 where a locator and symbol were not followed

@@ -6,7 +6,6 @@ import re
 from qua_network.legacy.fields import (
     CMP_TABLE,
     DIGITS,
-    FREQ,
     LOWER,
     UPPER,
     area_literal,
@@ -15,7 +14,6 @@ from qua_network.legacy.fields import (
     comment,
     csespd_mixed,
     emit_ext,
-    freq_items_start,
     lat,
     lon,
     missing,
@@ -120,7 +118,7 @@ def _uncompressed(scan, start, p, end, depth):
             # Storm data (06 section 8), then the comment; it does not follow the
             # slot's extension, so no course and speed is looked for at its start.
             p = weather_storm(scan, slot - 11, p, end, depth)
-            return _freq_items(scan, comment(scan, p, end, depth, 36, "pos.cmt", start_cse=False))
+            return comment(scan, p, end, depth, 36, "pos.cmt", start_cse=False)
 
     # Bearing and NRQ (02 section 7.4, 03 section 3).
     limit, limit_rule = (36, "pos.cmt") if x else (43, "pos.cmt")
@@ -137,7 +135,7 @@ def _uncompressed(scan, start, p, end, depth):
         elif brg is not None and df_sym != df_ext and brg <= 360:
             scan.find("df.notdf", "ambiguous", p)
 
-    cmt = _freq_items(scan, comment(scan, p, end, depth, limit, limit_rule))
+    cmt = comment(scan, p, end, depth, limit, limit_rule)
     if x is not None and x.h_alpha:
         # amb.ext.phg: reading (b) takes the extension as comment text, within
         # the limit without an extension (43).
@@ -159,15 +157,7 @@ def _compressed(scan, start, p, end, depth):
         return None
     # amb.pos.cmpext: a clean extension at the comment start is reported by
     # the search of comment(), at the same byte and rule.
-    return _freq_items(scan, comment(scan, e, end, depth, 40, "pos.cmpcmt"))
-
-
-def _freq_items(scan, cmt):
-    """amb.freq.nofreq: a tone, offset or range item at the comment start,
-    whose finding 09 decides; the packet waits for that reader."""
-    if cmt is not None and freq_items_start(scan.line, cmt.start, cmt.end) and FREQ not in scan.unread:
-        scan.unread.append(FREQ)
-    return cmt
+    return comment(scan, e, end, depth, 40, "pos.cmpcmt")
 
 
 # --- Agrelo DF (03 section 4) -------------------------------------------

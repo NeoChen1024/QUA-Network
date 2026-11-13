@@ -120,11 +120,17 @@ gives one `syntax` finding on `mice.dest`: where the missing byte was
 expected when it is shorter, at the seventh byte when it is longer, and
 the bytes past the sixth are then a residue one level below
 `dest.mice`. A destination is in the AX.25 form or gives `syntax` on
-`addr.dest` ([amb.addr.form](01-frame.md#amb.addr.form)), so a longer
-callsign part, or a byte such as a lower-case letter, also gives that
-finding of 01-frame, on its own field. An earlier draft said that only
-an address that APRS-IS alone can carry may have a longer callsign
-part.
+`addr.dest` ([amb.addr.form](01-frame.md#amb.addr.form)). A longer
+callsign part, or a byte such as a lower-case letter, is the same fault
+at the same byte as that finding of 01-frame, and the rule of this
+section is the more specific: the finding on the part, or on
+`mice.dest` at the seventh byte, alone is given, and `addr.dest` gives
+none there (`tp.dest` or `tp.aea` for an inner packet)
+([README section 3](README.md#3-tokenizer-model), One fault, two
+rules). A finding of 01-frame at a byte that no rule of this section
+reports is kept. An earlier draft gave both findings at that byte, and
+an earlier one said that only an address that APRS-IS alone can carry
+may have a longer callsign part.
 The SSID keeps the `dest.ssid` token of 01-frame. `mice.dest.ssid`
 names its `obsolete` finding, at the `'-'`, which is not given where
 `addr.ssid` already reports the suffix. Each of these applies

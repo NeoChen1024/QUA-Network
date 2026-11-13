@@ -51,7 +51,7 @@ every other address position it gives `syntax`
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|
 | <a id="addr.src"></a>`addr.src` | Source address | `addr.call` with optional `addr.ssid`, or `addr.is`. A `*` at its end gives `syntax` at the `*`; the token covers the `*`, which is a `residue` one level below it (README section 3, Output). The finding is not given when the address before the `*` already gives `syntax`, since a field gives at most one (README section 3, Placing a finding). An earlier draft left the `*` outside the token, as a residue beside it. | yes | `line.gt` | p. 22/12; p. 107/83; UAP §1.1 |
-| <a id="addr.dest"></a>`addr.dest` | Destination address | `addr.call` with optional `addr.ssid`. Any other address gives `syntax` on this rule at its first byte that does not fit the AX.25 form ([amb.addr.form](#amb.addr.form); README section 3, Placing a finding); an earlier draft read it as `addr.is`. Empty gives `syntax`. A `*` at its end gives `syntax` at the `*`, which the token covers as for `addr.src`. Its class is given by section 5. | yes | `,` or `line.sep` | p. 22/12; p. 25/13; UAP §1.2 |
+| <a id="addr.dest"></a>`addr.dest` | Destination address | `addr.call` with optional `addr.ssid`. Any other address gives `syntax` on this rule at its first byte that does not fit the AX.25 form ([amb.addr.form](#amb.addr.form); README section 3, Placing a finding); an earlier draft read it as `addr.is`. Empty gives `syntax`. A `*` at its end gives `syntax` at the `*`, which the token covers as for `addr.src`. Its class is given by section 5. On a Mic-E destination the AX.25-form finding is not given at a byte that a rule of [04-mic-e section 3](04-mic-e.md#3-destination-address) reports for the same fault (README section 3, One fault, two rules). | yes | `,` or `line.sep` | p. 22/12; p. 25/13; UAP §1.2 |
 | <a id="addr.call"></a>`addr.call` | Callsign, AX.25 form | 1 to 6 bytes, each `A`–`Z` or a digit. | yes, in the AX.25 form | `-`, `*`, `,`, `>` or `:` | p. 22/12; p. 107/83; UAP §1 |
 | <a id="addr.ssid"></a>`addr.ssid` | SSID, AX.25 form | `-` then `1`–`9`, or `1` followed by `0`–`5`. SSID 0 is written by leaving the suffix out. **[agreed]** After an `addr.call`, the suffix `-0`, or `-0` and one more digit (`N0CALL-0`, `N0CALL-01`), is a wrong text form of an address that AX.25 can carry: this rule gives `syntax`, and the address is not `addr.is`. Two digits above 15 give `value` ([amb.addr.form](#amb.addr.form)). | no | `*`, `,`, `>` or `:` | p. 107/83; UAP §1.1 |
 | <a id="addr.is"></a>`addr.is` | Address only APRS-IS can carry | Not in the AX.25 form and not an `addr.call` with a suffix that `addr.ssid` reports, but 1 to 9 bytes, each 0x21–0x7E other than `>`, `,`, `:` and `*`. One token for the whole address; gives `is-only`. Read only at a source: `addr.src`, and the first address of a [`tp.aea`](#tp.aea) header; [`path.is`](#path.is) and [`tp.src`](#tp.src) have rules of their own ([amb.addr.form](#amb.addr.form)). Anything else at the source gives `syntax`, at the first byte outside the set, or at the tenth byte of a longer name (README section 3, Placing a finding). At the other address positions an address not in the AX.25 form gives `syntax` on the rule of the position instead; an earlier draft read it as `addr.is` at any position. | — | the `>` after the source | p. 108/84; UAP ch. 4 |
@@ -106,16 +106,23 @@ by the rule for forms recognised by shape alone
 ([README section 3](README.md#3-tokenizer-model)). Earlier drafts gave
 both an `ambiguous` finding at the first byte of `addr.dest`
 ([amb.dest.class](#amb.dest.class)). **[agreed]** A
-locator-shaped destination with lower-case letters, which only APRS-IS
-can carry, is not `dest.grid`; it falls to the next class without a
-finding of its own. For a third-party packet the outer destination is
-classified with the outer data type identifier and the inner one with
-the inner identifier.
+locator-shaped destination with lower-case letters is not in the AX.25
+form: it gives `syntax` on `addr.dest`, by reading (c) of
+[amb.addr.form](#amb.addr.form), and is not `dest.grid`; it falls to
+the next class without a finding of its own. An earlier draft said that
+only APRS-IS can carry such a destination. For a third-party packet the
+outer destination is classified with the outer data type identifier and
+the inner one with the inner identifier.
 
 A destination not in the AX.25 form, such as that lower-case one, is
 classified by the bytes as written, and the address gives its `syntax`
 finding on `addr.dest` or `tp.dest` beside the class
 ([amb.addr.form](#amb.addr.form)). An earlier draft gave it `is-only`.
+For `dest.mice` that finding is not given at a byte that a rule of
+[04-mic-e section 3](04-mic-e.md#3-destination-address) reports for
+the same fault, as the more specific rule
+([README section 3](README.md#3-tokenizer-model), One fault, two
+rules).
 
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|
@@ -270,11 +277,11 @@ field is tokenized from `dti` again, one depth level down.
 | <a id="tp.gt"></a>`tp.gt` | Source terminator | `>`, 1 byte. | yes | 1 byte | p. 108/84 |
 | <a id="tp.dest"></a>`tp.dest` | Original destination | As `addr.dest`, classified by section 5 with the inner identifier, including a `*` at its end. An address not in the AX.25 form gives `syntax` on this rule ([amb.addr.form](#amb.addr.form)). | yes | `,` | p. 108/84 |
 | <a id="tp.path"></a>`tp.path` | Retained original path | Zero or more entries, each `,` then an address as `path.digi`, `path.q` or `path.is`, without `*`. **[proposed]** The token includes the `,`; the entry is read one level below it under the rules of section 4, including the limit of 8 and the obsolete and gating classes. A `*` here gives `syntax` ([amb.tp.header](#amb.tp.header)), so `path.used` does not apply. The `*` and the bytes after it are a `residue` below the token, and the finding is at the `*`, unless the address before it already gives `syntax` (README section 3, Output; Placing a finding). | no | the `,` before `tp.net` | p. 108/84; p. 138/114 |
-| <a id="tp.net"></a>`tp.net` | Network identifier | `,` then an address in the AX.25 form (`TCPIP` in the examples), without `*`. Any other address gives `syntax` on this rule at its first byte that does not fit that form ([amb.addr.form](#amb.addr.form)); an earlier draft also took `addr.is` here. A `*` gives `syntax` at the `*`, unless the address before it already gives `syntax`; the `*` and the bytes after it are a `residue` below the token (README section 3, Output; Placing a finding). An empty one is a missing field and gives `syntax` where its first byte was expected ([README section 3](README.md#3-tokenizer-model), Kinds by situation). | yes | `,` | p. 108/84 |
+| <a id="tp.net"></a>`tp.net` | Network identifier | `,` then an address in the AX.25 form (`TCPIP` in the examples), without `*`. **[agreed]** Any other address gives `syntax` on this rule at its first byte that does not fit that form ([amb.addr.form](#amb.addr.form)); an earlier draft also took `addr.is` here. A `*` gives `syntax` at the `*`, unless the address before it already gives `syntax`; the `*` and the bytes after it are a `residue` below the token (README section 3, Output; Placing a finding). An empty one is a missing field and gives `syntax` where its first byte was expected ([README section 3](README.md#3-tokenizer-model), Kinds by situation). | yes | `,` | p. 108/84 |
 | <a id="tp.gate"></a>`tp.gate` | Receiving gateway | `,` then `addr.call` with optional `addr.ssid`, then `*`. A missing `*`, or an address not in the AX.25 form, gives `syntax` ([amb.tp.header](#amb.tp.header)): one finding, at the first byte that does not fit the AX.25 form, or where the `*` was expected (README section 3, Placing a finding). An earlier draft gave both defects a finding, the address one at its first byte. It is the last entry of the inner header. | yes | `tp.sep` | p. 108/84; p. 109/85 |
 | <a id="tp.sep"></a>`tp.sep` | Inner header end | `:`, the first `:` after `tp.dti`. | yes | 1 byte | p. 108/84 ([amb.tp.header](#amb.tp.header)) |
 | <a id="tp.info"></a>`tp.info` | Original information field | Tokenized from `dti` at depth + 1, under every rule of this directory. An empty field gives `syntax` under this rule. A further `}` is followed ([amb.tp.nest](#amb.tp.nest)). | yes | end of the enclosing field | p. 108/84; p. 110/86 |
-| <a id="tp.aea"></a>`tp.aea` | AEA-form inner header | Every address separated by `>` instead of `,`: source, any retained digipeaters, the network identifier, the gateway with `*`, then the original destination, then `:`. Gives `obsolete` ([amb.tp.aea](#amb.tp.aea)). **[proposed]** Recognised when there is no `,`, at least four non-empty addresses, and exactly one `*`, at the end of the second-to-last address. Each address is read one level below; the last is classified as a destination by section 5. The first, the source, may be `addr.is`; any other address not in the AX.25 form gives `syntax` on `tp.aea`, one finding for the field, at the first such byte ([amb.addr.form](#amb.addr.form); README section 3, Placing a finding). | no | `tp.sep` | p. 137/113; p. 138/114 |
+| <a id="tp.aea"></a>`tp.aea` | AEA-form inner header | Every address separated by `>` instead of `,`: source, any retained digipeaters, the network identifier, the gateway with `*`, then the original destination, then `:`. Gives `obsolete` ([amb.tp.aea](#amb.tp.aea)). **[proposed]** Recognised when there is no `,`, at least four non-empty addresses, and exactly one `*`, at the end of the second-to-last address. Each address is read one level below; the last is classified as a destination by section 5. **[agreed]** The first, the source, may be `addr.is`; any other address not in the AX.25 form gives `syntax` on `tp.aea`, one finding for the field, at the first such byte ([amb.addr.form](#amb.addr.form); README section 3, Placing a finding). On a Mic-E destination that finding is not given at a byte that a rule of [04-mic-e section 3](04-mic-e.md#3-destination-address) reports for the same fault (README section 3, One fault, two rules). | no | `tp.sep` | p. 137/113; p. 138/114 |
 
 ## 9. Ambiguities
 
@@ -386,8 +393,8 @@ is no `is-only` finding. A numeric SSID over 15 gives `value`, also
 from `addr.ssid`, as a value outside the stated range 0 to 15
 ([README section 3](README.md#3-tokenizer-model), Kinds by situation).
 
-In a third-party inner header the text allows the relaxed form only at
-the source, so [`tp.dest`](#tp.dest), the entries of
+**[agreed]** In a third-party inner header the text allows the relaxed
+form only at the source, so [`tp.dest`](#tp.dest), the entries of
 [`tp.path`](#tp.path) before a q-construct, [`tp.net`](#tp.net) and
 the addresses of a [`tp.aea`](#tp.aea) header after its source are read
 in the AX.25 form, as the outer destination and digipeater entries

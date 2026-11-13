@@ -500,10 +500,13 @@ or sixth byte outside `A`–`X` means there is no subsquare: the locator
 has 4 bytes and other bytes follow it, which
 [amb.grid.form](#amb.grid.form) handles. In a destination the letter
 range makes the address not [`dest.grid`](01-frame.md#dest.grid), with
-no `syntax` finding. A lower-case locator in a destination that only
-APRS-IS can carry is not `dest.grid` either; it falls to the next class
-of [01-frame section 5](01-frame.md#5-destination-classes) without a
-finding of its own.
+no `syntax` finding. A lower-case locator in a destination is not in
+the AX.25 form: it gives `syntax` on `addr.dest`, by reading (c) of
+[amb.addr.form](01-frame.md#amb.addr.form), and is not `dest.grid`
+either; it falls to the next class of
+[01-frame section 5](01-frame.md#5-destination-classes) without a
+finding of its own. An earlier draft called it a destination that only
+APRS-IS can carry.
 
 **[agreed]** In a beacon, a `]` directly after six bytes that have the
 shape of a 6-byte locator closes the locator: those six bytes are

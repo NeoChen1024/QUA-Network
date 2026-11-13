@@ -275,7 +275,7 @@ acknowledged.
 | <a id="bln.group"></a>`bln.group` | Group name | 1-5 bytes from offset 5, letters, digits and `'-'`, then `SP` to offset 9. Other bytes as for `msg.addr.name`. | Group bulletin only | First `SP`, or offset 9 | p. 97/75 |
 | [`msg.addr.pad`](#msg.addr.pad) | Padding | `SP` bytes to offset 9. | Required when the name part is shorter | Offset 9 | p. 96/74 |
 | [`msg.sep`](#msg.sep) | Separator | `':'` at offset 10. | Required | Fixed 1 byte | p. 96/74 |
-| <a id="bln.text"></a>`bln.text` | Bulletin text | From offset 11. Text bytes, `'{'` included. More than 67 bytes gives `value`. May be empty. **[agreed]** A trailing `'{'` and 1-5 letters or digits are bulletin text like any other bytes, and count toward the 67 bytes ([amb.bln.ref](#amb.bln.ref)). | Required, 0 bytes allowed | End of information field | p. 96/74, p. 97/75 |
+| <a id="bln.text"></a>`bln.text` | Bulletin text | From offset 11. Text bytes, `'{'` included. More than 67 bytes gives `value`. May be empty. **[agreed]** A trailing `'{'` and 1-5 letters or digits are bulletin text like any other bytes, and count toward the 67 bytes ([amb.bln.ref](#amb.bln.ref), [err.bln.ref-note](#err.bln.ref-note)). | Required, 0 bytes allowed | End of information field | p. 96/74, p. 97/75 |
 
 An earlier draft defined a rule `bln.ref` here: a trailing `'{'` and 1-5
 letters or digits as a reference identifier of a bulletin, with an
@@ -722,9 +722,10 @@ not a free-text field: a `'!x!'` in it is no token and gets the
   none and let the text hold any printable byte, and an example does
   not override the diagram and the rule text
   ([README section 3](README.md#3-tokenizer-model), Pages that
-  disagree). For a bulletin, readings (a) and (c) rest on that example
-  alone, and give no `ambiguous` finding there.
-  **[proposed]** In an NWS bulletin (section 7), (c): it is tokenized
+  disagree; [err.bln.ref-note](#err.bln.ref-note)). For a bulletin,
+  readings (a) and (c) rest on that example alone, and give no
+  `ambiguous` finding there.
+  **[agreed]** In an NWS bulletin (section 7), (c): it is tokenized
   as `nws.ref`, following the example. Visible in the bytes: reading
   (b) takes the same bytes as text, and gives an `ambiguous` finding at
   the `'{'`, under the condition below. An earlier draft gave none in
@@ -886,6 +887,27 @@ marks, 5 in all. The reading follows the byte count of 5.
 Origin: introduced by the 12b/12c compilation. APRS 1.0.1 shows five
 marks in both diagrams and both examples (1.0.1 PDF 83, text layer). 12b
 already has four (12b PDF 98).
+
+<a id="err.bln.ref-note"></a>
+### err.bln.ref-note
+
+The note under the NWS example on p. 97/75 explains the
+trailing `'{'` and 5 letters and digits as a message identifier kept only
+for reference, giving as the reason that bulletins are not acknowledged,
+which would hold for every bulletin. The bulletin and announcement
+diagrams and text on p. 96/74 show no identifier and let the text hold
+any printable byte. By
+[README section 3](README.md#3-tokenizer-model) (Pages that disagree),
+the diagram and the rule text are followed: a bulletin or announcement
+has no reference identifier, and a trailing `'{'` with what follows it
+is `bln.text` ([amb.bln.ref](#amb.bln.ref)). The NWS bulletin, whose
+diagram gives its text only as NWS text and whose example is the one the
+note belongs to, keeps `nws.ref` as [amb.bln.ref](#amb.bln.ref) decides.
+
+Origin: inherited from APRS 1.0.1. The note stands under the same NWS
+example there (1.0.1 PDF 84, text layer), and the bulletin diagrams show
+no identifier (1.0.1 PDF 83, 84). 12b has the same pairing (12b PDF 98,
+99).
 
 <a id="err.msg.replyack-alnum"></a>
 ### err.msg.replyack-alnum

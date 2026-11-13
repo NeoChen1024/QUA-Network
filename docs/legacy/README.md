@@ -204,6 +204,19 @@ differently. An entry may state an exception, and then says so.
 Each keeps its own rule ID; they are not merged. Identical findings
 (the same rule, kind and offset) are given once.
 
+**[agreed]** One fault, two rules. When two rules would each give a
+finding at the same byte for the same fault, only the finding on the
+more specific rule is given, as Placing a finding asks. The case
+in point is a Mic-E destination with a lower-case letter, or with more
+than six bytes in its callsign part: the part rule or `mice.dest` of
+[04-mic-e](04-mic-e.md#3-destination-address) reports the byte, and
+`addr.dest` gives no `syntax` finding there. Findings for different
+faults keep their own rules, by the paragraph above, also at one byte.
+This is the default; an entry may state an exception, and then says
+so. **[proposed]** The more specific rule is the one whose field is
+narrower, or the one of the format the packet is read as over the
+general rule of 01-frame.
+
 **[agreed]** The "In the bytes" paragraph of an ambiguity entry that
 only applies the tests of this section to the reading taken is not a
 decision of its own. It carries no label, takes the status of the

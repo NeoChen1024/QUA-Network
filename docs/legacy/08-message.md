@@ -97,8 +97,8 @@ declares its class inside the `':'` class of the data type identifier
 and stands before the text in the bytes, so it is the innermost class
 declared, and the text is then read inside that class: neither a
 bulletin nor an NWS bulletin names a field for a telemetry keyword, so
-in their text the keyword is text (README section 3, the rule there
-on several keywords in one packet). An earlier draft called the
+in their text the keyword is text (README section 3, Classes that a
+keyword declares). An earlier draft called the
 addressee keyword the first keyword in the bytes. The order of cases 3, 4 and 5 among
 the tests of the text, with case 6 last, applies README section 3
 (Forms that can stand at one place). The three tests are disjoint by
@@ -703,8 +703,8 @@ not a free-text field: a `'!x!'` in it is no token and gets the
   the addressee, fixed by position, stands before the text in the
   bytes, so its class is the innermost one declared and the text is
   then read inside it. Neither class names a field for a telemetry
-  keyword, so in their text it is text (README section 3, the rule on
-  several keywords in one packet). An earlier draft called the
+  keyword, so in their text it is text (README section 3, Classes that a
+  keyword declares). An earlier draft called the
   addressee keyword the first keyword in the bytes. The shapes of an acknowledgement
   and of a directed query are not keywords; a class before them takes
   the bytes, so they are text too (README section 3, the rule on forms

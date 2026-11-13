@@ -221,8 +221,8 @@ data type identifier and stands before the text in the bytes, so it is
 the innermost class declared when the text is read, and neither a
 bulletin nor an NWS bulletin names a field for a telemetry keyword. The
 text of a bulletin or NWS bulletin is therefore never a definition
-message (README section 3, the rule there on several keywords in one
-packet; [08 section 2.1](08-message.md#21-kind-of-packet)); any other
+message (README section 3, Classes that a keyword declares;
+[08 section 2.1](08-message.md#21-kind-of-packet)); any other
 addressee does not change the reading. An earlier draft carried the
 sentence on the addressees as a proposal, and a later one called the
 addressee keyword the first keyword in the bytes. An earlier draft gave an

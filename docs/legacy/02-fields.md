@@ -514,9 +514,10 @@ field is stated in [03-position.md](03-position.md#3-df-reports).
   whole `cmt.text` token of any format, and let a format name further
   free-text fields to be searched the same way.
 - **[proposed]** Within those fields each item is searched for
-  independently of the others, outside a base-91 telemetry block
-  (below), and each occurrence it takes is a token one level deeper
-  than the field.
+  independently of the others, and each occurrence it takes is a token
+  one level deeper than the field. An earlier draft also named here the
+  exception for a base-91 telemetry block, which the bullet on blocks
+  below states.
 - **[proposed]** When occurrences of two items overlap, both are
   recorded, each with an `ambiguous` finding.
 - The bytes of a base-91 telemetry block
@@ -616,18 +617,27 @@ That is the most specific rule whose bytes are at fault
 finding on `cmt.alt.neg` at the `'x'`.
 
 **[agreed]** As the author decided, where the `syntax` finding of a
-malformed run falls on the first byte of another item, or of a run
+malformed run falls on a byte of the field, no `ambiguous` finding of
+any rule is given at that byte, since this reading already reports it
+([README section 3](README.md#3-tokenizer-model), Precedence). Such a
+finding may be that of another item that starts there, or of a run
 that [amb.ext.count](#amb.ext.count) or, in Mic-E,
 [amb.mice.extension](04-mic-e.md#amb.mice.extension) or
-[amb.mice.alt](04-mic-e.md#amb.mice.alt) reports, no
-`ambiguous` finding is given at that byte, since this reading already
-reports it ([README section 3](README.md#3-tokenizer-model),
-Precedence). In
+[amb.mice.alt](04-mic-e.md#amb.mice.alt) reports. In
 `/A=12/A=000001 /A=000002`, `/A=12!W12! !W34!` and `/A=12PHG5132` the
 finding at the byte after `12` is the only one there. The `ambiguous`
 findings of the other occurrences, at `/A=000002` and `!W34!`, stay,
 unless their own first byte is reported. An earlier draft gave the
-`ambiguous` finding at that byte as well.
+`ambiguous` finding at that byte as well, and a later one named only
+the findings of those items and runs.
+
+**[agreed]** As the author decided, a malformed run cut short by the
+end of the field has its `syntax` finding where the missing byte was
+expected, past the field. That byte is not one of the field's, and the
+finding does not report the bytes of whatever follows: the findings of
+the next field at that offset are given as usual. For example,
+`hi /A=12` at the end of a position comment gives the finding at the
+offset after `12`, and nothing there is withdrawn.
 
 `cmt.dao`: every candidate is recorded; more than one gives an
 `ambiguous` finding on each, at the candidate's first `'!'`, under the

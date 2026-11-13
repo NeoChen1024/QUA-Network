@@ -11,7 +11,6 @@ amb.wx.carriers.
 from qua_network.legacy.fields import (
     DIGITS,
     LOWER,
-    SYM_TABLE,
     UPPER,
     comment,
     dirspd,
@@ -375,7 +374,7 @@ def _object_comment(scan, s, end, depth):
     if any(f.kind in _BAD and s <= f.offset <= end for f in scan.findings):
         return
     scratch = Scan(scan.line)
-    comment(scratch, s, end, depth, 43, "obj.cmt", b91_kind="unstated")
+    comment(scratch, s, end, depth, 43, "obj.cmt", b91=False)
     rule = _rule_at(scan, s, depth)
     if rule is not None and not any(f.kind in _BAD for f in scratch.findings):
         scan.find(rule, "ambiguous", s)
@@ -411,15 +410,13 @@ _STORM_FIELDS = (
 )
 
 
-def storm(scan, table_at, p, end, depth):
+def storm(scan, p, end, depth):
     """Storm data at p, where the caller found '/' and a storm type after the
-    ext.csespd of an '@' report; table_at is the offset of its sym.table.
-    Returns where the comment of the carrying format starts."""
+    ext.csespd of a \\@ or /@ report (the table byte is matched, README
+    section 3, Symbols that a format names). Returns where the comment of the
+    carrying format starts."""
     line = scan.line
     scan.tok("storm.type", p, p + 3, depth)
-    t = line[table_at]
-    if t not in b"/\\" and t in SYM_TABLE:
-        scan.find("sym.table", "unstated", table_at)
     p += 3
     for rule, mark, n in _STORM_FIELDS:
         if p >= end or line[p] != mark:
@@ -443,3 +440,22 @@ def storm(scan, table_at, p, end, depth):
             return e  # Cut short by the end of the field: reading stops.
         p = e
     return p
+
+
+def storm_overlay(scan, p, end, read_comment):
+    """Section 8: an overlaid '@' report whose bytes from p this reading took
+    as the comment. The wider reading of README section 3 (Symbols that a
+    format names) reads storm data there, then the comment through
+    read_comment(scratch, start). Call it once this reading is complete: the
+    finding is on cmt.text at the '/' of the storm type, given only where the
+    wider reading has no syntax or value finding of its own and this reading
+    none on the bytes from p, such as a comment over its limit (Precedence)."""
+    if any(f.kind in _BAD and p <= f.offset <= end for f in scan.findings):
+        return
+    scratch = Scan(scan.line)
+    q = storm(scratch, p, end, 0)
+    read_comment(scratch, q)
+    mine = {(f.kind, f.offset) for f in scan.findings}
+    if any(f.kind in _BAD and (f.kind, f.offset) not in mine for f in scratch.findings):
+        return
+    scan.find("cmt.text", "ambiguous", p)

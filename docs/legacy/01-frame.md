@@ -199,7 +199,7 @@ where the identifier rule that the byte-0 token carries is defined.
 | `%` | Agrelo DFJr / MicroFinder | [03-position.md](03-position.md) | none |
 | `&`, `+`, `.` | reserved (map feature, shelter data, space weather) | `dti.unknown` | `unstated` |
 | `'`, `` ` `` | Mic-E | [04-mic-e.md](04-mic-e.md) | none |
-| `)` | item | [05-object-item.md](05-object-item.md) | none |
+| `)` | item | [05-object-item.md](05-object-item.md) | `discouraged` (p. 77/59) |
 | `,` | invalid or test data | [09-other.md](09-other.md) | none |
 | `/`, `@` | position with timestamp, without and with messaging | [03-position.md](03-position.md) | none |
 | `0`–`9`, `A`–`S`, `U`–`Z`, `a`–`z`, `\|`, `~` | do not use | `dti.unknown` | `syntax` |
@@ -218,7 +218,12 @@ where the identifier rule that the byte-0 token carries is defined.
 
 The `discouraged` findings for raw and positionless weather are those of
 [06-weather.md section 2](06-weather.md#2-recognition), given here at
-byte 0.
+byte 0. The finding for an item is that of
+[05-object-item section 3](05-object-item.md#3-item-report), on
+[`item.dti`](05-object-item.md#item.dti); an earlier draft of this
+table showed none for `)`. A compressed object gets its finding on
+`obj.pos`, not here (05 section 2). These findings are given whatever
+the q-construct in the path shows (05 section 2).
 
 The rule carried by the byte-0 token is the identifier rule of the most
 specific format the packet is classified as. It is assigned once

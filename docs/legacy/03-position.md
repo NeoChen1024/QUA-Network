@@ -61,11 +61,15 @@ symbol code.
 | <a id="pos.ext"></a>`pos.ext` | Data extension | The bytes directly after [`sym.code`](02-fields.md#sym.code), when they match one of [`ext.csespd`](02-fields.md#ext.csespd), [`ext.phg`](02-fields.md#ext.phg), [`ext.phgr`](02-fields.md#ext.phgr), [`ext.rng`](02-fields.md#ext.rng) or [`ext.dfs`](02-fields.md#ext.dfs). Bytes that match are the extension ([amb.pos.ext](#amb.pos.ext)). [`ext.dirspd`](02-fields.md#ext.dirspd) (weather only) and [`ext.area`](02-fields.md#ext.area) (area objects only) are not taken here, whatever the symbol: bytes of their layout that also fit `ext.csespd` are read as `ext.csespd`, and other `ext.area`-shaped bytes stay comment. Being an extension gives no finding of its own, whatever byte follows it, since every extension carries the question ([amb.pos.ext](#amb.pos.ext); README section 3). A slot spelled with a literal `T`, `/` and `C` at offsets 0, 3 and 4 and digits at offsets 1, 2, 5 and 6 gets the `ambiguous` finding of [amb.ext.area](02-fields.md#amb.ext.area); the other findings on slot bytes are those of [02-fields section 7](02-fields.md#7-data-extensions). | no | 7 bytes (9 for `ext.phgr`) | p. 33/19; p. 45/27; p. 46/28; p. 51/33 |
 | <a id="pos.cmt"></a>`pos.cmt` | Comment | [`cmt.text`](02-fields.md#cmt.text): the rest of the field, or the bytes after the storm fields when [06-weather.md](06-weather.md#8-storm-data) reads storm data after a `pos.ext` with symbol code `@`. At most 43 bytes when there is no `pos.ext` and 36 when there is one; for a DF report see `df.cmt`. A longer comment gives `value` at the first byte past the limit ([amb.pos.cmtlen](#amb.pos.cmtlen)). | no | end of field | p. 50/32; p. 51/33 |
 
-Inside `pos.cmt` and `pos.cmpcmt` the items of
+Inside `pos.cmt`, `pos.cmpcmt` and `df.cmt` the items that
 [02-fields.md](02-fields.md#82-items-found-inside-a-comment) section 8.2
-are searched for, together with base-91 telemetry
+lists for the comment of a position report are searched for: the
+altitude, the DAO, `'!x!'`, base-91 telemetry
 ([`tlm.b91`](07-telemetry.md#tlm.b91)) and, at the start of the comment,
-a frequency ([09-other.md](09-other.md#7-frequency-specification)).
+a frequency ([09-other.md](09-other.md#7-frequency-specification))
+([README section 3](README.md#3-tokenizer-model), Where comment items
+are looked for). An earlier draft named `pos.cmt` and `pos.cmpcmt`
+only, and the items of 02 section 8.2 as a whole.
 
 ### 2.2 After a compressed position
 
@@ -81,7 +85,7 @@ bearing and NRQ after course and speed.
 
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|
-| <a id="df.sym"></a>`df.sym` | DF symbol | Not a token. [`sym.table`](02-fields.md#sym.table) `/` with [`sym.code`](02-fields.md#sym.code) `\`. | yes | — | p. 52/34; p. 53/35 |
+| <a id="df.sym"></a>`df.sym` | DF symbol | Not a token. [`sym.table`](02-fields.md#sym.table) `/` with [`sym.code`](02-fields.md#sym.code) `\`. The table byte is matched as the diagrams and text name it; another table byte, an overlay included, makes a different symbol ([README section 3](README.md#3-tokenizer-model), Symbols that a format names). | yes | — | p. 52/34; p. 53/35 |
 | <a id="df.ext"></a>`df.ext` | Course and speed | `pos.ext` in the form [`ext.csespd`](02-fields.md#ext.csespd) ([amb.df.ext](#amb.df.ext)). | yes | 7 bytes | p. 45/27; p. 48/30; p. 52/34 |
 | <a id="df.brg"></a>`df.brg` | Bearing and NRQ | [`ext.brgnrq`](02-fields.md#ext.brgnrq), 8 bytes, directly after `df.ext`. | yes | 8 bytes | p. 48/30; p. 52/34; p. 53/35 |
 | <a id="df.cmt"></a>`df.cmt` | Comment | [`cmt.text`](02-fields.md#cmt.text), 0 to 28 bytes. Longer gives `value` at byte 29. | no | end of field | p. 52/34; p. 53/35 |
@@ -739,3 +743,13 @@ p. 40). 12b carries both unchanged.
   against it. An earlier version of this item also named the Maidenhead
   letter ranges ([amb.grid.range](#amb.grid.range)); they count as
   stated, since the document names their source (README section 3).
+- Whether [`grid.cmt`](#grid.cmt) holds the altitude or the DAO.
+  P. 43/27 places the altitude in "the comment" without naming a
+  format, which is why [`tlm.cmt`](07-telemetry.md#tlm.cmt) reads it,
+  and p. 51/33 calls the bytes after a locator a comment; p. 35/21
+  places the DAO in a position comment, and whether a locator beacon
+  is a position report in that sense is not stated. Section 5
+  searches `grid.cmt` for `'!x!'` only. Which fields the chapters name
+  for these items, under
+  [README section 3](README.md#3-tokenizer-model) (Where comment items
+  are looked for), is not decided for this field.

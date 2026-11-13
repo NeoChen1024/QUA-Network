@@ -89,9 +89,14 @@ form carries a year, and DHM carries no month.
 A format that admits only some forms (a status report allows only
 `time.dhm` with `'z'`, p. 38/22) states that in its own file.
 
-APRS12c recommends that new senders use only UTC (p. 38/22).
-**[agreed]** The local-time form `'/'` is not marked obsolete; it
-gives a `discouraged` finding on `time.dhm` at offset 6.
+APRS12c recommends that future implementations transmit only the zulu
+form "on the air" (p. 38/22). An earlier draft paraphrased this as a
+recommendation that new senders use only UTC, which dropped the limit
+to the air. **[agreed]** The local-time form `'/'` is not marked
+obsolete; it gives a `discouraged` finding on `time.dhm` at offset 6.
+The finding is given whatever the q-construct in the path shows, as
+[05-object-item section 2](05-object-item.md#2-object-report) decides
+for every discouragement limited to RF or to the air.
 
 ## 3. Latitude and longitude
 
@@ -499,20 +504,55 @@ field is stated in [03-position.md](03-position.md#3-df-reports).
 
 ### 8.2 Items found inside a comment
 
-- **[proposed]** Each item below is searched for over the whole
-  `cmt.text` token, independently of the others. Every occurrence is a
-  token one level deeper than the comment. Formats can name other
-  free-text fields that are searched the same way.
+- Each item is looked for only in the fields that its own chapter of
+  APRS12c names for it, listed below; bytes of its shape in any other
+  field are text, with no finding
+  ([README section 3](README.md#3-tokenizer-model), Where comment items
+  are looked for). An earlier draft searched every item below over the
+  whole `cmt.text` token of any format, and let a format name further
+  free-text fields to be searched the same way.
+- **[proposed]** Within those fields each item is searched for
+  independently of the others, and each occurrence it takes is a token
+  one level deeper than the field.
 - **[proposed]** When occurrences of two items overlap, both are
   recorded, each with an `ambiguous` finding.
-- **[proposed]** Two or more occurrences of the same item give an
-  `ambiguous` finding on each.
-- Items read in other files: base-91 telemetry
-  ([`tlm.b91`](07-telemetry.md#tlm.b91)), voice frequencies
-  ([09-other.md](09-other.md), prefix `freq`), corridor widths and
-  signpost text ([05-object-item.md](05-object-item.md)), weather and
-  storm data ([06-weather.md](06-weather.md)), Mic-E status items
-  ([04-mic-e.md](04-mic-e.md)).
+- An item that the document lets stand anywhere in its field, as it
+  does the altitude, the DAO and `'!x!'`, is recorded at every
+  occurrence, and two or more occurrences in one field give an
+  `ambiguous` finding on each. An item that the document places at a
+  fixed spot is read there only, and once; later bytes of its shape
+  are text, with an `ambiguous` finding where the reading that takes
+  them as the item accepts the whole field
+  ([README section 3](README.md#3-tokenizer-model), Fixed spots and
+  repeats). An earlier draft gave the repetition rule as a proposal of
+  this section, for every item.
+
+Where each item is looked for:
+
+| Item | Fields | Place in the field | Source |
+|---|---|---|---|
+| [`cmt.alt`](#cmt.alt), [`cmt.alt.neg`](#cmt.alt.neg) | The comment of a position report ([`pos.cmt`](03-position.md#pos.cmt), [`pos.cmpcmt`](03-position.md#pos.cmpcmt), [`df.cmt`](03-position.md#df.cmt)), the Mic-E free text ([04-mic-e section 5](04-mic-e.md#5-status-text)), [`obj.cmt`](05-object-item.md#obj.cmt), [`item.cmt`](05-object-item.md#item.cmt), [`tlm.cmt`](07-telemetry.md#tlm.cmt). | Anywhere | p. 43/27 |
+| [`cmt.dao`](#cmt.dao) | The position comments of the row above: all of them but `tlm.cmt`. | Anywhere | p. 35/21; p. 76/58, p. 80/62 |
+| [`cmt.noarchive`](#cmt.noarchive) | Every free-text field, the information field searched ([amb.cmt.noarchive](#amb.cmt.noarchive)). | Anywhere | p. 110/86 |
+| [`tlm.b91`](07-telemetry.md#tlm.b91) | `pos.cmt`, `pos.cmpcmt`, `df.cmt` and the Mic-E free text ([07-telemetry section 3](07-telemetry.md#3-base-91-comment-telemetry)). | After the free text | p. 88/68 |
+| Data extensions ([7.1](#71-the-extension-slot)) | The slot after an uncompressed position; the start of the Mic-E free text ([amb.mice.extension](04-mic-e.md#amb.mice.extension)). | Fixed | p. 45/27 |
+| Frequencies (`freq.*`) | As [09-other section 7](09-other.md#7-frequency-specification) lists. | Start | p. 113/89 |
+| [`area.corridor`](05-object-item.md#area.corridor), [`obj.signpost`](05-object-item.md#obj.signpost) | `obj.cmt` and `item.cmt` of the symbols of [05-object-item sections 4 and 5](05-object-item.md#4-area-objects). | Start | p. 80/62 |
+
+The altitude and the DAO are read in the comment of an object or item
+report because p. 76/58 lets that comment carry the data of the comment
+section of chapter 5, and p. 80/62 calls these reports object position
+reports: **[agreed]** an object or item comment counts as a position
+comment. **[agreed]** A telemetry report has no position, so a DAO
+shape in `tlm.cmt` is text, with no finding; the altitude is still read
+there, since p. 43/27 places it in the comment without naming a
+format. The extension-shaped runs that
+[amb.ext.count](#amb.ext.count) reports are looked for as that entry
+states. Weather and storm data are read by
+[06-weather.md](06-weather.md), and the parts of a Mic-E status text by
+[04-mic-e.md](04-mic-e.md). Whether the comment of a Maidenhead beacon,
+[`grid.cmt`](03-position.md#grid.cmt), holds the altitude or the DAO
+is open ([03-position section 9](03-position.md#9-open-items)).
 
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|
@@ -522,16 +562,28 @@ field is stated in [03-position.md](03-position.md#3-df-reports).
 | <a id="cmt.noarchive"></a>`cmt.noarchive` | No-archive marker | `'!x!'`, with a literal lower-case `'x'`. | No | Fixed, 3 bytes | p. 110/86, p. 155/131; UAP 3.7 |
 
 **[proposed]** `cmt.alt`: both IDs count as the same item for the
-repetition rule. A `'/A='` that does not start either form, and a form
-followed by a further digit, give a `syntax` finding on `cmt.alt` at the
-`'/'`; the bytes stay comment text. The negative form is described in
-APRS12c as outside the official standard (p. 43/27); its own ID marks
-it, and it gets no finding. See [amb.cmt.alt](#amb.cmt.alt).
+repetition rule. The negative form is described in APRS12c as outside
+the official standard (p. 43/27); its own ID marks it, and it gets no
+finding. See [amb.cmt.alt](#amb.cmt.alt).
 
-**[proposed]** `cmt.dao`: every candidate is recorded; more than one
-gives an `ambiguous` finding on each, at the candidate's first `'!'`,
-under the conditions of [amb.cmt.dao](#amb.cmt.dao). A single
-candidate gives no finding, wherever it stands in the comment. An
+`'/A='` declares the altitude
+([README section 3](README.md#3-tokenizer-model), Classes that a
+keyword declares), so a `'/A='` that does not start either form, and a
+form followed by a further digit, give a `syntax` finding on `cmt.alt`
+at the `'/'`. **[proposed]** The bytes of such a run stay comment
+text, with no `cmt.alt` token. An earlier draft carried the `syntax`
+finding as part of the proposal of the paragraph above, and listed in
+section 11 whether `'/A='` is a keyword or the altitude a form
+recognised by its shape alone, which would have left such a run as
+text with no finding; the author decided that it is a keyword.
+
+`cmt.dao`: every candidate is recorded; more than one gives an
+`ambiguous` finding on each, at the candidate's first `'!'`, under the
+conditions of [amb.cmt.dao](#amb.cmt.dao)
+([README section 3](README.md#3-tokenizer-model), Fixed spots and
+repeats). A single candidate gives no finding, wherever it stands in
+the comment. An earlier draft carried this paragraph as a proposal of
+its own. An
 earlier draft also gave `ambiguous` to a single candidate followed by
 further bytes of the comment; that rested on taking a DAO only at the
 end of the comment, which contradicts p. 35/21 and was dropped
@@ -1415,11 +1467,17 @@ standard, counts.
 **Readings.** (a) Every occurrence recorded, several are ambiguous. (b)
 The first wins. (c) The last wins.
 
-**Reading taken.** **[proposed]** (a), as in 8.2, matching the rule
-for DAO. All read decoders take the first, so a decoding layer
-that needs one value takes the first. More digits than the form allows
-give a `syntax` finding, although every read decoder accepts the first
-six.
+**Reading taken.** (a), which
+[README section 3](README.md#3-tokenizer-model) (Fixed spots and
+repeats) gives for an item that may stand anywhere in its field, as
+p. 43/27 lets the altitude; an earlier draft took (a) as a proposal of
+its own. All read decoders take the first, so a decoding layer
+that needs one value takes the first. More digits than the form
+allows give a `syntax` finding, although every read decoder accepts
+the first six: `'/A='` declares the altitude, so the fault is reported
+inside it ([README section 3](README.md#3-tokenizer-model), Classes
+that a keyword declares). An earlier draft carried this sentence as a
+proposal.
 
 **In the bytes.** Visible. Repeated altitudes get `ambiguous` findings
 (8.2); a malformed one gets the `syntax` finding above, which alone is
@@ -1462,7 +1520,11 @@ behaviour, not a reading
 ([README section 3](README.md#3-tokenizer-model)). None of the decoders
 in the table below limits the DAO to the end of the comment.
 
-**Reading taken.** **[proposed]** (a), with the forms of 8.3.
+**Reading taken.** (a), which
+[README section 3](README.md#3-tokenizer-model) (Fixed spots and
+repeats) gives for an item that p. 35/21 lets stand anywhere in the
+position comment; an earlier draft took (a) as a proposal of its own.
+**[proposed]** The candidates are those of the forms of 8.3.
 
 **In the bytes.** Visible: several candidates give `ambiguous` findings,
 and the forms that 8.3 marks give `unstated` findings. Whether a single
@@ -1689,11 +1751,10 @@ the page.
   recognisers. In the second case the slot is a place where a form is
   recognised by its shape alone, and the `ambiguous` finding that (b)
   gives to such a run goes.
-- Whether a `'/A='` that starts neither altitude form, or one followed
-  by a further digit ([amb.cmt.alt](#amb.cmt.alt)), keeps its `syntax`
-  finding as an item announced by its marker, or is comment text with
-  no finding as a byte pattern outside every form the document defines
-  (README section 3, Kinds by situation). It waits on how classes
-  announced by a keyword are read. Until then such a finding sits in
-  the comment beside the comment's own `syntax` finding.
+- An earlier list held as open whether a `'/A='` that starts neither
+  altitude form, or one followed by a further digit
+  ([amb.cmt.alt](#amb.cmt.alt)), keeps its `syntax` finding, which
+  turned on whether `'/A='` is a keyword. The author decided that it
+  is, and README section 3 (Classes that a keyword declares) now names
+  it; the finding stays ([`cmt.alt`](#cmt.alt)).
 - Each ambiguity above ends in a corpus question. None has been run.

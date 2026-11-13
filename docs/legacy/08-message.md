@@ -87,9 +87,15 @@ name part is given once, at the first of them.
 
 ### 2.1 Kind of packet
 
-**[proposed]** After the separator the tokenizer decides the kind of
-packet in this order and stops at the first that applies (reading:
-[amb.msg.order](#amb.msg.order)):
+After the separator the tokenizer decides the kind of packet in this
+order and stops at the first that applies (reading:
+[amb.msg.order](#amb.msg.order)). Cases 1, 2 and 4 apply
+[README section 3](README.md#3-tokenizer-model) (Classes that a
+keyword declares): the addressees `BLN` and `NWS-` and the four
+telemetry keywords declare their classes, and an addressee keyword,
+which stands before the text, decides the class before the text is
+tested. **[proposed]** The order of cases 3, 5 and 6 among the tests
+of the text. An earlier draft carried the whole order as a proposal.
 
 1. The addressee starts with `BLN`: a bulletin or announcement, section 6.
 2. The addressee starts with `NWS-`: an NWS bulletin, section 7.
@@ -659,9 +665,13 @@ not a free-text field: a `'!x!'` in it is no token and gets the
   keyword.
 - **Readings.** (a) Addressee first, then the shape of the text, as in
   section 2.1. (b) Text first.
-- **Taken.** **[proposed]** (a). The addressee is fixed by position, and
-  bulletins are never acknowledged (p. 94/72), so an acknowledgement
-  shape in a bulletin is bulletin text.
+- **Taken.** (a), which applies
+  [README section 3](README.md#3-tokenizer-model) (Classes that a
+  keyword declares): the addressees `BLN` and `NWS-` declare their
+  classes, and the addressee, fixed by position, stands before the
+  text, which is then read inside the class. Bulletins are also never
+  acknowledged (p. 94/72), so an acknowledgement shape in a bulletin is
+  bulletin text. An earlier draft took (a) as a proposal of its own.
 - **In the bytes.** **[proposed]** Visible, under the test of
   [README section 3](README.md#3-tokenizer-model), for a bulletin or an
   NWS bulletin whose text reading (b) would classify by its shape: text
@@ -834,12 +844,18 @@ not a free-text field: a `'!x!'` in it is no token and gets the
   stated.
 - **Readings.** (a) Every message text starting with an NTS prefix is an
   NTS line. (b) Only when the field count also fits.
-- **Taken.** **[proposed]** (a); a field count that does not fit gives
-  `syntax`, and that finding alone is given, although (b) would accept
-  the bytes as an ordinary message
-  ([README section 3](README.md#3-tokenizer-model), precedence). Address
-  lines may number 1 to 4. Where the count fits, (a) and (b) agree; no
-  `ambiguous` finding.
+- **Taken.** (a), which applies the rule on classes that a keyword
+  declares ([README section 3](README.md#3-tokenizer-model)): p. 98/76
+  names the 3-byte NTS format identifier, so a text that starts with
+  it is an NTS line, and a field count that does not fit is a fault
+  reported inside the class. It gives `syntax`, and that finding alone
+  is given, although (b) would accept the bytes as an ordinary message
+  (README section 3, Precedence). The type byte is part of the
+  identifier, so a text that starts with `'N'`, a byte that p. 98/76
+  does not list, and `'\'`, such as `NE\`, matches no keyword and is an
+  ordinary message, with no finding. Address lines may number 1 to 4.
+  Where the count fits, (a) and (b) agree; no `ambiguous` finding. An
+  earlier draft carried (a) as **[proposed]**.
 - **Decoders.** None of the decoders read parses NTS lines; a search of
   the files read found no NTS handling in FAP, Dire Wolf, aprslib,
   Xastir, aprsc, javAPRSlib, aprs-parser-rs or pdn-aprs.

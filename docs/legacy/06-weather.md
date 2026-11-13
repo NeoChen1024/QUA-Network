@@ -59,13 +59,24 @@ the data type identifier byte at offset 0 carries it
 recommended" (p. 82/62, p. 83/63). Each gives a `discouraged` finding at
 offset 0, from the `dti` rules of
 [01-frame.md](01-frame.md#7-data-type-identifier). See
-[amb.wx.status](#amb.wx.status).
+[amb.wx.status](#amb.wx.status). For raw weather the advice is limited
+to RF: p. 82/62 and p. 85/65 ask senders to convert to the complete
+format on RF, while the headings and diagram titles of p. 82/62 call
+the raw formats not recommended without that limit. The positionless
+format is called not recommended with no limit (p. 83/63). The finding
+is given whatever the q-construct in the path shows, as
+[05-object-item section 2](05-object-item.md#2-object-report) decides
+for every discouragement limited to RF.
 
-**[proposed]** A `'_'` report is weather whatever its symbol table
-byte, overlays included, and gets no finding for the table byte from
-this file. See [amb.wx.symbol](#amb.wx.symbol). The symbol decides: a
-report with another symbol code is never read as weather and gets no
-finding here, whatever follows its symbol.
+A `'_'` report is weather whatever its symbol table byte, overlays
+included, and gets no finding for the table byte from this file: the
+complete weather formats name only the symbol code and leave the table
+byte open (p. 85/65, p. 86/66;
+[README section 3](README.md#3-tokenizer-model), Symbols that a format
+names). An earlier draft carried this as **[proposed]**.
+**[proposed]** The symbol decides: a report with another symbol code is
+never read as weather and gets no finding here, whatever follows its
+symbol. See [amb.wx.symbol](#amb.wx.symbol).
 
 **[proposed]** The weather rules are not applied to items, to Mic-E
 reports or to any other format. Where such a report, read as weather,
@@ -337,7 +348,8 @@ listed reading of [amb.storm.placement](#amb.storm.placement)
 
 - the report is an uncompressed position report (03), object or item
   (05);
-- its symbol code is `'@'`;
+- its symbol is `\@` or `/@`: symbol code `'@'` with the table byte
+  `'\'` or `'/'` (p. 87/67);
 - the 7 bytes after the symbol code are an
   [`ext.csespd`](02-fields.md#ext.csespd);
 - the next byte is `'/'` and the two after it are `TS`, `HC` or `TD`.
@@ -346,9 +358,24 @@ Storm-shaped bytes that these conditions leave as comment stay comment
 text and give no finding
 ([amb.storm.placement](#amb.storm.placement); README section 3).
 
-**[proposed]** With a symbol table byte other than `'/'` or `'\'` the
-storm data is still read, and the tokenizer reports `unstated` against
-[`sym.table`](02-fields.md#sym.table).
+The table byte is matched as p. 87/67 names it
+([README section 3](README.md#3-tokenizer-model), Symbols that a
+format names). With a table byte other than `'/'` or `'\'`, an overlay
+character included, the report is not a storm report, and the bytes
+after its [`ext.csespd`](02-fields.md#ext.csespd) are the comment. The
+wider reading of that rule, that the named `'\'` accepts any overlay,
+is visible in the bytes: where the table byte is an overlay character
+and the other conditions above hold, the `'/'` of the storm type gets
+an `ambiguous` finding on [`cmt.text`](02-fields.md#cmt.text), the rule
+this reading gives it (README section 3, Placing a finding), when that
+reading would read the storm fields with no `syntax` or `value`
+finding of its own, the comment after them within its limit included.
+Where this reading gives those bytes a `syntax` or `value` finding,
+such as a comment over its limit, that finding alone is given
+(Precedence). An earlier draft read the storm data with any table byte,
+as **[proposed]**, and reported `unstated` against
+[`sym.table`](02-fields.md#sym.table) for a byte other than `'/'` or
+`'\'`, except where `sym.table` already gave `syntax`.
 
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|
@@ -382,9 +409,6 @@ after the last storm field are the comment of the report, read by
 [`cmt.text`](02-fields.md#cmt.text) and the rules of the carrying
 format.
 
-The `unstated` finding against `sym.table` is not given where
-`sym.table` already gives `syntax`
-([README section 3](README.md#3-tokenizer-model), Precedence).
 **[proposed]** The comment after the storm fields has the length limit
 that the carrying format sets for a comment after a data extension (36
 bytes in 03 and 05). That comment does not directly follow the
@@ -474,10 +498,12 @@ still does.
   stations to send their position separately).
 - **Readings.** (a) Code `'_'` with any table byte that
   [`sym.table`](02-fields.md#sym.table) accepts. An earlier draft also
-  listed (b), only `/_` and `\_`. It was dropped because p. 140/116 lets
-  `\_` carry an overlay, and an overlay is written in the table byte, so
-  (b) contradicts the document
-  ([README section 3](README.md#3-tokenizer-model)).
+  listed (b), only `/_` and `\_`. It was dropped because the complete
+  weather diagrams leave the table byte open and name only the code
+  (p. 85/65, p. 86/66), and p. 140/116 lets `\_` carry an overlay, which
+  is written in the table byte, so (b) contradicts the document
+  ([README section 3](README.md#3-tokenizer-model), Symbols that a
+  format names). An earlier draft based the drop on p. 140/116 alone.
   An earlier draft also listed a third reading, deciding by content (a `g`
   and a `t` at fixed places) rather than by symbol. It was dropped
   because the document makes the weather symbol select the complete
@@ -838,8 +864,12 @@ still does.
 - **Readings.** (a) Bytes after the data that are not a valid tail are
   not part of the format. (b) They are a comment.
 - **Taken.** **[agreed]** (a), as the diagrams have no comment field. They form a `residue` token named after
-  `wx.unit` and give `syntax`. **[proposed]** DAO, base-91 telemetry
-  and altitude are not looked for in weather reports.
+  `wx.unit` and give `syntax`. DAO, base-91 telemetry and altitude are
+  not looked for in weather reports: with no comment field, a weather
+  report has no field that their chapters name for them
+  ([README section 3](README.md#3-tokenizer-model), Where comment items
+  are looked for). An earlier draft carried this sentence as a
+  proposal.
 - **Placement.** The `syntax` finding is at the first byte of the
   residue, its first failing byte
   ([README section 3](README.md#3-tokenizer-model), Placing a finding).
@@ -947,7 +977,10 @@ still does.
 - **Taken.** (a), the one listed reading
   ([README section 3](README.md#3-tokenizer-model)), as in section 8.
   Bytes after the storm fields are the comment.
-- **In the bytes.** No `ambiguous` finding. Storm-shaped
+- **In the bytes.** No `ambiguous` finding from this entry. An overlay
+  on the storm symbol is decided by the rule on symbols that a format
+  names ([README section 3](README.md#3-tokenizer-model)), whose wider
+  reading gives the `ambiguous` finding of section 8. Storm-shaped
   bytes after a course/speed extension with another symbol code, or
   elsewhere in a comment, are comment text under the only listed
   reading; recognising them is left to a deviation recogniser. An

@@ -253,6 +253,44 @@ bytes are the form, and bytes out of range give `syntax`. A form
 defined by shape alone otherwise catches unrelated text too often to
 report on it.
 
+**[agreed]** Classes that a keyword declares. Where APRS12c itself
+names a byte string as the identifier of a class, the class is
+declared by that keyword: when the bytes match it, they are that
+class, and the faults that follow are reported inside the class, by
+its own rules. The keywords are the data type identifiers, the
+addressees `BLN` and `NWS-`, the telemetry keywords `PARM.`, `UNIT.`,
+`EQNS.` and `BITS.`, the NTS format identifier `N`, type byte,
+`'\'` of p. 98/76, and, as the author decided, the altitude marker
+`'/A='`, with which p. 43/27 introduces both altitude forms of comment
+text. A class with no such keyword, recognised by its shape alone,
+follows the paragraph above. Message text that starts
+with `'?'` is not a keyword class: the query type is the text itself
+(p. 103/79), so a directed query is recognised by its whole shape
+([08-message section 2.1](08-message.md#21-kind-of-packet), case 5;
+[09-other section 4.1](09-other.md#41-directed-queries)). The D-STAR
+marker and the prefixes of the data extensions are decided in their
+own entries.
+
+**[agreed]** Symbols that a format names. Where the diagram or the
+rule text of a format fixes the symbol table byte, that byte is
+matched as it stands: the DF symbol `/\` (diagrams and text of
+p. 52/34 and p. 53/35), the area object `\l` (p. 78/60), the signpost
+`\m` (p. 80/62), the storm symbols `\@` and `/@` (p. 87/67) and the
+`/G` of a Mic-E locator (p. 73/55). Another table byte, or an overlay
+character in its place, makes a different symbol: since 2007 every
+alternate symbol may take each of 36 overlays (p. 141/117), and
+chapter 18 uses overlaid symbols as symbols of their own (p. 118/94,
+p. 119/95). Where the diagram leaves the table byte open, any table
+byte counts. The complete weather formats name only the symbol code
+`'_'` (p. 85/65) and leave their table column open (p. 85/65,
+p. 86/66), and `\_` takes an overlay (p. 140/116), so a weather report
+may have any table byte. A wider reading, that a named `'\'` stands
+for the alternate table and so accepts any overlay (p. 125/101 writes
+a generic alternate symbol as `\$`), stays a listed reading: an
+overlaid `l`, `m` or `@` report that this reading would read as the
+named item gets an `ambiguous` finding by the tests above, and
+Precedence applies.
+
 **[agreed]** Pages that disagree. When parts of APRS12c disagree, the
 format diagram and the explicit rule text are followed over an example.
 Between two rule texts, the page about the format in question is
@@ -370,6 +408,31 @@ document describes it. A structure the document describes one level
 deep is read the same way where it recurs deeper, with `unstated` at
 each further level. A form at a place the document does not describe
 for it is not recognised there.
+
+**[agreed]** Where comment items are looked for. An item that a field
+of free text can hold, such as the altitude, the DAO, the base-91
+telemetry block, a data extension (PHG, RNG, DFS and the other forms
+of chapter 7), a frequency, or the braces of a corridor or signpost,
+is recognised only in the fields that its own chapter of APRS12c names
+for it. The same shape in any other field is text, with no finding.
+This is the last sentence of Obsolete and nested forms applied to
+items: a form at a place the document does not describe for it is not
+recognised there. The exception is `'!x!'`, which p. 110/86 attaches
+to any packet that contains it, and which is looked for in all free
+text, as [amb.cmt.noarchive](02-fields.md#amb.cmt.noarchive) decides.
+[02-fields section 8.2](02-fields.md#82-items-found-inside-a-comment)
+lists the fields that each item is looked for in.
+
+**[agreed]** Fixed spots and repeats. An item that the document places
+at a fixed spot of a field, such as the start of a comment, is read
+only there, and only once. Where the text leaves the spot open, an
+example of the document may fix it (Pages that disagree). Later bytes
+of the item's shape are text; they give an `ambiguous` finding where
+the reading that takes them as the item accepts the whole field, by
+the tests above and Precedence. An item that the document lets stand
+anywhere in a field is recorded wherever it appears, and two or more
+occurrences in one field give an `ambiguous` finding on each, as the
+altitude, the DAO and `'!x!'` do.
 
 **[agreed]** Separators and padding that a diagram does not show. A byte
 between two fields that the diagram does not show, such as an extra `,`

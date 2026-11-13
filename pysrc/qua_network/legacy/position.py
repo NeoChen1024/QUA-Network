@@ -7,6 +7,7 @@ from qua_network.legacy.fields import (
     CMP_TABLE,
     DIGITS,
     LOWER,
+    SYM_TABLE,
     UPPER,
     area_literal,
     brgnrq_shape,
@@ -27,6 +28,7 @@ from qua_network.legacy.fields import (
 from qua_network.legacy.model import Scan
 from qua_network.legacy.weather import complete as weather_complete
 from qua_network.legacy.weather import storm as weather_storm
+from qua_network.legacy.weather import storm_overlay as weather_storm_overlay
 
 _STORM = re.compile(rb"/(?:TS|HC|TD)")
 
@@ -100,6 +102,7 @@ def _uncompressed(scan, start, p, end, depth):
 
     # The extension slot (02 section 7.1, step 3; amb.pos.ext).
     slot = p
+    storm_at = None
     x = step3(line, p, end)
     # Runs that this reading takes as comment text carry their finding on
     # cmt.text (README section 3, Placing a finding).
@@ -113,10 +116,14 @@ def _uncompressed(scan, start, p, end, depth):
         emit_ext(scan, x, depth)
         p += x.n
         if code == 0x40 and x.rule == "ext.csespd" and _STORM.match(line, p, end):
-            # Storm data (06 section 8), then the comment; it does not follow the
-            # slot's extension, so no course and speed is looked for at its start.
-            p = weather_storm(scan, slot - 11, p, end, depth)
-            return comment(scan, p, end, depth, 36, "pos.cmt", start_cse=False)
+            if table in b"/\\":
+                # Storm data (06 section 8), then the comment; it does not follow
+                # the slot's extension, so no course and speed is looked for at
+                # its start.
+                p = weather_storm(scan, p, end, depth)
+                return comment(scan, p, end, depth, 36, "pos.cmt", start_cse=False)
+            if table in SYM_TABLE:
+                storm_at = p  # an overlaid '@': no storm report here
 
     # Bearing and NRQ (02 section 7.4, 03 section 3).
     limit, limit_rule = (36, "pos.cmt") if x else (43, "pos.cmt")
@@ -142,6 +149,10 @@ def _uncompressed(scan, start, p, end, depth):
         rest = cmt.counted if cmt else 0
         if x.rule != "ext.phgr" or x.n + rest <= 43:
             scan.find(x.rule, "ambiguous", slot)
+    if storm_at is not None:
+        weather_storm_overlay(
+            scan, storm_at, end, lambda scratch, q: comment(scratch, q, end, depth, 36, "pos.cmt", start_cse=False)
+        )
     return cmt
 
 

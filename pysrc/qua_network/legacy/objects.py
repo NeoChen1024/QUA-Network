@@ -7,6 +7,7 @@ import re
 from qua_network.legacy.fields import (
     CMP_TABLE,
     DIGITS,
+    SYM_TABLE,
     area_bad,
     area_high,
     area_literal,
@@ -28,11 +29,18 @@ from qua_network.legacy.model import Scan
 from qua_network.legacy.weather import carriers as weather_carriers
 from qua_network.legacy.weather import complete as weather_complete
 from qua_network.legacy.weather import storm as weather_storm
+from qua_network.legacy.weather import storm_overlay as weather_storm_overlay
 
 _STORM = re.compile(rb"/(?:TS|HC|TD)")
 _ITEM_END = re.compile(rb"[!_]")
-# freq.objname (09 section 7): the two shapes of a 9-byte frequency name.
-_FREQ_NAME = re.compile(rb"[0-9]{3}\.(?:[0-9]{3}..|[0-9]{2}...)\Z", re.S)
+# freq.objname (09 section 7): the four 9-byte forms of p. 116/92, tested on
+# the name without its padding. The identifying bytes are letters or digits;
+# any byte 0x21-0x7E may stand in place of '-' (amb.freq.objname).
+_FREQ_NAME = re.compile(rb"[0-9]{3}\.(?:[0-9]{3}[\x21-\x7e][0-9A-Za-z]|[0-9]{2}[\x21-\x7e][0-9A-Za-z]{2})")
+# An overlay character as table byte, by position form (02 sections 4 and 6).
+_UNC_OVERLAY = SYM_TABLE - frozenset(b"/\\")
+_CMP_OVERLAY = CMP_TABLE - frozenset(b"/\\")
+_BAD = ("syntax", "value")
 _CORRIDOR = re.compile(rb"\{[0-9]+\}")
 # A signpost: 1 to 3 bytes 0x20-0x7E other than '{' and '}', in braces.
 _SIGNPOST = re.compile(rb"\{[\x20-\x7a\x7c\x7e]{1,3}\}")
@@ -90,7 +98,8 @@ def _object(scan, dti, p, end, depth, texts):
         q = t
     if missing(scan, "obj.pos", q, end):
         return
-    freq_name = _FREQ_NAME.match(line[p : p + 9]) is not None
+    # obj.name: trailing SP are padding and not part of the name.
+    freq_name = _FREQ_NAME.fullmatch(line[p : p + 9].rstrip(b" ")) is not None
     _body(scan, dti, q, end, depth, "obj", freq_name, texts)
 
 
@@ -124,7 +133,7 @@ def _item(scan, start, end, depth, texts):
     q = t + 1
     if missing(scan, "item.pos", q, end):
         return
-    freq_name = t - p == 9 and _FREQ_NAME.match(line[p:t]) is not None
+    freq_name = _FREQ_NAME.fullmatch(line[p:t]) is not None
     _body(scan, start, q, end, depth, "item", freq_name, texts)
 
 
@@ -175,6 +184,7 @@ def _uncompressed(scan, dti, p, end, depth, kind, freq_name):
     slot = p
     x = None
     line_area = False
+    storm_at = None
     if table == 0x5C and code == 0x6C:
         # Step 1 of 02 section 7.1: the area descriptor and nothing else
         # (amb.area.symbol). A report that ends at the symbol has none.
@@ -206,10 +216,14 @@ def _uncompressed(scan, dti, p, end, depth, kind, freq_name):
             emit_ext(scan, x, depth)
             p += x.n
             if code == 0x40 and x.rule == "ext.csespd" and _STORM.match(line, p, end):
-                # Storm data (06 section 8), then the comment; it does not follow the
-                # slot's extension, so no course and speed is looked for at its start.
-                p = weather_storm(scan, slot - 11, p, end, depth)
-                return comment(scan, p, end, depth, 36, kind + ".cmt", b91_kind="unstated", start_cse=False, freq_name=freq_name)
+                if table in b"/\\":
+                    # Storm data (06 section 8), then the comment; it does not
+                    # follow the slot's extension, so no course and speed is
+                    # looked for at its start.
+                    p = weather_storm(scan, p, end, depth)
+                    return comment(scan, p, end, depth, 36, kind + ".cmt", b91=False, start_cse=False, freq_name=freq_name)
+                if table in _UNC_OVERLAY:
+                    storm_at = p  # an overlaid '@': no storm report here
             # Bearing and NRQ are not read here; bytes of their shape that a
             # reading of amb.ext.brgnrq would take are comment text.
             brg = brgnrq_shape(line, p, end)
@@ -220,7 +234,16 @@ def _uncompressed(scan, dti, p, end, depth, kind, freq_name):
     has_ext = x is not None or p > slot
     limit = 36 if has_ext else 43
     extra = _braces(scan, p, end, depth, table, code, line_area)
-    cmt = comment(scan, p, end, depth, limit, kind + ".cmt", b91_kind="unstated", extra=extra, freq_name=freq_name)
+    cmt = comment(scan, p, end, depth, limit, kind + ".cmt", b91=False, extra=extra, freq_name=freq_name)
+    if table in _UNC_OVERLAY:
+        _overlay(scan, slot, p, end, code, "cmt.text" if x is None else x.rule)
+    if storm_at is not None:
+        weather_storm_overlay(
+            scan,
+            storm_at,
+            end,
+            lambda scratch, q: comment(scratch, q, end, depth, 36, kind + ".cmt", b91=False, start_cse=False, freq_name=freq_name),
+        )
     if x is not None and x.h_alpha:
         # amb.ext.phg: reading (b) takes the extension as comment text, within
         # the limit without an extension (43). A length finding that both
@@ -253,7 +276,9 @@ def _compressed(scan, dti, q, end, depth, kind, freq_name):
         scan.find("cmt.text", "ambiguous", e)
     extra = _braces(scan, e, end, depth, table, code, False)
     # amb.ext.compressed: 7.1 would try no course and speed in a \l report.
-    cmt = comment(scan, e, end, depth, 43, kind + ".cmt", b91_kind="unstated", extra=extra, start_cse=not area, freq_name=freq_name)
+    cmt = comment(scan, e, end, depth, 43, kind + ".cmt", b91=False, extra=extra, start_cse=not area, freq_name=freq_name)
+    if table in _CMP_OVERLAY:
+        _overlay(scan, None, e, end, code, None)
     if code == 0x5F and e < end:
         weather_carriers(scan, e, end, depth, block=q)  # amb.wx.carriers, as above
     return cmt
@@ -265,28 +290,51 @@ def _compressed(scan, dti, q, end, depth, kind, freq_name):
 def _braces(scan, s, end, depth, table, code, line_area):
     """Tokenize the corridor or signpost braces of the comment line[s:end];
     returns their spans for the overlap rule of 02 section 8.2."""
-    line = scan.line
-    d = depth + 1
     if line_area:
-        m = _CORRIDOR.match(line, s, end)
-        if m:
-            scan.tok("area.corridor", s, m.end(), d)
-            return [("area.corridor", s, m.end())]
-        # amb.area.braces: reading (b) would take a later one, which this
-        # reading leaves as comment text.
-        m = _CORRIDOR.search(line, s, end)
-        if m:
-            scan.find("cmt.text", "ambiguous", m.start())
-        return []
+        return _braces_at_start(scan, s, end, depth, _CORRIDOR, "area.corridor")
     if table == 0x5C and code == 0x6D:
-        m = _SIGNPOST.search(line, s, end)
-        if m:
-            scan.tok("obj.signpost", m.start(), m.end(), d)
-            if m.start() != s:
-                # amb.area.braces: reading (a) would leave them as text.
-                scan.find("obj.signpost", "ambiguous", m.start())
-            return [("obj.signpost", m.start(), m.end())]
+        return _braces_at_start(scan, s, end, depth, _SIGNPOST, "obj.signpost")
     return []
+
+
+def _braces_at_start(scan, s, end, depth, pattern, rule):
+    """Braces read at the start of the comment only, and once (README section
+    3, Fixed spots and repeats). When the comment does not start with them,
+    reading (b) of amb.area.braces would take the first later braces of their
+    shape, which this reading leaves as comment text."""
+    line = scan.line
+    m = pattern.match(line, s, end)
+    if m:
+        scan.tok(rule, s, m.end(), depth + 1)
+        return [(rule, s, m.end())]
+    m = pattern.search(line, s, end)
+    if m:
+        scan.find("cmt.text", "ambiguous", m.start())
+    return []
+
+
+def _reported(scan, lo, hi):
+    """Whether this reading gives a syntax or value finding on line[lo:hi]
+    (README section 3, Precedence)."""
+    return any(f.kind in _BAD and lo <= f.offset < hi for f in scan.findings)
+
+
+def _overlay(scan, slot, s, end, code, slot_rule):
+    """README section 3, Symbols that a format names: with an overlay
+    character as table byte, 'l' and 'm' are not \\l and \\m. The wider
+    reading, that the named '\\' accepts any overlay, would read an area
+    descriptor at the slot of an uncompressed position (slot, whose bytes
+    this reading gives slot_rule), or signpost braces at the comment start s
+    (05 sections 4 and 5). Call it once the report is read."""
+    line = scan.line
+    if code == 0x6C and slot is not None and area_bad(line, slot, end) is None:
+        # The two readings set the same comment limit over these bytes.
+        if not _reported(scan, slot, slot + 7):
+            scan.find(slot_rule, "ambiguous", slot)
+    elif code == 0x6D:
+        m = _SIGNPOST.match(line, s, end)
+        if m and not _reported(scan, s, m.end()):
+            scan.find("cmt.text", "ambiguous", s)
 
 
 # --- Obsolete object without identifier (05 section 6) ------------------

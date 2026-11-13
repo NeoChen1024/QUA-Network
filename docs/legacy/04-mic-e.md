@@ -259,6 +259,11 @@ How the tokenizer applies this section:
   that byte. An earlier draft read a subsquare letter past `'X'` as no
   subsquare, took the bytes as free text and gave them an `ambiguous`
   finding at the fifth byte from reading (b) of amb.grid.range.
+  The table byte of `/G` is matched as p. 73/55 names it
+  ([README section 3](README.md#3-tokenizer-model), Symbols that a
+  format names): a locator followed by another table byte and `'G'`
+  is followed by a different symbol, which only reading (c) of
+  [amb.mice.grid](#amb.mice.grid) would accept.
 - `mice.grid` gives at most one `syntax` finding, at its first failing
   byte ([README section 3](README.md#3-tokenizer-model), Placing a
   finding): at its first byte that is lower case or outside its range,
@@ -745,7 +750,13 @@ the [README](README.md#4-decoders-consulted), not run.
   passage as unclear (p. 72/54, p. 157/133).
 - **Readings.** (a) Extensions only at the start of the free text.
   (b) Anywhere. For the position: (c) not looked for; (d) looked for.
-- **Reading taken.** **[proposed]** (a) and (c).
+- **Reading taken.** **[proposed]** (a) and (c). The start of the free
+  text is the spot of an extension because chapter 7 places an
+  extension directly after the position data (p. 45/27), and in Mic-E
+  the free text follows the encoded position; an extension is read
+  there only, and once, and later bytes of its shape are text
+  ([README section 3](README.md#3-tokenizer-model), Fixed spots and
+  repeats).
 - **In the bytes.** Visible where readings (b) or (d) would divide
   them differently: a later run that fits
   [`ext.phg`](02-fields.md#ext.phg),

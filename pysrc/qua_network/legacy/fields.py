@@ -575,7 +575,7 @@ def comment(
     limit_rule,
     b91=True,
     freq=True,
-    b91_kind=None,
+    dao=True,
     extra=(),
     start_cse=True,
     freq_name=False,
@@ -583,12 +583,15 @@ def comment(
 ):
     """cmt.text from s to end with the items of 02 section 8.2.
 
-    limit and limit_rule are the format's length limit and the rule that
-    reports it; b91 searches base-91 telemetry (07), freq looks for a
-    frequency at the start (09 section 7), and freq_name says that the
-    comment belongs to an object or item named as a frequency, whose items
-    are left-justified (09 freq.obj). b91_kind, when given, is the kind
-    of finding a telemetry block gets in this format (07 section 3). extra
+    Each item is searched for only in the fields its chapter names (02
+    section 8.2; README section 3, Where comment items are looked for), so
+    the caller says which: b91 searches base-91 telemetry (07), freq looks
+    for a frequency at the start (09 section 7), dao looks for DAO
+    candidates, and ext_search runs the search of 02 amb.ext.count. The
+    altitude and '!x!' are always looked for. limit and limit_rule are the
+    format's length limit and the rule that reports it, and freq_name says
+    that the comment belongs to an object or item named as a frequency,
+    whose items are left-justified (09 freq.obj). extra
     holds (rule, start, end) of items the format itself found in the comment
     and has tokenized, for the overlap rule of 8.2. start_cse=False leaves out
     the course and speed at the comment start, for a report in which 7.1
@@ -606,7 +609,7 @@ def comment(
     items = _altitudes(scan, s, end, d)
 
     # DAO candidates (8.3); the bytes of all of them are not counted.
-    daos = dao_candidates(line, s, end)
+    daos = dao_candidates(line, s, end) if dao else []
     dao_bytes = set()
     for i, k in daos:
         scan.tok("cmt.dao", i, i + 5, d)
@@ -632,8 +635,6 @@ def comment(
         blk = b91_block(scan, s, end, d, daos)
         if blk:
             items.append(("tlm.b91",) + blk)
-            if b91_kind:
-                scan.find("tlm.b91", b91_kind, blk[0])
 
     items.extend(noarchive_in(scan, s, end, d))
     items.extend(extra)

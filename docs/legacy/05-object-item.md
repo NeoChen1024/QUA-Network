@@ -19,7 +19,8 @@ and where. Weather data carried by objects, and storm data carried by
 objects and items, are read in [06-weather.md](06-weather.md) (section
 7). This file tokenizes object and item
 names; [09-other.md](09-other.md#freq.objname) classifies a name that is
-a frequency and reads the frequency items in the comment
+a frequency, by its shape alone and on the name without its padding,
+and reads the frequency items in the comment
 ([`freq.obj`](09-other.md#freq.obj)).
 
 Offsets in this file count from the first byte of the information field,
@@ -40,7 +41,7 @@ p. 132/108).
 | <a id="obj.time"></a>`obj.time` | Timestamp | Offsets 11 to 17: [`time.dhm`](02-fields.md#time.dhm) or [`time.hms`](02-fields.md#time.hms). Required ([amb.obj.time](#amb.obj.time); README section 3, Pages that disagree). | Required | 7 bytes | p. 76/58, p. 153/129 |
 | <a id="obj.pos"></a>`obj.pos` | Position | From offset 18, or from offset 11 after a missing timestamp ([amb.obj.time](#amb.obj.time)). A digit there starts an uncompressed position: [`lat`](02-fields.md#lat), [`sym.table`](02-fields.md#sym.table), [`lon`](02-fields.md#lon), [`sym.code`](02-fields.md#sym.code), 19 bytes. A byte in the set of [`cmp.table`](02-fields.md#cmp.table) starts a compressed block, [`cmp.block`](02-fields.md#cmp.block), 13 bytes. `obj.pos` is the selector rule of [02-fields section 6.1](02-fields.md#61-telling-the-two-position-forms-apart): any other byte there is a `syntax` finding on `obj.pos` at that byte, and the bytes from it to the end of the field, whose extent cannot be told, are a `residue` that names `obj.pos` ([README section 3](README.md#3-tokenizer-model), Output and Placing a finding). | Required | 19 or 13 bytes | p. 55/37, p. 76/58 |
 | <a id="obj.ext"></a>`obj.ext` | Data extension | After an uncompressed position only: [`ext.csespd`](02-fields.md#ext.csespd), [`ext.phg`](02-fields.md#ext.phg) or [`ext.phgr`](02-fields.md#ext.phgr), [`ext.rng`](02-fields.md#ext.rng), [`ext.dfs`](02-fields.md#ext.dfs) or the area descriptor [`ext.area`](02-fields.md#ext.area) (section 4). | Optional | 7 bytes; 9 for `ext.phgr` | p. 76/58, p. 33/19 |
-| <a id="obj.cmt"></a>`obj.cmt` | Comment | The rest, read as [`cmt.text`](02-fields.md#cmt.text) with the comment items of [02-fields.md](02-fields.md#82-items-found-inside-a-comment) section 8, the braces of sections 4 and 5 below, a frequency at its start ([09-other.md](09-other.md#7-frequency-specification)), and base-91 telemetry, which gives `unstated` here ([amb.tlm.b91.where](07-telemetry.md#amb.tlm.b91.where)). At most 36 bytes after an extension, the 9-byte [`ext.phgr`](02-fields.md#ext.phgr) included, as in [amb.pos.cmtlen](03-position.md#amb.pos.cmtlen), and 43 without; 43 after a compressed position, from the object diagram ([err.obj.cmplen](#err.obj.cmplen); README section 3, Pages that disagree). A longer comment gives a `value` finding. | Optional | End of information field | p. 76/58, p. 132/108 |
+| <a id="obj.cmt"></a>`obj.cmt` | Comment | The rest, read as [`cmt.text`](02-fields.md#cmt.text) with the comment items of [02-fields.md](02-fields.md#82-items-found-inside-a-comment) section 8, the braces of sections 4 and 5 below, and a frequency at its start ([09-other.md](09-other.md#7-frequency-specification)). **[agreed]** The comment counts as a position comment (p. 76/58, p. 80/62), so the altitude and the DAO are read in it; base-91 telemetry is not, and a run of its shape is text, with no finding ([amb.tlm.b91.where](07-telemetry.md#amb.tlm.b91.where); an earlier draft recorded it with an `unstated` finding). At most 36 bytes after an extension, the 9-byte [`ext.phgr`](02-fields.md#ext.phgr) included, as in [amb.pos.cmtlen](03-position.md#amb.pos.cmtlen), and 43 without; 43 after a compressed position, from the object diagram ([err.obj.cmplen](#err.obj.cmplen); README section 3, Pages that disagree). A longer comment gives a `value` finding. | Optional | End of information field | p. 76/58, p. 132/108 |
 
 The token of byte 0 carries `obj.dti`, so that the tokens show the
 packet as an object report
@@ -77,13 +78,28 @@ for an object or item that carries bearing and NRQ, so no length
 finding counts against that reading. Whether objects and items carry the field
 is listed in section 10.
 
-APRS 1.1 calls compressed objects not recommended on RF, and the item
-format not recommended on RF altogether (p. 76/58, p. 77/59).
-**[agreed]** A compressed object gives a `discouraged` finding at the
-first byte of `obj.pos`; every item report gives one at `item.dti`
-(section 3). **[proposed]** The finding is given wherever the packet
-was heard: the TNC2 line does not show reliably whether the packet was
-or will be sent on RF.
+APRS 1.1 calls compressed objects not recommended for use on RF, and
+the item format not recommended on RF (p. 76/58, p. 77/59). The
+headings and diagram titles of the same pages call the compressed
+object form and the item format "not recommended" without that limit
+(p. 76/58, p. 77/59). **[agreed]** A compressed object gives a
+`discouraged` finding at the first byte of `obj.pos`; every item report
+gives one at `item.dti` (section 3). **[agreed]** These findings are
+given whatever the q-construct in the path shows. A q-construct
+records how an APRS-IS server saw the connection the packet came in
+on, not the radio medium, and
+[README section 3](README.md#3-tokenizer-model) does not check a rule
+that depends on the connection. The same holds for the other
+discouragements that APRS12c limits to RF or to the air: the
+local-time timestamp, which p. 38/22 asks future implementations not to
+transmit "on the air"
+([02-fields section 2](02-fields.md#2-timestamps)), and raw weather,
+which p. 82/62 and p. 85/65 ask senders to convert to the complete
+format on RF ([06-weather section 2](06-weather.md#2-recognition)). An
+earlier draft gave the findings everywhere as **[proposed]**, on the
+ground that the TNC2 line does not show reliably whether the packet was
+or will be sent on RF, and left open in section 10 whether a
+q-construct should limit them to packets heard on RF.
 
 Frequency objects mark a permanent object with the timestamp `111111z`
 (p. 117/93), which is also an ordinary valid time. It gets no finding:
@@ -130,7 +146,7 @@ The parts of the descriptor are tokens one level below
 | <a id="area.lat"></a>`area.lat` | Latitude offset | Two digits. | Required | 2 bytes | p. 78/60 |
 | <a id="area.color"></a>`area.color` | Colour | Two bytes giving the colour number 0 to 15 in decimal, with `'/'` in place of a leading zero: `'/'` and `'0'`–`'9'`, or `'1'` and `'0'`–`'5'`. | Required | 2 bytes | p. 49/31, p. 78/60 |
 | <a id="area.lon"></a>`area.lon` | Longitude offset | Two digits. | Required | 2 bytes | p. 78/60 |
-| <a id="area.corridor"></a>`area.corridor` | Corridor width | In the comment of a type `'1'` or `'6'` area: `'{'`, one or more digits (miles either side of the line), `'}'`. **[proposed]** Only at the start of the comment. When the comment does not start with one, the first braces of that shape later in the comment are comment text with an `ambiguous` finding on `cmt.text` at their `'{'` ([amb.area.braces](#amb.area.braces)). | Optional | The `'}'` | p. 80/62 |
+| <a id="area.corridor"></a>`area.corridor` | Corridor width | In the comment of a type `'1'` or `'6'` area: `'{'`, one or more digits (miles either side of the line), `'}'`. **[agreed]** Only at the start of the comment, as for the signpost. When the comment does not start with one, the first braces of that shape later in the comment are comment text with an `ambiguous` finding on `cmt.text` at their `'{'` ([amb.area.braces](#amb.area.braces)). An earlier draft carried the place at the start of the comment as a proposal. | Optional | The `'}'` | p. 80/62 |
 
 The tokenizer checks the digits and does not compute the offsets. The
 scale is in [err.area.sender](#err.area.sender), and the stated size
@@ -138,18 +154,36 @@ range in [err.area.size](#err.area.size).
 
 Details of the descriptor:
 
-- **[proposed]** The symbol is matched on its bytes: the table
-  identifier ([`sym.table`](02-fields.md#sym.table) or
+- The symbol is matched on its bytes: the table identifier
+  ([`sym.table`](02-fields.md#sym.table) or
   [`cmp.table`](02-fields.md#cmp.table)) is the byte `'\'` itself and
-  the code is `'l'`. An overlay character in place of `'\'` also
-  selects the alternate table (02 section 4), but this section and
-  02 section 7.1 name the byte `'\'`, and nothing extends the area
-  object to overlays as
+  the code is `'l'`, since p. 78/60 names `\l`
+  ([README section 3](README.md#3-tokenizer-model), Symbols that a
+  format names). An overlay character in place of `'\'` makes a
+  different symbol, and an overlaid `'l'` is read as any other symbol.
+  The same holds for the signpost symbol `\m` (section 5). An earlier
+  draft carried this as **[proposed]**, on the ground that nothing
+  extends the area object to overlays as
   [06-weather section 2](06-weather.md#2-recognition) does for the
-  weather symbol. An overlaid `'l'` is read as any other
-  symbol. The same holds for the signpost symbol `'\'` `'m'`
-  (section 5). Whether an overlaid symbol should count is listed in
-  section 10.
+  weather symbol, and listed in section 10 whether an overlaid symbol
+  should count.
+- The wider reading of that rule, that a named `'\'` accepts any
+  overlay, is visible in the bytes. In an object or item report with an
+  uncompressed position whose table byte is an overlay character and
+  whose code is `'l'`, seven bytes after the symbol code that fit
+  [`ext.area`](02-fields.md#ext.area), with no `syntax` finding, get an
+  `ambiguous` finding at their first byte, on the rule this reading
+  gives them: the extension that
+  [02-fields section 7.1](02-fields.md#71-the-extension-slot) reads
+  there, or [`cmt.text`](02-fields.md#cmt.text)
+  ([README section 3](README.md#3-tokenizer-model), Placing a finding).
+  Where this reading gives those bytes a `syntax` or `value` finding,
+  such as the course above 360 of a `710/310`
+  [`ext.csespd`](02-fields.md#ext.csespd), that finding alone is given
+  (Precedence). The two readings set the same comment limit over those
+  bytes, 7 and 36 against 43. A report that ends at the symbol code has
+  no descriptor under either reading, and after a compressed block both
+  take the bytes as comment text, so neither gives a finding.
 - **[proposed]** An object or item with the `\l` symbol that ends at
   the symbol code has no descriptor and no finding for one, as an
   object that ends at the `'_'` symbol is no weather report
@@ -174,11 +208,26 @@ Details of the descriptor:
 
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|
-| <a id="obj.signpost"></a>`obj.signpost` | Signpost text | In the comment of an object or item with symbol `'\'` `'m'`: `'{'`, 1 to 3 bytes 0x20–0x7E other than `'{'` and `'}'`, `'}'`. **[proposed]** The first such braces anywhere in the comment. When they do not stand at the start of the comment they give an `ambiguous` finding at their `'{'`; later candidates are comment text with no finding ([amb.area.braces](#amb.area.braces)). | Optional | The `'}'` | p. 80/62, p. 153/129 |
+| <a id="obj.signpost"></a>`obj.signpost` | Signpost text | In the comment of an object or item with symbol `'\'` `'m'`: `'{'`, 1 to 3 bytes 0x20–0x7E other than `'{'` and `'}'`, `'}'`. **[agreed]** Only at the start of the comment. When the comment does not start with one, the first braces of that shape later in the comment are comment text with an `ambiguous` finding on `cmt.text` at their `'{'` ([amb.area.braces](#amb.area.braces)). An earlier draft took the first such braces anywhere in the comment, with an `ambiguous` finding on `obj.signpost` when they did not stand at its start. | Optional | The `'}'` | p. 80/62, p. 153/129 |
 
-**[proposed]** Corridor widths and signpost text are read in object and
-item reports only, as chapter 11 describes them. The area descriptor is
-limited in the same way by section 4.
+The signpost symbol is matched on its bytes, `\m` as p. 80/62 names
+it, as section 4 states for `\l`
+([README section 3](README.md#3-tokenizer-model), Symbols that a
+format names). In an object or item report whose table byte is an
+overlay character and whose code is `'m'`, a comment that starts with
+braces of the signpost shape gets an `ambiguous` finding at their
+`'{'`, on [`cmt.text`](02-fields.md#cmt.text), since the wider reading
+of that rule would take them as `obj.signpost` (README section 3,
+Placing a finding). Where this reading gives those bytes a `syntax` or
+`value` finding, that finding alone is given (Precedence). Braces of
+that shape later in the comment get no finding from this test: the
+wider reading leaves them as text too (Fixed spots and repeats).
+
+Corridor widths and signpost text are read in object and item reports
+only, as chapter 11 describes them
+([README section 3](README.md#3-tokenizer-model), Where comment items
+are looked for); an earlier draft carried this as a proposal. The area
+descriptor is limited in the same way by section 4.
 
 ## 6. Obsolete object format
 
@@ -227,10 +276,13 @@ with symbol code `'_'` are not read as weather
 weather object diagram with `'*'` as identifier is an erratum
 ([err.wx.object-dti](06-weather.md#err.wx.object-dti)).
 
-An object or item with symbol code `'@'` whose extension is
+An object or item with the symbol `\@` or `/@` whose extension is
 [`ext.csespd`](02-fields.md#ext.csespd) may carry storm data in place of
 the comment; [06-weather.md](06-weather.md#8-storm-data) says when it is
 read, and the bytes after the storm fields are `obj.cmt` or `item.cmt`.
+The table byte is matched as p. 87/67 names it
+([README section 3](README.md#3-tokenizer-model), Symbols that a
+format names); an earlier draft named only the code `'@'`.
 
 ## 8. Ambiguities
 
@@ -463,29 +515,36 @@ the [README](README.md#4-decoders-consulted), not run.
   scope is a line area, type `'1'` or `'6'`, for the corridor, and the
   `'\'` `'m'` symbol for the signpost, in object and item reports
   (section 5); braces in an area of another type are comment text as
-  well. Corridor: (a), one or more digits, since only a line area
-  carries one and its comment follows the descriptor. Signpost: (b), the
-  first well-formed braces, since the text says only "in the comment".
+  well. **[proposed]** The corridor holds one or more digits.
+  **[agreed]** Corridor and signpost: (a). The text says only "in the
+  comment", and the examples of p. 80/62 put the braces at its start,
+  which fixes the spot
+  ([README section 3](README.md#3-tokenizer-model), Fixed spots and
+  repeats, and Pages that disagree). An earlier draft took (a) for the
+  corridor as a proposal, on the ground that only a line area carries
+  one and its comment follows the descriptor, and took (b) for the
+  signpost, the first well-formed braces anywhere, since the text says
+  only "in the comment".
 - **In the bytes.** Visible, under the test of
-  [README section 3](README.md#3-tokenizer-model), in one case each.
-  Corridor: when a line area's comment does not start with a corridor,
-  the first braces of corridor shape later in it, which reading (b)
-  would take as the corridor, are comment text with an `ambiguous`
-  finding at their `'{'`, on `cmt.text`, the rule this reading gives
-  them (README section 3, Placing a finding; an earlier draft put it on
-  `area.corridor`). When the comment starts with a corridor, (a)
-  and (b) both take that one, and later braces are text under both,
-  with no finding. Signpost: when the braces taken do not stand at the
-  start of the comment, reading (a) would leave them as text, so they
-  give an `ambiguous` finding at their `'{'`. A second candidate is text
-  under every reading listed, so it gives no finding. In both cases the
-  other reading reads every other byte as this reading does, so a
-  `syntax` or `value` finding elsewhere in the report is given by both
-  and does not suppress the `ambiguous` finding. An earlier draft gave
-  `ambiguous` for every later corridor-shaped braces and for every
+  [README section 3](README.md#3-tokenizer-model), in the same case for
+  the corridor and the signpost (Fixed spots and repeats): when the
+  comment does not start with braces of the item's shape, the first
+  such braces later in it, which reading (b) would take as the item,
+  are comment text with an `ambiguous` finding at their `'{'`, on
+  `cmt.text`, the rule this reading gives them (README section 3,
+  Placing a finding; an earlier draft put the corridor's on
+  `area.corridor`). When the comment starts with such braces, (a) and
+  (b) both take those, and later braces are text under both, with no
+  finding; braces after the first later ones are text under both as
+  well. The other reading reads every other byte as this reading does,
+  so a `syntax` or `value` finding elsewhere in the report is given by
+  both and does not suppress the `ambiguous` finding. An earlier draft
+  gave `ambiguous` for every later corridor-shaped braces and for every
   second signpost candidate, neither of which meets the test, and a
   later one withheld the finding wherever the comment had a `syntax` or
-  `value` finding.
+  `value` finding. Under reading (b) for the signpost, a later draft
+  gave the braces taken an `ambiguous` finding on `obj.signpost` when
+  they did not stand at the start of the comment, from reading (a).
 - **Decoders.** Xastir: corridor only for types 1 and 6 and only at the
   start of the comment, a decimal number (`db.c:7999-8030`); signpost
   only for `'\'` `'m'`, the first `'{'` with 1 to 3 bytes and `'}'`
@@ -622,8 +681,9 @@ and p. 82, rendered).
 - The corpus questions in section 8.
 - The `discouraged` findings of section 2 apply on RF only, by the
   document's words, and are given for every packet. Whether a
-  q-construct in the path should limit them to packets heard on RF is
-  open.
+  q-construct in the path should limit them to packets heard on RF was
+  listed here as open. Settled in section 2, which gives them whatever
+  the q-construct shows. The item is kept here as a record.
 - Whether object and item reports carry bearing and NRQ
   ([`ext.brgnrq`](02-fields.md#ext.brgnrq)), and with which rule ID and
   comment limit; the reading taken and its `ambiguous` finding are in
@@ -631,7 +691,11 @@ and p. 82, rendered).
 - Whether an overlay character on the alternate table, with code `'l'`
   or `'m'`, makes an area object or a signpost (section 4). If the
   author takes that as a listed reading, such reports become visible
-  cases of it.
+  cases of it. Settled by the rule on symbols that a format names
+  ([README section 3](README.md#3-tokenizer-model)): an overlay makes a
+  different symbol, and the wider reading is listed, with the
+  `ambiguous` finding of sections 4 and 5. The item is kept here as a
+  record.
 - ebarkie/aprs has no object or item decoder in the files read. The
   object and item handling of aprs-parser-rs was not read, apart from
   the area descriptor test cited in

@@ -66,9 +66,15 @@ outside its set gives one `syntax` finding, at the first such byte
 (Placing a finding); an earlier draft gave one at every such byte.
 
 **[proposed]** `stat.text` is a free-text field for
-[`cmt.noarchive`](02-fields.md#cmt.noarchive); the other items of
-02 section 8.2 and [`tlm.b91`](07-telemetry.md#tlm.b91) are not looked
-for in it. `stat.beam` and the tokens of section 7 lie one level below
+[`cmt.noarchive`](02-fields.md#cmt.noarchive). Of the other items of
+[02 section 8.2](02-fields.md#82-items-found-inside-a-comment), only a
+frequency at its start (section 7) is looked for in it, and no
+altitude, DAO or [`tlm.b91`](07-telemetry.md#tlm.b91): their chapters
+place them in comments, and p. 34/20 names the status report only for
+a locator and a beam heading
+([README section 3](README.md#3-tokenizer-model), Where comment items
+are looked for). An earlier draft carried that second sentence as a
+proposal too. `stat.beam` and the tokens of section 7 lie one level below
 `stat.text`. No other field of this file is named a free-text field:
 `udf.data` holds data whose meaning its user defines, and `inv.data`
 holds bytes sent as invalid or for a test. A `'!x!'` in either is
@@ -260,7 +266,7 @@ frequency is looked for in one.
 | <a id="freq.range"></a>`freq.range` | Range | `SP`, then `R` (all directions) or `N`, `S`, `E`, `W` (one direction), 2 digits, then `m` (miles) or `k` (kilometres). Up to one per letter. Three digits are no form the document defines, so they are not a range and stay text, with no finding ([README section 3](README.md#3-tokenizer-model), Kinds by situation; [amb.freq.items](#amb.freq.items)). | no | 4 bytes, then `SP` or end of text | p. 114/90; p. 115/91; p. 116/92 |
 | <a id="freq.dstar"></a>`freq.dstar` | D-STAR marker | `D-STAR`, then either `SP` or `>` and an 8-byte access repeater name (a callsign padded with `SP` to 6 bytes, `SP`, one module letter). After a frequency and an optional `freq.offset`, or at the start of the text with no frequency. | no | 7 or 15 bytes | p. 116/92 |
 | <a id="freq.obj"></a>`freq.obj` | Left-justified items | In an object or item whose name is `freq.objname`, `freq.tone`, `freq.offset` and `freq.range` are looked for at the start of the comment with no frequency and no leading `SP`; the first item has no `SP` before it. Elsewhere, items are looked for only after a frequency ([amb.freq.nofreq](#amb.freq.nofreq)). | no | — | p. 113/89; p. 114/90; p. 115/91; p. 116/92 |
-| <a id="freq.objname"></a>`freq.objname` | Frequency name | A classification of the 9-byte object or item name: 3 digits, `.`, 3 digits and 2 more bytes; or 3 digits, `.`, 2 digits and 3 more bytes. The extra bytes are any bytes the name allows. No finding ([amb.freq.objname](#amb.freq.objname)). | — | — | p. 113/89; p. 116/92; p. 117/93 |
+| <a id="freq.objname"></a>`freq.objname` | Frequency name | A classification of the object or item name, taken without the padding that [`obj.name`](05-object-item.md#obj.name) strips: 9 bytes in one of the four forms of p. 116/92, `FFF.FFF-z`, `FFF.FFFyz`, `FFF.FF-yz` and `FFF.FFxyz`. `F` is a digit; `x`, `y` and `z` are upper- or lower-case letters or digits; in place of `-` any other byte 0x21–0x7E may stand (p. 117/93). A name shorter than 9 bytes, or with a `SP` inside it, is not a frequency name. No token and no finding ([amb.freq.objname](#amb.freq.objname)). | — | — | p. 113/89; p. 116/92; p. 117/93 |
 
 After a frequency the items are taken in the order `freq.rx`,
 `freq.tone`, `freq.offset`, `freq.range`, each optional, each starting
@@ -582,8 +588,13 @@ callsign directly after the type, no padding. (c) As the example: one
 `SP`, and the callsign padded to 9 bytes. For a text that does not fit:
 (d) a message; (e) a malformed query.
 
-**Reading taken.** **[proposed]** (a) and (d). A `{` anywhere, an
-unlisted type, or a callsign of other bytes makes the text a message,
+**Reading taken.** (d) for an unlisted type: `'?'` is not a keyword,
+and a directed query is recognised by its whole shape, so a text whose
+type is not one of the listed five is a message, with no finding
+([README section 3](README.md#3-tokenizer-model), Classes that a
+keyword declares). An earlier draft carried this as part of the
+proposal that follows. **[proposed]** (a), and (d) also for a `{`
+anywhere and for a callsign of other bytes: the text is a message,
 with no finding. Not visible as an alternative where (a) matches: the
 type has a fixed length, so (b) and (c) place the callsign at the same
 bytes. Decided silently; no `ambiguous` finding.
@@ -825,30 +836,58 @@ start with a tone item?
 ### amb.freq.objname
 
 **Open in the document.** Frequency object names have four forms of 9
-bytes, with other separators allowed in place of `-` (p. 116/92,
-p. 117/93). Nothing separates such a name from another name that starts
-with digits and a point.
+bytes (p. 116/92). Their identifying bytes are upper- or lower-case
+letters and digits, and other separators "such as" a short list may
+stand in place of `-` (p. 117/93). Nothing separates such a name from
+another name that starts with digits and a point, and the text does not
+say whether the padding of a shorter object name counts. P. 117/93
+calls the `z`, `yz` and `xyz` bytes "optional", yet none of the four
+forms of p. 116/92 stands without them.
 
-**Readings.** (a) Any name of the two shapes. (b) Only with the
-listed separators.
+**Readings.** (a) Any name whose 9 bytes, padding included, have one of
+two shapes: 3 digits, `.`, 3 digits and 2 more bytes; or 3 digits, `.`,
+2 digits and 3 more bytes, the extra bytes being any bytes the name
+allows. (b) Only with the listed separators.
 
-**Reading taken.** **[proposed]** (a). Not visible in the bytes; no
-finding.
+**Reading taken.** **[agreed]** Neither: the name without its padding,
+in the four forms with the identifying bytes and separators that
+p. 117/93 states, as the [`freq.objname`](#freq.objname) row gives
+them. The name is the one that
+[`obj.name`](05-object-item.md#obj.name) defines, whose trailing `SP`
+are padding and not part of it, so a name shorter than 9 bytes, such as
+`146.940` or `146.94`, and one with a `SP` inside it, such as
+`443.375 R`, are not frequency names. The separator list is given with
+"such as" and "etc.", so other separators are allowed
+([README section 3](README.md#3-tokenizer-model), Kinds by situation),
+and (b) is narrower than the text. An earlier draft took (a), as
+**[proposed]**, and a still earlier one stated its two shapes without
+the forms of p. 116/92. **[agreed]** The author reads the word
+"optional" of p. 117/93 as a slip
+([err.freq.optional](#err.freq.optional)): the four forms decide, and
+a name without its identifying bytes, such as `146.940` padded to 9
+bytes, is not a frequency name.
 
-**In the bytes.** Under the tests of
-[README section 3](README.md#3-tokenizer-model): reading (b) would read
-a name of these shapes with an unlisted byte in its last places as an
-ordinary name, and its comment then without left-justified items, but
-every name of that kind carries this, and the bytes of one packet
-cannot narrow it, so it is decided by the reading and gives no finding.
+**In the bytes.** No finding. A frequency name is a class recognised
+by its shape alone, with no keyword that declares it (README section 3,
+Classes that a keyword declares). The object-name field has a fixed
+place, but ordinary names stand there too, so the exception for places
+that fix a form does not apply to it: a name that falls outside the
+forms is an ordinary name, with no finding, and reading (a), which
+only widens the ranges, gives no `ambiguous` finding either (README
+section 3, forms recognised by shape alone). The comment of such
+an object or item is read as any other comment: a frequency is looked
+for at its start, and a left-justified item there is text with the
+`ambiguous` finding of [amb.freq.nofreq](#amb.freq.nofreq). An earlier
+draft said that reading (b) was decided by the reading and not visible.
 
 **Decoders (read).** Dire Wolf converts a name with a numeric
 conversion and checks the result against amateur bands
 (decode_aprs.c:4588–4600). pdn-aprs: no object-name frequency found in
 comment.rs.
 
-**Corpus question.** Object and item names of the two shapes, and the
-bytes in their last positions.
+**Corpus question.** Object and item names of the four forms, the
+bytes in their last positions, and names of the shapes of reading (a)
+that are not frequency names.
 
 ## 9. Errata
 
@@ -935,6 +974,19 @@ Origin: within an addendum. The template and the examples come from the
 same frequency object text of the APRS 1.2 frequency material, which is
 not in APRS 1.0.1. 12b has them (12b PDF 120, 121).
 
+<a id="err.freq.optional"></a>
+### err.freq.optional
+
+The four forms of a frequency object name all end in their identifying
+bytes, `z`, `yz` or `xyz` (p. 116/92), but the text that follows calls
+those bytes "optional" (p. 117/93). The reading follows the forms: a
+name without them is not a frequency name
+([amb.freq.objname](#amb.freq.objname)).
+
+Origin: within an addendum. The forms and the word come from the same
+frequency object text of the APRS 1.2 frequency material, which is not
+in APRS 1.0.1. 12b has both (12b PDF 120, 121).
+
 ## 10. Open items
 
 - Whether the tokenizer checks a capability value for tokens other than
@@ -943,4 +995,9 @@ not in APRS 1.0.1. 12b has them (12b PDF 120, 121).
   can stand between them is not shown by the examples.
 - Whether a directed query of an unlisted type (pdn-aprs accepts one)
   should be recognised with `unstated` instead of being read as a
-  message ([amb.qry.dir](#amb.qry.dir)).
+  message ([amb.qry.dir](#amb.qry.dir)). Settled by the rule on
+  classes that a keyword declares
+  ([README section 3](README.md#3-tokenizer-model)): a text that
+  starts with `?` is not a keyword class, and a directed query is
+  recognised by its whole shape, so a text with an unlisted type is a
+  message, with no finding. The item is kept here as a record.

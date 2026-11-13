@@ -89,14 +89,22 @@ finding):
   description ([README section 3](README.md#3-tokenizer-model), Pages
   that disagree).
 
-**[proposed]** `tlm.cmt` is searched for the items of
+`tlm.cmt` has no length limit. Of the items of
 [02-fields.md](02-fields.md#82-items-found-inside-a-comment) section
-8.2, as any `cmt.text` is, with no length limit. **[agreed]** The search
+8.2, only those whose chapter names this comment are looked for in it
+([README section 3](README.md#3-tokenizer-model), Where comment items
+are looked for): the altitude, which p. 43/27 places in the comment
+without naming a format, and `'!x!'`. **[agreed]** A DAO shape in it
+is text, with no finding: p. 35/21 places the DAO in a position
+comment, and a telemetry report has no position. An earlier draft
+searched `tlm.cmt` for every item of 02 section 8.2, as any `cmt.text`
+then was, the DAO included. **[agreed]** The search
 of [amb.ext.count](02-fields.md#amb.ext.count) does not cover it: a
 report without a position has no data extension under any reading. No
 base-91 block (section 3) and no frequency
 ([09-other.md section 7](09-other.md#7-frequency-specification)) is
-looked for in it. An intermediate draft extended that search to
+looked for in it, since neither chapter names it. An intermediate
+draft extended the extension search to
 `tlm.cmt`; it was dropped when 02 limited the search to reports that
 carry a position.
 
@@ -150,13 +158,17 @@ Finding a block:
 
 Where blocks are looked for:
 
-- **[proposed]** In the comment of the position reports of
-  [03-position.md](03-position.md), uncompressed and compressed, and in
-  the Mic-E status text.
-- **[proposed]** In the comment of object and item reports, a candidate
-  is recorded with an `unstated` finding, since chapter 13 names only the
-  three position formats and itself asks why objects are left out
-  ([amb.tlm.b91.where](#amb.tlm.b91.where)).
+- In the comment of the position reports of
+  [03-position.md](03-position.md), uncompressed and compressed, a DF
+  report's included, and in the Mic-E status text: the three formats
+  that p. 88/68 names
+  ([README section 3](README.md#3-tokenizer-model), Where comment items
+  are looked for). An earlier draft carried this as a proposal.
+- **[agreed]** Not in the comment of object and item reports: a run
+  of block shape there is text, with no token and no finding
+  ([amb.tlm.b91.where](#amb.tlm.b91.where)). An earlier draft recorded
+  it as a block with an `unstated` finding, since chapter 13 itself
+  asks why objects are left out.
 - Nowhere else.
 
 ## 4. Telemetry definition messages
@@ -177,12 +189,15 @@ The keyword is exactly `PARM.`, `UNIT.`, `EQNS.` or
 with an `ambiguous` finding when it starts with one of the keywords in
 another case and the rest of it would fit that message
 ([amb.tlm.keyword](#amb.tlm.keyword);
-[README section 3](README.md#3-tokenizer-model), Letter case).
-**[proposed]** Bulletin and NWS
-addressees are tested first by 08, so their text is never a definition
-message; any other addressee does not change the reading.
-An earlier draft gave an addressee starting with `NWS_`, `SKY`, `CWA`
-or `BOM` the `ambiguous` finding of
+[README section 3](README.md#3-tokenizer-model), Letter case). The
+four keywords declare the class
+([README section 3](README.md#3-tokenizer-model), Classes that a
+keyword declares), as do the addressees `BLN` and `NWS-`, which stand
+before the text and which 08 tests first, so the text of a bulletin or
+NWS bulletin is never a definition message; any other addressee does
+not change the reading. An earlier draft carried the sentence on the
+addressees as a proposal. An earlier draft gave an addressee starting
+with `NWS_`, `SKY`, `CWA` or `BOM` the `ambiguous` finding of
 [amb.nws.addressee](08-message.md#amb.nws.addressee) in a definition
 message; the reading of that entry that took such an addressee as an
 NWS bulletin was dropped as decoder behaviour.
@@ -406,7 +421,15 @@ the [README](README.md#4-decoders-consulted), not run.
   position formats, and asks itself whether leaving out objects was
   intended (p. 88/68). How to find the block in a comment that holds
   other `'|'` bytes is not stated.
-- **Readings.** (a) Only the three named formats. (b) Any comment. An
+- **Readings.** (a) Only the three named formats. An earlier draft
+  also listed (b), any comment, and took (a) with a block in an object
+  or item comment recorded under an `unstated` finding. P. 88/68 names
+  the formats, and its question about objects does not make objects a
+  place it describes; (b) adds places the document does not describe
+  for the block, so by [README section 3](README.md#3-tokenizer-model)
+  (Where comment items are looked for, and what a listed reading is) it
+  is decoder behaviour (FAP, Dire Wolf and pdn-aprs read objects and
+  items too, aprslib objects, below), not a listed reading. An
   earlier draft also listed, for a comment with several runs between
   bars, (c) the first block, (d) the last block and (e) every block,
   and took (e) with an `ambiguous` finding on each of several
@@ -419,14 +442,14 @@ the [README](README.md#4-decoders-consulted), not run.
   [README section 3](README.md#3-tokenizer-model) it is decoder
   behaviour (Dire Wolf and aprslib take the first, FAP and pdn-aprs the
   last, below), not a listed reading, and gives no finding.
-- **Reading taken.** **[proposed]** (a), with a block in an object or
-  item comment recorded under an `unstated` finding. Visible in the
-  bytes, as that finding.
-- **In the bytes.** In an object or item comment the block is a block
-  token, as reading (b) would have it; the `unstated` finding marks the
-  place, and the readings do not divide the bytes differently, so there
-  is no `ambiguous` finding
-  ([README section 3](README.md#3-tokenizer-model)).
+- **Reading taken.** **[agreed]** (a). In the comment of an object or
+  item report, and in any other field outside the three formats, a run
+  of block shape is text, with no token and no finding.
+- **In the bytes.** Not visible: (a) is the only listed reading, so
+  no reading divides the bytes differently, and there is no finding
+  ([README section 3](README.md#3-tokenizer-model)). An earlier draft
+  gave a block in an object or item comment its token and an
+  `unstated` finding.
 - **Decoders.** FAP: in position, object and item comments and in Mic-E;
   the last block, 2 to 7 pairs (`_comments_to_decimal`, `FAP.pm:1199`;
   `FAP.pm:1859`; `_comment_telemetry`, `FAP.pm:1405`). Dire Wolf: in its
@@ -690,8 +713,10 @@ four, and its origin. The digit range itself is read in
 ## 7. Open items
 
 - The corpus questions in section 5.
-- Chapter 13 lists telemetry for three position formats only; whether
-  status reports or weather reports can carry a block is not addressed,
-  and this reading does not look for one there (UAP 5.33 shows one in a
-  weather report).
+- An earlier list held as open whether status reports or weather
+  reports can carry a block, which chapter 13 does not address (UAP
+  5.33 shows one in a weather report). It is settled by
+  [README section 3](README.md#3-tokenizer-model) (Where comment items
+  are looked for): p. 88/68 names three position formats only, so a
+  run of block shape elsewhere is text, with no finding.
 - ebarkie/aprs has no telemetry decoder in the files read.

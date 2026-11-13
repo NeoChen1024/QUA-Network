@@ -220,13 +220,14 @@ def _seq_other(scan, start, end, depth, mine):
 
 
 def _comment(scan, p, end, depth):
-    """tlm.cmt, read as cmt.text with the items of 02 section 8.2. It has no
-    length limit, and no base-91 block or frequency is looked for in it. The
-    report has no position, so the extension-shaped runs of 02
-    amb.ext.count are not searched (07 section 2)."""
+    """tlm.cmt, read as cmt.text with no length limit (07 section 2). Of the
+    items of 02 section 8.2 only the altitude and '!x!' are looked for: the
+    report has no position, so neither a DAO nor the extension-shaped runs
+    of 02 amb.ext.count are, and no chapter places a base-91 block or a
+    frequency there."""
     from qua_network.legacy.fields import comment
 
-    comment(scan, p, end, depth, float("inf"), "tlm.cmt", b91=False, freq=False, ext_search=False)
+    comment(scan, p, end, depth, float("inf"), "tlm.cmt", b91=False, freq=False, dao=False, ext_search=False)
 
 
 # --- Telemetry definition messages (07 section 4) -----------------------

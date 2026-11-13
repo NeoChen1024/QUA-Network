@@ -372,8 +372,9 @@ because the document requires the `SP` (p. 105/81); Dire Wolf and
 pdn-aprs read it so (see Decoders;
 [README section 3](README.md#3-tokenizer-model)).
 
-**Reading taken.** **[proposed]** (a). When the locator and symbol
-match but `SP` is missing, the bytes are status text, with no finding;
+**Reading taken.** (a), the one listed reading
+([README section 3](README.md#3-tokenizer-model)). When the locator and
+symbol match but `SP` is missing, the bytes are status text, with no finding;
 recognising such reports is left to a deviation recogniser. With the
 `SP`-or-end rule the 6- and the 4-byte readings cannot both complete,
 since the byte after a 4-byte reading's symbol would have to be both

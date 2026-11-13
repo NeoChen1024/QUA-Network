@@ -296,15 +296,17 @@ the [README](README.md#4-decoders-consulted), not run.
   [README section 3](README.md#3-tokenizer-model) it is decoder
   behaviour (pdn-aprs, below), not a listed reading, and gives no
   finding.
-- **Reading taken.** **[proposed]** (a). Leading spaces and `'*'` or `'_'`
-  inside the nine bytes are part of the name, with no finding. A name of
-  nine SP gives `syntax`, as no name is left once the padding is
-  removed. A byte other than `'*'` or `'_'` at offset 10 gives `syntax`
+- **Reading taken.** (a), the one listed reading
+  ([README section 3](README.md#3-tokenizer-model)). Leading spaces and
+  `'*'` or `'_'` inside the nine bytes are part of the name, with no
+  finding. A byte other than `'*'` or `'_'` at offset 10 gives `syntax`
   on `obj.state`; recognising an unpadded name is left to a deviation
   recogniser. No other reading is listed, so the entry gives no
   `ambiguous` finding. An earlier draft gave one at a `'*'` or `'_'`
   inside the name where reading (b) would have parsed the rest of the
-  report from there. **[proposed]** p. 76/58 and p. 77/59 state the
+  report from there. **[proposed]** A name of nine SP gives `syntax`,
+  as no name is left once the padding is removed. **[proposed]**
+  p. 76/58 and p. 77/59 state the
   byte set of object and item names as printable ASCII, where the
   comment, message and status text admit UTF-8 as well; the names are
   not a field where printable ASCII is only recommended, so the

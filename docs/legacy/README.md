@@ -35,7 +35,11 @@ to say where a defect first appears: `12b PDF p. N` is a PDF page of
 the original APRS 1.0.1 reference of 29 August 2000, which is not in the
 repository and is linked from the
 [documentation index](../README.md#external-references). Neither
-edition is a reference for the reading itself.
+edition is a reference for the reading itself. `APRS-IS q` and
+`APRS-IS q-alg` name the two APRS-IS pages on the q-construct, at the
+snapshots the documentation index pins; they are a register in the
+sense of section 3, to which APRS12c defers by naming the q-construct
+(p. 155/131).
 
 **Bytes.** Packets are byte strings, not text. A literal byte is written
 in code, `'!'`; a range as `0x21`–`0x7B`; `SP` is 0x20. "Digit" means
@@ -146,6 +150,8 @@ It does not compute values (degrees, knots, decoded telemetry). Decoding is
 a separate layer built on the tokens. **[agreed]** The one exception is a
 checksum that a form carries, such as the NMEA `*hh`: the tokenizer
 verifies it, because a mismatch means the bytes are not what was sent.
+**[agreed]** A rule that depends on what the line does not show, such
+as the connection a packet arrived on, is not checked.
 
 **[agreed]** An ambiguity that can be seen in the bytes produces an
 `ambiguous` finding. It can be seen when another reading listed in an
@@ -157,7 +163,11 @@ compressed `T` byte whose `c` byte also lies in the course range.
 way of reading the bytes that contradicts an explicit statement of
 APRS12c is recorded in the entry as decoder behaviour, not as a reading,
 and produces no finding. Recognising such packets is the work of the
-deviation recognisers.
+deviation recognisers. **[agreed]** A listed reading comes from the
+document's text, or from a question that the text leaves open. A way
+of reading that adds something the document never mentions, such as a
+prefix or a form that only some decoders take, is decoder behaviour
+too, even where it contradicts nothing.
 
 **[agreed]** The other reading counts only when it would accept the
 whole field, or the whole report, that the bytes belong to. Only
@@ -278,8 +288,15 @@ with the same kind:
   stand next: a tail, a residue, or `unknown-format`.
 - **[agreed]** A register kept outside APRS12c, to which the document
   defers, is used at the version this project pins, and the entry names
-  that version. The Mic-E device codes are checked against
-  `3rdparty/aprs-deviceid` this way.
+  that version. The Mic-E device codes and the software identifiers of
+  `dest.tocall` are checked against `3rdparty/aprs-deviceid` this way:
+  new devices appear faster than the document is revised, so the
+  register, not the document's examples, is the list. A list that is
+  defined elsewhere but kept as no versioned register, such as the
+  q-construct codes of APRS-IS or the sentence types of NMEA 0183, is
+  checked by shape only, together with any checksum the form carries.
+- **[agreed]** A range that the document takes from a source it names,
+  such as the Maidenhead letter ranges, counts as stated.
 - **[agreed]** A byte pattern outside every form the document defines,
   such as a relaxed number or a fill that no form shows, is not that
   form. At a place the format fixes it gives `syntax`; in free text it
@@ -366,6 +383,9 @@ An entry that cites a decoder names it and the function or line it read.
   compares. When a file changes, the entries it decides are derived
   again in the same way, not copied from the tokenizer's output.
 - Deviation recognisers and the divergence catalogue entries they belong
-  to (RFC Appendix E).
+  to (RFC Appendix E). Each way of reading that an entry records as
+  decoder behaviour (section 3) gives no finding and is left to them;
+  which of them get a recogniser is open. Some files list candidates in
+  their own open items.
 - APRS12c is itself a draft with known issues. When a later draft of the
   reference appears, this reading is checked against it page by page.

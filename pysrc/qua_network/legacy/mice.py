@@ -7,10 +7,8 @@ the dest.mice token of the same packet's header.
 """
 
 import re
-from pathlib import Path
 
-import yaml
-
+from qua_network.deviceid import pinned_register
 from qua_network.legacy.fields import (
     DIGITS,
     SP,
@@ -184,22 +182,12 @@ _OTHER = frozenset(b"`'")
 
 # amb.mice.suffix: the device suffixes are those of the aprs-deviceid
 # register at the commit the repository pins, read from the submodule.
-_TOCALLS = Path(__file__).resolve().parents[3] / "3rdparty" / "aprs-deviceid" / "tocalls.yaml"
 
 
-def _load_suffixes(path):
+def _load_suffixes(reg):
     """(prefix, suffix) pairs of the 'micelegacy' list, and (prefix or None,
     suffix) of the 'mice' list, as bytes; None stands for any 0x60 or 0x27
     prefix. Entries without a suffix name no suffix."""
-    try:
-        with open(path, "rb") as fh:
-            reg = yaml.safe_load(fh)
-    except FileNotFoundError:
-        raise RuntimeError(
-            f"aprs-deviceid register not found at {path}; the Mic-E device suffixes"
-            " (docs/legacy/04-mic-e.md, amb.mice.suffix) are read from it."
-            " Check out the submodule: git submodule update --init 3rdparty/aprs-deviceid"
-        ) from None
 
     def enc(v):
         return None if v is None else str(v).encode("latin-1")
@@ -209,7 +197,7 @@ def _load_suffixes(path):
     return legacy, other
 
 
-_KENWOOD_PAIRS, _OTHER_SUFFIXES = _load_suffixes(_TOCALLS)
+_KENWOOD_PAIRS, _OTHER_SUFFIXES = _load_suffixes(pinned_register())
 _HEX = frozenset(b"0123456789ABCDEFabcdef")
 # A fifth or sixth byte outside A-X, in either case, is no subsquare letter
 # (amb.grid.range); only the 4-byte locator is then tried.

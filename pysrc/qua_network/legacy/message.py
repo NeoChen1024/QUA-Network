@@ -29,8 +29,6 @@ _ACK = re.compile(rb"(?:ack|rej)(?:[A-Za-z0-9]{1,5}|[A-Za-z0-9]{2}\}(?:[A-Za-z0-
 # 09 section 4.1, reading (a) of amb.qry.dir: mark, type, optional SP,
 # optional heard station, optional trailing SP; no '{' can match.
 _QUERY = re.compile(rb"\?(?:APRS[DHMOPST]|PING\?) ?(?:[A-Za-z0-9-]{1,9})? *")
-# Reading (c) of amb.nws.addressee.
-_NWS_OTHER = (b"NWS_", b"SKY", b"CWA", b"BOM")
 # Section 8: the type byte and the number of fields it allows.
 _NTS = {ord("#"): (8, 8), ord("A"): (1, 4), ord("P"): (1, 1), ord("S"): (1, 1), ord("R"): (4, 4)}
 _NTS.update({c: (1, 1) for c in b"123456"})
@@ -94,12 +92,6 @@ def _read(scan, s, end, depth, texts, by_addressee):
             scan.find("msg.text", "value", t0 + _TEXT_MAX)
     else:
         _message(scan, s, t0, end, depth, texts, kind)
-    if by_addressee and line.startswith(_NWS_OTHER, a0, end):
-        # amb.nws.addressee, reading (c): an NWS bulletin, which accepts any
-        # text bytes and has no length limit or message identifier. In case
-        # 4 the findings of 07 section 4 are among those it looks at.
-        if not _reported(scan, a0, end):
-            scan.find("msg.addr", "ambiguous", a0)
     return kind
 
 

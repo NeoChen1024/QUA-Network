@@ -125,12 +125,12 @@ and stays comment text.
 
 Finding a block:
 
-- **[proposed]** A run that fits `tlm.b91` is a block only when nothing
-  follows it but an optional [`cmt.dao`](02-fields.md#cmt.dao) and, in
-  Mic-E, the device suffix
-  [`mice.type.suffix`](04-mic-e.md#mice.type.suffix). A run followed by
-  anything else is comment text, with no finding
-  ([amb.tlm.b91.order](#amb.tlm.b91.order)). At most one run in a
+- A run that fits `tlm.b91` is a block only when nothing follows it
+  but an optional [`cmt.dao`](02-fields.md#cmt.dao) and, in Mic-E, the
+  device suffix [`mice.type.suffix`](04-mic-e.md#mice.type.suffix). A
+  run followed by anything else is comment text, with no finding, under
+  every listed reading of [amb.tlm.b91.order](#amb.tlm.b91.order)
+  ([README section 3](README.md#3-tokenizer-model)). At most one run in a
   comment can be a block ([amb.tlm.b91.where](#amb.tlm.b91.where)).
 - In Mic-E, the device suffix is taken off first and only the bytes before
   it are searched ([04-mic-e.md](04-mic-e.md#amb.mice.pipe)).
@@ -177,14 +177,11 @@ another case and the rest of it would fit that message
 ([amb.tlm.keyword](#amb.tlm.keyword)). Bulletin and NWS
 addressees are tested first by 08, so their text is never a definition
 message; any other addressee does not change the reading.
-**[proposed]** An addressee starting with `NWS_`, `SKY`, `CWA` or `BOM`
-gets the `ambiguous` finding of
+An earlier draft gave an addressee starting with `NWS_`, `SKY`, `CWA`
+or `BOM` the `ambiguous` finding of
 [amb.nws.addressee](08-message.md#amb.nws.addressee) in a definition
-message as in cases 3, 5 and 6 of 08 section 2.1: when the field after
-the identifier has no `syntax` or `value` finding, those of this
-section included. Reading (c) of that entry takes the text as an NWS
-bulletin and gives none of the findings of this section, so a field
-that has one of them is reported by it alone (Precedence).
+message; the reading of that entry that took such an addressee as an
+NWS bulletin was dropped as decoder behaviour.
 
 Each list token below includes the comma before it, as the diagrams
 count it. The bytes of a field are those that
@@ -456,11 +453,12 @@ the [README](README.md#4-decoders-consulted), not run.
   [README section 3](README.md#3-tokenizer-model) it is decoder
   behaviour (every decoder read, below), not a listed reading, and
   gives no finding.
-- **Reading taken.** **[proposed]** (a). A run of block shape followed
-  by bytes other than an optional [`cmt.dao`](02-fields.md#cmt.dao)
-  and, in Mic-E, the device suffix is comment text, with no finding;
-  recognising a block followed by text is left to a deviation
-  recogniser.
+- **Reading taken.** A run of block shape followed by bytes other than
+  an optional [`cmt.dao`](02-fields.md#cmt.dao) and, in Mic-E, the
+  device suffix is comment text, with no finding, under both listed
+  readings; recognising a block followed by text is left to a deviation
+  recogniser ([README section 3](README.md#3-tokenizer-model)).
+  **[proposed]** (a): the block comes before the DAO.
 - **In the bytes.** A DAO before a block that nothing but the suffix
   follows is found where it stands under both readings
   ([02-fields.md](02-fields.md#82-items-found-inside-a-comment) section

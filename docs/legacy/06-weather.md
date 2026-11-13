@@ -331,8 +331,9 @@ report or an item (p. 87/67). The storm's direction and speed of motion
 are the 7-byte [`ext.csespd`](02-fields.md#ext.csespd) after the symbol
 code; the storm fields follow it, where the comment would begin.
 
-**[proposed]** The tokenizer reads storm data when all of these hold
-(reading: [amb.storm.placement](#amb.storm.placement)):
+The tokenizer reads storm data when all of these hold, by the one
+listed reading of [amb.storm.placement](#amb.storm.placement)
+([README section 3](README.md#3-tokenizer-model)):
 
 - the report is an uncompressed position report (03), object or item
   (05);
@@ -341,9 +342,9 @@ code; the storm fields follow it, where the comment would begin.
   [`ext.csespd`](02-fields.md#ext.csespd);
 - the next byte is `'/'` and the two after it are `TS`, `HC` or `TD`.
 
-**[proposed]** Storm-shaped bytes that these conditions leave as
-comment stay comment text and give no finding
-([amb.storm.placement](#amb.storm.placement)).
+Storm-shaped bytes that these conditions leave as comment stay comment
+text and give no finding
+([amb.storm.placement](#amb.storm.placement); README section 3).
 
 **[proposed]** With a symbol table byte other than `'/'` or `'\'` the
 storm data is still read, and the tokenizer reports `unstated` against
@@ -940,8 +941,9 @@ still does.
   the direction and speed (p. 87/67); they are Xastir's behaviour,
   recorded under Decoders
   ([README section 3](README.md#3-tokenizer-model)).
-- **Taken.** **[proposed]** (a), as in section 8. Bytes after the storm
-  fields are the comment.
+- **Taken.** (a), the one listed reading
+  ([README section 3](README.md#3-tokenizer-model)), as in section 8.
+  Bytes after the storm fields are the comment.
 - **In the bytes.** No `ambiguous` finding. Storm-shaped
   bytes after a course/speed extension with another symbol code, or
   elsewhere in a comment, are comment text under the only listed
@@ -1081,6 +1083,9 @@ replacement (1.0.1 PDF 75). 12b has them unchanged (12b PDF 47, 86, 87).
 - The unit of the wind speed for the decoding layer
   ([err.wx.wind-units](#err.wx.wind-units)).
 - The storm types other than `TS`, `HC` and `TD` read by Xastir, and the
-  storm fields' unknown fill, are not in APRS12c; whether a deviation
-  recogniser covers them.
+  storm fields' unknown fill, are not in APRS12c: they are decoder
+  behaviour and give no finding
+  ([README section 3](README.md#3-tokenizer-model)). Whether a
+  deviation recogniser covers them is part of the open item of
+  [README section 6](README.md#6-open-items).
 - The corpus questions of section 9.

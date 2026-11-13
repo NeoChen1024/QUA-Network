@@ -23,12 +23,13 @@ Third-party material is referenced, not copied into this repository.
 |---|---|---|
 | APRS Documentation Project (WB2OSZ) | submodule `3rdparty/aprsspec` | What legacy APRS packets are meant to say. See RFC Appendix D for the role of each document. |
 | Unishox2 | submodule `3rdparty/Unishox2` | The text compression codec of RFC 5.7, and the reference encoder its behaviour is checked against. |
-| aprs-deviceid | submodule `3rdparty/aprs-deviceid` | Destination callsign to software and device, for `qua-tocall-stats`; the Mic-E device suffixes that the legacy tokenizer checks, at commit `c50d026` ([docs/legacy/04-mic-e.md](legacy/04-mic-e.md#amb.mice.suffix)). Read at run time, not copied. CC BY-SA 2.0. |
+| aprs-deviceid | submodule `3rdparty/aprs-deviceid` | Destination callsign to software and device, for `qua-tocall-stats`; the Mic-E device suffixes and the `dest.tocall` identifiers that the legacy tokenizer checks, at commit `c50d026` ([docs/legacy/04-mic-e.md](legacy/04-mic-e.md#amb.mice.suffix), [docs/legacy/01-frame.md](legacy/01-frame.md#dest.tocall)). Read at run time, not copied. CC BY-SA 2.0. |
 | aprs-symbols (aprs.fi set, OH7LZB) | submodule `3rdparty/aprs-symbols` | How the symbols of the primary and alternate tables and the overlay characters are drawn, as examples (PNG sheets at several sizes, and the vector source). Not used by any tool. Licensing is per symbol, listed in its `COPYRIGHT.md`: some CC BY-SA 2.0 or public domain, many of unknown origin, a few brand logos. Nothing from it is copied into this repository. |
 | GNU Unifont | <https://unifoundry.com/unifont/> | A 16-pixel bitmap Unicode font with CJK coverage, suggested as a starting point for embedded designs (RFC 5.6). |
 | Fusion Pixel Font | submodule `3rdparty/fusion-pixel-font` | Bitmap fonts with CJK coverage at 8, 10 and 12 pixels, suggested likewise (RFC 5.6). Fonts under OFL 1.1, build tools under MIT. |
 | u8g2 | <https://github.com/olikraus/u8g2>, `tools/font/bdf/` | BDF sources of icon fonts (Open Iconic, Siji) and of Unifont, as test sets for `qua-icon-stats` (RFC 5.6). Read at commit `ab9e48b2`. Each font carries its own licence. |
 | APRS Protocol Reference 1.0.1, 29 August 2000 | <http://www.aprs.org/doc/APRS101.PDF>; aprs.org blocks automated clients, so the copy consulted was fetched through <https://web.archive.org/web/2023id_/http://www.aprs.org/doc/APRS101.PDF> | The original that APRS12c compiles. Used to tell defects inherited from 1.0.1 from those introduced later (`legacy/`). |
+| APRS-IS q-construct definition (AE5PL): "q Construct" and "q Algorithm" | <https://aprs-is.net/q.aspx> and <https://aprs-is.net/qalgorithm.aspx>; pinned as the Wayback snapshots <https://web.archive.org/web/20251121184238id_/https://www.aprs-is.net/q.aspx> and <https://web.archive.org/web/20260210071804id_/https://aprs-is.net/qalgorithm.aspx> | What a q-construct in an APRS-IS path means, which APRS12c names but does not define (`legacy/`, 01-frame `path.q`). aprsc (`legacy/README.md` section 4) is read as an implementation of it. |
 | AX.25 Link Access Protocol v2.2, July 1998 | <https://www.ax25.net/AX25.2.2-Jul%2098-2.pdf> | Legacy framing: the address field layout behind the first-byte rule (RFC 5.1) and the optional encapsulation (RFC 7.2). |
 
 The AX.25 document is linked rather than stored because it is copyrighted by
@@ -38,6 +39,15 @@ TAPR and ARRL. The copy consulted is 2,842,014 bytes, 135 pages, SHA-256
 APRS 1.0.1 is linked for the same reason (copyright 2000 APRS Working
 Group). The copy consulted is 3,173,392 bytes, 128 pages, SHA-256
 `31df2904d982f83621ebb16ed379e4da3b5507db0dba7c9513e3815ff1ed62f8`.
+
+The APRS-IS pages carry a copyright notice of AE5PL and no licence, so
+they are linked too, and the copies consulted are kept under `work/`.
+The live pages carry no version; the Wayback snapshots above are the
+pinned versions. The copies are 11,996 bytes, SHA-256
+`4fecdc7f3237bdaba289700a1c31351a3df3faaaad3d9bd87d414382c745480b`
+(q Construct), and 7,537 bytes, SHA-256
+`68ec642c9386a1b4dce03f41906e4e05bfb9d4ec3a63ed336c4a7ef7a5d47734`
+(q Algorithm, which states it was last updated on 1 June 2012).
 
 Searchable Markdown copies of the APRS documents and the AX.25 PDF are made
 locally with `qua-spec-extract`, into `work/refs/text/` by default. They are

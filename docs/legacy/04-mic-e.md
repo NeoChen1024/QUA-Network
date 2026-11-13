@@ -40,8 +40,9 @@ the parts present keep their tokens and checks, and the one `syntax`
 finding on `mice.fixed` is placed where the first missing byte was
 expected ([README section 3](README.md#3-tokenizer-model), Output).
 
-**[proposed]** The data type identifier alone makes a packet Mic-E
-([amb.mice.recognition](#amb.mice.recognition)). A destination that does not
+The data type identifier alone makes a packet Mic-E, by the one listed
+reading of [amb.mice.recognition](#amb.mice.recognition)
+([README section 3](README.md#3-tokenizer-model)). A destination that does not
 fit section 3 gives `syntax` findings on the destination rules; the
 information field is tokenised all the same. A destination of Mic-E shape
 under any other data type identifier is not Mic-E; its class is decided by
@@ -178,7 +179,7 @@ The obsolete Mic-E telemetry takes the place of the prefix
 | <a id="mice.type.prefix"></a>`mice.type.prefix` | Device type prefix | One byte at offset 9: `'>'` (Kenwood handheld), `']'` (Kenwood mobile), 0x60 (other maker, messaging capable) or 0x27 (other maker, not messaging capable). | Optional | 1 byte | p. 73/55 |
 | <a id="mice.alt"></a>`mice.alt` | Altitude | Three [`b91.digit`](02-fields.md#b91.digit) bytes, then `'}'`. Value minus 10000 is metres. **[proposed]** Only directly after the prefix, or at offset 9 when there is none ([amb.mice.alt](#amb.mice.alt)). | Optional | The `'}'` | p. 74/56, p. 153/129, p. 154/130 |
 | <a id="mice.grid"></a>`mice.grid` | Maidenhead locator | [`grid.loc`](03-position.md#grid.loc): two letters `'A'`–`'R'`, two digits, optionally two letters `'A'`–`'X'` ([amb.grid.range](03-position.md#amb.grid.range)); then `'/'` `'G'`; then SP when free text follows, which belongs to this token. Lower-case letters give a `syntax` finding. **[proposed]** After the prefix and any altitude ([amb.mice.grid](#amb.mice.grid)). | Optional | The `'G'`, or the SP after it | p. 42/26, p. 73/55, p. 152/128 |
-| <a id="mice.type.suffix"></a>`mice.type.suffix` | Device type suffix | **[agreed]** After a Kenwood prefix, the one-byte suffix is taken only when the pair (prefix, last byte) is in the `micelegacy` list of `3rdparty/aprs-deviceid/tocalls.yaml` at commit `c50d026` (2026-10-19): `'>'` with `'='`, `'^'` or `'&'`, and `']'` with `'='`. A last byte that does not form a listed pair is status text. **[proposed]** After a 0x60 or 0x27 prefix: the last two bytes. Raw bytes, nothing stripped first ([amb.mice.suffix](#amb.mice.suffix)). **[agreed]** The two-byte suffix after a 0x60 or 0x27 prefix is checked against the `mice` list of the same file at the same commit, not against the five examples of p. 73/55: a listed suffix gives no finding, an unlisted one `unstated` (the register is open). **[agreed]** After a 0x60 or 0x27 prefix, a single byte left where the two-byte suffix stands gives a `syntax` finding: a fixed-width field that does not fit ([amb.mice.pipe](#amb.mice.pipe)). | Optional | End of information field | p. 73/55, p. 88/68; aprs-deviceid `tocalls.yaml` at `c50d026` |
+| <a id="mice.type.suffix"></a>`mice.type.suffix` | Device type suffix | After a 0x60 or 0x27 prefix: the last two bytes. Raw bytes, nothing stripped first ([amb.mice.suffix](#amb.mice.suffix); [README section 3](README.md#3-tokenizer-model)). **[agreed]** After a Kenwood prefix, the one-byte suffix is taken only when the pair (prefix, last byte) is in the `micelegacy` list of `3rdparty/aprs-deviceid/tocalls.yaml` at commit `c50d026` (2026-10-19): `'>'` with `'='`, `'^'` or `'&'`, and `']'` with `'='`. A last byte that does not form a listed pair is status text. **[agreed]** The two-byte suffix after a 0x60 or 0x27 prefix is checked against the `mice` list of the same file at the same commit, not against the five examples of p. 73/55: a listed suffix gives no finding, an unlisted one `unstated` (the register is open). **[agreed]** After a 0x60 or 0x27 prefix, a single byte left where the two-byte suffix stands gives a `syntax` finding: a fixed-width field that does not fit ([amb.mice.pipe](#amb.mice.pipe)). | Optional | End of information field | p. 73/55, p. 88/68; aprs-deviceid `tocalls.yaml` at `c50d026` |
 
 **[proposed]** Between these parts the status text is read as a position
 comment ([amb.mice.extension](#amb.mice.extension)):
@@ -298,10 +299,11 @@ the [README](README.md#4-decoders-consulted), not run.
   behaviour, not a listed reading, and gives no finding. None of the
   decoders read classes such a packet as another format: each decodes it
   as Mic-E or refuses it (table below).
-- **Reading taken.** **[proposed]** (a), as every decoder read does it.
-  The destination is checked by section 3, and bytes that do not fit it
-  give `syntax` or `value` on the destination rules. No other reading is
-  listed, so the question gives no `ambiguous` finding.
+- **Reading taken.** (a), the one listed reading
+  ([README section 3](README.md#3-tokenizer-model)), as every decoder
+  read does it. The destination is checked by section 3, and bytes that
+  do not fit it give `syntax` or `value` on the destination rules. No
+  other reading is listed, so the question gives no `ambiguous` finding.
 - **Decoders.**
 
   | Decoder | Reads | Where |
@@ -516,31 +518,36 @@ the [README](README.md#4-decoders-consulted), not run.
   Its fields `prefix` and `suffix` are used as written; an entry with
   no `suffix` names no suffix. An earlier draft left open, in section
   9, whether the tokenizer reads that list and at which version, and
-  read the suffix by shape only. **[agreed]** After a Kenwood prefix,
-  the one-byte suffix is taken only when the pair (prefix, last byte) is
-  in the `micelegacy` list of that file (`'>'` with `'='`, `'^'` or
-  `'&'`; `']'` with `'='`); a last byte that does not form a listed pair
-  is status text. **[proposed]** After a 0x60 or 0x27 prefix, (a) on
-  the raw bytes: the last two bytes are the suffix. When the prefix
-  leaves no byte after the prefix and any altitude, there is no suffix
-  and the tokenizer reports `unstated`. **[agreed]** When it leaves one
-  byte, that byte gives `syntax` on `mice.type.suffix` (section 5).
-  **[agreed]** The two-byte suffix after a 0x60 or 0x27 prefix is
-  checked against the `mice` list of the same file at the pinned
-  commit, not against the five examples of p. 73/55: a listed suffix
-  gives no finding, an unlisted one `unstated` (the register is open).
-  The `mice` entries have no `prefix` field, so a listed suffix holds
-  after either prefix. **[proposed]** Trailing CR, LF and SP, and 0xFF
-  runs, are left to deviation recognisers. Whether a last byte that
-  forms a listed Kenwood pair is a suffix or the end of the text is an
-  ambiguity that every Kenwood suffix carries and that the bytes of one
-  packet cannot narrow; the reading decides it, with no finding
-  ([README section 3](README.md#3-tokenizer-model)). An earlier draft
-  took a last `'='`, `'^'` or `'&'` after either Kenwood prefix as the
-  suffix, by shape. An earlier draft gave `unstated` to every two-byte
-  suffix that is not one of the five examples on p. 73/55, since the
-  document gives no list.
-- **In the bytes.** **[proposed]** No `ambiguous` finding. After a 0x60
+  read the suffix by shape only. After a 0x60 or 0x27 prefix, (a) on
+  the raw bytes: the last two bytes are the suffix. The register is
+  open, so the list of (b) takes the same bytes, and taking them from
+  anywhere but the end is decoder behaviour; trailing CR, LF and SP,
+  and 0xFF runs, are therefore left to deviation recognisers
+  ([README section 3](README.md#3-tokenizer-model)). Whether a last
+  byte that forms a Kenwood pair of the register is a suffix or the end
+  of the text is an ambiguity that every Kenwood suffix carries and
+  that the bytes of one packet cannot narrow; the reading decides it,
+  with no finding (README section 3).
+
+  **[agreed]** After a Kenwood prefix, the one-byte suffix is taken
+  only when the pair (prefix, last byte) is in the `micelegacy` list of
+  that file (`'>'` with `'='`, `'^'` or `'&'`; `']'` with `'='`); a
+  last byte that does not form a listed pair is status text.
+  **[proposed]** When a 0x60 or 0x27 prefix leaves no byte after the
+  prefix and any altitude, there is no suffix and the tokenizer reports
+  `unstated`. **[agreed]** When it leaves one byte, that byte gives
+  `syntax` on `mice.type.suffix` (section 5). **[agreed]** The
+  two-byte suffix after a 0x60 or 0x27 prefix is checked against the
+  `mice` list of the same file at the pinned commit, not against the
+  five examples of p. 73/55: a listed suffix gives no finding, an
+  unlisted one `unstated` (the register is open). The `mice` entries
+  have no `prefix` field, so a listed suffix holds after either prefix.
+
+  An earlier draft took a last `'='`, `'^'` or `'&'` after either
+  Kenwood prefix as the suffix, by shape. An earlier draft gave
+  `unstated` to every two-byte suffix that is not one of the five
+  examples on p. 73/55, since the document gives no list.
+- **In the bytes.** No `ambiguous` finding. After a 0x60
   or 0x27 prefix, readings (a) and (b) divide the bytes the same way:
   the register is open, so an unlisted pair is still the suffix, and the
   list decides only the `unstated` finding on it. After a Kenwood

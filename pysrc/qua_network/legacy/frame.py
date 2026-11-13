@@ -4,6 +4,7 @@ and third-party payloads: docs/legacy/01-frame.md."""
 
 import re
 
+from qua_network.deviceid import pinned_index
 from qua_network.legacy.message import obsolete as obsolete_bulletin
 from qua_network.legacy.message import obsolete_accepts as obsolete_bulletin_accepts
 from qua_network.legacy.model import UNREAD
@@ -97,6 +98,9 @@ _GENERIC = re.compile(
     rb"(?:ALL|AP|CQ|DF|DGPS|DRILL|DX|GPS|ID|JAVA|MAIL|MICE|QST|QTH|RTCM|SKY|SPACE|SPC|SYM|TEL|TEST|TLM|WX)[A-Z0-9]*\Z"
 )
 _GRID = re.compile(rb"[A-R]{2}[0-9]{2}[A-X]{2}\Z")
+# dest.tocall: the identifiers of the aprs-deviceid register at the commit
+# the repository pins, with the register's own lookup (README section 3).
+_TOCALLS = pinned_index()
 
 
 def _sym_pairs():
@@ -129,6 +133,9 @@ def dest_class(scan, call, start, dti):
         scan.find("dest.aprs", "obsolete", start)
         cls = "dest.aprs"
     elif _TOCALL.match(call):
+        # The register is open: an identifier it does not list is unstated.
+        if _TOCALLS.lookup(call.decode("ascii")) is None:
+            scan.find("dest.tocall", "unstated", start)
         cls = "dest.tocall"
     elif m := _SYMNN.match(call):
         if not 1 <= int(m.group(1)) <= 94:
@@ -153,6 +160,8 @@ def dest_class(scan, call, start, dti):
 # --- The header (01 sections 2 to 4) ------------------------------------
 
 _Q = re.compile(rb"qA[A-Za-z]\Z")
+# The codes of the APRS-IS q-construct definition (APRS-IS q), a closed list.
+_Q_CODES = frozenset((b"qAC", b"qAX", b"qAU", b"qAo", b"qAO", b"qAS", b"qAr", b"qAR", b"qAZ", b"qAI"))
 _OBSOLETE_ALIAS = frozenset((b"RELAY", b"TRACE", b"WIDE"))
 _NOGATE = frozenset((b"NOGATE", b"RFONLY"))
 
@@ -221,9 +230,10 @@ def _path(scan, entries, depth, inner=False):
     """
     line = scan.line
     q_seen = False
+    q_at = None
     n_digi = 0
     used_seen = False
-    for es, ee in entries:
+    for k, (es, ee) in enumerate(entries):
         star_at = -1
         if inner:
             scan.tok("tp.path", es - 1, ee, depth)
@@ -246,6 +256,7 @@ def _path(scan, entries, depth, inner=False):
         entry = line[es:ee]
         if not q_seen and _Q.match(entry):
             q_seen = True
+            q_at = k
             scan.tok("path.q", es, ee, d)
             scan.find("path.q", "is-only", es)
             continue
@@ -308,6 +319,39 @@ def _path(scan, entries, depth, inner=False):
             scan.residue(ae, ee, d, "tp.path")
             if not _syntax_since(scan, n):
                 scan.find("tp.path", "syntax", ae)
+    if q_at is not None:
+        _q_construct(scan, entries, q_at)
+
+
+def _q_construct(scan, entries, q_at):
+    """The checks of the APRS-IS q-construct definition that one line can show
+    (01 amb.path.q); those that depend on the connection are not made."""
+    line = scan.line
+    qs, qe = entries[q_at]
+    code = line[qs:qe]
+    if code not in _Q_CODES:
+        scan.find("path.q", "value", qs)
+    elif code == b"qAZ":
+        # A server drops it; on the feed it is a prohibited code.
+        scan.find("path.q", "syntax", qs)
+    elif code == b"qAX":
+        scan.find("path.q", "obsolete", qs)
+    if code == b"qAC" and [line[s:e] for s, e in entries[:q_at]] != [b"TCPIP*"]:
+        scan.find("path.q", "syntax", qs)
+    after = entries[q_at + 1 :]
+    if not after:
+        # The callsign that follows every code is missing.
+        scan.find("path.q", "syntax", qe)
+    elif code != b"qAI" and len(after) > 1:
+        scan.find("path.is", "syntax", after[1][0] - 1)
+    seen = set()
+    for s, e in after:
+        call = line[s:e].rstrip(b"*")
+        if call and call in seen:
+            # A callsign repeated after the construct marks a loop.
+            scan.find("path.is", "syntax", s)
+            break
+        seen.add(call)
 
 
 def _dest(scan, ds, de, depth, dti):

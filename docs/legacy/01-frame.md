@@ -69,7 +69,7 @@ not rejected.
 | <a id="path.used"></a>`path.used` | Used marker | `*` directly after the address of a `path.digi`. It marks the entry heard; all entries before it count as used. A second `*` among the `path.digi` entries gives `syntax` ([amb.path.used](#amb.path.used)). | no | 1 byte | p. 107/83; p. 20/10; UAP §1.3.1 |
 | <a id="path.obsolete"></a>`path.obsolete` | Obsolete alias | A `path.digi` whose callsign is exactly `RELAY`, `TRACE` or `WIDE` (no digit), with any SSID. Gives `obsolete`. | no | — | p. 20/10; p. 155/131; UAP §5.5 |
 | <a id="path.nogate"></a>`path.nogate` | Gating block | A `path.digi` whose callsign is `NOGATE` or `RFONLY`. Classified; no finding, wherever it stands. | no | — | p. 110/86 |
-| <a id="path.q"></a>`path.q` | q-construct | `q`, `A`, then one byte `A`–`Z` or `a`–`z`, as a whole entry, no `*`. The first such entry. **[proposed]** An entry `qA?*` is not `path.q`; before the first q-construct it is read as `path.digi`. Gives `is-only` ([amb.path.q](#amb.path.q)). | no | `,` or `line.sep` | p. 155/131; UAP ch. 4 |
+| <a id="path.q"></a>`path.q` | q-construct | `q`, `A`, then one byte `A`–`Z` or `a`–`z`, as a whole entry, no `*`. The first such entry. **[proposed]** An entry `qA?*` is not `path.q`; before the first q-construct it is read as `path.digi`. Gives `is-only` ([amb.path.q](#amb.path.q)). **[agreed]** The code is checked against the APRS-IS q-construct definition (`APRS-IS q`, `APRS-IS q-alg`): its list of codes is closed, so a code outside it gives `value`; `qAZ`, which a server drops, gives `syntax` on the feed; `qAX`, which the definition deprecates, gives `obsolete`; `qAC` gives `syntax` unless the path before it is exactly `TCPIP*`; every code is followed by a callsign, and every code but `qAI` by one only, so a missing one gives `syntax` at the end of the entry and a second one `syntax` against `path.is` at its separator; a callsign repeated after the construct gives `syntax` against `path.is` at its first byte. | no | `,` or `line.sep` | p. 155/131; UAP ch. 4; APRS-IS q; APRS-IS q-alg |
 | <a id="path.is"></a>`path.is` | Entry after the q-construct | 1 or more bytes, each 0x21–0x7E other than `,` and `:`; a byte outside that set gives `syntax` at that byte (README section 3, Placing a finding). AX.25 form gives no finding; anything else gives `is-only`. **[proposed]** The text-form SSID rules of `addr.ssid` are not applied here: `N0CALL-0` is simply not in the AX.25 form. A trailing `*` gives `unstated`. | no | `,` or `line.sep` | UAP ch. 4 |
 
 ## 5. Destination classes
@@ -110,7 +110,7 @@ the inner identifier.
 |---|---|---|---|---|---|
 | <a id="dest.mice"></a>`dest.mice` | Mic-E destination | Six bytes and the SSID, read by [04-mic-e.md](04-mic-e.md), including what the SSID means there. | when the identifier is Mic-E | end of the callsign | p. 26/12; ch. 10 |
 | <a id="dest.aprs"></a>`dest.aprs` | Obsolete generic | Exactly `APRS`. Gives `obsolete`. | — | end of the callsign | p. 29/19; p. 107/83 |
-| <a id="dest.tocall"></a>`dest.tocall` | Software or device identifier | `AP` then 1 to 4 bytes, each `A`–`Z` or a digit. `APZ` + anything is the experimental block. The registry is external and not checked. | — | end of the callsign | p. 25/13; UAP §1.2, §5.3 |
+| <a id="dest.tocall"></a>`dest.tocall` | Software or device identifier | `AP` then 1 to 4 bytes, each `A`–`Z` or a digit. `APZ` + anything is the experimental block. **[agreed]** The identifier is looked up in the aprs-deviceid register, `3rdparty/aprs-deviceid/tocalls.yaml` at commit `c50d026` (2026-10-19), with that register's documented lookup: an exact entry first, then the wildcard entry with the longest literal match. An identifier the register does not list gives `unstated` at the first byte of `addr.dest`, since the register is open. The register, not the document, is the list, because new devices appear faster than the document is revised ([README section 3](README.md#3-tokenizer-model), Kinds by situation). An earlier draft did not check the register, and left open in section 11 whether a later layer would (UAP §5.3 shows unregistered identifiers). | — | end of the callsign | p. 25/13; UAP §1.2, §5.3; aprs-deviceid `tocalls.yaml` at `c50d026` |
 | <a id="dest.symnn"></a>`dest.symnn` | Numbered symbol | `GPSC` (primary table) or `GPSE` (alternate table), then two digits. The number is the symbol code byte minus 0x20, so `01` to `94`; `00` or `95`–`99` gives `value`. No overlay. | — | end of the callsign | p. 27/17; p. 85/65; p. 126/102; p. 139/115 to p. 141/117 |
 | <a id="dest.sym"></a>`dest.sym` | Lettered symbol | `GPS`, `SPC` or `SYM`, then the two bytes `xy` of the table below, then an optional overlay `z`: a digit or `A`–`Z`. On RF a missing overlay is a space; the text form shows 5 bytes ([amb.dest.symfill](#amb.dest.symfill)). An overlay on a primary-table `xy` gives `value`. Whether an alternate symbol is overlay-capable is not checked ([amb.sym.overlay](02-fields.md#amb.sym.overlay)). | — | end of the callsign | p. 27/17; p. 85/65; p. 126/102; p. 139/115 to p. 141/117 |
 | <a id="dest.generic"></a>`dest.generic` | Generic beacon address | One of the prefixes `ALL`, `AP`, `CQ`, `DF`, `DGPS`, `DRILL`, `DX`, `GPS`, `ID`, `JAVA`, `MAIL`, `MICE`, `QST`, `QTH`, `RTCM`, `SKY`, `SPACE`, `SPC`, `SYM`, `TEL`, `TEST`, `TLM`, `WX`, extended by zero or more bytes `A`–`Z` or digits to at most 6 bytes; or exactly `BEACON`. | — | end of the callsign | p. 29/19 |
@@ -429,10 +429,18 @@ shows `qAR`, `qAO`, `qAC` followed by an IGate or server name.
 Recognise `q` + `A` + letter as a q-construct, and everything after it
 as APRS-IS entries.
 
-**Reading taken.** **[proposed]** (b). The tokenizer does not check the
-third byte against a list, since the list is in a document outside the
-references. Entries after the q-construct are not counted against the
-limit of 8.
+**Reading taken.** **[proposed]** (b). Entries after the q-construct are
+not counted against the limit of 8. **[agreed]** The q-construct is
+checked against the APRS-IS definition, now a reference used as a
+register ([README section 3](README.md#3-tokenizer-model), Kinds by
+situation), with the checks of the [`path.q`](#path.q) row: those that
+one line can show. The rules of the definition that depend on the
+connection a packet arrived on (a verified login, the port, when a
+server rewrites `qAR` to `qAo`) are not checked
+([README section 3](README.md#3-tokenizer-model), Boundaries). Earlier
+drafts checked the shape only, first because the list was in a
+document outside the references and then until the definition was
+brought in.
 
 **In the bytes.** Every q-construct carries the question,
 whichever entries follow it, and the bytes of one packet cannot narrow
@@ -641,8 +649,10 @@ before reading byte 0 contradicts p. 23/13, which makes the first byte
 of the field the identifier. In the table below, FAP, aprslib, aprsc
 and pdn-aprs search for a later `!`, and Xastir strips a prefix.
 
-**Reading taken.** **[proposed]** (a): no later `!` is looked for and no
-prefix is stripped. Such packets are left to a deviation recogniser.
+**Reading taken.** (a), the one listed reading
+([README section 3](README.md#3-tokenizer-model)): no later `!` is
+looked for and no prefix is stripped. Such packets are left to a
+deviation recogniser.
 
 **In the bytes.** No finding is given beyond the one that byte 0
 already gives in the table of section 7; the decoder behaviour above
@@ -1039,13 +1049,8 @@ walkthrough shows one space in every copy (1.0.1 PDF p. 96, rendered);
 
 ## 11. Open items
 
-- The APRS-IS q-construct document is not among the references. If it is
-  added, `path.q` and `path.is` are checked against it
-  ([amb.path.q](#amb.path.q)).
 - Whether the `is-only` byte set of `addr.is` admits space, which
   "printable ASCII" on p. 108/84 can be read to include.
-- Whether `dest.tocall` is checked against the aprs-deviceid registry in
-  a later layer (UAP §5.3 shows unregistered identifiers).
 - Cross-cutting: the reading treats a destination SSID and a source SSID
   as values only; their meanings belong to a decoding layer not yet
   written.

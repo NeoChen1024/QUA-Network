@@ -11,11 +11,37 @@ up this way.
 """
 
 import re
+from functools import cache
+from pathlib import Path
 
 import yaml
 
 MIC_E_TYPES = frozenset({b"`", b"'"})
 _WILDCARD = {"?": ".", "n": "[0-9]", "*": ".*"}
+
+# The register of the submodule, at the commit the repository pins, located
+# from the package so that it is found whatever the working directory.
+PINNED = Path(__file__).resolve().parents[2] / "3rdparty" / "aprs-deviceid" / "tocalls.yaml"
+
+
+@cache
+def pinned_register():
+    """The parsed register at PINNED, read once per process."""
+    try:
+        with open(PINNED, "rb") as fh:
+            return yaml.safe_load(fh)
+    except FileNotFoundError:
+        raise RuntimeError(
+            f"aprs-deviceid register not found at {PINNED}; the legacy tokenizer reads the"
+            " Mic-E device suffixes and the dest.tocall identifiers from it (docs/legacy/README.md"
+            " section 3). Check out the submodule: git submodule update --init 3rdparty/aprs-deviceid"
+        ) from None
+
+
+@cache
+def pinned_index():
+    """A DeviceIndex of the tocalls of the pinned register."""
+    return DeviceIndex(pinned_register()["tocalls"])
 
 
 class DeviceIndex:

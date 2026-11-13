@@ -140,7 +140,7 @@ does not count (README section 3).
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|
 | <a id="nmea.dti"></a>`nmea.dti` | Identifier | `$`, 1 byte, when the field does not start `$ULTW`. P. 52/34 discourages sending raw NMEA but does not make it obsolete: **[agreed]** the field gives `discouraged` at this byte, by the dispatch table of [01-frame.md](01-frame.md#dti). | yes | 1 byte | p. 31/17; p. 52/34 |
-| <a id="nmea.addr"></a>`nmea.addr` | Address field | 5 bytes, each `A`–`Z`: talker and sentence type. Anything else gives `syntax`. Any talker and type are accepted; the five recommended types (GGA, GLL, RMC, VTG, WPL) are noted, others give no finding ([amb.nmea.sentence](#amb.nmea.sentence)). | yes | `,` | p. 42/26; p. 52/34 |
+| <a id="nmea.addr"></a>`nmea.addr` | Address field | 5 bytes, each `A`–`Z`: talker and sentence type. Anything else gives `syntax`. Talker and type are checked by shape only, not against a list of NMEA 0183 talkers or sentence types, until a definition is brought into the references: the five recommended types (GGA, GLL, RMC, VTG, WPL) are noted, others give no finding ([amb.nmea.sentence](#amb.nmea.sentence); [README section 3](README.md#3-tokenizer-model), Kinds by situation). | yes | `,` | p. 42/26; p. 52/34 |
 | <a id="nmea.field"></a>`nmea.field` | Data field | `,` then zero or more bytes 0x20–0x7E other than `,`, `*` and `$`. One token per field; the content is not checked ([amb.nmea.sentence](#amb.nmea.sentence)). | yes, at least one | `,`, `*` or end of field | p. 42/26; p. 52/34 |
 | <a id="nmea.cks"></a>`nmea.cks` | Checksum | `*` then two hex digits, `0`–`9` or `A`–`F`, as in three of the four examples. Their value is compared with the exclusive-or of every byte after `$` and before `*`; a mismatch gives `value` at the first hex digit. Hex digits `a`–`f` give `unstated`, and the value is still compared. A missing checksum gives no finding ([amb.nmea.checksum](#amb.nmea.checksum)). | no | 2 bytes after `*` | p. 52/34 |
 | <a id="nmea.end"></a>`nmea.end` | Sentence terminator | CR, LF or both after the last field or the checksum. Gives `unstated`. **[proposed]** Any other bytes after the checksum are a residue that names `nmea.cks`, with `syntax` at the first of them. | no | end of field | — |
@@ -206,8 +206,9 @@ takes DFS only with a `/` after it
 one leading separator from the comment after an extension but do not
 require one (table below).
 
-**Reading taken.** **[proposed]** (a). **[agreed]** After a position
-report the area descriptor is never read, whatever the symbol.
+**Reading taken.** (a), the one listed reading
+([README section 3](README.md#3-tokenizer-model)). **[agreed]** After a
+position report the area descriptor is never read, whatever the symbol.
 
 **In the bytes.** Whether bytes that match an extension are one is
 inherent ([README section 3](README.md#3-tokenizer-model)): every extension
@@ -467,7 +468,9 @@ have letters in bytes 5 and 6?
 letters, two digits and two optional letters, by diagram and example
 (p. 42/26, p. 51/33, p. 106/82). It does not give the letter ranges and
 refers to the IARU Region 1 manual for the Maidenhead system
-(p. 150/126), which is not among the references.
+(p. 150/126), which is not among the references. Ranges that the
+document takes from a source it names count as stated
+([README section 3](README.md#3-tokenizer-model), Kinds by situation).
 
 **Readings.** (a) The Maidenhead ranges: `A`–`R` for the first pair,
 `A`–`X` for the subsquare. (b) Any letter.
@@ -568,9 +571,17 @@ the byte set, the checksum) is given only by the examples.
 **Readings.** (a) Any 5-letter address field. (b) `GP` only. (c) The five
 types only.
 
-**Reading taken.** **[proposed]** (a), with the field structure and byte
-set of `nmea.field` taken from the examples and the general form of an
-NMEA 0183 sentence (recalled, not read).
+**Reading taken.** **[agreed]** (a): the sentence is checked by shape
+only, together with the checksum of
+[`nmea.cks`](#nmea.cks), and the address field is not checked against a
+list of NMEA 0183 talkers or sentence types, until a definition of
+NMEA 0183 is brought into the references
+([README section 3](README.md#3-tokenizer-model), Kinds by situation).
+**[proposed]** That shape, the field structure and byte set of
+`nmea.field`, is taken from the examples and the general form of an
+NMEA 0183 sentence (recalled, not read). An earlier draft gave (a) and
+the shape under one label, with no rule for lists kept outside the
+references.
 
 **In the bytes.** Decided by the reading; no `ambiguous` finding for
 other talkers or types. (b) and (c) reject every other talker or type,
@@ -665,8 +676,13 @@ p. 40). 12b carries both unchanged.
 - Whether an NMEA field is split into finer tokens per sentence type. The
   reading stops at one token per comma field.
 - Whether a DF report with bearing but no DF symbol is worth a
-  deviation recogniser, given the decoders that read it.
-- The Maidenhead letter ranges ([amb.grid.range](#amb.grid.range)) and
-  the NMEA sentence structure ([amb.nmea.sentence](#amb.nmea.sentence))
-  come from documents outside the references. If those are added, both
-  are checked against them.
+  deviation recogniser, given the decoders that read it. It is decoder
+  behaviour and gives no finding
+  ([README section 3](README.md#3-tokenizer-model)); the recognisers
+  are listed as open in [README section 6](README.md#6-open-items).
+- The NMEA sentence structure ([amb.nmea.sentence](#amb.nmea.sentence))
+  comes from a document outside the references and is checked by shape
+  and checksum only. If NMEA 0183 is added, the structure is checked
+  against it. An earlier version of this item also named the Maidenhead
+  letter ranges ([amb.grid.range](#amb.grid.range)); they count as
+  stated, since the document names their source (README section 3).

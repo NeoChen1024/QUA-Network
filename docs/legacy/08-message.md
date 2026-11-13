@@ -152,16 +152,13 @@ none to a matching text; the `value` finding of the `msg.text` length
 limit (case 5) is the only one it can give. Whether a definition message (case 4) gives one is 07's to decide. The
 bytes that the precedence rule looks at are: the text from offset 11
 for [amb.msg.order](#amb.msg.order) and [amb.msg.ack](#amb.msg.ack);
-the addressee for [amb.bln.forms](#amb.bln.forms); and
-the whole field after the identifier for an addressee that starts with
-`NWS_`, `SKY`, `CWA` or `BOM`, since reading (c) of that entry would
-read every byte of it differently. That last finding is given in cases
-3, 5 and 6, and is 07's to decide in case 4
-([07 section 4](07-telemetry.md#4-telemetry-definition-messages)). The `ambiguous` findings
-are given against `bln.text` or `nws.text` at offset 11
-([amb.msg.order](#amb.msg.order)), `bln.addr` at offset 4
-([amb.bln.forms](#amb.bln.forms)), and `msg.addr` at offset 1
-([amb.nws.addressee](#amb.nws.addressee)).
+and the addressee for [amb.bln.forms](#amb.bln.forms). The `ambiguous`
+findings are given against `bln.text` or `nws.text` at offset 11
+([amb.msg.order](#amb.msg.order)) and `bln.addr` at offset 4
+([amb.bln.forms](#amb.bln.forms)). An earlier draft also gave one
+against `msg.addr` at offset 1 for an addressee starting with `NWS_`,
+`SKY`, `CWA` or `BOM`, from a reading of
+[amb.nws.addressee](#amb.nws.addressee) since dropped.
 
 ## 3. Messages
 
@@ -736,24 +733,26 @@ not a free-text field: a `'!x!'` in it is no token and gets the
   examples and the list is open (p. 97/75). The text format is deferred
   to an external page (p. 97/75). Other prefixes used for weather alerts
   are not mentioned.
-- **Readings.** (a) `NWS-` and any 1-5 letters or digits. (c) Also
-  `NWS_`, `SKY`, `CWA` and `BOM` prefixes. An earlier draft also listed
-  (b), only the words `ADVIS`, `WARN` and `WATCH`. P. 97/75 gives them
-  with "such as ... etc.", so (b) contradicts the document and by
-  [README section 3](README.md#3-tokenizer-model) is not a listed
-  reading; it gives no finding.
-- **Taken.** **[proposed]** (a). Other prefixes are ordinary message
-  addressees; `NWS_` gives `unstated` through its `'_'` byte.
-- **In the bytes.** **[proposed]** Visible, under the test of
-  [README section 3](README.md#3-tokenizer-model), in one case. An
-  addressee starting with `NWS_`, `SKY`, `CWA` or `BOM` is a message
-  here and an NWS bulletin under reading (c), which accepts any text
-  bytes; it gets an `ambiguous` finding at offset 1, unless the packet
-  already gives a `syntax` or `value` finding on those bytes. An earlier
-  draft called the question not visible. A later one also gave an
-  `NWS-` addressee whose word is not `ADVIS`, `WARN` or `WATCH` an
-  `ambiguous` finding at offset 5 from reading (b), which is no longer
-  listed (`nws.level`, section 7).
+- **Readings.** (a) `NWS-` and any 1-5 letters or digits. An earlier
+  draft also listed (b), only the words `ADVIS`, `WARN` and `WATCH`.
+  P. 97/75 gives them with "such as ... etc.", so (b) contradicts the
+  document and by [README section 3](README.md#3-tokenizer-model) is
+  not a listed reading; it gives no finding. An earlier draft also
+  listed (c), the prefixes `NWS_`, `SKY`, `CWA` and `BOM` as NWS
+  bulletins. APRS12c never mentions them; only some decoders take them
+  (below), so (c) is decoder behaviour, not a listed reading, and gives
+  no finding (README section 3).
+- **Taken.** (a), the one listed reading (README section 3). Other
+  prefixes are ordinary message addressees; `NWS_` gives `unstated`
+  through its `'_'` byte.
+- **In the bytes.** No `ambiguous` finding: no listed reading remains
+  that would divide the bytes differently
+  ([README section 3](README.md#3-tokenizer-model)). An earlier draft
+  called the question not visible. A later one gave an addressee
+  starting with `NWS_`, `SKY`, `CWA` or `BOM` an `ambiguous` finding at
+  offset 1 from reading (c), and an `NWS-` addressee whose word is not
+  `ADVIS`, `WARN` or `WATCH` one at offset 5 from reading (b); neither
+  is listed any longer (`nws.level`, section 7).
 - **Decoders.** Dire Wolf accepts `NWS-`, `NWS_`, and `SKY`, `CWA`, `BOM`
   prefixes, and reports `NWS` without `'-'` or `'_'` (decode_aprs.c:1901,
   1916). Xastir accepts `NWS-`, `NWS_`, `BOM-`, `BOM_` (db.c:14306) and

@@ -13,3 +13,6 @@
 [submodule "3rdparty/aprs-symbols"]
 	path = 3rdparty/aprs-symbols
 	url = https://github.com/hessu/aprs-symbols
+[submodule "3rdparty/aprs-symbol-index"]
+	path = 3rdparty/aprs-symbol-index
+	url = https://github.com/hessu/aprs-symbol-index

@@ -95,7 +95,7 @@ the tokenizer reports nothing about it.
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|
 | <a id="df.agrelo.dti"></a>`df.agrelo.dti` | Identifier | `%`, 1 byte. | yes | 1 byte | p. 31/17; p. 138/114 |
-| <a id="df.agrelo"></a>`df.agrelo` | Agrelo report | After `df.agrelo.dti`: the bearing as 3 digits, then `/`, then the quality as 1 digit: exactly 5 bytes, 6 with the identifier. Any other content gives `syntax`; bytes after the sixth byte of the field form `residue` ([amb.df.agrelo](#amb.df.agrelo)). | — | 5 bytes | p. 31/17; p. 138/114; p. 153/129 |
+| <a id="df.agrelo"></a>`df.agrelo` | Agrelo report | After `df.agrelo.dti`: the bearing as 3 digits, then `/`, then the quality as 1 digit: exactly 5 bytes, 6 with the identifier. Any other content gives `syntax`; bytes after the sixth byte of the field form `residue` ([amb.df.agrelo](#amb.df.agrelo)). A bearing above 360 gives `value` at its first digit. | — | 5 bytes | p. 31/17; p. 138/114; p. 153/129 |
 
 ## 5. Maidenhead locator beacon
 
@@ -161,7 +161,11 @@ starts with a digit. Nothing says what a first byte in neither set means.
 **Readings.** (a) Select by the first byte; a byte in neither set is
 malformed. (b) Try one form, then the other.
 
-**Reading taken.** **[proposed]** (a).
+**Reading taken.** (a), by the rule for forms that can stand at one
+place: the first byte selects the form, and a byte that selects none
+gives one `syntax` finding on the selector rule, `pos.form`
+([README section 3](README.md#3-tokenizer-model)). Reading (b) would
+try the forms in turn, as if the first byte selected none.
 
 **In the bytes.** The sets do not overlap, so the choice is never
 visible in the bytes: decided by the reading, no `ambiguous` finding.
@@ -320,8 +324,10 @@ p. 22/12, and says longer comments are common. With the 9-byte
 
 **Readings.** (a) The limits apply. (b) Only the field limit applies.
 
-**Reading taken.** **[proposed]** (a): a longer comment gives `value`,
-as for every stated limit. After `ext.phgr` the limit stays 36.
+**Reading taken.** (a), the narrower of the two
+([README section 3](README.md#3-tokenizer-model), Kinds by situation):
+a longer comment gives `value`, as for every stated limit.
+**[proposed]** After `ext.phgr` the limit stays 36.
 
 **In the bytes.** Visible, since (b) would accept the comment; the `value`
 finding alone is given
@@ -411,10 +417,20 @@ The revision history records a change of the separator to `/`
 **Readings.** (a) Exactly the 6 bytes of the diagram. (b) The 6 bytes
 and then free text. (c) Other separators, as older units sent.
 
-**Reading taken.** **[proposed]** (a). No range check on the digits.
+**Reading taken.** **[proposed]** (a). **[agreed]** The bearing is a
+bearing, so a bearing above 360 gives `value` at its first digit: the
+range is implied by the unit
+([README section 3](README.md#3-tokenizer-model), Kinds by situation).
+An earlier draft checked no range on the digits.
 
-**In the bytes.** Departures are visible and give `syntax`, which alone
-is given ([README section 3](README.md#3-tokenizer-model), Precedence).
+The quality digit has no range beyond its byte set. The bearing is
+checked whenever its three digits are present, also when another byte
+of the field gives `syntax`: those are independent defects (README
+section 3, Precedence).
+
+**In the bytes.** Departures are visible and give `syntax`, or `value`
+for a bearing above 360, which alone is given
+([README section 3](README.md#3-tokenizer-model), Precedence).
 A field that (a) accepts is read the same way by (b) and (c), so it
 gives no `ambiguous` finding.
 
@@ -535,8 +551,10 @@ everywhere.
 **Reading taken.** **[proposed]** Recognise either case. Lower case
 gives `syntax` in a status report (a stated sending rule) and `unstated`
 in a beacon. A destination in the AX.25 form cannot hold lower case,
-and one that only APRS-IS can carry is not `dest.grid` when it does
-([amb.grid.range](#amb.grid.range)).
+and one not in that form, which gives `syntax` on `addr.dest`
+([amb.addr.form](01-frame.md#amb.addr.form)), is not `dest.grid` when
+it does ([amb.grid.range](#amb.grid.range)). An earlier draft called
+such a destination one that only APRS-IS can carry.
 
 **In the bytes.** Visible, and reported by those kinds; the `syntax`
 finding of a status report alone is given
@@ -619,11 +637,17 @@ recalled, not read: the NMEA standard is not among the references. A
 mismatch gives `value` at the first hex digit. A missing checksum gives
 no finding, since one APRS12c example (`GPGLL`) has none.
 
-**[proposed]** Hex digits `a`–`f`: APRS12c states no case, and the
-examples use upper case. Every decoder read that verifies the checksum
-accepts either case (below). Lower-case digits give `unstated`, as for
-anything the document has no rule for, and the value is still
-compared.
+**[agreed]** Hex digits `a`–`f`: APRS12c states no case, and the
+examples use upper case. Lower-case digits are recognised and give
+`unstated` at the first hex digit, and the value is still compared, as
+decided by the author: where the document states no case, another case
+is recognised and gives `unstated`
+([README section 3](README.md#3-tokenizer-model), Letter case). Every
+decoder read that verifies the checksum accepts either case (below),
+which does not change the kind (same rule). An earlier draft gave
+`unstated` as for anything the document has no rule for, and section 9
+listed the kind as open: `unstated`, or no finding since every decoder
+read accepts either case.
 
 **In the bytes.** Not an ambiguity: (b) and (c) are not taken, and a
 mismatch is reported as the `value` finding, which alone is given
@@ -670,9 +694,6 @@ p. 40). 12b carries both unchanged.
 
 ## 9. Open items
 
-- The kind for lower-case hex digits in `nmea.cks`
-  ([amb.nmea.checksum](#amb.nmea.checksum)): `unstated` as proposed, or
-  none, given that every decoder read accepts them.
 - Whether an NMEA field is split into finer tokens per sentence type. The
   reading stops at one token per comma field.
 - Whether a DF report with bearing but no DF symbol is worth a

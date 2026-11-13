@@ -387,20 +387,15 @@ def _ref(line, t0, end):
 def _bulletin(scan, s, t0, end, depth, texts):
     line = scan.line
     scan.retag(s, depth, "bln.dti")
-    ref = _ref(line, t0, end)
-    te = end if ref is None else ref
-    if te > t0:
-        scan.tok("bln.text", t0, te, depth)
-        _text_bytes(scan, "bln.text", t0, te)
-        if te - t0 > _TEXT_MAX:
+    # A bulletin has no reference identifier (amb.bln.ref): a trailing '{'
+    # and letters or digits are text, and count toward the limit.
+    if end > t0:
+        scan.tok("bln.text", t0, end, depth)
+        _text_bytes(scan, "bln.text", t0, end)
+        if end - t0 > _TEXT_MAX:
             scan.find("bln.text", "value", t0 + _TEXT_MAX)
-        texts.append((t0, te))
-        noarchive_in(scan, t0, te, depth + 1)
-    if ref is not None:
-        scan.tok("bln.ref", ref, end, depth)
-        # amb.bln.ref: reading (b) takes it as text, within the limit.
-        if end - t0 <= _TEXT_MAX:
-            scan.find("bln.ref", "ambiguous", ref)
+        texts.append((t0, end))
+        noarchive_in(scan, t0, end, depth + 1)
     p = s + 4
     if not (line[p] in _DIGITS or line[p] in _UPPER and all(b == SP for b in line[p + 1 : s + 10])):
         # amb.bln.forms: reading (c) takes the packet as a message.

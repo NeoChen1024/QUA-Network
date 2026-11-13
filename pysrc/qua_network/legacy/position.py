@@ -179,6 +179,10 @@ def agrelo(scan, start, end, depth):
         scan.find("df.agrelo", "syntax", s + bad)
     elif e < s + 5:
         scan.find("df.agrelo", "syntax", e)
+    # The range the unit implies: a bearing above 360 is a value finding at
+    # its first digit, an independent defect beside any syntax finding.
+    if e - s >= 3 and (bad is None or bad >= 3) and int(line[s : s + 3]) > 360:
+        scan.find("df.agrelo", "value", s)
     if end > s + 5:
         scan.residue(s + 5, end, depth, "df.agrelo")
         if bad is None:

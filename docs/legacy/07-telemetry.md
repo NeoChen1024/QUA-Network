@@ -48,8 +48,10 @@ few fields and gives `syntax` at the end, where the first byte of the
 first missing field was expected; an empty analog value is a missing
 field and gives `syntax` where its first byte was expected
 ([README section 3](README.md#3-tokenizer-model), Output; Kinds by
-situation). **[proposed]** All five analog values and the digital value
-are required ([amb.tlm.count](#amb.tlm.count)).
+situation). All five analog values and the digital value are required,
+by the narrowest count the text supports
+([amb.tlm.count](#amb.tlm.count); README section 3, Kinds by
+situation).
 
 A `','` or SP directly after the eighth bit is the first byte of the
 comment and gives no finding: no text of APRS12c puts a separator there
@@ -262,7 +264,9 @@ the [README](README.md#4-decoders-consulted), not run.
   other characters and the case of `MIC` are not addressed.
 - **Readings.** (a) Exactly three digits, or `MIC`. (b) Any digit run up
   to the comma. (c) Any letters or digits up to the comma.
-- **Reading taken.** **[proposed]** (a), with a digit run of another
+- **Reading taken.** (a), the narrowest of the three
+  ([README section 3](README.md#3-tokenizer-model), Kinds by
+  situation), with a digit run of another
   length giving `value` (a field outside its stated length) and other
   bytes, lower-case `mic` included, giving `syntax`. Visible in the bytes.
   Readings (b) and (c) would accept some of these bytes, but the `value`
@@ -375,7 +379,9 @@ the [README](README.md#4-decoders-consulted), not run.
   [README section 3](README.md#3-tokenizer-model) (Separators and
   padding) such a byte belongs to the comment, and with no text of the
   document to name it gets no finding.
-- **Reading taken.** **[proposed]** (a). Visible in the bytes.
+- **Reading taken.** (a), the narrower count
+  ([README section 3](README.md#3-tokenizer-model), Kinds by
+  situation). Visible in the bytes.
 - **In the bytes.** The comment starts with the byte after the eighth
   bit, as above. A report that reading (b) would accept gets the
   `syntax` finding of the first missing field alone, with no
@@ -527,7 +533,8 @@ the [README](README.md#4-decoders-consulted), not run.
   after it, give `syntax` as section 4 sets out
   ([README section 3](README.md#3-tokenizer-model), Kinds by
   situation); an earlier draft gave the empty A1 field `value`.
-  **[proposed]** (a) as `value` findings; empty fields after A1 allowed,
+  (a), the narrower of the two (README section 3, Kinds by situation),
+  as `value` findings. **[proposed]** Empty fields after A1 allowed,
   as the byte counts include the comma. **[agreed]** An empty list gives `unstated`: the document
   says nothing about where the list may stop. Visible in the bytes. Reading (b)
   would accept the over-long and extra fields, but the `value` or

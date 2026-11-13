@@ -59,11 +59,17 @@ def ax25_bad(a):
     return j + 2
 
 
-def address(scan, start, end, depth, call_rule="addr.call", ssid_rule="addr.ssid"):
+def address(scan, start, end, depth, call_rule="addr.call", ssid_rule="addr.ssid", rule=None):
     """Tokenize one address at [start, end) one level below its own token.
 
+    rule is None at a position where an address only APRS-IS can carry may
+    stand (addr.is): the source. Elsewhere rule names the field of the
+    position, and an address that is not in the AX.25 form, and whose suffix
+    addr.ssid does not report, gives syntax on it at its first byte that does
+    not fit, with no token below (amb.addr.form).
+
     Returns (form, call_end) where form is AX25, IS_ONLY or BAD and call_end
-    is where the callsign part ends (end for an addr.is address).
+    is where the callsign part ends (end for any other address).
     """
     a = scan.line[start:end]
     m = _AX25.match(a)
@@ -79,6 +85,9 @@ def address(scan, start, end, depth, call_rule="addr.call", ssid_rule="addr.ssid
         scan.tok(ssid_rule, dash, end, depth)
         scan.find("addr.ssid", "syntax" if a[dash - start + 1] == 0x30 else "value", dash)
         return AX25, dash
+    if rule is not None:
+        scan.find(rule, "syntax", start + ax25_bad(a))
+        return BAD, end
     if _IS_ADDR.match(a):
         scan.tok("addr.is", start, end, depth)
         scan.find("addr.is", "is-only", start)
@@ -212,7 +221,7 @@ def header(scan, end, dti, depth=0):
     if ae == ds:
         scan.find("addr.dest", "syntax", ds)
     else:
-        _dest(scan, ds, ae, depth + 1, dti)
+        _dest(scan, ds, ae, depth + 1, dti, "addr.dest")
     if star:
         scan.residue(ae, de, depth + 1, "addr.dest")
         if not _syntax_since(scan, n):
@@ -307,7 +316,7 @@ def _path(scan, entries, depth, inner=False):
                 call_rule = "path.nogate"
             else:
                 call_rule = "addr.call"
-            form, _ = address(scan, es, ae, d + 1, call_rule=call_rule)
+            form, _ = address(scan, es, ae, d + 1, call_rule=call_rule, rule="path.digi")
             if form == AX25 and call_rule == "path.obsolete":
                 scan.find("path.obsolete", "obsolete", es)
         if star and not inner:
@@ -354,8 +363,10 @@ def _q_construct(scan, entries, q_at):
         seen.add(call)
 
 
-def _dest(scan, ds, de, depth, dti):
-    """Tokenize a destination address; its callsign part carries its class."""
+def _dest(scan, ds, de, depth, dti, rule):
+    """Tokenize a destination address; its callsign part carries its class.
+    rule is the field of the destination, on which an address not in the
+    AX.25 form gives syntax (amb.addr.form)."""
     a = scan.line[ds:de]
     if _AX25.match(a) or _SSID_ZERO.match(a) or _SSID_HIGH.match(a):
         call, _, ssid = a.partition(b"-")
@@ -364,11 +375,10 @@ def _dest(scan, ds, de, depth, dti):
         if ssid and _AX25.match(a) and dti not in _MICE_DTI:
             scan.find("dest.ssid", "obsolete", ce)
         return form, ce
-    form, ce = address(scan, ds, de, depth, ssid_rule="dest.ssid")
-    if form == IS_ONLY:
-        # The class applies to the bytes as written ([agreed]: a lower-case
-        # locator shape is not dest.grid and falls through to the next class).
-        scan.tokens[-1] = scan.tokens[-1]._replace(rule=dest_class(scan, a, ds, dti))
+    form, ce = address(scan, ds, de, depth, ssid_rule="dest.ssid", rule=rule)
+    # The class applies to the bytes as written ([agreed]: a lower-case
+    # locator shape is not dest.grid and falls through to the next class).
+    scan.tok(dest_class(scan, a, ds, dti), ds, de, depth)
     return form, ce
 
 
@@ -507,13 +517,20 @@ def _tp_aea(scan, h0, sep, depth):
     scan.tok("tp.aea", h0, sep, depth)
     scan.find("tp.aea", "obsolete", h0)
     pos = h0
+    n = len(scan.findings)
     for i, p in enumerate(pieces):
         ps, pe = pos, pos + len(p)
         if i == len(pieces) - 1:
-            _dest(scan, ps, pe, depth + 1, _inner_dti(scan, sep))
+            _dest(scan, ps, pe, depth + 1, _inner_dti(scan, sep), "tp.aea")
         else:
-            address(scan, ps, pe - (i == len(pieces) - 2), depth + 1)
+            # Only the source may be an address only APRS-IS can carry.
+            address(scan, ps, pe - (i == len(pieces) - 2), depth + 1, rule=None if i == 0 else "tp.aea")
         pos = pe + 1
+    # The field gives one syntax finding, at its first byte at fault
+    # (README section 3, Placing a finding).
+    bad = [f for f in scan.findings[n:] if f.rule == "tp.aea" and f.kind == "syntax"]
+    for f in bad[1:]:
+        scan.findings.remove(f)
     return True
 
 
@@ -540,7 +557,7 @@ def _tp_header(scan, h0, sep, depth):
     if ae == ds:
         scan.find("tp.dest", "syntax", ds)
     else:
-        _dest(scan, ds, ae, depth + 1, _inner_dti(scan, sep))
+        _dest(scan, ds, ae, depth + 1, _inner_dti(scan, sep), "tp.dest")
     if star:
         scan.residue(ae, de, depth + 1, "tp.dest")
         if not _syntax_since(scan, n):
@@ -560,12 +577,12 @@ def _tp_header(scan, h0, sep, depth):
     elif star_at >= 0:
         n = len(scan.findings)
         if star_at > ns:
-            address(scan, ns, star_at, depth + 1)
+            address(scan, ns, star_at, depth + 1, rule="tp.net")
         scan.residue(star_at, ne, depth + 1, "tp.net")
         if not _syntax_since(scan, n):
             scan.find("tp.net", "syntax", star_at)
     else:
-        address(scan, ns, ne, depth + 1)
+        address(scan, ns, ne, depth + 1, rule="tp.net")
     # One syntax finding for the gateway, at its first byte at fault
     # (README section 3, Placing a finding).
     scan.tok("tp.gate", gs - 1, ge, depth)

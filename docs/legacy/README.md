@@ -256,6 +256,19 @@ syntax, is a form the document defines: bytes of that form get no
 finding, and the strict bullet of the next paragraph applies only to
 bytes outside the description.
 
+**[agreed]** Forms that can stand at one place. They are tried in a fixed
+order: a form that a marker byte or keyword selects first, then the
+more specific form before the wildcard that covers it, then a current
+form before an obsolete one. The first that matches is taken. An
+overlap that every instance carries gives no finding. When no form
+matches, one `syntax` finding goes on the selector rule of the place;
+where a place has no selector rule, the entry names the form that is
+taken by default and carries the finding, as `time.dhm` does for a
+seven-byte timestamp. A delimiter ends a field at its first
+occurrence, unless the field's content may hold it; a form anchored at
+the end of a field, such as an NWS reference after `'{'`, is read from
+the end.
+
 **[agreed]** Kinds by situation. The files report like situations
 with the same kind:
 
@@ -297,6 +310,16 @@ with the same kind:
   checked by shape only, together with any checksum the form carries.
 - **[agreed]** A range that the document takes from a source it names,
   such as the Maidenhead letter ranges, counts as stated.
+- **[agreed]** Where the listed readings differ only in how much they
+  accept (a byte set, a range, contiguity, a count), the narrowest
+  reading that the text supports is taken, and the wider ones are
+  tested for an `ambiguous` finding by the tests of this section. A
+  range that the unit itself implies counts as stated, so a value past
+  it gives `value`: minutes and seconds `00` to `59`, a bearing or
+  course up to 360, a latitude up to 90 and a longitude up to 180, and
+  base-91 coordinates within those. Where the document calls the wider
+  form interchangeable with the narrow one, the wider is stated and is
+  taken as it stands.
 - **[agreed]** A byte pattern outside every form the document defines,
   such as a relaxed number or a fill that no form shows, is not that
   form. At a place the format fixes it gives `syntax`; in free text it
@@ -311,6 +334,14 @@ with the same kind:
   such bytes per field as a statistic of its own, outside the findings.
 - A departure from a stated sending rule that receivers are told to
   accept, such as the case of a locator or of `MHz`: `syntax`.
+- **[agreed]** Letter case. Case is significant (section 2). Where the
+  document states a case as a sending rule that receivers are told to
+  accept, another case is recognised and gives `syntax`, as above.
+  Where it states the case with no such allowance, another case is not
+  the form: the bytes are text or another class, with an `ambiguous`
+  finding where the reading that folds case accepts the whole field.
+  Where it states no case, another case is recognised and gives
+  `unstated`. What decoders accept does not change the kind.
 - A mixture of forms that are each allowed: no finding where the
   document calls them interchangeable, `value` where it calls the
   combination unknown, and `unstated` where it says nothing. A mixture

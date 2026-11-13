@@ -115,11 +115,16 @@ bytes together give theirs on `mice.dest`: a blank followed by a digit
 at that blank; degrees out of range at byte 1; tens of minutes out of
 range, and minutes other than zero with 90 degrees, at byte 3; a
 mixture of bits at the first of bytes 1 to 3 whose one bit is of the
-other kind than the first. A callsign part of other than six bytes,
-which only an address that APRS-IS alone can carry may have, gives one
-`syntax` finding on `mice.dest`: where the missing byte was expected
-when it is shorter, at the seventh byte when it is longer, and the
-bytes past the sixth are then a residue one level below `dest.mice`.
+other kind than the first. A callsign part of other than six bytes
+gives one `syntax` finding on `mice.dest`: where the missing byte was
+expected when it is shorter, at the seventh byte when it is longer, and
+the bytes past the sixth are then a residue one level below
+`dest.mice`. A destination is in the AX.25 form or gives `syntax` on
+`addr.dest` ([amb.addr.form](01-frame.md#amb.addr.form)), so a longer
+callsign part, or a byte such as a lower-case letter, also gives that
+finding of 01-frame, on its own field. An earlier draft said that only
+an address that APRS-IS alone can carry may have a longer callsign
+part.
 The SSID keeps the `dest.ssid` token of 01-frame. `mice.dest.ssid`
 names its `obsolete` finding, at the `'-'`, which is not given where
 `addr.ssid` already reports the suffix. Each of these applies
@@ -154,8 +159,10 @@ gives a `syntax` or `value` finding of its own
 ([README section 3](README.md#3-tokenizer-model), Placing a finding
 and Precedence).
 
-**[proposed]** Either coding of `mice.sp` and of `mice.dc` is accepted in
-any combination, with no finding ([amb.mice.scheme](#amb.mice.scheme)).
+Either coding of `mice.sp` and of `mice.dc` is accepted in any
+combination, with no finding, since the document makes them
+interchangeable ([amb.mice.scheme](#amb.mice.scheme);
+[README section 3](README.md#3-tokenizer-model), Kinds by situation).
 
 ## 5. Status text
 
@@ -178,7 +185,7 @@ The obsolete Mic-E telemetry takes the place of the prefix
 | <a id="mice.tlm"></a>`mice.tlm` | Obsolete telemetry | 0x1D at offset 9, then 5 bytes of any value. Gives an `obsolete` finding. Bytes after it are read as status text with an `unstated` finding: the document says nothing of status text after the block ([README section 3](README.md#3-tokenizer-model), Kinds by situation). | Optional | 6 bytes | p. 72/54, p. 157/133 |
 | <a id="mice.type.prefix"></a>`mice.type.prefix` | Device type prefix | One byte at offset 9: `'>'` (Kenwood handheld), `']'` (Kenwood mobile), 0x60 (other maker, messaging capable) or 0x27 (other maker, not messaging capable). | Optional | 1 byte | p. 73/55 |
 | <a id="mice.alt"></a>`mice.alt` | Altitude | Three [`b91.digit`](02-fields.md#b91.digit) bytes, then `'}'`. Value minus 10000 is metres. **[proposed]** Only directly after the prefix, or at offset 9 when there is none ([amb.mice.alt](#amb.mice.alt)). | Optional | The `'}'` | p. 74/56, p. 153/129, p. 154/130 |
-| <a id="mice.grid"></a>`mice.grid` | Maidenhead locator | [`grid.loc`](03-position.md#grid.loc): two letters `'A'`–`'R'`, two digits, optionally two letters `'A'`–`'X'` ([amb.grid.range](03-position.md#amb.grid.range)); then `'/'` `'G'`; then SP when free text follows, which belongs to this token. Lower-case letters give a `syntax` finding. **[proposed]** After the prefix and any altitude ([amb.mice.grid](#amb.mice.grid)). | Optional | The `'G'`, or the SP after it | p. 42/26, p. 73/55, p. 152/128 |
+| <a id="mice.grid"></a>`mice.grid` | Maidenhead locator | [`grid.loc`](03-position.md#grid.loc): two letters `'A'`–`'R'`, two digits, optionally two letters `'A'`–`'X'` ([amb.grid.range](03-position.md#amb.grid.range)); then `'/'` `'G'`; then SP when free text follows, which belongs to this token. Lower-case letters give a `syntax` finding, by the status report rule of p. 105/81 ([amb.mice.grid](#amb.mice.grid); README section 3, Letter case). **[proposed]** After the prefix and any altitude ([amb.mice.grid](#amb.mice.grid)). | Optional | The `'G'`, or the SP after it | p. 42/26, p. 73/55, p. 105/81, p. 152/128 |
 | <a id="mice.type.suffix"></a>`mice.type.suffix` | Device type suffix | After a 0x60 or 0x27 prefix: the last two bytes. Raw bytes, nothing stripped first ([amb.mice.suffix](#amb.mice.suffix); [README section 3](README.md#3-tokenizer-model)). **[agreed]** After a Kenwood prefix, the one-byte suffix is taken only when the pair (prefix, last byte) is in the `micelegacy` list of `3rdparty/aprs-deviceid/tocalls.yaml` at commit `c50d026` (2026-10-19): `'>'` with `'='`, `'^'` or `'&'`, and `']'` with `'='`. A last byte that does not form a listed pair is status text. **[agreed]** The two-byte suffix after a 0x60 or 0x27 prefix is checked against the `mice` list of the same file at the same commit, not against the five examples of p. 73/55: a listed suffix gives no finding, an unlisted one `unstated` (the register is open). **[agreed]** After a 0x60 or 0x27 prefix, a single byte left where the two-byte suffix stands gives a `syntax` finding: a fixed-width field that does not fit ([amb.mice.pipe](#amb.mice.pipe)). | Optional | End of information field | p. 73/55, p. 88/68; aprs-deviceid `tocalls.yaml` at `c50d026` |
 
 **[proposed]** Between these parts the status text is read as a position
@@ -337,7 +344,9 @@ the [README](README.md#4-decoders-consulted), not run.
   statements, so by [README section 3](README.md#3-tokenizer-model) it
   is decoder behaviour (Dire Wolf, aprslib, Xastir, aprsc, below), not a
   listed reading, and gives no finding.
-- **Reading taken.** **[proposed]** (a). Bytes outside the set of their
+- **Reading taken.** (a), the narrowest reading the text supports
+  ([README section 3](README.md#3-tokenizer-model), Kinds by
+  situation). Bytes outside the set of their
   position, lower case included, give `syntax`. Blanks follow
   [`lat.amb`](02-fields.md#lat.amb). Mixed standard and custom bits give
   `value`. Each case is a finding at the byte concerned. No other
@@ -366,8 +375,10 @@ the [README](README.md#4-decoders-consulted), not run.
   DC bytes with remainder 8 or 9. They also produce courses 361 to 399.
   No action is stated (p. 65/47 to p. 70/52).
 - **Readings.** (a) Only table values. (b) Whatever the steps decode.
-- **Reading taken.** **[proposed]** (a): such bytes give `value`, and
-  bytes outside 0x1C–0x7F give `syntax`.
+- **Reading taken.** (a), the narrower of the two
+  ([README section 3](README.md#3-tokenizer-model), Kinds by
+  situation): such bytes give `value`, and bytes outside 0x1C–0x7F give
+  `syntax`.
 - **In the bytes.** Visible. Reading (b) would decode the bytes that
   give `value`, but that finding alone is given, with no `ambiguous`
   beside it ([README section 3](README.md#3-tokenizer-model),
@@ -392,8 +403,11 @@ the [README](README.md#4-decoders-consulted), not run.
   (p. 68/50, p. 69/51). Whether one packet may mix them, or a sender must
   keep to one, is not stated.
 - **Readings.** (a) Any mixture. (b) One coding per packet.
-- **Reading taken.** **[proposed]** (a). The document calls both equally
-  valid and its decoding steps handle either.
+- **Reading taken.** (a). The document calls both codings equally valid
+  and its decoding steps handle either, so they are interchangeable, and
+  the wider reading is the stated one and is taken as it stands
+  ([README section 3](README.md#3-tokenizer-model), Kinds by
+  situation).
 - **In the bytes.** Visible, but with no finding under the test of
   [README section 3](README.md#3-tokenizer-model). A packet
   can mix the codings only where `mice.sp` lies in 0x1C–0x2F or
@@ -581,7 +595,10 @@ the [README](README.md#4-decoders-consulted), not run.
   way.
 - **Readings.** (a) Take the suffix first, then search for telemetry in
   what is left. (b) Pair the `'|'` bytes first.
-- **Reading taken.** **[proposed]** (a).
+- **Reading taken.** (a): the suffix is anchored at the end of the
+  status text, and a form anchored at the end of a field is read from
+  the end ([README section 3](README.md#3-tokenizer-model), Forms that
+  can stand at one place).
 - **In the bytes.** The readings divide the bytes differently only
   when the bytes between the last `'|'` before the
   suffix and the suffix's own `'|'` fit
@@ -657,9 +674,14 @@ the [README](README.md#4-decoders-consulted), not run.
 - **Readings.** (a) Four or six characters, then `/G`. (b) Six only.
   (c) Any symbol after the locator.
 - **Reading taken.** **[proposed]** (a), after the prefix and any
-  altitude. Without `/G` the bytes are free text. Upper case, per the
-  rule that locators are sent in upper case (p. 152/128); lower case
-  gives `syntax`.
+  altitude. Without `/G` the bytes are free text. **[agreed]** Upper
+  case, and lower case gives `syntax`, as decided by the author: the
+  rule of p. 105/81 for the locator of a status report, sent in upper
+  case and accepted by receivers in lower case, applies to the Mic-E
+  status text too, so a lower-case locator is recognised and gives
+  `syntax` ([README section 3](README.md#3-tokenizer-model), Letter
+  case). An earlier draft cited only the rule that locators are sent in
+  upper case (p. 152/128).
 - **In the bytes.** Whether a four-character locator is one, which
   reading (b) denies, is carried by every four-character locator and
   gives no finding ([README section 3](README.md#3-tokenizer-model)).

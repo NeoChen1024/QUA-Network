@@ -171,8 +171,11 @@ against `msg.addr` at offset 1 for an addressee starting with `NWS_`,
 | <a id="msg.id.close"></a>`msg.id.close` | Reply-ack separator | `'}'`. Its presence alone tells the receiver that the sender handles reply-acks. | Required in the reply-ack form | Fixed 1 byte | p. 95/73 |
 | <a id="msg.id.aa"></a>`msg.id.aa` | Reply-ack: acknowledged number | 0 or 2 letters or digits: the number of a message from the addressee that this packet acknowledges. Another count gives `value`. | Optional | End of information field | p. 95/73 |
 
-**[proposed]** The form after `msg.id.open` is the reply-ack form when it
-contains `'}'`, and the plain form otherwise. Reading:
+The form after `msg.id.open` is the reply-ack form when it
+contains `'}'`, and the plain form otherwise: the `'}'`, which the
+plain form cannot hold, selects the form
+([README section 3](README.md#3-tokenizer-model), Forms that can stand
+at one place). Reading:
 [amb.msg.replyack](#amb.msg.replyack).
 
 **[proposed]** The information field ends at the last byte of the frame.
@@ -272,8 +275,15 @@ acknowledged.
 | <a id="bln.group"></a>`bln.group` | Group name | 1-5 bytes from offset 5, letters, digits and `'-'`, then `SP` to offset 9. Other bytes as for `msg.addr.name`. | Group bulletin only | First `SP`, or offset 9 | p. 97/75 |
 | [`msg.addr.pad`](#msg.addr.pad) | Padding | `SP` bytes to offset 9. | Required when the name part is shorter | Offset 9 | p. 96/74 |
 | [`msg.sep`](#msg.sep) | Separator | `':'` at offset 10. | Required | Fixed 1 byte | p. 96/74 |
-| <a id="bln.text"></a>`bln.text` | Bulletin text | From offset 11. Text bytes, `'{'` included. More than 67 bytes gives `value`. May be empty. | Required, 0 bytes allowed | End of information field, or `bln.ref` | p. 96/74, p. 97/75 |
-| <a id="bln.ref"></a>`bln.ref` | Reference identifier | `'{'` followed by 1-5 letters or digits at the very end of the field. The tokenizer reports `ambiguous` at the `'{'` when the bytes are also valid bulletin text: the text from offset 11, `bln.ref` included, is at most 67 bytes. Reading: [amb.bln.ref](#amb.bln.ref). | Optional | End of information field | p. 97/75 |
+| <a id="bln.text"></a>`bln.text` | Bulletin text | From offset 11. Text bytes, `'{'` included. More than 67 bytes gives `value`. May be empty. **[agreed]** A trailing `'{'` and 1-5 letters or digits are bulletin text like any other bytes, and count toward the 67 bytes ([amb.bln.ref](#amb.bln.ref)). | Required, 0 bytes allowed | End of information field | p. 96/74, p. 97/75 |
+
+An earlier draft defined a rule `bln.ref` here: a trailing `'{'` and 1-5
+letters or digits as a reference identifier of a bulletin, with an
+`ambiguous` finding at the `'{'` where the text with it stayed within
+67 bytes, and `bln.text` ending before it. It was dropped because only
+the NWS example on p. 97/75 supports a reference, while the bulletin
+diagram and text of p. 96/74 give none and let bulletin text hold any
+printable byte ([amb.bln.ref](#amb.bln.ref)).
 
 An addressee starting with `BLN` that fits none of the
 three forms (for example a letter followed by a group name, a lower-case
@@ -501,7 +511,10 @@ not a free-text field: a `'!x!'` in it is no token and gets the
   aprsc and javAPRSlib take the last `'{'`, aprslib and pdn-aprs only a
   valid identifier at the end (see Decoders;
   [README section 3](README.md#3-tokenizer-model)).
-- **Taken.** **[proposed]** (a). With more than one `'{'` the number
+- **Taken.** (a): a delimiter ends a field at its first occurrence
+  when the field's content may not hold it
+  ([README section 3](README.md#3-tokenizer-model), Forms that can
+  stand at one place). With more than one `'{'` the number
   holds a `'{'` and fails. A number that is too long or holds other
   bytes gives `value` or `syntax`. No `ambiguous` finding.
 - **Decoders.**
@@ -532,7 +545,9 @@ not a free-text field: a `'!x!'` in it is no token and gets the
 - **Readings.** (a) `MM` and `AA` each exactly 2 bytes, `AA` possibly
   empty; this fills the 5 bytes exactly. (b) Each 1-5 bytes, split at the
   first `'}'`. (c) Any lengths with a total of at most 5.
-- **Taken.** **[proposed]** (a). Other lengths give `value` against
+- **Taken.** (a), the narrowest of the three
+  ([README section 3](README.md#3-tokenizer-model), Kinds by
+  situation). Other lengths give `value` against
   `msg.id.mm` or `msg.id.aa`, and that finding alone is given, although
   (b) or (c) may accept the bytes
   ([README section 3](README.md#3-tokenizer-model), precedence). Where
@@ -635,8 +650,9 @@ not a free-text field: a `'!x!'` in it is no token and gets the
   gives a
   `syntax` or `value` finding on those bytes. Other text falls through
   the text tests of (b) to the addressee, so both readings make it a
-  bulletin and it gets no finding here; a trailing `'{'` is covered by
-  [amb.bln.ref](#amb.bln.ref). A packet whose addressee starts with
+  bulletin and it gets no finding here; a trailing `'{'` is bulletin
+  text, or an `nws.ref` in an NWS bulletin, as
+  [amb.bln.ref](#amb.bln.ref) decides. A packet whose addressee starts with
   neither `BLN` nor `NWS-` is classified by its text under both
   readings. An earlier draft called the question not visible.
 - **Decoders.** Dire Wolf tests `BLN`, `NWS`, other weather prefixes,
@@ -698,25 +714,39 @@ not a free-text field: a `'!x!'` in it is no token and gets the
 - **Readings.** (a) `'{'` starts an identifier in every `':'` packet.
   (b) `'{'` is text in bulletins. (c) A trailing `'{'` and 1-5 letters or
   digits is a reference identifier in bulletins and NWS bulletins.
-- **Taken.** **[proposed]** (c). It is tokenized as `bln.ref` in
-  bulletins and as `nws.ref` in NWS bulletins, following the example.
-  Visible in the bytes: reading (b) takes the same bytes as text. Both
-  give an `ambiguous` finding at the `'{'`, under the condition below.
-  An earlier draft gave none in NWS bulletins, as decided by the
-  document's own example; that was dropped because the example does not
-  stop reading (b) from dividing the bytes differently.
+- **Taken.** **[agreed]** In a bulletin or announcement (section 6),
+  (b): there is no reference identifier, and a trailing `'{'` with 1-5
+  letters or digits is bulletin text, counted in its 67 bytes, with no
+  token and no finding of its own. Only the NWS example of p. 97/75
+  shows a reference; the bulletin diagram and text of p. 96/74 give
+  none and let the text hold any printable byte, and an example does
+  not override the diagram and the rule text
+  ([README section 3](README.md#3-tokenizer-model), Pages that
+  disagree). For a bulletin, readings (a) and (c) rest on that example
+  alone, and give no `ambiguous` finding there.
+  **[proposed]** In an NWS bulletin (section 7), (c): it is tokenized
+  as `nws.ref`, following the example. Visible in the bytes: reading
+  (b) takes the same bytes as text, and gives an `ambiguous` finding at
+  the `'{'`, under the condition below. An earlier draft gave none in
+  NWS bulletins, as decided by the document's own example; that was
+  dropped because the example does not stop reading (b) from dividing
+  the bytes differently.
+
+  An earlier draft took (c) in bulletins as well: it tokenized the
+  bytes as `bln.ref`, ended `bln.text` before them, and gave an
+  `ambiguous` finding at the `'{'` where the text from offset 11, the
+  reference included, was at most 67 bytes. That was dropped by the
+  decision above.
 - **In the bytes.** Under the tests of
   [README section 3](README.md#3-tokenizer-model), reading (b) counts
   only where it accepts the text with the `'{'` and its letters or
   digits in it. NWS text has no length limit, so every `nws.ref` gives
-  the finding. Bulletin text has the 67-byte limit, which this reading
-  applies to `bln.text` as tokenized, without `bln.ref` (Length
-  limits); a `bln.ref` gives the finding only where the text from
-  offset 11, `bln.ref` included, is at most 67 bytes, and otherwise reading (b) would give `value`. Where `bln.text`
-  alone is over the limit, that `value` finding alone is given
-  (precedence). Reading (a) divides a trailing reference the same way as
-  (c), and fails on a `'{'` elsewhere, which (c) leaves as text; it adds
-  no finding.
+  the finding, unless this reading already reports its bytes
+  (Precedence). Reading (a) divides a trailing reference the same way
+  as (c), and fails on a `'{'` elsewhere, which (c) leaves as text; it
+  adds no finding. In a bulletin the whole text, a trailing `'{'` and
+  what follows it included, is `bln.text`, and its 67-byte limit counts
+  those bytes (Length limits).
 - **Decoders.** Xastir extracts an identifier after the last `'{'` before
   testing the addressee, so for bulletins too (db.c:13673). pdn-aprs
   splits a valid trailing identifier off bulletin text

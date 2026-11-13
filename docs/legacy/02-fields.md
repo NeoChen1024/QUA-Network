@@ -48,11 +48,18 @@ Conventions used throughout this file:
 | <a id="time.hms"></a>`time.hms` | Hour, minute, second | Six digits: hour, minute, second, two digits each. Then `'h'`. Always UTC. | Format file | Fixed, 7 bytes | p. 38/22 |
 | <a id="time.mdhm"></a>`time.mdhm` | Month, day, hour, minute | Eight digits: month, day of month, hour, minute, two digits each. UTC. No indicator byte. | Positionless weather reports only ([06](06-weather.md)) | Fixed, 8 bytes | p. 38/22 |
 
-**[proposed]** Where a format admits either seven-byte form (its diagram
+Where a format admits either seven-byte form (its diagram
 says "DHM / HMS", p. 50/32), the tokenizer takes seven bytes and lets the
 byte at offset 6 choose: `'z'` or `'/'` gives `time.dhm`, `'h'` gives
-`time.hms`. Any other byte, including `'Z'` and `'H'`, gives a `time.dhm`
-token with a `syntax` finding at offset 6. A non-digit in offsets 0 to 5
+`time.hms`. This applies the rule for forms that can stand at one place
+([README section 3](README.md#3-tokenizer-model)): the indicator byte
+selects the form, and the place has no selector rule of its own.
+**[agreed]** Any other byte at offset 6, including `'Z'` and `'H'`,
+selects no form, and `time.dhm` is the form taken by default: a
+`time.dhm` token with a `syntax` finding at offset 6, as decided by the
+author. The indicator bytes are the narrowest set the text supports
+([README section 3](README.md#3-tokenizer-model), Kinds by situation).
+A non-digit in offsets 0 to 5
 is a `syntax` finding on the chosen ID. See
 [amb.time.indicator](#amb.time.indicator).
 
@@ -60,14 +67,16 @@ When both hold, the one finding is at the first byte that fails, as for
 any fixed field (section 1;
 [README section 3](README.md#3-tokenizer-model), Placing a finding).
 
-**[proposed]** Value ranges. Outside them the finding is `value`.
+Value ranges. Outside them the finding is `value`, since a range that
+the document states or that the unit implies counts as stated
+([README section 3](README.md#3-tokenizer-model), Kinds by situation).
 
 | Part | Range | Basis |
 |---|---|---|
 | Day of month | `01`–`31` | Stated, p. 38/22 |
 | Month | `01`–`12` | Stated, p. 38/22 |
 | Hour | `00`–`23` | Follows from the 24-hour clock, p. 38/22 |
-| Minute, second | `00`–`59` | Not stated; reading |
+| Minute, second | `00`–`59` | Implied by the unit (README section 3, Kinds by situation); an earlier draft called it a reading |
 
 Each part is checked when its two digits are present, whatever the
 other parts hold: a `syntax` finding elsewhere in the field is an
@@ -96,14 +105,18 @@ gives a `discouraged` finding on `time.dhm` at offset 6.
 The hemisphere letters are upper case (p. 39/23). A lower-case
 letter, or any other byte, is a `syntax` finding at that offset.
 
-**[proposed]** Value ranges (see [amb.lat.range](#amb.lat.range)):
+Value ranges (see [amb.lat.range](#amb.lat.range)). The degree ranges
+are stated; the others are implied by the unit, minutes up to 59 and a
+latitude up to 90 and a longitude up to 180 as a whole, and count as
+stated ([README section 3](README.md#3-tokenizer-model), Kinds by
+situation):
 
 | Part | No finding | `value` finding |
 |---|---|---|
 | Latitude degrees | `00`–`90` (stated, p. 39/23) | `91`–`99` |
 | Longitude degrees | `000`–`180` (stated, p. 40/24) | `181`–`999` |
-| Tens of minutes (offset 2 of `lat`, 3 of `lon`) | `'0'`–`'5'` | `'6'`–`'9'` |
-| Minutes and hundredths when the degrees are `90` (`lat`) or `180` (`lon`) | all `'0'` or `SP` | any other digit |
+| Tens of minutes (offset 2 of `lat`, 3 of `lon`) | `'0'`–`'5'` (implied) | `'6'`–`'9'` |
+| Minutes and hundredths when the degrees are `90` (`lat`) or `180` (`lon`) | all `'0'` or `SP` (implied) | any other digit |
 
 They are checked only on digits that are present, also when another
 byte of the field gives `syntax` or the field is cut short: those are
@@ -134,9 +147,10 @@ An earlier draft gave every `SP` that breaks the order its own `syntax`
 finding.
 
 The levels correspond to a tenth of a minute, one minute, ten minutes and
-one degree (p. 40/24, p. 41/25). **[proposed]** The contiguity rule and
-the longitude rule are a reading; see
-[amb.lat.ambiguity](#amb.lat.ambiguity). The degree digits are never
+one degree (p. 40/24, p. 41/25). The contiguity rule and the longitude
+rule are the narrowest reading the text supports
+([README section 3](README.md#3-tokenizer-model), Kinds by situation);
+see [amb.lat.ambiguity](#amb.lat.ambiguity). The degree digits are never
 blanked: the text names only the minute digits as the ones replaced,
 and its four examples blank only those (p. 40/24).
 
@@ -189,8 +203,9 @@ in [01-frame.md](01-frame.md); the Mic-E symbol bytes in
 |---|---|---|---|---|---|
 | <a id="b91.digit"></a>`b91.digit` | Base-91 digit | 1 byte, `0x21`–`0x7B` (`'!'` to `'{'`). Its value is the byte minus 33, 0 to 90. A number of k digits is read most significant digit first. | — | Fixed, 1 byte | p. 34/20, p. 55/37 |
 
-**[proposed]** The set ends at `'{'`; see [amb.b91.set](#amb.b91.set) and
-[err.b91.range](#err.b91.range). `b91.digit` is a rule, not a token: the
+The set ends at `'{'`, the narrowest of the sets the text states
+([README section 3](README.md#3-tokenizer-model), Kinds by situation);
+see [amb.b91.set](#amb.b91.set) and [err.b91.range](#err.b91.range). `b91.digit` is a rule, not a token: the
 fields that use it (the compressed block here, the lower-case
 [`cmt.dao`](#cmt.dao) form, the Mic-E altitude in
 [04-mic-e.md](04-mic-e.md), [`tlm.b91`](07-telemetry.md#tlm.b91)) report
@@ -200,14 +215,17 @@ a byte outside the set as a `syntax` finding on their own ID.
 
 ### 6.1 Telling the two position forms apart
 
-**[proposed]** Where a format admits either position form, the first
+Where a format admits either position form, the first
 byte decides. A digit starts an uncompressed position: `lat`,
 `sym.table`, `lon`, `sym.code`, 19 bytes. A byte in the set of
 [`cmp.table`](#cmp.table) starts a compressed block. Any other byte is a
 `syntax` finding at that byte, and neither form can be delimited.
-**[proposed]** The finding is on the selector rule of the format file,
+The finding is on the selector rule of the format file,
 such as [`pos.form`](03-position.md#pos.form); an earlier draft named
-`cmp.block`. Source: p. 55/37, p. 125/101. See
+`cmp.block`. This applies the rule for forms that can stand at one
+place ([README section 3](README.md#3-tokenizer-model)): the first byte
+selects the form, and when none matches, one `syntax` finding goes on
+the selector rule of the place. Source: p. 55/37, p. 125/101. See
 [amb.cmp.detect](#amb.cmp.detect).
 
 ### 6.2 Fields
@@ -238,16 +256,20 @@ block without `T` is a `cmp.cs` token, or `cmp.cs.none` when `c` is
 `'!'`–`'{'`), and its `s` is checked as a base-91 digit, or as a filler
 after a `c` of `SP`.
 
-**[proposed]** Range of `cmp.lat` and `cmp.lon`. Latitude 90 S and
+Range of `cmp.lat` and `cmp.lon`. Latitude 90 S and
 longitude 180 E both give 68566680 (380926 × 180 = 190463 × 360 =
 68566680). Four base-91 digits reach 91⁴ − 1 = 68574960. A value from
-68566681 to 68574960 is a `value` finding on the field. See
-[amb.cmp.range](#amb.cmp.range).
+68566681 to 68574960 is a `value` finding on the field: the range of a
+latitude and a longitude is implied by the unit and counts as stated
+([README section 3](README.md#3-tokenizer-model), Kinds by situation).
+See [amb.cmp.range](#amb.cmp.range).
 
 ### 6.3 Reading the cs bytes
 
-**[proposed]** The tokenizer applies the first step whose condition
-holds. See [amb.cmp.cs](#amb.cmp.cs) for the order of steps 2 and 4.
+The tokenizer applies the first step whose condition holds
+([README section 3](README.md#3-tokenizer-model), Forms that can stand
+at one place). See [amb.cmp.cs](#amb.cmp.cs) for the order of the
+steps.
 
 | Step | Condition | Token ID | Further bytes | Source |
 |---|---|---|---|---|
@@ -282,8 +304,10 @@ other reading's own).
 When `c` is not `SP`, `T` is a base-91 digit; otherwise a `syntax`
 finding. Its value `T` − 33 holds the fix state (bit 5), the NMEA source
 (bits 4–3) and the origin of the compression (bits 2–0); bits 7–6 are
-unused and zero (p. 57/39). **[proposed]** A `T` from `'a'` to `'{'`, whose
-value has bit 6 set, is a `value` finding. See [amb.cmp.t](#amb.cmp.t).
+unused and zero (p. 57/39). A `T` from `'a'` to `'{'`, whose value has
+bit 6 set, is a `value` finding, as a value outside that stated range
+([README section 3](README.md#3-tokenizer-model), Kinds by situation).
+See [amb.cmp.t](#amb.cmp.t).
 The origin codes marked "tbd" give no finding.
 
 When `c` is `SP`, `T` carries no meaning (p. 57/39) and is a filler as in
@@ -311,12 +335,16 @@ run, as in [amb.ext.count](#amb.ext.count)
 
 ### 7.1 The extension slot
 
-- **[proposed]** The slot is the bytes directly after the symbol code of
+- The slot is the bytes directly after the symbol code of
   an uncompressed position, in the formats whose files provide one. When
   they match one of the forms in 7.2, they are read as that extension.
   When they match none, the slot is empty and the comment starts there.
-  Being an extension, or not, gives no finding of its own. See
-  [amb.ext.slot](#amb.ext.slot). The slot bytes on which the readings
+  Being an extension, or not, gives no finding of its own. This applies
+  the rule for forms that can stand at one place
+  ([README section 3](README.md#3-tokenizer-model)): the extension, the
+  more specific form, is tried before the comment text that also covers
+  its bytes, and the overlap that every extension carries gives no
+  finding. See [amb.ext.slot](#amb.ext.slot). The slot bytes on which the readings
   of another entry divide differently get the `ambiguous` findings that
   entry gives: the literal-letter case and the descriptor-only case
   below, [amb.ext.csespd](#amb.ext.csespd) and
@@ -329,8 +357,11 @@ run, as in [amb.ext.count](#amb.ext.count)
   extension's own rule where this reading reads them as an extension,
   and [`cmt.text`](#cmt.text) where it reads them as comment text
   ([README section 3](README.md#3-tokenizer-model), Placing a finding).
-- **[proposed]** The forms are tried in this order, and the first match
-  is taken:
+- The forms are tried in this order, and the first match is taken: a
+  form that the symbol or the kind of report selects first, then the
+  longer form before the one that covers its start
+  ([README section 3](README.md#3-tokenizer-model), Forms that can
+  stand at one place):
   1. **[agreed]** In an object or item report whose symbol is table
      `'\'` with code `'l'`: [`ext.area`](#ext.area), and nothing else.
      Bytes that do not fit it give `syntax`, as
@@ -338,8 +369,9 @@ run, as in [amb.ext.count](#amb.ext.count)
      position report the descriptor is never read
      ([amb.pos.ext](03-position.md#amb.pos.ext)), and the slot is tried
      as in step 3.
-  2. When [06-weather.md](06-weather.md) reads the report as a weather
-     report: [`ext.dirspd`](#ext.dirspd), and nothing else.
+  2. **[proposed]** When [06-weather.md](06-weather.md) reads the
+     report as a weather report: [`ext.dirspd`](#ext.dirspd), and
+     nothing else.
   3. Otherwise [`ext.csespd`](#ext.csespd), [`ext.phgr`](#ext.phgr),
      [`ext.phg`](#ext.phg), [`ext.rng`](#ext.rng), [`ext.dfs`](#ext.dfs).
      PHGR comes before PHG because it is the longer match.
@@ -387,7 +419,9 @@ are comment text (UAP 5.9).
 
 ### 7.3 Values
 
-**[proposed]** Outside these the finding is `value`:
+Outside these the finding is `value`, for a range that the document
+states or the unit implies, or a code outside a table
+([README section 3](README.md#3-tokenizer-model), Kinds by situation):
 
 | ID | Part | No finding | `value` finding | Basis |
 |---|---|---|---|---|
@@ -395,7 +429,7 @@ are comment text (UAP 5.9).
 | `ext.csespd` | Speed | Any | — | No range stated |
 | `ext.dirspd` | Direction | As course | `361`–`999` | p. 45/27 |
 | `ext.phg`, `ext.phgr`, `ext.dfs` | `d` | `'0'`–`'8'` | `'9'` | The code table on p. 46/28 stops at 8 |
-| `ext.brgnrq` | Bearing | `000`–`360` | `361`–`999` | Not stated; reading |
+| `ext.brgnrq` | Bearing | `000`–`360` | `361`–`999` | Implied by the unit; an earlier draft called it a reading |
 
 **[proposed]** A course and speed whose two parts are of different kinds
 (digits in one, dots or spaces in the other, as in `088/...`) is read as
@@ -551,8 +585,11 @@ with another indicator byte or an out-of-range value.
 (b) Indicator bytes in either case. (c) Any seventh byte; the timestamp
 is dropped when it cannot be decoded.
 
-**Reading taken.** **[proposed]** (a): other bytes are a `syntax`
-finding, out-of-range parts a `value` finding (section 2).
+**Reading taken.** (a), the narrowest of the three
+([README section 3](README.md#3-tokenizer-model), Kinds by situation):
+other bytes are a `syntax` finding, out-of-range parts a `value`
+finding (section 2). The minute and second ranges are implied by the
+unit and count as stated (same rule).
 
 **In the bytes.** Visible, since (b) or (c) would accept the bytes. The
 `syntax` or `value` finding of the reading alone is given
@@ -585,8 +622,11 @@ given for others.
 upper case only. (b) Minutes up to 99. (c) Lower-case hemisphere
 accepted.
 
-**Reading taken.** **[proposed]** (a), as in 3.1: range departures are
-`value` findings, case departures `syntax` findings.
+**Reading taken.** (a), as in 3.1, the narrowest of the three, with
+the ranges that the unit implies counted as stated
+([README section 3](README.md#3-tokenizer-model), Kinds by situation):
+range departures are `value` findings, case departures `syntax`
+findings.
 
 **In the bytes.** Visible, and reported as those `value` and `syntax`
 findings, which alone are given
@@ -619,8 +659,9 @@ differ from the latitude's.
 blanks contiguous and not beyond the latitude's level. (b) Latitude level
 only; longitude blanks ignored. (c) Blanks anywhere, read as zero.
 
-**Reading taken.** **[proposed]** (a), as in 3.2. A departure is a
-`syntax` finding.
+**Reading taken.** (a), as in 3.2, the narrowest of the three
+([README section 3](README.md#3-tokenizer-model), Kinds by situation).
+A departure is a `syntax` finding.
 
 **In the bytes.** Visible, and reported as that `syntax` finding, which
 alone is given ([README section 3](README.md#3-tokenizer-model),
@@ -724,7 +765,12 @@ addressed.
 
 **Readings.** (a) Digit, table set, or error. (b) Digit, else compressed.
 
-**Reading taken.** **[proposed]** (a), as in 6.1.
+**Reading taken.** (a), as in 6.1, by the rule for forms that can
+stand at one place: the first byte selects the form, and a byte that
+selects none gives one `syntax` finding on the selector rule
+([README section 3](README.md#3-tokenizer-model)). Reading (b) would
+make the compressed form a default that takes any byte, which is also
+wider than the table set the text states (Kinds by situation).
 
 **In the bytes.** Visible, and reported as the `syntax` finding of 6.1,
 which alone is given
@@ -763,8 +809,10 @@ without limiting it to part of the range.
 
 **Reading taken.** **[agreed]** (a), as in 6.3: `T` is tested before
 the range of `c`. `c` = `SP` comes first because `T` has no meaning then
-(p. 57/39). **[proposed]** The weather step comes before the course
-step.
+(p. 57/39). The weather step comes before the course step: the report
+being a weather report selects it, and a form that a marker selects is
+tried first ([README section 3](README.md#3-tokenizer-model), Forms
+that can stand at one place).
 
 **In the bytes.** Visible: (a) and (b) differ when the GGA bits of `T`
 are set and `c` lies in the course and speed range `'!'`–`'z'`, which
@@ -804,8 +852,9 @@ while p. 55/37 makes every byte except table and code base-91.
 
 **Readings.** (a) Base-91 digit or `SP`. (b) Any byte.
 
-**Reading taken.** **[proposed]** (a). Other bytes are a `syntax`
-finding.
+**Reading taken.** (a), the narrower byte set
+([README section 3](README.md#3-tokenizer-model), Kinds by situation).
+Other bytes are a `syntax` finding.
 
 **In the bytes.** Visible, and reported as that `syntax` finding, which
 alone is given ([README section 3](README.md#3-tokenizer-model),
@@ -829,7 +878,9 @@ action when they are not is not stated.
 
 **Readings.** (a) Out of range. (b) Ignore the high bits.
 
-**Reading taken.** **[proposed]** (a): a `value` finding.
+**Reading taken.** (a), the narrower of the two
+([README section 3](README.md#3-tokenizer-model), Kinds by situation):
+a `value` finding.
 
 **In the bytes.** Visible, and reported as that `value` finding, which
 alone is given ([README section 3](README.md#3-tokenizer-model),
@@ -854,7 +905,9 @@ Precedence).
 
 **Readings.** (a) Out of range. (b) Accept the decoded value.
 
-**Reading taken.** **[proposed]** (a): a `value` finding.
+**Reading taken.** (a): a `value` finding, since base-91 coordinates
+are held to the latitude and longitude ranges that the unit implies
+([README section 3](README.md#3-tokenizer-model), Kinds by situation).
 
 **In the bytes.** Visible, and reported as that `value` finding, which
 alone is given ([README section 3](README.md#3-tokenizer-model),
@@ -881,9 +934,10 @@ Precedence).
 **Readings.** (a) `'!'`–`'{'`, 91 digits. (b) Up to `'|'`. (c) Up to
 `'}'`.
 
-**Reading taken.** **[proposed]** (a): it is the
-set the compressed chapter states (p. 55/37) and the only one with 91
-members. The glossary gives the same set (p. 145/121).
+**Reading taken.** (a), the narrowest of the three
+([README section 3](README.md#3-tokenizer-model), Kinds by situation):
+it is also the set the compressed chapter states (p. 55/37) and the
+only one with 91 members. The glossary gives the same set (p. 145/121).
 
 **In the bytes.** Visible, since (b) or (c) would accept `'|'` or `'}'`.
 Reported as the `syntax` finding of the field that uses the digit, which
@@ -911,7 +965,10 @@ extension or the start of the comment (p. 31/17, p. 34/20).
 **Readings.** (a) Matching bytes are the extension. (b) Never an
 extension unless the format says so.
 
-**Reading taken.** **[proposed]** (a) (7.1).
+**Reading taken.** (a) (7.1), by the rule for forms that can stand at
+one place: the extension, the more specific form, is tried before the
+comment text that covers its bytes
+([README section 3](README.md#3-tokenizer-model)).
 
 **In the bytes.** Inherent
 ([README section 3](README.md#3-tokenizer-model)): every extension that
@@ -1114,8 +1171,12 @@ byte for byte a PHGR. The DFS table has the same height row, ending at
 of range; PHGR when the two bytes after `phgd` fit. (b) All four codes
 digits only; PHGR not recognised.
 
-**Reading taken.** **[proposed]** (a), as in 7.2 and 7.3; `r` is
-`'0'`–`'9'` or `'A'`–`'Z'`.
+**Reading taken.** (a), as in 7.2 and 7.3, for PHG and PHGR: the
+narrowest listed reading that the text supports, since (b) contradicts
+p. 46/28, which lets the height code run past `'9'` and adds PHGR
+([README section 3](README.md#3-tokenizer-model), Kinds by situation).
+**[proposed]** The same `h` up to `'~'` in DFS (see the open item in
+section 11). **[proposed]** `r` is `'0'`–`'9'` or `'A'`–`'Z'`.
 
 **In the bytes.** PHG against PHGR is inherent
 ([README section 3](README.md#3-tokenizer-model)): every PHGR is also a
@@ -1170,8 +1231,9 @@ extension chapter (p. 45/27, p. 48/30) and every DF example, as
 [03-position.md](03-position.md#amb.df.ext) does; the DF diagrams that
 (a) follows are an erratum there
 ([err.df.ext](03-position.md#err.df.ext)). An earlier draft of this
-entry took (a); it was changed to agree with 03. **[proposed]** Bearing
-above 360 is a `value` finding.
+entry took (a); it was changed to agree with 03. A bearing above 360
+is a `value` finding, the range being implied by the unit
+([README section 3](README.md#3-tokenizer-model), Kinds by situation).
 
 **In the bytes.** Visible: an `ambiguous` finding where (a) or (c) would
 read the bytes differently (7.4). By the test of
@@ -1594,6 +1656,15 @@ the page.
   ([amb.tlm.b91.order](07-telemetry.md#amb.tlm.b91.order)). Whether the
   block then gets an `ambiguous` finding is not decided; the tokenizer
   gives none.
+- **[open]** The height code of [`ext.dfs`](#ext.dfs). Its table on
+  p. 48/30 ends at `'9'` and no sentence there extends it, while the
+  same page says that the DFS format replaces the power code of PHG
+  with the signal strength. Reading (a) of [amb.ext.phg](#amb.ext.phg)
+  takes `h` up to `'~'` in PHG and DFS alike. A reading that keeps the
+  DFS height code to digits is not listed; it would be the narrower one
+  under [README section 3](README.md#3-tokenizer-model) (Kinds by
+  situation), if the text supports it. Whether to list and take it is
+  not decided.
 - Whether a separate finding kind for forms that APRS12c describes as
   outside its standard, such as [`cmt.alt.neg`](#cmt.alt.neg), is
   wanted instead of a separate ID.

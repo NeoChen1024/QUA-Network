@@ -404,7 +404,10 @@ still does.
 - **Readings.** (a) Decide by the bytes after the DTI: a second `'!'`, or
   `ULTW`. (b) Try the position or NMEA grammar first and fall back to raw
   weather.
-- **Taken.** **[proposed]** (a). A second `'!'` cannot start a position
+- **Taken.** (a): the form that marker bytes select is tried first
+  ([README section 3](README.md#3-tokenizer-model), Forms that can
+  stand at one place), as in
+  [amb.dti.shared](01-frame.md#amb.dti.shared). A second `'!'` cannot start a position
   (neither a latitude digit nor a valid symbol table byte), so reading (b)
   gives the same result for `!!`. A `'$'` field not followed by `ULTW` is
   NMEA ([03-position.md](03-position.md)).

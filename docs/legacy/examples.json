@@ -2127,9 +2127,9 @@
    "page": 109,
    "printed": "85",
    "kind": "packet",
-   "verdict": "conform",
+   "verdict": "syntax",
    "findings": [
-    "is-only addr.is @11"
+    "syntax tp.dest @13"
    ],
    "basis": [
     "01-frame.md#8-third-party-payloads",
@@ -2138,11 +2138,13 @@
     "01-frame.md#tp.net",
     "01-frame.md#tp.gate",
     "01-frame.md#tp.info",
-    "01-frame.md#addr.is",
+    "01-frame.md#addr.dest",
+    "01-frame.md#amb.addr.form",
+    "01-frame.md#dest.altnet",
     "08-message.md#msg.id"
    ],
-   "note": "Third-party packet: outer header with placeholder destination; '}' at 0, inner source 1-9, '>' 10, inner destination 11-16 (placeholder, addr.is), network id TCPIP 17-22, gateway with '*' 23-29, ':' at 30, inner message from 31 (addressee, text with a triple space, number 001). byte 0 carries tp.dti. A finding on the header in which APRS12c shows the example was removed: the check gives information-field examples its own header.",
-   "doubt": "Outer destination at line offset 6 with information at 21, written as -15. The lower-case destination is a placeholder; both is-only findings come from reading it literally. The inner destination is classified with the inner ':' identifier, dest.altnet."
+   "note": "Third-party packet: outer header with placeholder destination; '}' at 0, inner source 1-9, '>' 10, inner destination 11-16 (placeholder with lower-case letters, not in the AX.25 form, so syntax on tp.dest at its first lower-case byte, 13), network id TCPIP 17-22, gateway with '*' 23-29, ':' at 30, inner message from 31 (addressee, text with a triple space, number 001). byte 0 carries tp.dti. A finding on the header in which APRS12c shows the example was removed: the check gives information-field examples its own header.",
+   "doubt": "Outer destination at line offset 6 with information at 21, written as -15; its first lower-case byte, at line offset 8 (-13), gives syntax on addr.dest, which the check leaves out with the header. The lower-case destination is a placeholder; both syntax findings come from reading it literally, as an address not in the AX.25 form where only the AX.25 form is allowed (amb.addr.form reading (c)); an earlier version of this entry expected is-only from addr.is and the verdict conform. Both destinations are classified by their bytes as written, dest.altnet, the inner one with the inner ':' identifier."
   },
   {
    "id": "p109-4de3f7ea",
@@ -2165,47 +2167,50 @@
    "page": 109,
    "printed": "85",
    "kind": "packet",
-   "verdict": "conform",
+   "verdict": "syntax",
    "findings": [],
    "basis": [
-    "01-frame.md#addr.is",
+    "01-frame.md#addr.dest",
+    "01-frame.md#amb.addr.form",
     "01-frame.md#path.digi",
     "01-frame.md#path.used",
     "08-message.md#msg.id"
    ],
-   "note": "Full line after removal of the encapsulation: path TCPIP then gateway marked used; information field is the numbered message. A finding on the header in which APRS12c shows the example was removed: the check gives information-field examples its own header.",
-   "doubt": "Destination at line offset 10, information at 30: -20. Placeholder destination read literally."
+   "note": "Full line after removal of the encapsulation: path TCPIP then gateway marked used; information field is the numbered message. The destination APxxxx is not in the AX.25 form, so addr.dest gives syntax at its first lower-case byte, line offset 12 (-18), in the header, which the check leaves out of the findings; the verdict is syntax. A finding on the header in which APRS12c shows the example was removed: the check gives information-field examples its own header.",
+   "doubt": "Destination at line offset 10, information at 30: -20. Placeholder destination read literally: the syntax finding and verdict come from its lower-case letters (amb.addr.form reading (c)); an earlier version of this entry read it as addr.is and expected conform."
   },
   {
    "id": "p109-a0b832f7",
    "page": 109,
    "printed": "85",
    "kind": "packet",
-   "verdict": "conform",
+   "verdict": "syntax",
    "findings": [],
    "basis": [
-    "01-frame.md#addr.is",
+    "01-frame.md#addr.dest",
+    "01-frame.md#amb.addr.form",
     "01-frame.md#dest.altnet",
     "01-frame.md#path.digi",
     "08-message.md#msg.id"
    ],
-   "note": "Full line: AX.25 source with SSID 14, destination with a lower-case placeholder suffix (not AX.25 form, so addr.is and class dest.altnet), two WIDEn-N path entries; the information field is the numbered message. A finding on the header in which APRS12c shows the example was removed: the check gives information-field examples its own header.",
-   "doubt": "Header offsets are given relative to the first information byte, so the destination (line offset 10, information at 33) is -23. The destination is a placeholder for a software identifier; read literally it is an APRS-IS-only address and not dest.tocall."
+   "note": "Full line: AX.25 source with SSID 14, destination with a lower-case placeholder suffix (not AX.25 form, so syntax on addr.dest at its first lower-case byte, line offset 12, and class dest.altnet by the bytes as written), two WIDEn-N path entries; the information field is the numbered message. The finding is in the header, which the check leaves out of the findings; the verdict is syntax. A finding on the header in which APRS12c shows the example was removed: the check gives information-field examples its own header.",
+   "doubt": "Header offsets are given relative to the first information byte, so the destination (line offset 10, information at 33) is -23 and its finding -21. The destination is a placeholder for a software identifier; read literally it is not in the AX.25 form, which a destination must be (amb.addr.form reading (c)), and not dest.tocall. An earlier version of this entry read it as addr.is, an APRS-IS-only address, and expected conform."
   },
   {
    "id": "p109-e15390bb",
    "page": 109,
    "printed": "85",
    "kind": "packet",
-   "verdict": "conform",
+   "verdict": "syntax",
    "findings": [],
    "basis": [
-    "01-frame.md#addr.is",
+    "01-frame.md#addr.dest",
+    "01-frame.md#amb.addr.form",
     "08-message.md#msg.ack.kw",
     "08-message.md#msg.ack.num"
    ],
-   "note": "Full line: acknowledgement 001 to a 9-byte addressee with no padding. A finding on the header in which APRS12c shows the example was removed: the check gives information-field examples its own header.",
-   "doubt": "Destination at line offset 6, information at 29: -23. Placeholder destination read literally."
+   "note": "Full line: acknowledgement 001 to a 9-byte addressee with no padding. The destination APxxxx is not in the AX.25 form, so addr.dest gives syntax at its first lower-case byte, line offset 8 (-21), in the header, which the check leaves out of the findings; the verdict is syntax. A finding on the header in which APRS12c shows the example was removed: the check gives information-field examples its own header.",
+   "doubt": "Destination at line offset 6, information at 29: -23. Placeholder destination read literally: the syntax finding and verdict come from its lower-case letters (amb.addr.form reading (c)); an earlier version of this entry read it as addr.is and expected conform."
   },
   {
    "id": "p114-26c5ae36",

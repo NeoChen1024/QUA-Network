@@ -99,7 +99,7 @@ and a comment. It has no timestamp (p. 77/59, p. 132/108).
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|
 | <a id="item.dti"></a>`item.dti` | Data type identifier | `')'` at offset 0. Gives a `discouraged` finding (section 2). | Required | 1 byte | p. 31/17, p. 77/59 |
-| <a id="item.name"></a>`item.name` | Item name | From offset 1: bytes 0x20–0x7E other than `'!'` and `'_'`, 3 to 9 of them. A name of 1 or 2 bytes, or of more than 9, gives a `value` finding, and an empty name, a missing field, a `syntax` finding ([README section 3](README.md#3-tokenizer-model), Kinds by situation). **[proposed]** No `'!'` or `'_'` at all gives a `syntax` finding ([amb.item.name](#amb.item.name)). | Required | The first `'!'` or `'_'` | p. 77/59 |
+| <a id="item.name"></a>`item.name` | Item name | From offset 1: bytes 0x20–0x7E other than `'!'` and `'_'`, 3 to 9 of them. A name of 1 or 2 bytes, or of more than 9, gives a `value` finding, and an empty name, a missing field, a `syntax` finding ([README section 3](README.md#3-tokenizer-model), Kinds by situation). No `'!'` or `'_'` at all gives a `syntax` finding ([amb.item.name](#amb.item.name); README section 3, Output). | Required | The first `'!'` or `'_'` | p. 77/59 |
 | <a id="item.state"></a>`item.state` | Live or killed | `'!'` live, `'_'` killed. | Required | 1 byte | p. 77/59 |
 | <a id="item.pos"></a>`item.pos` | Position | As `obj.pos`, directly after `item.state`. `item.pos` is the selector rule here and carries the `syntax` finding and the `residue`, as `obj.pos` does. | Required | 19 or 13 bytes | p. 77/59 |
 | <a id="item.ext"></a>`item.ext` | Data extension | As `obj.ext`. | Optional | 7 bytes | p. 77/59 |
@@ -305,14 +305,16 @@ the [README](README.md#4-decoders-consulted), not run.
   `ambiguous` finding. An earlier draft gave one at a `'*'` or `'_'`
   inside the name where reading (b) would have parsed the rest of the
   report from there. **[proposed]** A name of nine SP gives `syntax`,
-  as no name is left once the padding is removed. **[proposed]**
-  p. 76/58 and p. 77/59 state the
+  as no name is left once the padding is removed: it is an empty required field
+  ([README section 3](README.md#3-tokenizer-model), Kinds by
+  situation). p. 76/58 and p. 77/59 state the
   byte set of object and item names as printable ASCII, where the
   comment, message and status text admit UTF-8 as well; the names are
   not a field where printable ASCII is only recommended, so the
   exemption of [README section 3](README.md#3-tokenizer-model) does not
-  apply. A byte above 0x7E in a name gives `syntax` at that byte, and
-  the nine-byte length counts bytes.
+  apply, and the narrowest byte set the text supports is taken (README
+  section 3, Kinds by situation). A byte above 0x7E in a name gives
+  `syntax` at that byte, and the nine-byte length counts bytes.
 - **Placement.** The finding for nine SP is at offset 1, the first
   byte of the field at fault. After a `syntax` finding on `obj.state`
   the report is read on from offset 11, since the layout fixes where
@@ -347,9 +349,13 @@ the [README](README.md#4-decoders-consulted), not run.
   [README section 3](README.md#3-tokenizer-model) they are decoder
   behaviour (pdn-aprs and javAPRSlib, below), not listed readings, and
   give no finding.
-- **Reading taken.** **[proposed]** (a), with no terminator giving
+- **Reading taken.** (a), with no terminator giving
   `syntax`. No other reading is listed, so there is no `ambiguous`
-  finding.
+  finding. This applies agreed rules: a delimiter ends a field at its
+  first occurrence when the field's content may not hold it
+  ([README section 3](README.md#3-tokenizer-model), Forms that can
+  stand at one place), and a field whose end is missing is placed as
+  below (Output; Kinds by situation).
 - **Placement.** Under (a), a name that is not empty and is outside 3
   to 9 bytes gives `value`, as a field outside its stated length, and
   an empty name is a missing field and gives `syntax`

@@ -33,9 +33,10 @@ and DF reports, `df.agrelo.dti`, `grid.dti` and `nmea.dti`. The token of
 byte 0 carries that ID
 ([README section 3](README.md#3-tokenizer-model)); the dispatch and any
 finding at that byte are given by the `dti` rules of
-[01-frame.md](01-frame.md#dti). **[proposed]** A position report handed
+[01-frame.md](01-frame.md#dti). A position report handed
 to 06 by `pos.wx` is classified as a weather report, and its byte-0
-token carries [`wx.pos`](06-weather.md#wx.pos) in place of `pos.dti`.
+token carries [`wx.pos`](06-weather.md#wx.pos) in place of `pos.dti`
+([README section 3](README.md#3-tokenizer-model), Output).
 
 ## 2. Position reports
 
@@ -46,18 +47,18 @@ symbol code.
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|
 | <a id="pos.dti"></a>`pos.dti` | Identifier | `!` or `=` (no timestamp), `/` or `@` (timestamp). `=` and `@` mark a station that handles messages; the tokenizer records which. | yes | 1 byte | p. 31/17; p. 50/32 |
-| <a id="pos.time"></a>`pos.time` | Timestamp | After `/` or `@` only: [`time.dhm`](02-fields.md#time.dhm) or [`time.hms`](02-fields.md#time.hms), 7 bytes. Missing, or in the [`time.mdhm`](02-fields.md#time.mdhm) form, gives `syntax`. **[proposed]** A missing timestamp gives the finding where it was expected, and nothing else. Eight digits are the `time.mdhm` form: an 8-byte `time.mdhm` token, the `syntax` finding at its first byte, and the position read after it. | for `/`, `@` | 7 bytes | p. 38/22; p. 50/32; p. 59/41 |
+| <a id="pos.time"></a>`pos.time` | Timestamp | After `/` or `@` only: [`time.dhm`](02-fields.md#time.dhm) or [`time.hms`](02-fields.md#time.hms), 7 bytes. Missing, or in the [`time.mdhm`](02-fields.md#time.mdhm) form, gives `syntax`. The timestamp is the 7 bytes that the layout fixes, so a missing or malformed one is still a 7-byte token with one `syntax` finding at its first byte that fails, and the position is read after it; one cut short by the end of the field covers the bytes present, with the finding where its first missing byte was expected (README section 3, Output). An earlier draft said that a missing timestamp gives the finding where it was expected, and nothing else. **[proposed]** Eight digits are the `time.mdhm` form: an 8-byte `time.mdhm` token, the `syntax` finding at its first byte, and the position read after it. | for `/`, `@` | 7 bytes | p. 38/22; p. 50/32; p. 59/41 |
 | <a id="pos.form"></a>`pos.form` | Form selector | Not a token. The next byte picks the form: a digit gives `pos.unc`; `/`, `\`, `A`–`Z` or `a`–`j` gives `pos.cmp`. Any other byte gives `syntax` and the rest of the field is `residue`. | yes | — | p. 50/32; p. 55/37; p. 125/101 ([amb.pos.form](#amb.pos.form)) |
 | <a id="pos.unc"></a>`pos.unc` | Uncompressed position | Not a token; the sequence [`lat`](02-fields.md#lat) (8 bytes), [`sym.table`](02-fields.md#sym.table) (1), [`lon`](02-fields.md#lon) (9), [`sym.code`](02-fields.md#sym.code) (1). Position ambiguity is read by [`lat.amb`](02-fields.md#lat.amb) and [`lon.amb`](02-fields.md#lon.amb). | one of the two forms | 19 bytes | p. 39/23; p. 40/24; p. 50/32 |
 | <a id="pos.cmp"></a>`pos.cmp` | Compressed position | [`cmp.block`](02-fields.md#cmp.block), 13 bytes. | one of the two forms | 13 bytes | p. 55/37; p. 59/41 |
-| <a id="pos.wx"></a>`pos.wx` | Weather hand-off | When [`sym.code`](02-fields.md#sym.code) or [`cmp.code`](02-fields.md#cmp.code) is `_`, with any table or overlay, and at least one byte follows the position block, those bytes are tokenized by [06-weather.md](06-weather.md) as [`wx.pos`](06-weather.md#wx.pos) and none of the rules below apply. **[proposed]** The report is then a weather report: the token of byte 0 carries `wx.pos`, not `pos.dti` (section 1). A `_` report that ends at the position block is an ordinary position report with no finding ([amb.pos.wxsym](#amb.pos.wxsym)). | — | end of field | p. 51/33; p. 82/62; p. 85/65 |
+| <a id="pos.wx"></a>`pos.wx` | Weather hand-off | When [`sym.code`](02-fields.md#sym.code) or [`cmp.code`](02-fields.md#cmp.code) is `_`, with any table or overlay, and at least one byte follows the position block, those bytes are tokenized by [06-weather.md](06-weather.md) as [`wx.pos`](06-weather.md#wx.pos) and none of the rules below apply. The report is then a weather report: the token of byte 0 carries `wx.pos`, not `pos.dti` (section 1; README section 3, Output). A `_` report that ends at the position block is an ordinary position report with no finding ([amb.pos.wxsym](#amb.pos.wxsym)). | — | end of field | p. 51/33; p. 82/62; p. 85/65 |
 | <a id="pos.null"></a>`pos.null` | Null position | Latitude `0000.00N`, longitude `00000.00W`. The tokenizer reports no finding, with any symbol; the null symbol `\.` is noted for the decoding layer. | — | — | p. 42/26 |
 
 ### 2.1 After an uncompressed position
 
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|
-| <a id="pos.ext"></a>`pos.ext` | Data extension | The bytes directly after [`sym.code`](02-fields.md#sym.code), when they match one of [`ext.csespd`](02-fields.md#ext.csespd), [`ext.phg`](02-fields.md#ext.phg), [`ext.phgr`](02-fields.md#ext.phgr), [`ext.rng`](02-fields.md#ext.rng) or [`ext.dfs`](02-fields.md#ext.dfs). Bytes that match are the extension ([amb.pos.ext](#amb.pos.ext)). [`ext.dirspd`](02-fields.md#ext.dirspd) (weather only) and [`ext.area`](02-fields.md#ext.area) (area objects only) are not taken here, whatever the symbol: bytes of their layout that also fit `ext.csespd` are read as `ext.csespd`, and other `ext.area`-shaped bytes stay comment. **[proposed]** Being an extension gives no finding of its own, whatever byte follows it ([amb.pos.ext](#amb.pos.ext)). A slot spelled with a literal `T`, `/` and `C` at offsets 0, 3 and 4 and digits at offsets 1, 2, 5 and 6 gets the `ambiguous` finding of [amb.ext.area](02-fields.md#amb.ext.area); the other findings on slot bytes are those of [02-fields section 7](02-fields.md#7-data-extensions). | no | 7 bytes (9 for `ext.phgr`) | p. 33/19; p. 45/27; p. 46/28; p. 51/33 |
+| <a id="pos.ext"></a>`pos.ext` | Data extension | The bytes directly after [`sym.code`](02-fields.md#sym.code), when they match one of [`ext.csespd`](02-fields.md#ext.csespd), [`ext.phg`](02-fields.md#ext.phg), [`ext.phgr`](02-fields.md#ext.phgr), [`ext.rng`](02-fields.md#ext.rng) or [`ext.dfs`](02-fields.md#ext.dfs). Bytes that match are the extension ([amb.pos.ext](#amb.pos.ext)). [`ext.dirspd`](02-fields.md#ext.dirspd) (weather only) and [`ext.area`](02-fields.md#ext.area) (area objects only) are not taken here, whatever the symbol: bytes of their layout that also fit `ext.csespd` are read as `ext.csespd`, and other `ext.area`-shaped bytes stay comment. Being an extension gives no finding of its own, whatever byte follows it, since every extension carries the question ([amb.pos.ext](#amb.pos.ext); README section 3). A slot spelled with a literal `T`, `/` and `C` at offsets 0, 3 and 4 and digits at offsets 1, 2, 5 and 6 gets the `ambiguous` finding of [amb.ext.area](02-fields.md#amb.ext.area); the other findings on slot bytes are those of [02-fields section 7](02-fields.md#7-data-extensions). | no | 7 bytes (9 for `ext.phgr`) | p. 33/19; p. 45/27; p. 46/28; p. 51/33 |
 | <a id="pos.cmt"></a>`pos.cmt` | Comment | [`cmt.text`](02-fields.md#cmt.text): the rest of the field, or the bytes after the storm fields when [06-weather.md](06-weather.md#8-storm-data) reads storm data after a `pos.ext` with symbol code `@`. At most 43 bytes when there is no `pos.ext` and 36 when there is one; for a DF report see `df.cmt`. A longer comment gives `value` at the first byte past the limit ([amb.pos.cmtlen](#amb.pos.cmtlen)). | no | end of field | p. 50/32; p. 51/33 |
 
 Inside `pos.cmt` and `pos.cmpcmt` the items of
@@ -84,7 +85,7 @@ bearing and NRQ after course and speed.
 | <a id="df.ext"></a>`df.ext` | Course and speed | `pos.ext` in the form [`ext.csespd`](02-fields.md#ext.csespd) ([amb.df.ext](#amb.df.ext)). | yes | 7 bytes | p. 45/27; p. 48/30; p. 52/34 |
 | <a id="df.brg"></a>`df.brg` | Bearing and NRQ | [`ext.brgnrq`](02-fields.md#ext.brgnrq), 8 bytes, directly after `df.ext`. | yes | 8 bytes | p. 48/30; p. 52/34; p. 53/35 |
 | <a id="df.cmt"></a>`df.cmt` | Comment | [`cmt.text`](02-fields.md#cmt.text), 0 to 28 bytes. Longer gives `value` at byte 29. | no | end of field | p. 52/34; p. 53/35 |
-| <a id="df.notdf"></a>`df.notdf` | Bearing-shaped comment | The 8 bytes after a `pos.ext` match the shape of [`ext.brgnrq`](02-fields.md#ext.brgnrq), but `df.sym` or `df.ext` does not hold. The bytes stay `pos.cmt`. **[proposed]** When exactly one of the two holds and the bearing is at most 360, the tokenizer gives `ambiguous` at their first byte ([amb.df.detect](#amb.df.detect), [amb.df.ext](#amb.df.ext)). When neither holds, or the bearing is above 360, no finding: no reading listed would take the bytes as bearing and NRQ, or the one that would gives `value`. | — | — | p. 48/30; p. 52/34 |
+| <a id="df.notdf"></a>`df.notdf` | Bearing-shaped comment | The 8 bytes after a `pos.ext` match the shape of [`ext.brgnrq`](02-fields.md#ext.brgnrq), but `df.sym` or `df.ext` does not hold. The bytes stay `pos.cmt`. By the tests of README section 3, applied to the readings of the two entries: when exactly one of the two holds and the bearing is at most 360, the tokenizer gives `ambiguous` at their first byte ([amb.df.detect](#amb.df.detect), [amb.df.ext](#amb.df.ext)). When neither holds, or the bearing is above 360, no finding: no reading listed would take the bytes as bearing and NRQ, or the one that would gives `value`. | — | — | p. 48/30; p. 52/34 |
 
 A report with the DF symbol and no bearing is an ordinary position report;
 the tokenizer reports nothing about it.
@@ -109,23 +110,27 @@ by [01-frame.md](01-frame.md#dti).
 | <a id="grid.cmt"></a>`grid.cmt` | Comment | Any bytes to the end of the field. No limit beyond that of [`line.info`](01-frame.md#line.info). | no | end of field | p. 51/33 |
 
 In a beacon, a locator with lower-case letters gives `unstated`: this
-format states no case rule. **[proposed]** When the first four bytes
-fail, the extent is still taken from what follows: six bytes when
-bytes 5 and 6 are letters followed by `]` or in range, else four. The
-first failing byte alone gives `syntax`. **[proposed]** A beacon gets `ambiguous` at
-byte 5, the first byte after a 4-byte locator, when bytes 5 and 6 are
-both letters and a reading listed would divide them differently from
-this one: a 6-byte locator with no `]` after it
-([amb.grid.form](#amb.grid.form)), and a
-subsquare that holds a lower-case letter after an upper-case first pair
-([amb.grid.case](#amb.grid.case)). One finding is given however many
-of these hold. **[agreed]** Two letters of which one is outside `A`–`X`,
-with no `]` after them, are comment text with no finding
-([amb.grid.range](#amb.grid.range)); with a `]` they give `syntax`.
-**[proposed]** With a `]` after the six bytes none of
-these holds: every reading takes the six bytes as the locator
-([amb.grid.range](#amb.grid.range)), and reading (a) of amb.grid.case,
-which rejects the lower-case letters, then fails and does not count.
+format states no case rule. When the first four bytes fail, the extent
+is still taken from what follows: six bytes when bytes 5 and 6 are
+letters followed by `]` or in range, else four. The first failing byte
+alone gives `syntax`
+([README section 3](README.md#3-tokenizer-model), Output). By the tests
+of README section 3, applied to the readings of
+[amb.grid.form](#amb.grid.form) and [amb.grid.case](#amb.grid.case), a
+beacon gets `ambiguous` at byte 5, the first byte after a 4-byte
+locator, when bytes 5 and 6 are both letters and a reading listed would
+divide them differently from this one: a 6-byte locator with no `]`
+after it ([amb.grid.form](#amb.grid.form)), and a subsquare that holds
+a lower-case letter after an upper-case first pair
+([amb.grid.case](#amb.grid.case)). One finding is given however many of
+these hold, since identical findings are given once. **[agreed]** Two
+letters of which one is outside `A`–`X`, with no `]` after them, are
+comment text with no finding ([amb.grid.range](#amb.grid.range)); with
+a `]` they give `syntax`. With a `]` after the six bytes none of the
+conditions for `ambiguous` holds: every reading takes the six bytes as
+the locator ([amb.grid.range](#amb.grid.range)), and reading (a) of
+amb.grid.case, which rejects the lower-case letters, then fails and
+does not count (README section 3).
 **[proposed]** `grid.cmt` is a free-text field for
 [`cmt.noarchive`](02-fields.md#cmt.noarchive); the other items of
 02 section 8.2 are not searched in it.
@@ -156,11 +161,13 @@ starts with a digit. Nothing says what a first byte in neither set means.
 **Readings.** (a) Select by the first byte; a byte in neither set is
 malformed. (b) Try one form, then the other.
 
-**Reading taken.** **[proposed]** (a). The sets do not overlap, so the
-choice is never visible in the bytes: decided by the reading, no
-`ambiguous` finding. **[proposed]** Where (a) selects a form, (b) can
-read only that one. A first byte in neither set fails both forms under
-(b) as well, and under (a) gives `syntax`, which alone is given
+**Reading taken.** **[proposed]** (a).
+
+**In the bytes.** The sets do not overlap, so the choice is never
+visible in the bytes: decided by the reading, no `ambiguous` finding.
+Where (a) selects a form, (b) can read only that one. A first byte in
+neither set fails both forms under (b) as well, and under (a) gives
+`syntax`, which alone is given
 ([README section 3](README.md#3-tokenizer-model), Precedence).
 
 **Decoders (read).**
@@ -202,8 +209,8 @@ require one (table below).
 **Reading taken.** **[proposed]** (a). **[agreed]** After a position
 report the area descriptor is never read, whatever the symbol.
 
-Whether bytes that match an extension are one is inherent
-([README section 3](README.md#3-tokenizer-model)): every extension
+**In the bytes.** Whether bytes that match an extension are one is
+inherent ([README section 3](README.md#3-tokenizer-model)): every extension
 carries the question, and the bytes of one packet cannot narrow it.
 Decided by the reading, no finding, whatever byte follows the
 extension. A slot spelled with the literal letters of the descriptor's
@@ -239,9 +246,11 @@ uncompressed position.
 
 **Reading taken.** **[proposed]** (a), with `ambiguous` at the comment
 start when its bytes match an extension, since (b) is what several
-decoders read. Visible in the bytes. **[proposed]** (b) accepts those
-bytes when they match one of the extensions listed under `pos.ext` and
-give no `syntax` or `value` finding of that extension
+decoders read.
+
+**In the bytes.** Visible. (b) accepts those bytes when they match one
+of the extensions listed under `pos.ext` and give no `syntax` or
+`value` finding of that extension
 ([02-fields section 7.3](02-fields.md#73-values)). Its comment is
 then 7 or 9 bytes shorter, against a limit of 36 instead of 40, so the
 length never makes (b) fail where (a) does not. The finding is given
@@ -280,7 +289,9 @@ the report that ends at the symbol to 06 as well, which then had no
 bytes to read. Bytes that (b) would read as an ordinary comment get the
 `syntax` finding of 06, which alone is given
 ([README section 3](README.md#3-tokenizer-model), Precedence). No
-`ambiguous` finding here. **[proposed]** Where 06 reads the bytes as
+`ambiguous` finding here.
+
+**In the bytes.** Where 06 reads the bytes as
 weather, (b) reads them as weather too; the two readings differ only
 on bytes that fail as weather. A table byte other than `/` or `\`
 gives no `ambiguous` finding either: with its reading (b) dropped,
@@ -310,7 +321,8 @@ p. 22/12, and says longer comments are common. With the 9-byte
 
 **Reading taken.** **[proposed]** (a): a longer comment gives `value`,
 as for every stated limit. After `ext.phgr` the limit stays 36.
-Visible in the bytes, since (b) would accept the comment; the `value`
+
+**In the bytes.** Visible, since (b) would accept the comment; the `value`
 finding alone is given
 ([README section 3](README.md#3-tokenizer-model), Precedence).
 
@@ -337,8 +349,9 @@ p. 53/35; see [err.df.ext](#err.df.ext)).
 **Reading taken.** **[agreed]** (a), as
 [02-fields section 7.4](02-fields.md#74-bearing-and-nrq) also reads
 `ext.brgnrq`. Bearing-shaped bytes after PHG, RNG or DFS with the DF
-symbol stay comment and give `ambiguous` (`df.notdf`). Visible in the
-bytes. **[proposed]** The finding is at the
+symbol stay comment and give `ambiguous` (`df.notdf`).
+
+**In the bytes.** Visible. The finding is at the
 first of the 8 bytes, after an `ext.phg`, `ext.phgr`, `ext.rng` or
 `ext.dfs`, when their bearing is at most 360. (b) then reads them as
 bearing and NRQ, with the rest as `df.cmt`; its limit of 28 bytes is
@@ -371,9 +384,10 @@ course and speed with another symbol are bearing data or comment.
 any symbol.
 
 **Reading taken.** **[proposed]** (a), with `ambiguous` (`df.notdf`),
-because Dire Wolf, aprslib and Xastir read (b). Visible in the bytes.
-**[proposed]** The finding is at the first of the 8 bytes, when they
-follow an `ext.csespd` under a symbol other than `/\` and their bearing
+because Dire Wolf, aprslib and Xastir read (b).
+
+**In the bytes.** Visible. The finding is at the first of the 8 bytes,
+when they follow an `ext.csespd` under a symbol other than `/\` and their bearing
 is at most 360: (b) then reads them as bearing and NRQ, which takes
 them out of the comment, and accepts the report wherever (a) does.
 With a larger bearing (b) would give `value`, does not count, and there
@@ -397,10 +411,11 @@ The revision history records a change of the separator to `/`
 and then free text. (c) Other separators, as older units sent.
 
 **Reading taken.** **[proposed]** (a). No range check on the digits.
-Departures are visible and give `syntax`, which alone is given
-([README section 3](README.md#3-tokenizer-model), Precedence).
-**[proposed]** A field that (a) accepts is read the same way by (b) and
-(c), so it gives no `ambiguous` finding.
+
+**In the bytes.** Departures are visible and give `syntax`, which alone
+is given ([README section 3](README.md#3-tokenizer-model), Precedence).
+A field that (a) accepts is read the same way by (b) and (c), so it
+gives no `ambiguous` finding.
 
 **Decoders (read).** Xastir recognises `%XXX/Q` and two longer variants,
 only prints them, and keeps the field as status text (db.c:15283–15394).
@@ -426,8 +441,11 @@ bytes can be a subsquare or the start of the comment.
 6 only when `]` follows.
 
 **Reading taken.** **[proposed]** (a). When the 6-byte locator is not
-followed by `]`, the tokenizer gives `ambiguous` at byte 5. Visible in
-the bytes. **[proposed]** Byte 5 is the first subsquare letter. (b)
+followed by `]`, the tokenizer gives `ambiguous` at byte 5.
+
+**In the bytes.** Visible. Byte 5 is the first subsquare letter, the
+first byte where the readings divide
+([README section 3](README.md#3-tokenizer-model), Placing a finding). (b)
 would end the locator after 4 bytes and read bytes 5 and 6 as the start
 of `grid.cmt`, which accepts any bytes, so (b) accepts every such
 beacon that (a) accepts. With a `]` after the locator both readings
@@ -516,11 +534,12 @@ gives `syntax` in a status report (a stated sending rule) and `unstated`
 in a beacon. A destination in the AX.25 form cannot hold lower case,
 and one that only APRS-IS can carry is not `dest.grid` when it does
 ([amb.grid.range](#amb.grid.range)).
-Visible in the bytes and reported by those kinds; the `syntax` finding
-of a status report alone is given
+
+**In the bytes.** Visible, and reported by those kinds; the `syntax`
+finding of a status report alone is given
 ([README section 3](README.md#3-tokenizer-model), Precedence), and in a
 beacon the `unstated` finding stands without an `ambiguous` one.
-**[proposed]** That last holds where a lower-case letter is in the
+That last holds where a lower-case letter is in the
 first pair: (a) and (c) then fail, and (b) reads the bytes as the
 reading does. A lower-case letter only in the subsquare is different:
 (a) does not take bytes 5 and 6 as a subsquare, ends the locator after
@@ -551,10 +570,11 @@ types only.
 
 **Reading taken.** **[proposed]** (a), with the field structure and byte
 set of `nmea.field` taken from the examples and the general form of an
-NMEA 0183 sentence (recalled, not read). Decided by the reading; no
-`ambiguous` finding for other talkers or types. **[proposed]** (b) and
-(c) reject every other talker or type, so they fail there and do not
-count; where they accept a sentence, they read it as (a) does
+NMEA 0183 sentence (recalled, not read).
+
+**In the bytes.** Decided by the reading; no `ambiguous` finding for
+other talkers or types. (b) and (c) reject every other talker or type,
+so they fail there and do not count; where they accept a sentence, they read it as (a) does
 ([README section 3](README.md#3-tokenizer-model)).
 
 **Decoders (read).** FAP requires `$GP` and decodes RMC, GGA and GLL
@@ -594,10 +614,10 @@ accepts either case (below). Lower-case digits give `unstated`, as for
 anything the document has no rule for, and the value is still
 compared.
 
-Not an ambiguity in the bytes: (b) and (c) are not taken, and a
+**In the bytes.** Not an ambiguity: (b) and (c) are not taken, and a
 mismatch is reported as the `value` finding, which alone is given
 ([README section 3](README.md#3-tokenizer-model), Precedence).
-**[proposed]** A missing checksum is read alike by (a) and (b), and (c)
+A missing checksum is read alike by (a) and (b), and (c)
 fails on it, so it does not count. A matching checksum, in either case
 of hex digit, is divided the same way by all three readings. No
 `ambiguous` finding.

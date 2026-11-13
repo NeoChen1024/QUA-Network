@@ -22,8 +22,40 @@ _AX25 = re.compile(rb"([A-Z0-9]{1,6})(?:-([1-9]|1[0-5]))?\Z")
 _SSID_ZERO = re.compile(rb"[A-Z0-9]{1,6}-0[0-9]?\Z")
 _SSID_HIGH = re.compile(rb"[A-Z0-9]{1,6}-(?:1[6-9]|[2-9][0-9])\Z")
 _IS_ADDR = re.compile(rb"[\x21-\x29\x2b\x2d-\x39\x3b-\x3d\x3f-\x7e]{1,9}\Z")  # not > , : *
+_CALL = frozenset(b"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 
 AX25, IS_ONLY, BAD = 0, 1, 2
+
+
+def first_bad(a, allowed, limit):
+    """Offset in a of the first byte at fault for a name of 1 to limit bytes
+    from allowed: the first byte outside allowed, the first byte past the
+    limit, or 0 when a is empty (README section 3, Placing a finding)."""
+    for i, c in enumerate(a[: limit + 1]):
+        if i == limit or c not in allowed:
+            return i
+    return 0
+
+
+_IS_SET = frozenset(range(0x21, 0x7F)) - frozenset(b">,:*")
+
+
+def ax25_bad(a):
+    """Offset in a of the first byte that does not fit the AX.25 text form,
+    for an address that _AX25 rejects (len(a) when a byte is missing)."""
+    i = 0
+    while i < len(a) and i < 6 and a[i] in _CALL:
+        i += 1
+    if i == 0 or i == len(a) or a[i] != 0x2D:
+        return i
+    j = i + 1
+    if j == len(a) or a[j] not in b"123456789":
+        return j
+    if j + 1 == len(a):
+        return len(a)
+    if a[j] != 0x31 or a[j + 1] not in b"012345":
+        return j + 1
+    return j + 2
 
 
 def address(scan, start, end, depth, call_rule="addr.call", ssid_rule="addr.ssid"):
@@ -51,7 +83,7 @@ def address(scan, start, end, depth, call_rule="addr.call", ssid_rule="addr.ssid
         scan.find("addr.is", "is-only", start)
         return IS_ONLY, end
     scan.residue(start, end, depth, "addr.is")
-    scan.find("addr.is", "syntax", start)
+    scan.find("addr.is", "syntax", start + first_bad(a, _IS_SET, 9))
     return BAD, end
 
 
@@ -121,7 +153,6 @@ def dest_class(scan, call, start, dti):
 # --- The header (01 sections 2 to 4) ------------------------------------
 
 _Q = re.compile(rb"qA[A-Za-z]\Z")
-_PATH_IS = re.compile(rb"[\x21-\x2b\x2d-\x39\x3b-\x7e]+\Z")  # not , :
 _OBSOLETE_ALIAS = frozenset((b"RELAY", b"TRACE", b"WIDE"))
 _NOGATE = frozenset((b"NOGATE", b"RFONLY"))
 
@@ -130,6 +161,13 @@ def _strip_star(line, s, e):
     if e > s and line[e - 1] == 0x2A:
         return e - 1, True
     return e, False
+
+
+def _syntax_since(scan, n):
+    """Whether a syntax finding was given after the first n findings: a field
+    gives at most one, at its first failing byte (README section 3, Placing a
+    finding), so a '*' after an address that already failed adds none."""
+    return any(f.kind == "syntax" for f in scan.findings[n:])
 
 
 def header(scan, end, dti, depth=0):
@@ -142,28 +180,34 @@ def header(scan, end, dti, depth=0):
         return
     (ss, se), (ds, de), entries = spans
 
-    # Source.
+    # Source. A field whose extent its delimiter fixes keeps its token when
+    # its bytes are wrong; a trailing '*', which no rule reads there, is a
+    # residue one level below (README section 3, Output).
     ae, star = _strip_star(line, ss, se)
-    scan.tok("addr.src", ss, ae, depth)
+    scan.tok("addr.src", ss, se, depth)
+    n = len(scan.findings)
     if ae == ss:
         scan.find("addr.src", "syntax", ss)
     else:
         address(scan, ss, ae, depth + 1, ssid_rule="src.ssid")
     if star:
-        scan.residue(ae, se, depth, "addr.src")
-        scan.find("addr.src", "syntax", ae)
+        scan.residue(ae, se, depth + 1, "addr.src")
+        if not _syntax_since(scan, n):
+            scan.find("addr.src", "syntax", ae)
     scan.tok("line.gt", se, se + 1, depth)
 
     # Destination.
     ae, star = _strip_star(line, ds, de)
-    scan.tok("addr.dest", ds, ae, depth)
+    scan.tok("addr.dest", ds, de, depth)
+    n = len(scan.findings)
     if ae == ds:
         scan.find("addr.dest", "syntax", ds)
     else:
         _dest(scan, ds, ae, depth + 1, dti)
     if star:
-        scan.residue(ae, de, depth, "addr.dest")
-        scan.find("addr.dest", "syntax", ae)
+        scan.residue(ae, de, depth + 1, "addr.dest")
+        if not _syntax_since(scan, n):
+            scan.find("addr.dest", "syntax", ae)
 
     _path(scan, entries, depth)
 
@@ -180,6 +224,7 @@ def _path(scan, entries, depth, inner=False):
     n_digi = 0
     used_seen = False
     for es, ee in entries:
+        star_at = -1
         if inner:
             scan.tok("tp.path", es - 1, ee, depth)
             d = depth + 1
@@ -187,8 +232,6 @@ def _path(scan, entries, depth, inner=False):
                 scan.find("tp.path", "syntax", es - 1)
                 continue
             star_at = line.find(b"*", es, ee)
-            if star_at >= 0:
-                scan.find("tp.path", "syntax", star_at)
         else:
             scan.tok("path.sep", es - 1, es, depth)
             d = depth
@@ -203,24 +246,43 @@ def _path(scan, entries, depth, inner=False):
             scan.find("path.q", "is-only", es)
             continue
         if q_seen:
-            scan.tok("path.is", es, ee, d)
-            if not _PATH_IS.match(entry):
-                scan.find("path.is", "syntax", es)
-                continue
-            body = entry[:-1] if entry.endswith(b"*") else entry
-            if entry.endswith(b"*") and not inner:
-                scan.find("path.is", "unstated", ee - 1)
-            # The SSID text-form rules of addr.ssid are not applied here.
-            if not _AX25.match(body):
-                scan.find("path.is", "is-only", es)
+            # In an inner header the entry ends at its first '*', as above.
+            pe = star_at if star_at >= 0 else ee
+            entry = line[es:pe]
+            if pe > es:
+                scan.tok("path.is", es, pe, d)
+            bad = next((es + i for i, c in enumerate(entry) if not 0x21 <= c <= 0x7E), pe)
+            if bad < pe:
+                scan.find("path.is", "syntax", bad)
+            elif pe > es:
+                body = entry[:-1] if entry.endswith(b"*") else entry
+                if entry.endswith(b"*"):
+                    scan.find("path.is", "unstated", ee - 1)
+                # The SSID text-form rules of addr.ssid are not applied here.
+                if not _AX25.match(body):
+                    scan.find("path.is", "is-only", es)
+            if star_at >= 0:
+                scan.residue(star_at, ee, d, "tp.path")
+                if bad == pe:
+                    scan.find("tp.path", "syntax", star_at)
             continue
         n_digi += 1
-        ae, star = _strip_star(line, es, ee)
-        scan.tok("path.digi", es, ae, d)
+        n = len(scan.findings)
+        if star_at >= 0:
+            # In an inner header the '*' and what follows it are a residue
+            # below the tp.path token, with one syntax finding at the '*'
+            # unless the address before it already gave one.
+            ae, star = star_at, True
+            if ae > es:
+                scan.tok("path.digi", es, ae, d)
+        else:
+            ae, star = _strip_star(line, es, ee)
+            scan.tok("path.digi", es, ae, d)
         if n_digi == 9:
             scan.find("path.digi", "value", es)
         if ae == es:
-            scan.find("path.digi", "syntax", es)
+            if not inner:
+                scan.find("path.digi", "syntax", es)
         else:
             # The callsign part of an alias or a gating block carries its class.
             call = line[es:ae].partition(b"-")[0]
@@ -238,6 +300,10 @@ def _path(scan, entries, depth, inner=False):
             if used_seen:
                 scan.find("path.used", "syntax", ae)
             used_seen = True
+        elif star:
+            scan.residue(ae, ee, d, "tp.path")
+            if not _syntax_since(scan, n):
+                scan.find("tp.path", "syntax", ae)
 
 
 def _dest(scan, ds, de, depth, dti):
@@ -372,6 +438,7 @@ def third_party(scan, start, end, depth, readers, level):
 
 
 _TP_SRC_IS = re.compile(rb"[\x21-\x29\x2b-\x39\x3b-\x3d\x3f-\x7e]{1,9}\Z")  # not > : *
+_TP_SRC_SET = frozenset(range(0x21, 0x7F)) - frozenset(b">:*")
 
 
 def _inner_dti(scan, sep):
@@ -417,17 +484,19 @@ def _tp_header(scan, h0, sep, depth):
     elif _TP_SRC_IS.match(a):
         scan.find("tp.src", "is-only", ss)
     else:
-        scan.find("tp.src", "syntax", ss)
+        scan.find("tp.src", "syntax", ss + first_bad(a, _TP_SRC_SET, 9))
     scan.tok("tp.gt", se, se + 1, depth)
     ae, star = _strip_star(line, ds, de)
-    scan.tok("tp.dest", ds, ae, depth)
+    scan.tok("tp.dest", ds, de, depth)
+    n = len(scan.findings)
     if ae == ds:
         scan.find("tp.dest", "syntax", ds)
     else:
         _dest(scan, ds, ae, depth + 1, _inner_dti(scan, sep))
     if star:
-        scan.residue(ae, de, depth, "tp.dest")
-        scan.find("tp.dest", "syntax", ae)
+        scan.residue(ae, de, depth + 1, "tp.dest")
+        if not _syntax_since(scan, n):
+            scan.find("tp.dest", "syntax", ae)
     if len(entries) < 2:
         # Network identifier and gateway are both required.
         for es, ee in entries:
@@ -437,16 +506,27 @@ def _tp_header(scan, h0, sep, depth):
     *path, (ns, ne), (gs, ge) = entries
     _path(scan, path, depth, inner=True)
     scan.tok("tp.net", ns - 1, ne, depth)
-    if ne == ns or b"*" in line[ns:ne]:
+    star_at = line.find(b"*", ns, ne)
+    if ne == ns:
         scan.find("tp.net", "syntax", ns)
+    elif star_at >= 0:
+        n = len(scan.findings)
+        if star_at > ns:
+            address(scan, ns, star_at, depth + 1)
+        scan.residue(star_at, ne, depth + 1, "tp.net")
+        if not _syntax_since(scan, n):
+            scan.find("tp.net", "syntax", star_at)
     else:
         address(scan, ns, ne, depth + 1)
+    # One syntax finding for the gateway, at its first byte at fault
+    # (README section 3, Placing a finding).
     scan.tok("tp.gate", gs - 1, ge, depth)
     ae, star = _strip_star(line, gs, ge)
-    if not star:
-        scan.find("tp.gate", "syntax", ge)
     g = line[gs:ae]
     if _AX25.match(g) or _SSID_ZERO.match(g) or _SSID_HIGH.match(g):
+        n = len(scan.findings)
         address(scan, gs, ae, depth + 1)
+        if not star and not _syntax_since(scan, n):
+            scan.find("tp.gate", "syntax", ge)
     else:
-        scan.find("tp.gate", "syntax", gs)
+        scan.find("tp.gate", "syntax", gs + ax25_bad(g))

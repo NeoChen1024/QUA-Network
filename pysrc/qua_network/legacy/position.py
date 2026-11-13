@@ -105,12 +105,14 @@ def _uncompressed(scan, start, p, end, depth):
     # The extension slot (02 section 7.1, step 3; amb.pos.ext).
     slot = p
     x = step3(line, p, end)
+    # Runs that this reading takes as comment text carry their finding on
+    # cmt.text (README section 3, Placing a finding).
     if area_literal(line, p, end):
-        scan.find("ext.area", "ambiguous", p)
+        scan.find("cmt.text", "ambiguous", p)  # amb.ext.area
     if x is None:
         q = csespd_mixed(line, p, end)
         if q is not None:
-            scan.find("ext.csespd", "ambiguous", q)
+            scan.find("cmt.text", "ambiguous", q)  # amb.ext.csespd
     else:
         emit_ext(scan, x, depth)
         p += x.n
@@ -139,9 +141,10 @@ def _uncompressed(scan, start, p, end, depth):
     if x is not None and x.h_alpha:
         # amb.ext.phg: reading (b) takes the extension as comment text, within
         # the limit without an extension (43).
-        # A length finding that both readings give does not count against (b).
+        # After ext.phgr, (b)'s length finding falls on another byte than
+        # this reading's, so it is (b)'s own (README section 3).
         rest = cmt.counted if cmt else 0
-        if x.rule != "ext.phgr" or x.n + rest <= 43 or rest > limit:
+        if x.rule != "ext.phgr" or x.n + rest <= 43:
             scan.find(x.rule, "ambiguous", slot)
     return cmt
 

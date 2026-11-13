@@ -34,11 +34,11 @@ which is offset 0. Destination bytes are numbered 1 to 6.
 The token of byte 0 carries `mice.dti`, so that the tokens show the
 packet as Mic-E ([README section 3](README.md#3-tokenizer-model)).
 
-**[proposed]** `mice.fixed` has no token of its own: its eight parts
-(section 4) are one-byte tokens at the level of `mice.dti`. When the
-field ends early, the parts present keep their tokens and checks, and
-the one `syntax` finding on `mice.fixed` is placed where the first
-missing byte was expected.
+`mice.fixed` has no token of its own: its eight parts (section 4) are
+one-byte tokens at the level of `mice.dti`. When the field ends early,
+the parts present keep their tokens and checks, and the one `syntax`
+finding on `mice.fixed` is placed where the first missing byte was
+expected ([README section 3](README.md#3-tokenizer-model), Output).
 
 **[proposed]** The data type identifier alone makes a packet Mic-E
 ([amb.mice.recognition](#amb.mice.recognition)). A destination that does not
@@ -105,8 +105,8 @@ Checks on the six bytes taken together:
   document calls the result unknown, and no comment type has that code
   ([amb.mice.dest](#amb.mice.dest)).
 
-**[proposed]** Tokens and rules. The `dest.mice` token of 01-frame is
-the `mice.dest` field, and the six parts are tokens one level below it.
+Tokens and rules. The `dest.mice` token of 01-frame is the `mice.dest`
+field, and the six parts are tokens one level below it (table above).
 A byte outside the set of its position, and a blank in byte 1 or 2,
 give their finding on the rule of the part. The checks on the six
 bytes together give theirs on `mice.dest`: a blank followed by a digit
@@ -120,7 +120,9 @@ when it is shorter, at the seventh byte when it is longer, and the
 bytes past the sixth are then a residue one level below `dest.mice`.
 The SSID keeps the `dest.ssid` token of 01-frame. `mice.dest.ssid`
 names its `obsolete` finding, at the `'-'`, which is not given where
-`addr.ssid` already reports the suffix.
+`addr.ssid` already reports the suffix. Each of these applies
+[README section 3](README.md#3-tokenizer-model): Output, Placing a
+finding, and Precedence for the derived findings.
 
 ## 4. Information field
 
@@ -144,9 +146,11 @@ The course is 100 × ((n mod 10) mod 4) of `mice.dc` plus the value of
 `mice.se`. 0 means unknown and 360 north (p. 67/49). A course from 361
 to 399 can be coded and gives a `value` finding. Any speed the three bytes
 can code lies in 0 to 799 knots, the stated range, so speed needs no
-check. **[proposed]** The course finding is on `mice.dc`, at its byte,
-and is not given when `mice.dc` or `mice.se` already gives a finding
-of its own.
+check. The course finding is on `mice.dc`, at its byte, the first
+byte at fault, and is not given when `mice.dc` or `mice.se` already
+gives a `syntax` or `value` finding of its own
+([README section 3](README.md#3-tokenizer-model), Placing a finding
+and Precedence).
 
 **[proposed]** Either coding of `mice.sp` and of `mice.dc` is accepted in
 any combination, with no finding ([amb.mice.scheme](#amb.mice.scheme)).
@@ -197,55 +201,65 @@ overrides the encoded one, is not read as a position; its bytes are free
 text with an `ambiguous` finding when they would be accepted as a
 position ([amb.mice.extension](#amb.mice.extension)).
 
-**[proposed]** How the tokenizer applies this section:
+How the tokenizer applies this section:
 
-- The parts are read in this order: the prefix or `mice.tlm`, the
-  altitude, then the suffix from the last bytes, then the locator, the
-  data extension and the free text, which ends where the suffix
-  starts. The free text is one [`cmt.text`](02-fields.md#cmt.text)
-  token beside the other parts, with the items of
+- **[proposed]** The parts are read in this order: the prefix or
+  `mice.tlm`, the altitude, then the suffix from the last bytes, then
+  the locator, the data extension and the free text, which ends where
+  the suffix starts. The free text is one
+  [`cmt.text`](02-fields.md#cmt.text) token beside the other parts,
+  with the items of
   [02-fields section 8.2](02-fields.md#82-items-found-inside-a-comment)
   one level below it.
 - A `'}'` three bytes after the place of the altitude makes the four
-  bytes `mice.alt`. A byte before the `'}'` that is not a
-  [`b91.digit`](02-fields.md#b91.digit) gives `syntax` at the first
-  such byte. Such an altitude still stands at the start in the sense
-  of [amb.mice.alt](#amb.mice.alt).
-- After `mice.tlm` the bytes are read as status text whose prefix
-  `mice.tlm` replaces: an altitude and a locator may follow it
-  directly, and there is no suffix.
-- **[proposed]** `/G` closes the locator the way the `']'` of a beacon
-  does ([README section 3](README.md#3-tokenizer-model), forms
-  recognised by shape alone): two letters, two digits and optionally two
-  letters, then `/G`, are `mice.grid`, and a letter outside its range
+  bytes `mice.alt`: the `'}'` fixes the extent of a field whose place
+  is fixed, so the field keeps its token when its bytes are wrong
+  ([README section 3](README.md#3-tokenizer-model), Output). A byte
+  before the `'}'` that is not a [`b91.digit`](02-fields.md#b91.digit)
+  gives `syntax` at the first such byte. Such an altitude still stands
+  at the start in the sense of [amb.mice.alt](#amb.mice.alt).
+- **[proposed]** After `mice.tlm` the bytes are read as status text
+  whose prefix `mice.tlm` replaces: an altitude and a locator may
+  follow it directly, and there is no suffix.
+- `/G` closes the locator the way the `']'` of a beacon does
+  ([README section 3](README.md#3-tokenizer-model), forms recognised by
+  shape alone): two letters, two digits and optionally two letters,
+  then `/G`, are `mice.grid`, and a letter outside its range
   ([amb.grid.range](03-position.md#amb.grid.range)) gives `syntax` at
   that byte. An earlier draft read a subsquare letter past `'X'` as no
   subsquare, took the bytes as free text and gave them an `ambiguous`
   finding at the fifth byte from reading (b) of amb.grid.range.
-- `mice.grid` gives at most one `syntax` finding: at its first byte
-  that is lower case or outside its range, else at the byte after the
-  `'G'` when free text follows there without the SP. Nothing, or only
-  a [`tlm.b91`](07-telemetry.md#tlm.b91) block or a DAO, before the
+- `mice.grid` gives at most one `syntax` finding, at its first failing
+  byte ([README section 3](README.md#3-tokenizer-model), Placing a
+  finding): at its first byte that is lower case or outside its range,
+  else at the byte after the `'G'` when free text follows there without
+  the SP. **[proposed]** Nothing, or only a
+  [`tlm.b91`](07-telemetry.md#tlm.b91) block or a DAO, before the
   suffix needs no SP. A SP directly after `/G` belongs to `mice.grid`
   whatever follows it, also when nothing, or only those parts or the
   suffix, follows; it is never free text of its own.
-- The `ambiguous` findings of section 7 are given on these rules:
+- The `ambiguous` findings of section 7 are given on the rule this
+  reading gives the bytes
+  ([README section 3](README.md#3-tokenizer-model), Placing a finding):
   `mice.type.prefix` at offset 9 ([amb.mice.byte9](#amb.mice.byte9));
-  `mice.grid` at the first locator byte
-  ([amb.mice.grid](#amb.mice.grid)); `mice.alt` at the first byte of
-  the match ([amb.mice.alt](#amb.mice.alt)); for
-  [amb.mice.extension](#amb.mice.extension), the rule of the extension
-  form, or `mice.status` for a position, at the first byte of the run.
-- Free text, in the tests of [amb.mice.alt](#amb.mice.alt) and
+  `cmt.text`, the free text this reading makes of the bytes, at the
+  first locator byte ([amb.mice.grid](#amb.mice.grid)), at the first
+  byte of the match ([amb.mice.alt](#amb.mice.alt)) and at the first
+  byte of the run ([amb.mice.extension](#amb.mice.extension)). An
+  earlier draft put the last three on the rule of the other reading:
+  `mice.grid`, `mice.alt`, and the rule of the extension form or
+  `mice.status` for a position.
+- **[proposed]** Free text, in the tests of
+  [amb.mice.alt](#amb.mice.alt) and
   [amb.mice.extension](#amb.mice.extension), is the `cmt.text` token
   less the items found in it.
-- In the status text the search of
+- **[proposed]** In the status text the search of
   [amb.mice.extension](#amb.mice.extension) takes the place of that of
   [amb.ext.count](02-fields.md#amb.ext.count). A course and speed is
   not a Mic-E extension form, so seven bytes of its shape give no
   finding, at the start of the free text or later.
-- The status text has no length limit, so the conditions of
-  [amb.cmt.dao](02-fields.md#amb.cmt.dao) and
+- **[proposed]** The status text has no length limit, so the
+  conditions of [amb.cmt.dao](02-fields.md#amb.cmt.dao) and
   [amb.ext.phg](02-fields.md#amb.ext.phg) that compare a comment with
   its limit always hold here.
 
@@ -350,10 +364,11 @@ the [README](README.md#4-decoders-consulted), not run.
   No action is stated (p. 65/47 to p. 70/52).
 - **Readings.** (a) Only table values. (b) Whatever the steps decode.
 - **Reading taken.** **[proposed]** (a): such bytes give `value`, and
-  bytes outside 0x1C–0x7F give `syntax`. Visible in the bytes. Reading
-  (b) would decode the bytes that give `value`, but that finding alone
-  is given, with no `ambiguous` beside it
-  ([README section 3](README.md#3-tokenizer-model), Precedence).
+  bytes outside 0x1C–0x7F give `syntax`.
+- **In the bytes.** Visible. Reading (b) would decode the bytes that
+  give `value`, but that finding alone is given, with no `ambiguous`
+  beside it ([README section 3](README.md#3-tokenizer-model),
+  Precedence).
 - **Decoders.** FAP and aprsc accept degrees 0x26–0x7F, minutes
   0x26–0x61, DC 0x1C–0x7D and the other three bytes 0x1C–0x7F
   (`FAP.pm:1653`; `parse_aprs.c:631-639`); aprslib the same
@@ -376,8 +391,8 @@ the [README](README.md#4-decoders-consulted), not run.
 - **Readings.** (a) Any mixture. (b) One coding per packet.
 - **Reading taken.** **[proposed]** (a). The document calls both equally
   valid and its decoding steps handle either.
-- **In the bytes.** **[proposed]** Visible, but with no finding under
-  the test of [README section 3](README.md#3-tokenizer-model). A packet
+- **In the bytes.** Visible, but with no finding under the test of
+  [README section 3](README.md#3-tokenizer-model). A packet
   can mix the codings only where `mice.sp` lies in 0x1C–0x2F or
   0x6C–0x7F, the speeds with two codings. Reading (b) would refuse the
   packets whose `mice.sp` and `mice.dc` bytes it takes to be of
@@ -401,7 +416,7 @@ the [README](README.md#4-decoders-consulted), not run.
   `'a'`–`'j'` as in compressed ones (p. 64/46, p. 125/101).
 - **Readings.** (a) The uncompressed set. (b) The compressed set.
 - **Reading taken.** **[proposed]** (a), as all decoders read do it.
-  Visible in the bytes. An overlay `'a'`–`'j'`, which reading (b)
+- **In the bytes.** Visible. An overlay `'a'`–`'j'`, which reading (b)
   accepts, gets the finding of [`sym.table`](02-fields.md#sym.table)
   alone, with no `ambiguous` beside it
   ([README section 3](README.md#3-tokenizer-model), Precedence). A digit
@@ -431,14 +446,18 @@ the [README](README.md#4-decoders-consulted), not run.
   reports `ambiguous`. Visible in the bytes, as that finding. A SP at
   offset 9, which UAP 2.2.1 attributes to the original Mic-E, is free
   text.
-- **In the bytes.** **[proposed]** The `ambiguous` finding is at offset
-  9. Under the test of [README section 3](README.md#3-tokenizer-model)
-  it is given only where reading (b) would accept the status text: four
+- **In the bytes.** The `ambiguous` finding is on `mice.type.prefix`
+  at offset 9, where the readings first divide the bytes. Under the
+  test of [README section 3](README.md#3-tokenizer-model) it is given
+  only where reading (b) would accept the status text: four
   hexadecimal digits follow 0x60, or ten follow 0x27, from offset 10,
   and reading (b), taking the bytes after them as status text with no
   prefix and so no suffix, gives no `syntax` or `value` finding of its
-  own. A finding that both readings give on the same bytes does not
-  count against (b) and does not suppress the `ambiguous` finding. Where
+  own. A finding of (b) for which this reading gives one of the same
+  kind at the same offset is shared: it does not count against (b) and
+  does not suppress the `ambiguous` finding (README section 3, Which
+  findings are the other reading's own). An earlier draft counted a
+  finding as shared only when its rule ID was the same as well. Where
   this reading reports the bytes that (b) takes as telemetry as `syntax`
   or `value`, such as a lower-case locator from offset 10, that finding
   alone is given (Precedence). An earlier draft also withheld the
@@ -521,8 +540,8 @@ the [README](README.md#4-decoders-consulted), not run.
 - **Readings.** (a) Take the suffix first, then search for telemetry in
   what is left. (b) Pair the `'|'` bytes first.
 - **Reading taken.** **[proposed]** (a).
-- **In the bytes.** **[proposed]** The readings divide the bytes
-  differently only when the bytes between the last `'|'` before the
+- **In the bytes.** The readings divide the bytes differently only
+  when the bytes between the last `'|'` before the
   suffix and the suffix's own `'|'` fit
   [`tlm.b91`](07-telemetry.md#tlm.b91): pairing the bars first would
   make them a block. In every other case the two readings agree.
@@ -554,20 +573,22 @@ the [README](README.md#4-decoders-consulted), not run.
 - **Readings.** (a) Only at the start, after any prefix. (b) Anywhere.
 - **Reading taken.** **[proposed]** (a). A later match of three base-91
   digits and `'}'` is free text.
-- **In the bytes.** **[proposed]** Visible, under the test of
+- **In the bytes.** Visible, under the test of
   [README section 3](README.md#3-tokenizer-model), where reading (b)
   would accept the match as the altitude: there is no altitude at the
   start, and the four bytes lie wholly in free text, not inside another
-  part of section 5. Such a match gives an `ambiguous` finding at its
-  first byte. Reading (b) reads every other byte as this reading does,
+  part of section 5. Such a match gives an `ambiguous` finding on
+  `cmt.text`, the rule this reading gives it, at its first byte
+  (section 5). Reading (b) reads every other byte as this reading does,
   so a `syntax` or `value` finding elsewhere in the status text is
   given by both and does not suppress the `ambiguous` finding. When an
   altitude stands at the start, both readings take that one and a later
-  match is text under both, with no finding. **[proposed]** That holds
-  also for an altitude at the start with a `syntax` finding, a byte
-  before the `'}'` that is not a base-91 digit: the `'}'` fixes the
-  extent of the field at the start, a place both readings give the
-  altitude, so both take the four bytes as the altitude, and its
+  match is text under both, with no finding. That holds also for an
+  altitude at the start with a `syntax` finding, a byte before the
+  `'}'` that is not a base-91 digit: the `'}'` fixes the extent of the
+  field at the start, a place both readings give the altitude, so both
+  take the four bytes as the altitude
+  ([README section 3](README.md#3-tokenizer-model), Output), and its
   finding is one that both give. The readings differ only in whether a
   later match can be the altitude when none stands at the start.
   An earlier draft gave the
@@ -596,15 +617,17 @@ the [README](README.md#4-decoders-consulted), not run.
 - **Reading taken.** **[proposed]** (a), after the prefix and any
   altitude. Without `/G` the bytes are free text. Upper case, per the
   rule that locators are sent in upper case (p. 152/128); lower case
-  gives `syntax`. Whether a four-character locator is one, which reading
-  (b) denies, is carried by every four-character locator and gives no
-  finding ([README section 3](README.md#3-tokenizer-model)). Reading (c)
-  is visible in the bytes: where a locator is followed by a
+  gives `syntax`.
+- **In the bytes.** Whether a four-character locator is one, which
+  reading (b) denies, is carried by every four-character locator and
+  gives no finding ([README section 3](README.md#3-tokenizer-model)).
+  Reading (c) is visible in the bytes: where a locator is followed by a
   [`sym.table`](02-fields.md#sym.table) byte and a
   [`sym.code`](02-fields.md#sym.code) byte other than `/G`, the bytes
-  are free text with an `ambiguous` finding at the first locator byte.
-  **[proposed]** Under the test of README section 3 this holds only
-  where reading (c) would accept the locator: it stands where
+  are free text with an `ambiguous` finding on `cmt.text`, the rule
+  this reading gives them, at the first locator byte (section 5).
+  Under the test of README section 3 this holds only where reading (c)
+  would accept the locator: it stands where
   `mice.grid` may stand, after the prefix and any altitude, its letters
   are upper case, the two symbol bytes give no `syntax` or `value`
   finding of their own, and the symbol is followed by SP, by the end of
@@ -634,15 +657,17 @@ the [README](README.md#4-decoders-consulted), not run.
   passage as unclear (p. 72/54, p. 157/133).
 - **Readings.** (a) Extensions only at the start of the free text.
   (b) Anywhere. For the position: (c) not looked for; (d) looked for.
-- **Reading taken.** **[proposed]** (a) and (c). Visible in the bytes
-  where readings (b) or (d) would divide them differently: a later run
-  that fits [`ext.phg`](02-fields.md#ext.phg),
+- **Reading taken.** **[proposed]** (a) and (c).
+- **In the bytes.** Visible where readings (b) or (d) would divide
+  them differently: a later run that fits
+  [`ext.phg`](02-fields.md#ext.phg),
   [`ext.phgr`](02-fields.md#ext.phgr), [`ext.rng`](02-fields.md#ext.rng)
   or [`ext.dfs`](02-fields.md#ext.dfs), or a run anywhere in the text
   that fits an uncompressed position ([`lat`](02-fields.md#lat),
   [`sym.table`](02-fields.md#sym.table), [`lon`](02-fields.md#lon),
   [`sym.code`](02-fields.md#sym.code)), is free text with an `ambiguous`
-  finding at its first byte. **[proposed]** Under the test of
+  finding on `cmt.text`, the rule this reading gives it, at its first
+  byte (section 5). Under the test of
   [README section 3](README.md#3-tokenizer-model) "fits" means that the
   run matches those rules with no `syntax` or `value` finding of theirs,
   and that it lies wholly in free text, not inside another part of
@@ -672,11 +697,11 @@ the [README](README.md#4-decoders-consulted), not run.
   `mice.sp`, `mice.dc` and `mice.se`.
 - **Readings.** (a) Raw bytes on APRS-IS. (b) Some escape form.
 - **Reading taken.** **[proposed]** (a).
-- **In the bytes.** **[proposed]** Decided by the reading, with no
-  finding ([README section 3](README.md#3-tokenizer-model)). Reading (b)
-  names no escape form, so it divides no packet's bytes differently,
-  and a byte replaced on the way is not visible: the question is
-  carried by every Mic-E packet, and its bytes cannot narrow it.
+- **In the bytes.** Decided by the reading, with no finding
+  ([README section 3](README.md#3-tokenizer-model)). Reading (b) names
+  no escape form, so it divides no packet's bytes differently, and a
+  byte replaced on the way is not visible: the question is carried by
+  every Mic-E packet, and its bytes cannot narrow it.
 - **Decoders.** aprsc, an APRS-IS server, checks the raw byte ranges
   including 0x1C–0x1F and 0x7F (`parse_aprs.c:631-639`). FAP has an
   option that repairs one known corruption, where non-printing bytes were

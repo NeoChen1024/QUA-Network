@@ -271,7 +271,9 @@ def _after_prefix(scan, p, end, d, prefix):
             scan.find("mice.grid", "syntax", bad)
         p = ge
     elif _grid_other_symbol(line, p, te):
-        scan.find("mice.grid", "ambiguous", p)
+        # The finding is on the rule this reading gives the bytes, the free
+        # text (README section 3, Placing a finding).
+        scan.find("cmt.text", "ambiguous", p)
 
     # One data extension at the start of the free text (amb.mice.extension);
     # a course and speed is not one of the Mic-E forms.
@@ -356,8 +358,11 @@ def _free_text(scan, s, e, d, alt_at_start):
     (04 section 5) with no length limit."""
     line = scan.line
     scan.tok("cmt.text", s, e, d)
-    for i in bad_text_bytes(line[s:e]):
-        scan.find("cmt.text", "syntax", s + i)
+    # One syntax finding, at the first byte outside the set (README section
+    # 3, Placing a finding).
+    bad = bad_text_bytes(line[s:e])
+    if bad:
+        scan.find("cmt.text", "syntax", s + bad[0])
     dd = d + 1
     items = _cmt_altitudes(scan, s, e, dd)
     daos = dao_candidates(line, s, e)
@@ -389,20 +394,21 @@ def _free_text(scan, s, e, d, alt_at_start):
         return not any(i < ie and is_ < j for _, is_, ie in items)
 
     # amb.mice.extension: a later run of a marked extension, and a standard
-    # position anywhere in the text.
+    # position anywhere in the text. These findings and that of amb.mice.alt
+    # are on cmt.text, the rule this reading gives the bytes.
     for m in _MARKED.finditer(line, s, e):
         x = step3(line, m.start(), e)
         if x is not None and x.clean() and in_text(x.start, x.start + x.n):
-            scan.find(x.rule, "ambiguous", x.start)
+            scan.find("cmt.text", "ambiguous", x.start)
     for m in _POSITION.finditer(line, s, e):
         i = m.start()
         if i + 19 <= e and in_text(i, i + 19) and _position_fits(line, i):
-            scan.find("mice.status", "ambiguous", i)
+            scan.find("cmt.text", "ambiguous", i)
     # amb.mice.alt: a later altitude, when none stands at the start.
     if not alt_at_start:
         for m in _ALT_RUN.finditer(line, s, e):
             if in_text(m.start(), m.end()):
-                scan.find("mice.alt", "ambiguous", m.start())
+                scan.find("cmt.text", "ambiguous", m.start())
 
     # 09 section 7 at the start of the free text, after its syntax findings.
     frequency(scan, s, e, dd)
@@ -435,8 +441,10 @@ def _byte9(scan, s, end, d, prefix):
         return
     scratch = Scan(line)
     _after_prefix(scratch, h + n, end, d, None)
-    mine = set(scan.findings)
-    if any(f.kind in _BAD and f not in mine for f in scratch.findings):
+    # A finding of the same kind at the same offset is shared; the rule ID is
+    # not compared (README section 3).
+    mine = {(f.kind, f.offset) for f in scan.findings}
+    if any(f.kind in _BAD and (f.kind, f.offset) not in mine for f in scratch.findings):
         return
     scan.find("mice.type.prefix", "ambiguous", s)
 
@@ -453,5 +461,5 @@ def read(scan, start, end, depth):
     texts = status(scan, start, end, depth)
     if start + 9 < end and line[start + 7] == 0x5F:
         # amb.wx.carriers: reading (a) would read the status text as weather.
-        weather_carriers(scan, start + 9, end, "wx.pos", wind=False)
+        weather_carriers(scan, start + 9, end, depth, wind=False)
     noarchive_outside(scan, start, end, texts)

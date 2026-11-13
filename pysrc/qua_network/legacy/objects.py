@@ -74,7 +74,7 @@ def _object(scan, dti, p, end, depth, texts):
         scan.find("obj.state", "syntax", e)
 
     # amb.obj.time: required. Six digits mark a timestamp, which no position
-    # starts with; anything else is a missing timestamp and ends the reading.
+    # starts with; anything else is a missing timestamp.
     t = e + 1
     head = line[t : min(t + 6, end)]
     if head and all(c in DIGITS for c in head):
@@ -82,9 +82,12 @@ def _object(scan, dti, p, end, depth, texts):
         if not ok:
             return
     else:
+        # A missing timestamp uses no byte; the position is read from where it
+        # was expected (README section 3, Output).
         scan.find("obj.time", "syntax", t)
-        scan.residue(t, end, depth, "obj.time")
-        return
+        if t >= end:
+            return
+        q = t
     if missing(scan, "obj.pos", q, end):
         return
     freq_name = _FREQ_NAME.match(line[p : p + 9]) is not None
@@ -113,7 +116,8 @@ def _item(scan, start, end, depth, texts):
         if bad is not None:
             scan.find("item.name", "syntax", bad)
         if t - p < 3:
-            scan.find("item.name", "value", p)
+            # At the place where the missing byte was expected (README section 3).
+            scan.find("item.name", "value", t)
         elif t - p > 9:
             scan.find("item.name", "value", p + 9)
     scan.tok("item.state", t, t + 1, depth)
@@ -186,14 +190,18 @@ def _uncompressed(scan, dti, p, end, depth, kind, freq_name):
             line_area = line[p] in b"16"
             p = e
     else:
-        # Step 3, with the visible cases of 7.1.
+        # Step 3, with the visible cases of 7.1. Each of these runs is comment
+        # text here, so its finding is on cmt.text, the rule this reading gives
+        # the bytes (02 section 7.1; README section 3, Placing a finding).
         x = step3(line, p, end)
-        if area_literal(line, p, end) or area_high(line, p, end):
-            scan.find("ext.area", "ambiguous", p)
+        if area_literal(line, p, end):
+            scan.find("cmt.text", "ambiguous", p)  # amb.ext.area
+        if area_high(line, p, end):
+            scan.find("cmt.text", "ambiguous", p)  # amb.area.symbol
         if x is None:
             m = csespd_mixed(line, p, end)
             if m is not None:
-                scan.find("ext.csespd", "ambiguous", m)
+                scan.find("cmt.text", "ambiguous", m)  # amb.ext.csespd
         else:
             emit_ext(scan, x, depth)
             p += x.n
@@ -207,7 +215,7 @@ def _uncompressed(scan, dti, p, end, depth, kind, freq_name):
             brg = brgnrq_shape(line, p, end)
             df_sym = table == 0x2F and code == 0x5C
             if brg is not None and brg <= 360 and (x.rule == "ext.csespd" or df_sym):
-                scan.find("ext.brgnrq", "ambiguous", p)
+                scan.find("cmt.text", "ambiguous", p)
 
     has_ext = x is not None or p > slot
     limit = 36 if has_ext else 43
@@ -218,11 +226,11 @@ def _uncompressed(scan, dti, p, end, depth, kind, freq_name):
         # the limit without an extension (43). A length finding that both
         # readings give does not count against (b).
         rest = cmt.counted if cmt else 0
-        if x.rule != "ext.phgr" or x.n + rest <= 43 or rest > limit:
+        if x.rule != "ext.phgr" or x.n + rest <= 43:
             scan.find(x.rule, "ambiguous", slot)
     if code == 0x5F and slot < end:
         # amb.wx.carriers: an item that reading (a) would read as weather.
-        weather_carriers(scan, slot, end, "wx.obj")
+        weather_carriers(scan, slot, end, depth)
     return cmt
 
 
@@ -240,13 +248,14 @@ def _compressed(scan, dti, q, end, depth, kind, freq_name):
     table, code = line[q], line[q + 9]
     area = table == 0x5C and code == 0x6C
     if area and area_bad(line, e, end) is None:
-        # 02 section 6.5: at a slot of this report 7.1 would try ext.area.
-        scan.find("ext.area", "ambiguous", e)
+        # 02 section 6.5: at a slot of this report 7.1 would try ext.area. The
+        # bytes are comment text, so the finding is on cmt.text.
+        scan.find("cmt.text", "ambiguous", e)
     extra = _braces(scan, e, end, depth, table, code, False)
     # amb.ext.compressed: 7.1 would try no course and speed in a \l report.
     cmt = comment(scan, e, end, depth, 43, kind + ".cmt", b91_kind="unstated", extra=extra, start_cse=not area, freq_name=freq_name)
     if code == 0x5F and e < end:
-        weather_carriers(scan, e, end, "wx.obj", block=q)  # amb.wx.carriers, as above
+        weather_carriers(scan, e, end, depth, block=q)  # amb.wx.carriers, as above
     return cmt
 
 
@@ -263,10 +272,11 @@ def _braces(scan, s, end, depth, table, code, line_area):
         if m:
             scan.tok("area.corridor", s, m.end(), d)
             return [("area.corridor", s, m.end())]
-        # amb.area.braces: reading (b) would take a later one.
+        # amb.area.braces: reading (b) would take a later one, which this
+        # reading leaves as comment text.
         m = _CORRIDOR.search(line, s, end)
         if m:
-            scan.find("area.corridor", "ambiguous", m.start())
+            scan.find("cmt.text", "ambiguous", m.start())
         return []
     if table == 0x5C and code == 0x6D:
         m = _SIGNPOST.search(line, s, end)

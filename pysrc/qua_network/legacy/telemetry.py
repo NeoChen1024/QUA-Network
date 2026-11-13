@@ -79,7 +79,7 @@ def read(scan, start, end, depth):
     n0 = len(scan.findings)
     mic_bare = _report(scan, start, end, depth, texts)
     if mic_bare:
-        mine = {f for f in scan.findings[n0:] if f.kind in _SV}
+        mine = {(f.kind, f.offset) for f in scan.findings[n0:] if f.kind in _SV}
         _seq_other(scan, start, end, depth, mine)
     noarchive_outside(scan, start, end, texts)
 
@@ -138,10 +138,9 @@ def _report(scan, start, end, depth, texts, alnum_seq=False):
         scan.find("tlm.digital", "syntax", bad)
     p += 8
     if p < end:
-        if line[p] in b", " and not alnum_seq:
-            # amb.tlm.count: reading (c) takes the byte as a separator and
-            # accepts the report wherever this reading does.
-            scan.find("tlm.cmt", "ambiguous", p)
+        # A ',' or SP here is the first byte of the comment, with no finding:
+        # no text of the document puts a separator there (amb.tlm.count;
+        # README section 3, Separators and padding).
         _comment(scan, p, end, depth)
         texts.append((p, end))
     return mic_bare
@@ -182,11 +181,12 @@ def _seq_digits(scan, p, end, depth):
         return None
     scan.tok("tlm.seq", p, c + 1, depth)
     # amb.tlm.seq: a digit run of another length gives value; the ',' fixes
-    # the extent of the field.
+    # the extent of the field. A short run gives it where the first missing
+    # digit was expected (README section 3, Placing a finding).
     if run > 3:
         scan.find("tlm.seq", "value", p + 4)
     elif bad is None and run < 3:
-        scan.find("tlm.seq", "value", p + 1)
+        scan.find("tlm.seq", "value", p + 1 + run)
     if bad is not None:
         scan.find("tlm.seq", "syntax", bad)
     return c + 1
@@ -206,17 +206,18 @@ def _seq_alnum(scan, p, end):
 def _seq_other(scan, start, end, depth, mine):
     """amb.tlm.seq: MIC with no ',' after it, which reading (c) runs on to the
     first ','. mine are the syntax and value findings this reading gives in
-    the report. The finding is given when reading (c) gives no such finding
-    of its own, and this reading gives none that reading (c) does not give
-    (Precedence): the two readings then differ only in how they divide the
-    bytes. Findings are compared whole, rule included (README section 3),
-    so the two readings failing at one byte under different rules are two
-    findings."""
+    the report, as (kind, offset). The finding is given when reading (c)
+    gives no such finding of its own, and this reading gives none that
+    reading (c) does not give (Precedence): the two readings then differ
+    only in how they divide the bytes. A finding is shared when both give
+    one of the same kind at the same offset, whatever its rule (README
+    section 3). The finding goes on tlm.analog, the rule this reading gives
+    offset 5, where the readings first divide the bytes."""
     other = Scan(scan.line)
     _report(other, start, end, depth, [], alnum_seq=True)
-    theirs = {f for f in other.findings if f.kind in _SV}
+    theirs = {(f.kind, f.offset) for f in other.findings if f.kind in _SV}
     if theirs == mine:
-        scan.find("tlm.seq", "ambiguous", start + 5)
+        scan.find("tlm.analog", "ambiguous", start + 5)
 
 
 def _comment(scan, p, end, depth):
@@ -241,6 +242,18 @@ _LISTS = {
 # Longest name, unit or label of A1 to A5 and B1 to B8, the comma not counted.
 _NAME_MAX = (7, 6, 5, 5, 4, 5, 4, 3, 3, 3, 2, 2, 2)
 _TITLE_MAX = 23
+
+
+def _bad_text(line, p, q):
+    """The first byte of line[p:q] that is not a text byte of 08 section 1,
+    or None. Such a byte gives its syntax finding on the field of section 4
+    that holds it, the most specific rule, and none on msg.text (README
+    section 3, Placing a finding)."""
+    # fields imports this module for b91_block, so it is imported here.
+    from qua_network.legacy.fields import bad_text_bytes
+
+    bad = bad_text_bytes(line[p:q])
+    return p + bad[0] if bad else None
 
 
 def definition(scan, t0, te, depth, kw=None):
@@ -271,12 +284,22 @@ def definition(scan, t0, te, depth, kw=None):
         if k == most:
             # One finding for the list, at the comma of the first extra field.
             scan.find(item, "syntax", a)
-        elif k < most:
-            if kw == b"EQNS.":
-                bad = _number_bad(line, body, b)
-                if bad is not None:
-                    scan.find(item, "syntax", bad)
-            elif k == 0 and b == body:
+        elif k > most:
+            # A field after the first extra one keeps its token and the byte
+            # rule of the fields.
+            bad = _bad_text(line, body, b)
+            if bad is not None:
+                scan.find(item, "syntax", bad)
+        elif kw == b"EQNS.":
+            # The relaxed number's bytes lie inside the text bytes.
+            bad = _number_bad(line, body, b)
+            if bad is not None:
+                scan.find(item, "syntax", bad)
+        else:
+            bad = _bad_text(line, body, b)
+            if bad is not None:
+                scan.find(item, "syntax", bad)
+            if k == 0 and b == body:
                 # A1 holds at least one byte; a ',' follows here.
                 scan.find(item, "value", body)
             elif b - body > _NAME_MAX[k]:
@@ -303,6 +326,9 @@ def _bits(scan, t0, te, depth):
     if q >= te:
         return
     scan.tok("tlm.bits.title", q, te, d)
+    bad = _bad_text(line, q, te)
+    if bad is not None:
+        scan.find("tlm.bits.title", "syntax", bad)
     if te - q > _TITLE_MAX:
         scan.find("tlm.bits.title", "value", q + _TITLE_MAX)
     elif line[q] == 0x2C:
@@ -320,8 +346,7 @@ def keyword_case(scan, t0, te, depth):
         return False
     other = Scan(scan.line)
     definition(other, t0, te, depth, kw)
-    # Findings are compared whole, rule included (README section 3): a byte
-    # that both msg.text and a field of reading (b) reject is a finding of
-    # reading (b)'s own under its rule.
-    mine = {f for f in scan.findings if f.kind in _SV}
-    return all(f in mine for f in other.findings if f.kind in _SV)
+    # A finding of reading (b) is shared when this reading gives one of the
+    # same kind at the same offset, whatever its rule (README section 3).
+    mine = {(f.kind, f.offset) for f in scan.findings if f.kind in _SV}
+    return all((f.kind, f.offset) in mine for f in other.findings if f.kind in _SV)

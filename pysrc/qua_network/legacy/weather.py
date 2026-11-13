@@ -11,7 +11,6 @@ amb.wx.carriers.
 from qua_network.legacy.fields import (
     DIGITS,
     LOWER,
-    SP,
     SYM_TABLE,
     UPPER,
     comment,
@@ -108,11 +107,12 @@ def _first_bad(b, rule):
 
 
 def _value_findings(scan, rule, s, b):
-    """Findings on the value b of the element at s."""
+    """Findings on the value b of the element at s. A value finding is at the
+    first byte of the value, the first byte at fault (README section 3)."""
     if rule == "wx.wdir" and _digits(b) and int(b) > 360:
-        scan.find(rule, "value", s)
+        scan.find(rule, "value", s + 1)
     elif rule == "wx.temp" and b[:1] == b"-" and _digits(b[1:]) and int(b[1:]) == 0:
-        scan.find(rule, "value", s)
+        scan.find(rule, "value", s + 1)
     elif rule == "wx.rawrain":
         # amb.wx.rawrain: the width is this reading's, not the document's.
         scan.find(rule, "unstated", s)
@@ -248,13 +248,16 @@ def _alt_accepts(scan, s, end, runs=False, extra=False):
     scratch = Scan(scan.line)
     q, _ = _elements(scratch, s, end, 0, set(), runs, extra)
     _tail(scratch, q, end, 0)
-    mine = set(scan.findings)
-    return not any(f.kind in _BAD and f not in mine for f in scratch.findings)
+    # A finding of the same kind at the same offset is shared; the rule ID is
+    # not compared (README section 3).
+    mine = {(f.kind, f.offset) for f in scan.findings}
+    return not any(f.kind in _BAD and (f.kind, f.offset) not in mine for f in scratch.findings)
 
 
 def _tail_ambiguities(scan, q, end, last, first):
     """amb.wx.width and amb.wx.letters: another reading would end the data
-    at a different byte. The finding is at the first byte of the tail."""
+    at a different byte. The finding is at the first byte of the tail, on
+    the rule of its first token, which this reading gives that byte."""
     line = scan.line
     if any(f.kind in _BAD and q <= f.offset <= end for f in scan.findings):
         return  # Precedence: the tail already has its finding.
@@ -265,15 +268,15 @@ def _tail_ambiguities(scan, q, end, last, first):
     if c in DIGITS:
         # (b) of amb.wx.width would lengthen a last value written in digits.
         if last is not None:
-            rule, s = last
+            _, s = last
             v = line[s + 1 : q]
             if (_digits(v) or v[:1] == b"-" and _digits(v[1:])) and _alt_accepts(scan, s, end, runs=True):
-                scan.find(rule, "ambiguous", q)
+                scan.find(first, "ambiguous", q)
     elif c in _ELEMENTS and (digit_next or signed):
         # (b) of amb.wx.width would read a letter with fewer digits than its
         # width as that element.
         if _alt_accepts(scan, q, end, runs=True):
-            scan.find(_ELEMENTS[c][0], "ambiguous", q)
+            scan.find(first, "ambiguous", q)
     elif c in _LETTERS and digit_next:
         # (b) of amb.wx.letters would read an undefined letter and its digits
         # as an extra element.
@@ -353,9 +356,17 @@ def _cmpwind(scan, block):
     whether the cs bytes match as the wind field (any kind but step 6)."""
     cs = block + 10
     rule = next((t.rule for t in scan.tokens if t.start == cs and t.rule.startswith("cmp.cs")), None)
-    if rule in ("cmp.cs.none", "cmp.cs.alt", "cmp.cs.rng"):
+    # Precedence: not where the cs or T bytes already have a syntax or value
+    # finding.
+    reported = any(f.kind in _BAD and cs <= f.offset < cs + 3 for f in scan.findings)
+    if rule in ("cmp.cs.none", "cmp.cs.alt", "cmp.cs.rng") and not reported:
         scan.find("cmp.cs", "unstated", cs)
     return rule != "cmp.cs"
+
+
+def _rule_at(scan, p, depth):
+    """The rule of this reading's token at depth that holds the byte p."""
+    return next((t.rule for t in scan.tokens if t.depth == depth and t.start <= p < t.end), None)
 
 
 def _object_comment(scan, s, end, depth):
@@ -365,15 +376,17 @@ def _object_comment(scan, s, end, depth):
         return
     scratch = Scan(scan.line)
     comment(scratch, s, end, depth, 43, "obj.cmt", b91_kind="unstated")
-    if not any(f.kind in _BAD for f in scratch.findings):
-        scan.find("wx.obj", "ambiguous", s)
+    rule = _rule_at(scan, s, depth)
+    if rule is not None and not any(f.kind in _BAD for f in scratch.findings):
+        scan.find(rule, "ambiguous", s)
 
 
-def carriers(scan, p, end, rule, block=None, wind=True):
+def carriers(scan, p, end, depth, block=None, wind=True):
     """amb.wx.carriers for an item or a Mic-E report with symbol code '_':
     reading (a) reads the bytes from p as weather (sections 5 to 7; for
     Mic-E, wind=False, sections 6 and 7 only). Call it once the report's own
-    reading of those bytes is complete."""
+    reading of those bytes is complete: the finding is on the rule of its
+    token at depth that holds p (README section 3, Placing a finding)."""
     if any(f.kind in _BAD and p <= f.offset <= end for f in scan.findings):
         return  # Precedence
     scratch = Scan(scan.line)
@@ -381,7 +394,8 @@ def carriers(scan, p, end, rule, block=None, wind=True):
         complete(scratch, p, end, 0, block)
     else:
         _data(scratch, p, end, 0, False)
-    if not any(f.kind in _BAD for f in scratch.findings):
+    rule = _rule_at(scan, p, depth)
+    if rule is not None and not any(f.kind in _BAD for f in scratch.findings):
         scan.find(rule, "ambiguous", p)
 
 
@@ -408,18 +422,24 @@ def storm(scan, table_at, p, end, depth):
         scan.find("sym.table", "unstated", table_at)
     p += 3
     for rule, mark, n in _STORM_FIELDS:
-        b = line[p + 1 : p + 1 + n]
-        if p + 1 + n > end or line[p] != mark:
-            ok = False
-        else:
-            fill = b == b"." * n or b == bytes((SP,)) * n
-            ok = _digits(b) or fill
-        if not ok:
+        if p >= end or line[p] != mark:
+            # No marker: a required field is missing, the storm data ends and
+            # the bytes from p are the comment.
             if rule != "storm.rgale":
                 scan.find(rule, "syntax", p)
             return p
-        scan.tok(rule, p, p + 1 + n, depth)
-        if fill:
-            scan.find(rule, "unstated", p)
-        p += 1 + n
+        # The marker fixes a field of fixed width: it keeps its token, with
+        # one syntax finding at the first byte that fails (README section 3).
+        # Unknown fill is no form of these fields.
+        e = min(p + 1 + n, end)
+        scan.tok(rule, p, e, depth)
+        b = line[p + 1 : e]
+        bad = next((i for i, c in enumerate(b) if c not in DIGITS), None)
+        if bad is None and e < p + 1 + n:
+            bad = len(b)
+        if bad is not None:
+            scan.find(rule, "syntax", p + 1 + bad)
+        if e < p + 1 + n:
+            return e  # Cut short by the end of the field: reading stops.
+        p = e
     return p

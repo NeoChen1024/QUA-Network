@@ -21,12 +21,17 @@ field it belongs to, or names the file that decides.
 
 Conventions used throughout this file:
 
-- **[proposed]** A field of fixed length is one token of that length,
-  whether or not its bytes match. A mismatch is a `syntax` finding on the
-  field's ID at the first byte that fails. Whether parsing continues after
-  it is stated by the format file.
-- **[proposed]** A `value` finding is reported at the first byte of the
-  part whose value is out of range.
+- A field of fixed length is one token of that length whether or not
+  its bytes match. A mismatch is one `syntax` finding at the first byte
+  that fails, on the most specific rule at fault, usually the field's
+  own ID. A field cut short covers the bytes present, with the finding
+  where the first missing byte was expected. Reading continues at the
+  next field wherever its start can be told
+  ([README section 3](README.md#3-tokenizer-model), Output and Placing a
+  finding). An earlier draft left it to the format file whether parsing
+  continues after such a field.
+- A `value` finding is reported at the first byte of the part whose
+  value is out of range (README section 3, Placing a finding).
 - Parts of a field (the digits of a latitude, the bytes of an extension)
   are described by byte offset from the start of the field, counting
   from 0. They are not separate tokens unless a row says so.
@@ -48,14 +53,14 @@ says "DHM / HMS", p. 50/32), the tokenizer takes seven bytes and lets the
 byte at offset 6 choose: `'z'` or `'/'` gives `time.dhm`, `'h'` gives
 `time.hms`. Any other byte, including `'Z'` and `'H'`, gives a `time.dhm`
 token with a `syntax` finding at offset 6. A non-digit in offsets 0 to 5
-is a `syntax` finding on the chosen ID. **[proposed]** When both hold, the
-one finding is at the first byte that fails, as for any fixed field
-(section 1). See [amb.time.indicator](#amb.time.indicator).
+is a `syntax` finding on the chosen ID. See
+[amb.time.indicator](#amb.time.indicator).
 
-**[proposed]** Value ranges. Outside them the finding is `value`. Each
-part is checked when its two digits are present, whatever the other
-parts hold: a `syntax` finding elsewhere in the field does not suppress
-it.
+When both hold, the one finding is at the first byte that fails, as for
+any fixed field (section 1;
+[README section 3](README.md#3-tokenizer-model), Placing a finding).
+
+**[proposed]** Value ranges. Outside them the finding is `value`.
 
 | Part | Range | Basis |
 |---|---|---|
@@ -63,6 +68,11 @@ it.
 | Month | `01`–`12` | Stated, p. 38/22 |
 | Hour | `00`–`23` | Follows from the 24-hour clock, p. 38/22 |
 | Minute, second | `00`–`59` | Not stated; reading |
+
+Each part is checked when its two digits are present, whatever the
+other parts hold: a `syntax` finding elsewhere in the field is an
+independent defect and does not suppress it
+([README section 3](README.md#3-tokenizer-model), Precedence).
 
 The tokenizer does not check a day against the length of its month: no
 form carries a year, and DHM carries no month.
@@ -86,9 +96,7 @@ gives a `discouraged` finding on `time.dhm` at offset 6.
 The hemisphere letters are upper case (p. 39/23). A lower-case
 letter, or any other byte, is a `syntax` finding at that offset.
 
-**[proposed]** Value ranges, checked only on digits that are present
-(see [amb.lat.range](#amb.lat.range)), also when another byte of the
-field gives `syntax` or the field is cut short:
+**[proposed]** Value ranges (see [amb.lat.range](#amb.lat.range)):
 
 | Part | No finding | `value` finding |
 |---|---|---|
@@ -96,6 +104,11 @@ field gives `syntax` or the field is cut short:
 | Longitude degrees | `000`–`180` (stated, p. 40/24) | `181`–`999` |
 | Tens of minutes (offset 2 of `lat`, 3 of `lon`) | `'0'`–`'5'` | `'6'`–`'9'` |
 | Minutes and hundredths when the degrees are `90` (`lat`) or `180` (`lon`) | all `'0'` or `SP` | any other digit |
+
+They are checked only on digits that are present, also when another
+byte of the field gives `syntax` or the field is cut short: those are
+independent defects
+([README section 3](README.md#3-tokenizer-model), Precedence).
 
 ### 3.2 Position ambiguity
 
@@ -106,11 +119,19 @@ field gives `syntax` or the field is cut short:
 
 **[proposed]** The level of a field is the number of `SP` counted from
 the first offset of its order up to the first offset that is not `SP`.
-Every `SP` that breaks the order gives its own `syntax` finding. The
-longitude's level is compared with the latitude's; when it is higher,
-the finding is at the first longitude offset, in its order, beyond the
-latitude's level. A latitude whose blanks break the order still has the
-level so defined.
+The longitude's level is compared with the latitude's; when it is
+higher, the byte at fault is the first longitude offset, in its order,
+beyond the latitude's level. A latitude whose blanks break the order
+still has the level so defined.
+
+`lat` and `lon` each give at most one `syntax` finding, at the first
+byte of the field that fails its layout, the order of `lat.amb` or
+`lon.amb`, or the longitude's level. It is on `lat.amb` or `lon.amb`
+when that byte is a `SP` that breaks the order or exceeds the level, and
+on `lat` or `lon` otherwise
+([README section 3](README.md#3-tokenizer-model), Placing a finding).
+An earlier draft gave every `SP` that breaks the order its own `syntax`
+finding.
 
 The levels correspond to a tenth of a minute, one minute, ten minutes and
 one degree (p. 40/24, p. 41/25). **[proposed]** The contiguity rule and
@@ -201,10 +222,21 @@ such as [`pos.form`](03-position.md#pos.form); an earlier draft named
 | <a id="cmp.cs"></a>`cmp.cs` | Course and speed, range, altitude or wind | 2 bytes, `c` then `s`, read as in 6.3. The token carries the ID of the reading chosen. | Yes | Fixed, 2 bytes | p. 56/38 to p. 58/40 |
 | <a id="cmp.t"></a>`cmp.t` | Compression type | 1 byte, read as in 6.4. | Yes | Fixed, 1 byte | p. 57/39, p. 58/40 |
 
-**[proposed]** A block cut short by the end of the field is one
-`cmp.block` token over the bytes present, with no part tokens. Its one
-`syntax` finding, on `cmp.block`, is at the first byte present that
-fails its part, or else where the first missing byte was expected.
+A block cut short by the end of the field is a `cmp.block` token over
+the bytes present. Each part with a byte present is a token over the
+bytes it has and is checked as in a whole block; a part with no byte
+present has no token. The part cut short, or else the first part
+missing, gives a `syntax` finding where its first missing byte was
+expected, unless a byte of it that is present already fails
+([README section 3](README.md#3-tokenizer-model), Output and Placing a
+finding). An earlier draft gave such a block no part tokens and its one
+finding on `cmp.block`.
+
+**[proposed]** Since the step of 6.3 depends on `T`, the `cs` part of a
+block without `T` is a `cmp.cs` token, or `cmp.cs.none` when `c` is
+`SP`. Its `c` fails only when no step could take it (neither `SP` nor
+`'!'`–`'{'`), and its `s` is checked as a base-91 digit, or as a filler
+after a `c` of `SP`.
 
 **[proposed]** Range of `cmp.lat` and `cmp.lon`. Latitude 90 S and
 longitude 180 E both give 68566680 (380926 × 180 = 190463 × 360 =
@@ -231,15 +263,19 @@ holds. See [amb.cmp.cs](#amb.cmp.cs) for the order of steps 2 and 4.
 speed range of step 4, the token is `cmp.cs.alt` with an `ambiguous`
 finding at `c`, since a reading that lets the range of `c` decide
 alone, without consulting `T`, would take the bytes as course and
-speed. **[proposed]** The same holds when `c` is `'{'`, the range value
-of step 5: the token is `cmp.cs.alt`, with an `ambiguous` finding at
-`c`, since that reading would take the bytes as a range.
-**[proposed]** The `cs` token gives at most one `syntax` finding, at
-the first of `c` and `s` that fails. A `syntax` finding at `s` or the
-`value` finding of 6.4 at `T` does not suppress either finding: both readings would give it,
-so it does not count against the other reading
-([README section 3](README.md#3-tokenizer-model)). See
-[amb.cmp.cs](#amb.cmp.cs).
+speed.
+
+The same holds when `c` is `'{'`, the range value of step 5:
+the token is `cmp.cs.alt`, with an `ambiguous` finding at `c`, since
+that reading would take the bytes as a range
+([README section 3](README.md#3-tokenizer-model), applied in
+[amb.cmp.cs](#amb.cmp.cs)). The `cs` token gives at most one `syntax`
+finding, at the first of `c` and `s` that fails (README section 3,
+Placing a finding). A `syntax` finding at `s` or the `value` finding of
+6.4 at `T` does not suppress either `ambiguous` finding: both readings
+give it, of the same kind at the same offset, so it does not count
+against the other reading (README section 3, Which findings are the
+other reading's own).
 
 ### 6.4 The T byte
 
@@ -267,6 +303,10 @@ one that fails, is not an extension under any reading, so it does not
 make the bytes ambiguous
 ([README section 3](README.md#3-tokenizer-model)).
 
+That finding is on the rule this reading gives the first byte of the
+run, as in [amb.ext.count](#amb.ext.count)
+([README section 3](README.md#3-tokenizer-model), Placing a finding).
+
 ## 7. Data extensions
 
 ### 7.1 The extension slot
@@ -276,13 +316,19 @@ make the bytes ambiguous
   they match one of the forms in 7.2, they are read as that extension.
   When they match none, the slot is empty and the comment starts there.
   Being an extension, or not, gives no finding of its own. See
-  [amb.ext.slot](#amb.ext.slot). **[proposed]** The slot bytes on
-  which the readings of another entry divide differently get the
-  `ambiguous` findings that entry gives: the literal-letter case and
-  the descriptor-only case below, [amb.ext.csespd](#amb.ext.csespd) and
-  [amb.ext.phg](#amb.ext.phg). An earlier draft also listed
-  [amb.pos.ext](03-position.md#amb.pos.ext), which no longer gives a
-  finding.
+  [amb.ext.slot](#amb.ext.slot). The slot bytes on which the readings
+  of another entry divide differently get the `ambiguous` findings that
+  entry gives: the literal-letter case and the descriptor-only case
+  below, [amb.ext.csespd](#amb.ext.csespd) and
+  [amb.ext.phg](#amb.ext.phg)
+  ([README section 3](README.md#3-tokenizer-model)). An earlier draft
+  also listed [amb.pos.ext](03-position.md#amb.pos.ext), which no
+  longer gives a finding.
+- Each `ambiguous` finding of this section and of 7.3 is on the rule
+  this reading gives the first byte of the bytes in question: the
+  extension's own rule where this reading reads them as an extension,
+  and [`cmt.text`](#cmt.text) where it reads them as comment text
+  ([README section 3](README.md#3-tokenizer-model), Placing a finding).
 - **[proposed]** The forms are tried in this order, and the first match
   is taken:
   1. **[agreed]** In an object or item report whose symbol is table
@@ -312,14 +358,15 @@ make the bytes ambiguous
   which alone is given
   ([README section 3](README.md#3-tokenizer-model), Precedence). See
   [amb.ext.area](#amb.ext.area).
-- **[proposed]** In an object or item report whose symbol is not `\l`
-  and which is not read as a weather report, seven slot bytes after an
-  uncompressed position that fit only `ext.area`, with a colour of
-  `'1'` and `'0'`–`'5'` (10 to 15), so that they are no course and
-  speed or other form of step 3, are comment text with an `ambiguous`
-  finding at their first byte, under the condition of
+- In an object or item report whose symbol is not `\l` and which is
+  not read as a weather report, seven slot bytes after an uncompressed
+  position that fit only `ext.area`, with a colour of `'1'` and
+  `'0'`–`'5'` (10 to 15), so that they are no course and speed or other
+  form of step 3, are comment text with an `ambiguous` finding at their
+  first byte, under the condition of
   [amb.area.symbol](05-object-item.md#amb.area.symbol): a reading in
-  which the bytes decide would take them as a descriptor.
+  which the bytes decide would take them as a descriptor
+  ([README section 3](README.md#3-tokenizer-model)).
 - **[proposed]** There is no slot after a compressed block (6.5).
 
 ### 7.2 Fields
@@ -353,20 +400,23 @@ are comment text (UAP 5.9).
 **[proposed]** A course and speed whose two parts are of different kinds
 (digits in one, dots or spaces in the other, as in `088/...`) is read as
 `ext.csespd` with an `unstated` finding. **[proposed]** Digits, dots and
-spaces are three kinds, so `.../   ` mixes kinds too. **[proposed]** It
-also gets an `ambiguous` finding at its first byte, since a reading that
-takes only the listed forms would read the seven bytes as comment text,
-unless the course gives the `value` finding above; then there is no
-`ambiguous` finding, and the `unstated` one stays. A
-seven-byte slot with `'/'` at offset 3 and only digits, dots and spaces,
-in which one part mixes kinds, is comment text, with an `ambiguous`
-finding at its first byte unless its course part is three digits above
-360. See [amb.ext.csespd](#amb.ext.csespd).
+spaces are three kinds, so `.../   ` mixes kinds too.
 
-**[proposed]** An `ext.phg`, `ext.phgr` or `ext.dfs` whose `h` is not a
-digit gets an `ambiguous` finding at its first byte, under the
-condition of [amb.ext.phg](#amb.ext.phg), unless its `d` gives the
-`value` finding above.
+Such a course and speed also gets an `ambiguous` finding at its first
+byte, since a reading that takes only the listed forms would read the
+seven bytes as comment text, unless the course gives the `value`
+finding above; then there is no `ambiguous` finding, and the `unstated`
+one, on an independent defect, stays. A seven-byte slot with `'/'` at
+offset 3 and only digits, dots and spaces, in which one part mixes
+kinds, is comment text, with an `ambiguous` finding at its first byte
+unless its course part is three digits above 360
+([README section 3](README.md#3-tokenizer-model), applied in
+[amb.ext.csespd](#amb.ext.csespd)).
+
+An `ext.phg`, `ext.phgr` or `ext.dfs` whose `h` is not a digit gets an
+`ambiguous` finding at its first byte, under the condition of
+[amb.ext.phg](#amb.ext.phg), unless its `d` gives the `value` finding
+above (README section 3, Precedence).
 
 ### 7.4 Bearing and NRQ
 
@@ -374,14 +424,16 @@ condition of [amb.ext.phg](#amb.ext.phg), unless its `d` gives the
 of a report whose symbol is table `'/'` with code `'\'`. With that
 symbol, 8 bytes of its shape directly after any other extension are
 comment text with an `ambiguous` finding at their first byte.
-**[proposed]** That finding is given when their bearing is at most 360;
-with a larger bearing the reading that would take them as bearing and
-NRQ gives `value` and does not count. Under any other symbol the 8
-bytes are comment text; when they directly follow an `ext.csespd` and
-fit `ext.brgnrq` with a bearing of at most 360, the finding is
-`ambiguous` at their first byte. Whether a DF report requires the field
-is stated in [03-position.md](03-position.md#3-df-reports). See
-[amb.ext.brgnrq](#amb.ext.brgnrq).
+
+That finding is given when their bearing is at most 360; with a larger
+bearing the reading that would take them as bearing and NRQ gives
+`value` and does not count. Under any other symbol the 8 bytes are
+comment text; when they directly follow an `ext.csespd` and fit
+`ext.brgnrq` with a bearing of at most 360, the finding is `ambiguous`
+at their first byte
+([README section 3](README.md#3-tokenizer-model), applied in
+[amb.ext.brgnrq](#amb.ext.brgnrq)). Whether a DF report requires the
+field is stated in [03-position.md](03-position.md#3-df-reports).
 
 ## 8. Comment
 
@@ -393,13 +445,23 @@ is stated in [03-position.md](03-position.md#3-df-reports). See
 
 - **[proposed]** A byte outside the set, including `0x0D` or `0x0A`
   anywhere in the comment and a byte that does not form well-formed
-  UTF-8, is a `syntax` finding at that byte. The token still runs to the
-  end of the information field. See [amb.cmt.bytes](#amb.cmt.bytes).
-- **[proposed]** The length limit of a comment is given by the format
-  file, in bytes (the diagrams count bytes, p. 50/32). The bytes counted
-  are those of the `cmt.text` token less those of its `cmt.dao` tokens
-  (p. 35/21). A longer comment is a `value` finding at the first byte
-  past the limit. See [amb.cmt.length](#amb.cmt.length).
+  UTF-8, is a `syntax` finding. See [amb.cmt.bytes](#amb.cmt.bytes).
+- The comment gives one such finding, at the first byte outside the
+  set, and the token still runs to the end of the information field
+  ([README section 3](README.md#3-tokenizer-model), Output and Placing
+  a finding). An earlier draft gave a finding at every byte outside the
+  set.
+- The length limit of a comment is given by the format file, in bytes
+  (the diagrams count bytes, p. 50/32). The bytes counted are those of
+  the `cmt.text` token, items found inside it included, less those of
+  its `cmt.dao` tokens (next item). A longer comment is a `value`
+  finding at the first byte past the limit (README section 3, Length
+  limits and Kinds by situation). See [amb.cmt.length](#amb.cmt.length).
+- **[proposed]** p. 35/21 is the page that exempts the DAO: it lets the
+  option extend beyond a "viewable" limit of 57 bytes, since legacy
+  systems do not use those bytes. That limit is not one of the comment
+  limits of the diagrams, so reading it as an exemption from them is a
+  reading.
 
 ### 8.2 Items found inside a comment
 
@@ -465,9 +527,15 @@ candidate when it fits a row of this table. See
 | `'a'`–`'z'` | Both base-91 digits | `cmt.dao` |
 | Letter or digit | Both `SP` | `cmt.dao` |
 | `'0'`–`'9'` | Both base-91 digits | `cmt.dao`, `unstated` finding |
-| Letter or digit | One `SP`, the other fitting the datum's mode (**[proposed]** a digit, for an upper-case datum; a base-91 digit, for a lower-case or digit datum, as in the row above) | `cmt.dao`, `unstated` finding |
 | Other base-91 digit | Both `SP` | `cmt.dao`, `unstated` finding |
 | Anything else | | Not a candidate; comment text |
+
+A run with one `SP` and one precision byte is outside every form of
+p. 35/21 to p. 36/22, which makes `A` and `O` base-91 digits or both
+`SP`. It is not a candidate: in the comment it is text, with no finding
+([README section 3](README.md#3-tokenizer-model), Kinds by situation).
+An earlier draft made it a candidate with an `unstated` finding when
+the other byte fitted the datum's mode.
 
 ## 9. Ambiguities
 
@@ -489,8 +557,8 @@ finding, out-of-range parts a `value` finding (section 2).
 **In the bytes.** Visible, since (b) or (c) would accept the bytes. The
 `syntax` or `value` finding of the reading alone is given
 ([README section 3](README.md#3-tokenizer-model), Precedence).
-**[proposed]** Where (a) gives no finding, (b) and (c) read the seven
-bytes the same way, so there is no `ambiguous` finding.
+Where (a) gives no finding, (b) and (c) read the seven bytes the same
+way, so there is no `ambiguous` finding (README section 3).
 
 | Decoder | Reads | Where |
 |---|---|---|
@@ -556,14 +624,15 @@ only; longitude blanks ignored. (c) Blanks anywhere, read as zero.
 
 **In the bytes.** Visible, and reported as that `syntax` finding, which
 alone is given ([README section 3](README.md#3-tokenizer-model),
-Precedence). **[proposed]** A longitude with fewer blanks than the
-latitude's level is allowed: p. 40/24 states that blanks in the
-longitude are allowed but not needed, and its own example has none. It
-matches every reading listed and gives no finding. Requiring the
-longitude to have as many blanks as the latitude is not a reading of
-the document, since it contradicts that statement; it is decoder
-behaviour (aprslib, in the table below). An earlier draft listed it as
-reading (b) and left open whether it made such a longitude visible.
+Precedence). A longitude with fewer blanks than the latitude's level is
+allowed: p. 40/24 states that blanks in the longitude are allowed but
+not needed, and its own example has none. It matches every reading
+listed and gives no finding. Requiring the longitude to have as many
+blanks as the latitude is not a reading of the document, since it
+contradicts that statement; it is decoder behaviour (aprslib, in the
+table below), which gives no finding (README section 3). An earlier
+draft listed it as reading (b) and left open whether it made such a
+longitude visible.
 
 | Decoder | Reads | Where |
 |---|---|---|
@@ -592,11 +661,12 @@ latitude and longitude is null. (c) The tokenizer does not distinguish.
 **Reading taken.** **[proposed]** (c): no token or finding of its own;
 recognition belongs to the decoding layer.
 
-**In the bytes.** **[proposed]** Decided silently. Readings (a) and (b)
-would classify all-zero coordinates as the null position, but every
-such position carries the question, and the bytes of one packet cannot
-tell a null position from a station at 0° 0′
-([README section 3](README.md#3-tokenizer-model)). No finding.
+**In the bytes.** Decided silently. Readings (a) and (b) would
+classify all-zero coordinates as the null position, but every such
+position carries the question, and the bytes of one packet cannot tell
+a null position from a station at 0° 0′
+([README section 3](README.md#3-tokenizer-model), on an ambiguity that
+every instance of a form carries). No finding.
 
 | Decoder | Reads | Where |
 |---|---|---|
@@ -699,19 +769,19 @@ step.
 **In the bytes.** Visible: (a) and (b) differ when the GGA bits of `T`
 are set and `c` lies in the course and speed range `'!'`–`'z'`, which
 the bytes show. Those blocks get `cmp.cs.alt` with an `ambiguous`
-finding at `c` (6.3). **[proposed]** They also differ when the GGA bits
-are set and `c` is `'{'`: (a) reads altitude and (b) a range. Those
-blocks also get `cmp.cs.alt` with an `ambiguous` finding at `c`. With `c` =
-`SP` and the GGA bits set, (c) would read altitude from a `c` that is
-not a base-91 digit, so it fails there and gives no finding.
-**[proposed]** In both visible cases (b) gives no finding of its own
-that (a) does not give: both need `s` to be a base-91 digit and read
-`T` by the same rule (6.4). A `syntax` finding at `s` or a `value`
-finding at `T` is one that both readings give, so it does not count
-against (b), and the `ambiguous` finding at `c` is given beside it
-(README section 3). In a weather report, (b) would take a `c` in
-`'!'`–`'z'` as wind (step 3) rather than course and speed; the finding
-is the same.
+finding at `c` (6.3). They also differ when the GGA bits are set and
+`c` is `'{'`: (a) reads altitude and (b) a range. Those blocks also get
+`cmp.cs.alt` with an `ambiguous` finding at `c`. With `c` = `SP` and
+the GGA bits set, (c) would read altitude from a `c` that is not a
+base-91 digit, so it fails there and gives no finding. In both visible
+cases (b) gives no finding of its own that (a) does not give: both need
+`s` to be a base-91 digit and read `T` by the same rule (6.4). A
+`syntax` finding at `s` or a `value` finding at `T` is one that both
+readings give, of the same kind at the same offset, so it does not
+count against (b), and the `ambiguous` finding at `c` is given beside
+it (README section 3, Which findings are the other reading's own). In a
+weather report, (b) would take a `c` in `'!'`–`'z'` as wind (step 3)
+rather than course and speed; the finding is the same.
 
 | Decoder | Reads | Where |
 |---|---|---|
@@ -897,11 +967,9 @@ speed run therefore gets the finding only at the start of the comment:
 directly after the slot's extension, or directly after a compressed
 block (6.5). Either reading leaves the rest of the comment as it is, so it
 accepts what this reading accepts. Such a run gets an `ambiguous`
-finding at its first byte. A run that already carries the `ambiguous`
-finding of 6.5 does not get it a second time: both entries report the
-run under the rule of the form it fits, at the same byte. This is the
-same kind of run that [amb.ext.compressed](#amb.ext.compressed) reports
-after a compressed block. **[proposed]** The search covers the comment
+finding at its first byte. This is the same kind of run that
+[amb.ext.compressed](#amb.ext.compressed) reports after a compressed
+block. **[proposed]** The search covers the comment
 of every report that carries a position, including a compressed one,
 since reading (c) takes a run with a marker anywhere in such a comment.
 **[agreed]** It does not cover the comment of a report without a
@@ -915,6 +983,15 @@ An earlier draft gave no further finding in those two cases. An
 earlier draft also treated the question as not visible, on the grounds
 that such a run cannot be told from text; that is the case the finding
 marks.
+
+The finding is on the rule this reading gives the first byte of the
+run: `cmt.text`, or the item found in the comment (8.2) that the byte
+lies in. A run that already carries the `ambiguous` finding of 6.5 does
+not get it a second time: both entries give the same finding, of the
+same rule, kind and offset, which is given once
+([README section 3](README.md#3-tokenizer-model), Placing a finding).
+An earlier draft reported the run under the rule of the extension form
+it fits, the rule of the other reading.
 
 | Decoder | Reads | Where |
 |---|---|---|
@@ -945,11 +1022,11 @@ uncompressed position.
 text, so a comment whose first bytes fit an extension is a case that
 the bytes of the packet show, not one that every compressed report
 carries; and the decoders split on it (table below), reading those
-bytes as an extension or as text. **[proposed]** Reading (b) takes them
-as an extension, and accepts them, when they fit a form that 7.1 would
-try at a slot of the same report and give no `syntax` or `value`
-finding of that form. Those bytes get an `ambiguous` finding at their
-first byte, the byte after `T` (6.5). Bytes that fit only another form
+bytes as an extension or as text. Reading (b) takes them as an
+extension, and accepts them, when they fit a form that 7.1 would try at
+a slot of the same report and give no `syntax` or `value` finding of
+that form (README section 3). Those bytes get an `ambiguous` finding at
+their first byte, the byte after `T` (6.5). Bytes that fit only another form
 of 7.2, or that would give such a finding, get none: (b) would not read
 them as an extension, or would fail on them. This differs from
 [amb.ext.slot](#amb.ext.slot), where the bytes in question are an
@@ -990,7 +1067,7 @@ reading (b) would take it. The meaning of 000 is left to decoding.
 `ambiguous` finding above; parts of different kinds an `unstated`
 finding; a course above 360 a `value` finding, which alone is given
 ([README section 3](README.md#3-tokenizer-model), Precedence).
-**[proposed]** By the test of README section 3, at the slot:
+By the test of README section 3, at the slot:
 
 - A run with `'/'` at offset 3 and only digits, dots and spaces, in
   which a part mixes kinds, fails (a) and is comment text. (b) takes it
@@ -1043,16 +1120,21 @@ digits only; PHGR not recognised.
 PHG followed by a comment of that shape, and the bytes of one packet
 cannot narrow it. It is decided by the reading (PHGR first), with no
 finding. A `d` of `'9'` is visible and is reported as the `value`
-finding of 7.3, which alone is given (Precedence). **[proposed]** An
-`h` that is not a digit is visible: (b) does not take the bytes as an
-extension and reads them as the start of the comment. It accepts the
-report when the comment, with those bytes added, stays within the
-limit the format gives without an extension; for `ext.phg` and
-`ext.dfs` that holds whenever (a) accepts, the limits being seven bytes
-apart (p. 50/32), while the nine bytes of an `ext.phgr` can pass it.
-**[proposed]** When this reading's comment after the `ext.phgr` is
-itself over its limit, both readings give the length finding, which
-does not count, and the condition holds.
+finding of 7.3, which alone is given (Precedence). An `h` that is not a
+digit is visible: (b) does not take the bytes as an extension and reads
+them as the start of the comment. It accepts the report when the
+comment, with those bytes added, stays within the limit the format
+gives without an extension; for `ext.phg` and `ext.dfs` that holds
+whenever (a) accepts, the limits being seven bytes apart (p. 50/32),
+while the nine bytes of an `ext.phgr` can pass it. When this reading's
+comment is itself over its limit, (b) is over its own as well. After an
+`ext.phg` or `ext.dfs` the two length findings fall on the same byte,
+so (b)'s is shared and does not count, and the condition holds. After
+an `ext.phgr`, (b)'s first byte past its limit lies two counted bytes
+before this reading's, so that finding is (b)'s own and the condition
+fails (README section 3, Which findings are the other reading's own).
+An earlier draft counted the length finding as shared after an
+`ext.phgr` too.
 Where (b) accepts, the extension gets `ambiguous` at its first byte,
 unless its `d` gives the `value` finding, which then alone is given.
 
@@ -1090,7 +1172,7 @@ entry took (a); it was changed to agree with 03. **[proposed]** Bearing
 above 360 is a `value` finding.
 
 **In the bytes.** Visible: an `ambiguous` finding where (a) or (c) would
-read the bytes differently (7.4). **[proposed]** By the test of
+read the bytes differently (7.4). By the test of
 [README section 3](README.md#3-tokenizer-model) that is two cases, both
 picked out by the bytes, with the finding at the first byte of the 8:
 
@@ -1108,9 +1190,11 @@ under another symbol after any other extension none of them reads
 bearing and NRQ. In both visible cases only findings that the other
 reading itself would produce count against it. Besides the bearing,
 the one it could add is a comment over its limit, and that does not
-arise: its 28 bytes are met
-exactly when this reading's comment, 8 bytes longer, meets 36
-([03-position.md](03-position.md#amb.df.ext)).
+arise: its 28 bytes are met exactly when this reading's comment, 8
+bytes longer, meets 36
+([03-position.md](03-position.md#amb.df.ext)), and the two length
+findings then fall on the same byte, so that one is shared (README
+section 3, Which findings are the other reading's own).
 
 | Decoder | Reads | Where |
 |---|---|---|
@@ -1155,17 +1239,20 @@ symbol `\l` the same bytes fail the descriptor, and there that `syntax`
 finding alone is given
 ([README section 3](README.md#3-tokenizer-model), Precedence). Other
 slots are decided by the symbol bytes, with no finding of this entry.
-**[proposed]** One case is visible under the readings of
+
+One case is visible under the readings of
 [amb.area.symbol](05-object-item.md#amb.area.symbol) instead: in an
 object or item report without the `\l` symbol, a slot that fits only
 `ext.area`, with a colour from 10 to 15 and so no course and speed,
-gets the `ambiguous` finding that 05 gives (7.1). **[proposed]**
-In a `\l` object or item, every descriptor that the reading accepts
-has digits where (b) wants the letters, so (b) would read every one as
-comment text; every descriptor carries that, and the bytes of one
-packet cannot narrow it, so it gives no finding. A `\l` slot that fails
-the descriptor gives the `syntax` finding of 05, which alone is given,
-although (a) might read another extension there (Precedence).
+gets the `ambiguous` finding that 05 gives (7.1). In a `\l` object or
+item, every descriptor that the reading accepts has digits where (b)
+wants the letters, so (b) would read every one as comment text; every
+descriptor carries that, and the bytes of one packet cannot narrow it,
+so it gives no finding. A `\l` slot that fails the descriptor gives
+the `syntax` finding of 05, which alone is given, although (a) might
+read another extension there
+([README section 3](README.md#3-tokenizer-model), on an ambiguity that
+every instance of a form carries, and Precedence).
 
 | Decoder | Reads | Where |
 |---|---|---|
@@ -1196,9 +1283,10 @@ recommends printable ASCII: p. 34/20 admits UTF-8, so well-formed UTF-8
 gives no finding by the rule of 8.1 itself, and the rule for bytes
 outside 7-bit ASCII in those fields does not apply here.
 
-**In the bytes.** Visible, and reported as `syntax` findings, which
-alone are given ([README section 3](README.md#3-tokenizer-model),
-Precedence).
+**In the bytes.** Visible, and reported as the comment's one `syntax`
+finding, at the first byte outside the set (8.1), which alone is given
+([README section 3](README.md#3-tokenizer-model), Precedence and
+Placing a finding).
 
 | Decoder | Reads | Where |
 |---|---|---|
@@ -1224,8 +1312,12 @@ limit given as 57 bytes (p. 35/21). No receiver action is stated.
 **Readings.** (a) Over the limit is out of range. (b) The limit is
 advice only.
 
-**Reading taken.** **[proposed]** (a): a `value` finding. DAO bytes are
-not counted (8.1); telemetry bytes are.
+**Reading taken.** **[proposed]** (a): a `value` finding.
+
+Which bytes count is not part of this question. Items found in the
+comment, telemetry included, count; DAO bytes do not, under the
+reading of p. 35/21 that 8.1 proposes
+([README section 3](README.md#3-tokenizer-model), Length limits).
 
 **In the bytes.** Visible, since (b) would accept the comment. Reported
 as that `value` finding, which alone is given
@@ -1258,12 +1350,12 @@ six.
 **In the bytes.** Visible. Repeated altitudes get `ambiguous` findings
 (8.2); a malformed one gets the `syntax` finding above, which alone is
 given for it ([README section 3](README.md#3-tokenizer-model),
-Precedence). **[proposed]** With two or more well-formed occurrences,
-of `cmt.alt` or `cmt.alt.neg`, (b) and (c) each read all but one as
-comment text, which accepts them, so each occurrence gets `ambiguous`
-at its `'/'`. A single well-formed occurrence is read alike by all
-three readings and gets no finding. A malformed run is not an
-occurrence and does not count towards the repetition.
+Precedence). With two or more well-formed occurrences, of `cmt.alt` or
+`cmt.alt.neg`, (b) and (c) each read all but one as comment text,
+which accepts them, so each occurrence gets `ambiguous` at its `'/'`. A
+single well-formed occurrence is read alike by all three readings and
+gets no finding. A malformed run is not an occurrence and does not
+count towards the repetition (README section 3).
 
 | Decoder | Reads | Where |
 |---|---|---|
@@ -1303,16 +1395,21 @@ and the forms that 8.3 marks give `unstated` findings. Whether a single
 candidate is a DAO or text of the same shape is inherent
 ([README section 3](README.md#3-tokenizer-model)): every DAO carries the
 question, and the bytes of one packet cannot narrow it. It is taken
-silently. **[proposed]** By the test of README section 3:
+silently. By the test of README section 3:
 
 - With several candidates, (b) and (c) each read all but one of them
   as text. Each candidate gets `ambiguous` at its first `'!'` when one
   of those readings that reads it as text accepts the report: the
   comment, with the bytes of the candidates that reading takes as text
-  now counted (8.1), stays within its limit. **[proposed]** When this
-  reading's comment is itself over the limit, both readings give the
-  length finding, which then does not count, and the `ambiguous`
-  finding is given.
+  now counted (8.1), stays within its limit. When this reading's
+  comment is itself over the limit, that reading is over its limit
+  too. Its length finding is shared, and does not count, only when it
+  falls on the same byte as this reading's, which holds when no
+  candidate it counts lies before that byte; otherwise the finding is
+  its own and it does not accept
+  ([README section 3](README.md#3-tokenizer-model), Which findings are
+  the other reading's own). An earlier draft counted the length finding
+  as shared wherever both readings gave one.
 - A single candidate is read alike by all three readings, wherever it
   stands in the comment, and gives no finding; the question left is
   the inherent one above.
@@ -1347,7 +1444,7 @@ base-91 fields the bytes `'!'` and `'x'` are digits, so a run there can
 be part of the coordinates rather than a marker. An earlier draft
 searched free-text fields only and gave no finding elsewhere.
 
-**In the bytes.** **[proposed]** Visible under the test of
+**In the bytes.** Visible under the test of
 [README section 3](README.md#3-tokenizer-model): (b) takes a match
 outside free text as the marker, and since the marker only flags the
 packet and leaves the bytes to the field they lie in, (b) accepts the
@@ -1503,4 +1600,17 @@ the page.
   searched for and gives a finding
   ([amb.cmt.noarchive](#amb.cmt.noarchive)). The search covers the
   information field only.
+- Whether reading (b) of [amb.ext.csespd](#amb.ext.csespd), any mix of
+  digits, dots and spaces per byte, is a reading of the document's text
+  or a wider form that README section 3 leaves to the deviation
+  recognisers. In the second case the slot is a place where a form is
+  recognised by its shape alone, and the `ambiguous` finding that (b)
+  gives to such a run goes.
+- Whether a `'/A='` that starts neither altitude form, or one followed
+  by a further digit ([amb.cmt.alt](#amb.cmt.alt)), keeps its `syntax`
+  finding as an item announced by its marker, or is comment text with
+  no finding as a byte pattern outside every form the document defines
+  (README section 3, Kinds by situation). It waits on how classes
+  announced by a keyword are read. Until then such a finding sits in
+  the comment beside the comment's own `syntax` finding.
 - Each ambiguity above ends in a corpus question. None has been run.

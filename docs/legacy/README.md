@@ -92,24 +92,28 @@ what the strict pass could not account for. Each recogniser corresponds to
 an entry of the divergence catalogue (RFC Appendix E). They never change
 the strict result.
 
-**[proposed]** Output. For each packet the tokenizer produces:
+**[agreed]** Output. For each packet the tokenizer produces:
 
 - **Tokens.** `(rule ID, start, end, depth)`, as byte offsets into the
   raw TNC2 line. The depth-0 tokens cover the line exactly, in order, with
   no gap and no overlap. Bytes the tokenizer cannot account for form a
   `residue` token, which names the rule at which parsing stopped.
-  **[proposed]** A field whose extent its delimiters fix keeps its own
-  token when its bytes are wrong, with the finding; only bytes whose rule
-  cannot be told, at that level or inside such a field, are residue. A
-  finding for a byte that is missing is placed where that byte was
-  expected, which may be the end of the line. Deeper
+  **[agreed]** A field whose place and extent the format fixes, by
+  delimiters, a fixed width or a fixed layout, keeps its own token when
+  its bytes are wrong, with one `syntax` finding at the first byte that
+  fails; only bytes whose rule cannot be told, at that level or inside
+  such a field, are residue. A field cut short by the end of the field
+  around it covers the bytes present, and its finding is placed where
+  the first missing byte was expected, which may be the end of the
+  line. After a field with a finding, reading continues at the next
+  field wherever the start of that field can be told. Deeper
   tokens lie inside one token of the level above: the parts of a Mic-E
   destination address, items found inside a comment, the inner packet of a
   third-party payload. **[agreed]** The token of the data type identifier
   byte carries the identifier rule of the format it selects, such as
   `pos.dti` or `stat.dti`, so that the format can be read from the tokens.
   The `dti.*` rules of 01-frame give the dispatch and its findings.
-  **[proposed]** That rule is the identifier rule of the most specific
+  **[agreed]** That rule is the identifier rule of the most specific
   format the packet is classified as, and it is assigned once
   classification is complete, not when byte 0 is read. A position or
   object report that carries weather carries `wx.pos` or `wx.obj`; a `:`
@@ -137,7 +141,7 @@ the strict result.
   with such a field has no verdict. This is a state of the
   implementation, not a rule of the reading.
 
-**[proposed]** The tokenizer finds boundaries and checks bytes and ranges.
+**[agreed]** The tokenizer finds boundaries and checks bytes and ranges.
 It does not compute values (degrees, knots, decoded telemetry). Decoding is
 a separate layer built on the tokens. **[agreed]** The one exception is a
 checksum that a form carries, such as the NMEA `*hh`: the tokenizer
@@ -166,10 +170,39 @@ which condition the other reading would accept them.
 **[agreed]** Precedence. When the reading already reports the bytes as
 a `syntax` or `value` finding, that finding alone is given, and no
 `ambiguous` finding beside it, so that one defect is counted once.
+**[agreed]** The same holds for a finding derived from those bytes: a
+check across several fields, or an `obsolete` or `unstated` finding on
+the same defect, is not given where a rule already reports the bytes as
+`syntax` or `value`. Defects that are independent of each other keep
+their own findings.
+
+**[agreed]** Which findings are the other reading's own. A finding of
+the other reading is shared with this reading, and does not count
+against it, when this reading gives a finding of the same kind at the
+same offset. The rule ID is not compared: two readings name the same
+bytes with different rules by construction.
+
+**[agreed]** Placing a finding. A field gives at most one `syntax`
+finding, at its first failing byte. A `syntax` or `value` finding goes
+on the most specific rule whose bytes are at fault, at the first byte
+at fault: the first byte past a limit, or the place where a missing
+byte was expected. An `ambiguous` finding goes on the rule this reading
+gives the bytes, at the first byte where the readings divide them
+differently. An entry may state an exception, and then says so.
 
 **[agreed]** One byte may carry several findings from different rules.
 Each keeps its own rule ID; they are not merged. Identical findings
 (the same rule, kind and offset) are given once.
+
+**[agreed]** The "In the bytes" paragraph of an ambiguity entry that
+only applies the tests of this section to the reading taken is not a
+decision of its own. It carries no label, takes the status of the
+reading it applies, and is checked against these tests rather than
+decided. When the reading changes, the paragraph is derived again. A
+paragraph that builds the other reading, or states something the tests
+do not give, is a decision and keeps its label. The same holds for any
+text in the files that only applies an **[agreed]** rule of this
+section to a case: it cites the rule and carries no label of its own.
 
 **[agreed]** An ambiguity that every instance of a form carries, and
 that the bytes of one packet cannot narrow, is decided by the reading
@@ -194,7 +227,7 @@ bytes are the form, and bytes out of range give `syntax`. A form
 defined by shape alone otherwise catches unrelated text too often to
 report on it.
 
-**[proposed]** Kinds by situation. The files report like situations
+**[agreed]** Kinds by situation. The files report like situations
 with the same kind:
 
 - A byte outside the byte set that a rule states: `syntax`.
@@ -206,9 +239,16 @@ with the same kind:
 - A value outside a stated range, or a code outside the closed set of
   values that a table or a form defines: `value`.
 - A code that a stated prohibition covers ("do not use"): `syntax`.
-- A code outside a list that the document does not close, or anything
-  else for which it gives no rule: `unstated`. Where the document says
-  that other codes are allowed: no finding.
+- A code outside a list that the document does not close, at a place
+  the document leaves open for it, or a combination of pieces that are
+  each allowed and about which the document says nothing: `unstated`.
+  Where the document says that other codes are allowed: no finding.
+- **[agreed]** A byte pattern outside every form the document defines,
+  such as a relaxed number or a fill that no form shows, is not that
+  form. At a place the format fixes it gives `syntax`; in free text it
+  is text, with no finding. Recognising the wider forms that senders
+  use and decoders accept is the work of the deviation recognisers. An
+  earlier draft accepted such forms with `unstated`.
 - A form marked obsolete: `obsolete`. A form that is only "not
   recommended", discouraged or advised against: `discouraged`.
 - **[agreed]** Bytes outside 7-bit ASCII in a field where APRS12c only
@@ -221,6 +261,29 @@ with the same kind:
   document calls them interchangeable, `value` where it calls the
   combination unknown, and `unstated` where it says nothing. A mixture
   inside one value is a field that does not fit, as above.
+
+**[agreed]** Obsolete and nested forms. An obsolete form the document
+describes is recognised when its own defining bytes match; it gets
+`obsolete` at its first byte, and its inside is read only as far as the
+document describes it. A structure the document describes one level
+deep is read the same way where it recurs deeper, with `unstated` at
+each further level. A form at a place the document does not describe
+for it is not recognised there.
+
+**[agreed]** Separators and padding that a diagram does not show. A byte
+between two fields that the diagram does not show, such as an extra `,`
+or `SP` padding, belongs to the next field, which is usually text. It
+gets `ambiguous` where a reading of the document's text takes it as a
+separator and accepts the whole field, and no finding where every
+instance of the form carries it. The entry names the text that the
+separator comes from.
+
+**[agreed]** Length limits count bytes, not characters, of the field as
+tokenized, including the items found inside it, except an item that a
+page of the document says does not count; the entry cites that page.
+Where limits nest, such as a field inside `msg.text` or a comment
+inside `line.info`, each is checked on its own rule, and the excess is
+reported at the first byte past each limit.
 
 ## 4. Decoders consulted
 

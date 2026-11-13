@@ -53,10 +53,19 @@ neither, then text. A report with a locator has no timestamp.
 [`time.dhm`](02-fields.md#time.dhm) token, as a position timestamp is in
 03. A `stat.grid` token covers the locator and the symbol, with
 [`grid.loc`](03-position.md#grid.loc), [`sym.table`](02-fields.md#sym.table)
-and [`sym.code`](02-fields.md#sym.code) one level deeper; a locator
-letter that fails gives one `syntax` finding on `stat.grid`, at the first
-such letter. The `ambiguous` finding of [amb.stat.time](#amb.stat.time)
-is given on `stat.time`. `stat.text` is a free-text field for
+and [`sym.code`](02-fields.md#sym.code) one level deeper.
+
+A locator letter that fails gives one `syntax` finding on `grid.loc`,
+the most specific rule that holds it, at the first such letter. The
+`ambiguous` finding of [amb.stat.time](#amb.stat.time) is given on
+`stat.text`, the rule this reading gives those bytes. Both follow
+[README section 3](README.md#3-tokenizer-model) (Placing a finding).
+An earlier draft gave the first on `stat.grid` and the second on
+`stat.time`, the rule of the other reading. A byte of `stat.text`
+outside its set gives one `syntax` finding, at the first such byte
+(Placing a finding); an earlier draft gave one at every such byte.
+
+**[proposed]** `stat.text` is a free-text field for
 [`cmt.noarchive`](02-fields.md#cmt.noarchive); the other items of
 02 section 8.2 and [`tlm.b91`](07-telemetry.md#tlm.b91) are not looked
 for in it. `stat.beam` and the tokens of section 7 lie one level below
@@ -112,32 +121,40 @@ finding.
 Bytes after `qry.end` that are not a footprint, or after `qry.radius`,
 give `syntax` and form `residue`.
 
-**[proposed]** Tokens and findings. `qry.type` runs from offset 1 to the
+Tokens and findings, by
+[README section 3](README.md#3-tokenizer-model) (Output, Placing a
+finding, Kinds by situation). `qry.type` runs from offset 1 to the
 first `?`; a byte that is not an upper-case letter gives one `syntax`
-finding, at the first such byte, and an empty type gives it at offset 1.
-With no `?` in the field, the type is the run of letters from offset 1,
-possibly empty, `qry.end` gives `syntax` where the `?` was expected,
-and the rest is residue; an empty type and the missing `?` then both
-give their finding at offset 1. The bytes after `qry.end` are a
-footprint when they start with a number of the `qry.lat` form, with or
-without its sign byte; other bytes give `syntax` on `qry.fp` at their
-first byte and are residue. A `qry.fp` token covers the parts present,
-with `qry.lat`, `qry.lon` and `qry.radius` one level deeper.
-`qry.lat` and `qry.lon` each run to the next `,`, or to the end of the
-field when there is none, and keep their token when their bytes are
-wrong: one `syntax` finding, at the first byte that fails, where a sign
-that is missing or `+` fails at the first byte of the coordinate, and a
-`value` finding when the number is well formed and over its limit.
-`qry.radius` is a fixed 4-byte field and takes up to 4 bytes after the
-second `,`: a byte that is not a digit, or a missing digit at the end of
-the field, gives one `syntax` finding on `qry.radius` at the first such
-byte. A part with no bytes at all, between two `,` or after the last
-one, is missing, and a missing `,` is missing at the end of the field:
-each gives `syntax` on `qry.fp` where it was expected. Bytes after the
-4 bytes of the radius, a fifth digit as well as text, cannot be counted
-against the fixed field; they give `syntax` on `qry.fp` at their first
-byte and are residue. This is how the "any other length" of the
-`qry.radius` row is reported for a radius that is too long.
+finding, at the first such byte. With no `?` in the field, the type is
+the run of letters from offset 1, possibly empty, and `qry.end` gives
+`syntax` where the `?` was expected. Reading goes on after a missing
+`?` where the start of the footprint can be told, by the test below;
+otherwise the rest is residue. An earlier draft made the rest residue
+in every case. **[proposed]** An empty type gives `syntax` at offset
+1; with the `?` missing as well, both findings are at offset 1.
+**[proposed]** The bytes after `qry.end` are a footprint when they start
+with a number of the `qry.lat` form, with or without its sign byte;
+other bytes give `syntax` on `qry.fp` at their first byte and are
+residue.
+
+A `qry.fp` token covers the parts present, with `qry.lat`, `qry.lon`
+and `qry.radius` one level deeper. `qry.lat` and `qry.lon` each run to
+the next `,`, or to the end of the field when there is none, and keep
+their token when their bytes are wrong: one `syntax` finding, at the
+first byte that fails, where a sign that is missing or `+` fails at the
+first byte of the coordinate, and a `value` finding when the number is
+well formed and over its limit. `qry.radius` is a fixed 4-byte field
+and takes up to 4 bytes after the second `,`: a byte that is not a
+digit, or a missing digit at the end of the field, gives one `syntax`
+finding on `qry.radius` at the first such byte. Bytes after the 4 bytes
+of the radius, a fifth digit as well as text, cannot be counted against
+the fixed field; they give `syntax` on `qry.fp` at their first byte and
+are residue, since no rule can be told for them. This is how the "any
+other length" of the `qry.radius` row is reported for a radius that is
+too long. **[proposed]** A part with no bytes at all, between two `,`
+or after the last one, is missing, and a missing `,` is missing at the
+end of the field: each gives `syntax` on `qry.fp` where it was
+expected.
 
 ### 4.1 Directed queries
 
@@ -183,9 +200,10 @@ where APRS12c only recommends printable ASCII. An earlier draft gave
 gave such bytes no finding, since many senders put UTF-8 there and the
 finding would bury the others.
 
-A field shorter than 3 bytes gives `syntax`; **[proposed]** on the
-first of `udf.user` and `udf.type` that is missing, at the end of the
-field. The list of assigned user
+A field shorter than 3 bytes gives `syntax` on the first of `udf.user`
+and `udf.type` that is missing, at the end of the field, where its byte
+was expected ([README section 3](README.md#3-tokenizer-model), Output,
+Placing a finding). The list of assigned user
 IDs (p. 122/98) is not checked: the document says there is no mechanism
 to reserve a code.
 
@@ -231,7 +249,7 @@ frequency is looked for in one.
 | <a id="freq.rx"></a>`freq.rx` | Alternate receive frequency | `SP`, then 3 digits, `.`, 3 digits, `rx`. Only directly after a frequency. | no | 10 bytes | p. 114/90; p. 115/91 |
 | <a id="freq.tone"></a>`freq.tone` | Tone | `SP` (none when left-justified, see `freq.obj`), then 4 bytes: `T`, `t`, `C`, `c` or `D` and 3 digits; or `Toff`, `1750`, `l750` (lower-case L). `d` and 3 digits, or `toff`, is recognised and gives `unstated`. | no | 4 bytes, then `SP` or end of text | p. 114/90; p. 116/92; p. 117/93 |
 | <a id="freq.offset"></a>`freq.offset` | Transmit offset | `SP`, then `+` or `-`, then 3 digits in units of 10 kHz. `-000` means simplex. | no | 4 bytes, then `SP` or end of text | p. 114/90; p. 117/93 |
-| <a id="freq.range"></a>`freq.range` | Range | `SP`, then `R` (all directions) or `N`, `S`, `E`, `W` (one direction), 2 digits, then `m` (miles) or `k` (kilometres). Up to one per letter. Three digits are recognised and give `unstated` ([amb.freq.items](#amb.freq.items)). | no | 4 bytes, then `SP` or end of text | p. 114/90; p. 115/91; p. 116/92 |
+| <a id="freq.range"></a>`freq.range` | Range | `SP`, then `R` (all directions) or `N`, `S`, `E`, `W` (one direction), 2 digits, then `m` (miles) or `k` (kilometres). Up to one per letter. Three digits are no form the document defines, so they are not a range and stay text, with no finding ([README section 3](README.md#3-tokenizer-model), Kinds by situation; [amb.freq.items](#amb.freq.items)). | no | 4 bytes, then `SP` or end of text | p. 114/90; p. 115/91; p. 116/92 |
 | <a id="freq.dstar"></a>`freq.dstar` | D-STAR marker | `D-STAR`, then either `SP` or `>` and an 8-byte access repeater name (a callsign padded with `SP` to 6 bytes, `SP`, one module letter). After a frequency and an optional `freq.offset`, or at the start of the text with no frequency. | no | 7 or 15 bytes | p. 116/92 |
 | <a id="freq.obj"></a>`freq.obj` | Left-justified items | In an object or item whose name is `freq.objname`, `freq.tone`, `freq.offset` and `freq.range` are looked for at the start of the comment with no frequency and no leading `SP`; the first item has no `SP` before it. Elsewhere, items are looked for only after a frequency ([amb.freq.nofreq](#amb.freq.nofreq)). | no | — | p. 113/89; p. 114/90; p. 115/91; p. 116/92 |
 | <a id="freq.objname"></a>`freq.objname` | Frequency name | A classification of the 9-byte object or item name: 3 digits, `.`, 3 digits and 2 more bytes; or 3 digits, `.`, 2 digits and 3 more bytes. The extra bytes are any bytes the name allows. No finding ([amb.freq.objname](#amb.freq.objname)). | — | — | p. 113/89; p. 116/92; p. 117/93 |
@@ -259,23 +277,30 @@ stands directly after the frequency or after its `freq.offset`, with no
 for after it. A `freq.range` whose letter is already taken ends the
 items and is not out of order. Only a tone or an offset can be out of
 order: `freq.rx` stands only directly after a frequency, and
-`freq.range` is last. The `ambiguous` findings of
-[amb.freq.items](#amb.freq.items) and
-[amb.freq.nofreq](#amb.freq.nofreq) are given on the rule of the item
-that the other reading would take. The `unstated` findings of
-`freq.tone` and `freq.range` are at the first byte of the item after its
-`SP`, and the `syntax` finding of [amb.freq.case](#amb.freq.case) at the
-first byte of `MHz` that differs. `freq.objname` and `freq.obj` give no
-token: the name stays [`obj.name`](05-object-item.md#obj.name) or
-[`item.name`](05-object-item.md#item.name).
+`freq.range` is last. The `unstated` finding of `freq.tone` is at the
+first byte of the item after its `SP`. `freq.objname` and `freq.obj`
+give no token: the name stays [`obj.name`](05-object-item.md#obj.name)
+or [`item.name`](05-object-item.md#item.name).
+
+The `ambiguous` findings of [amb.freq.items](#amb.freq.items) and
+[amb.freq.nofreq](#amb.freq.nofreq) are given on the rule this reading
+gives the bytes, the text that holds them
+([`cmt.text`](02-fields.md#cmt.text) or `stat.text`), and the `syntax`
+finding of [amb.freq.case](#amb.freq.case) at the first byte of `MHz`
+that differs ([README section 3](README.md#3-tokenizer-model), Placing
+a finding). An earlier draft gave the `ambiguous` findings on the rule
+of the item that the other reading would take, and an `unstated`
+finding to a `freq.range` of three digits.
 
 ## 8. Ambiguities
 
 A finding "of its own" is one that the other reading gives and this
-reading does not. A `syntax` or `value` finding that both readings give
-elsewhere in the packet does not stop an `ambiguous` finding
-([README section 3](README.md#3-tokenizer-model)). The same holds for
-every condition of this kind in this file.
+reading does not: this reading gives no finding of the same kind at the
+same offset, whatever its rule. A `syntax` or `value` finding that both
+readings give elsewhere in the packet does not stop an `ambiguous`
+finding ([README section 3](README.md#3-tokenizer-model), Which
+findings are the other reading's own). The same holds for every
+condition of this kind in this file.
 
 <a id="amb.stat.time"></a>
 ### amb.stat.time
@@ -293,10 +318,12 @@ hence the `ambiguous` finding.
 
 **In the bytes.** **[agreed]** Reading (b) means accepting the seven
 bytes as a timestamp, as the decoders that accept these forms do, and
-the `ambiguous` finding stays. **[proposed]** Under the test of
-[README section 3](README.md#3-tokenizer-model), reading (b) counts
-only where it accepts the whole report. The finding is `ambiguous` at
-offset 1, the first digit, and is given where the six digits are
+the `ambiguous` finding stays. The rest applies the tests of
+[README section 3](README.md#3-tokenizer-model) to the reading taken:
+reading (b) counts only where it accepts the whole report. The finding
+is `ambiguous` against `stat.text`, the rule this reading gives the
+bytes (Placing a finding), at offset 1, the first digit, and is given
+where the six digits are
 values that [`time.dhm`](02-fields.md#time.dhm) (with `/`) or
 [`time.hms`](02-fields.md#time.hms) (with `h`) accepts with no `syntax`
 or `value` finding, and the text after the seventh byte, checked as
@@ -371,9 +398,11 @@ earlier draft recognised a first-pair letter outside `A`–`R` and gave
 them `syntax` on `stat.grid`; the author decided first to keep that
 finding and then, generalising, to read such bytes as status text.
 
-**In the bytes.** **[proposed]** No `ambiguous` finding. An earlier
-draft gave one at offset 1 where a locator and symbol were not followed
-by `SP`, under the second reading since dropped.
+**In the bytes.** No `ambiguous` finding: no listed reading remains
+that would divide the bytes differently
+([README section 3](README.md#3-tokenizer-model)). An earlier draft
+gave one at offset 1 where a locator and symbol were not followed by
+`SP`, under the second reading since dropped.
 
 **Decoders (read).** Dire Wolf tries 6 then 4 characters, accepts either
 case, checks the symbol table only with a warning and warns about a
@@ -397,16 +426,19 @@ byte differ for non-ASCII text.
 
 **Readings.** (a) Bytes. (b) Characters of the UTF-8 text.
 
-**Reading taken.** **[proposed]** Count bytes; text over the limit gives
-`value`. When the text is valid UTF-8 whose character count is within
-the limit, reading (b) would accept it; that `value` finding is still
-the only one given
-([README section 3](README.md#3-tokenizer-model), precedence). An
-earlier draft gave `ambiguous` in place of `value` in that case; it was
-dropped when the README made a `syntax` or `value` finding the only
-finding for such bytes. **[proposed]** Text within the limit in bytes
-is within it in characters too, so where (a) accepts the text (b)
-accepts it the same way; no `ambiguous` finding.
+**Reading taken.** (a), as
+[README section 3](README.md#3-tokenizer-model) requires: count bytes
+(Length limits); text over the limit gives `value` (Kinds by
+situation). When the text is valid UTF-8 whose character count is
+within the limit, reading (b) would accept it; that `value` finding is
+still the only one given (Precedence). An earlier draft gave
+`ambiguous` in place of `value` in that case; it was dropped when the
+README made a `syntax` or `value` finding the only finding for such
+bytes.
+
+**In the bytes.** Text within the limit in bytes is within it in
+characters too, so where (a) accepts the text (b) accepts it the same
+way; no `ambiguous` finding (README section 3).
 
 **Decoders (read).** FAP strips CR, LF and trailing spaces and applies
 no limit (`_status_parse`, FAP.pm:1297–1309). Dire Wolf and pdn-aprs
@@ -432,9 +464,12 @@ around items are padding.
 around them is taken as `cap.pad` with `ambiguous`, since (b) would also
 match: visible in the bytes.
 
-**In the bytes.** **[proposed]** Under the test of
+**In the bytes.** Under the tests of
 [README section 3](README.md#3-tokenizer-model), reading (b) counts
-only where it accepts the whole field. Each `cap.pad` token gets an
+only where it accepts the whole field. A `SP` after a `,` lies in the
+`cap.item` that follows, the next field, as Separators and padding has
+it, and the text that takes it as padding is the IGate report listed on
+p. 155/131. Each `cap.pad` token gets an
 `ambiguous` finding at its first byte where the field, read with every
 `cap.pad` as padding, would give no `syntax` or `value` finding of its
 own. A finding that both readings give elsewhere in the field, such as
@@ -500,7 +535,9 @@ with no stated digit counts.
 
 **Reading taken.** **[proposed]** (a), with the number format of
 `qry.lat`. Not visible as an alternative: decided by the reading, no
-`ambiguous` finding. **[proposed]** Under the test of
+`ambiguous` finding.
+
+**In the bytes.** Under the test of
 [README section 3](README.md#3-tokenizer-model), (b) divides a
 footprint after `APRS` the same way, and after another type it would
 give `syntax`, so it does not count.
@@ -538,8 +575,10 @@ callsign directly after the type, no padding. (c) As the example: one
 unlisted type, or a callsign of other bytes makes the text a message,
 with no finding. Not visible as an alternative where (a) matches: the
 type has a fixed length, so (b) and (c) place the callsign at the same
-bytes. Decided silently; no `ambiguous` finding. **[proposed]** Under
-the test of [README section 3](README.md#3-tokenizer-model), (e) would
+bytes. Decided silently; no `ambiguous` finding.
+
+**In the bytes.** Under the test of
+[README section 3](README.md#3-tokenizer-model), (e) would
 report a malformed query where (d) reads a message, so it does not
 count; and every text that (b) or (c) accepts, (a) accepts too.
 
@@ -637,12 +676,16 @@ space and the matter is being clarified.
 delimiter.
 
 **Reading taken.** **[proposed]** (a). Not visible as an alternative:
-decided by the reading, no `ambiguous` finding. **[proposed]** Under
-the tests of [README section 3](README.md#3-tokenizer-model): reading
-(b) would leave a frequency after a `/` or `SP` as comment text, but
-every frequency written with a delimiter carries that, and the bytes of
-one packet cannot narrow it, so it is decided by the reading and gives
-no finding. A frequency with no delimiter is read the same way by both.
+decided by the reading, no `ambiguous` finding.
+
+**In the bytes.** Under the tests of
+[README section 3](README.md#3-tokenizer-model): reading (b) would
+leave a frequency after a `/` or `SP` as comment text, but every
+frequency written with a delimiter carries that, and the bytes of one
+packet cannot narrow it, so it is decided by the reading and gives no
+finding. A frequency with no delimiter is read the same way by both.
+The delimiter comes from the text and the layouts of p. 115/91, which
+show the frequency with a `/`, with a `SP` and with neither.
 
 **Decoders (read).**
 
@@ -671,10 +714,11 @@ p. 114/90 tells receivers to accept any case
 ([README section 3](README.md#3-tokenizer-model)); none of the decoders
 read does so.
 
-**Reading taken.** **[proposed]** (a), the kind that
-[README section 3](README.md#3-tokenizer-model) gives a departure from
-a sending rule that receivers are told to accept. That finding alone is
-given, although (b) would accept the bytes (precedence). Both readings
+**Reading taken.** (a), the kind that
+[README section 3](README.md#3-tokenizer-model) (Kinds by situation)
+gives a departure from a sending rule that receivers are told to
+accept, naming the case of `MHz`. That finding alone is given, although
+(b) would accept the bytes (Precedence). Both readings
 divide the bytes the same way and differ only in the kind of finding;
 no `ambiguous` finding.
 
@@ -697,10 +741,16 @@ only.
 **Readings.** (a) The order tone, offset, range. (b) Any order.
 
 **Reading taken.** **[proposed]** (a). An item out of order stays text
-with `ambiguous`: visible in the bytes. A 3-digit range is recognised
-with `unstated`.
+with `ambiguous`: visible in the bytes.
 
-**In the bytes.** **[proposed]** Under the test of
+A range of three digits is no form the document defines, which writes
+the range with two digits, so it is not a `freq.range`: it stays text,
+with no finding, and ends the items
+([README section 3](README.md#3-tokenizer-model), Kinds by situation).
+Recognising it is the work of a deviation recogniser. An earlier draft
+recognised it with an `unstated` finding.
+
+**In the bytes.** Under the test of
 [README section 3](README.md#3-tokenizer-model), reading (b) counts
 only where it accepts the whole comment or status text. The first item
 that (a) leaves as text because it is out of order gets an `ambiguous`
@@ -709,8 +759,8 @@ that item and the items after it in any order, would give no `syntax`
 or `value` finding of its own on the text. Where this reading already
 gives a
 `syntax` or `value` finding on those bytes, that finding alone is given
-(precedence). The 3-digit range is a matter of the finding kind, not of
-how the bytes divide.
+(precedence). The finding goes on the text that holds the item, the
+rule this reading gives it (Placing a finding).
 
 **Decoders (read).** Dire Wolf reads tone, offset and range in any order
 (decode_aprs.c:4611–4692). pdn-aprs reads them in the fixed order, each a
@@ -738,13 +788,14 @@ matches a tone item stays text and gives `ambiguous`: visible in the
 bytes. The same holds for an offset or a range item, which `freq.obj`
 also reads at the start; an earlier draft named only the tone.
 
-**In the bytes.** **[proposed]** Under the test of
+**In the bytes.** Under the test of
 [README section 3](README.md#3-tokenizer-model), reading (b) counts
 only where it accepts the whole comment or status text. Where section 7
 looks for a frequency outside a `freq.objname` object or item and finds
 none, a start that matches `freq.tone`, `freq.offset` or `freq.range`
 as `freq.obj` reads them, with no leading `SP`, gets an `ambiguous`
-finding at its first byte, the first byte of the comment or text. It is
+finding at its first byte, the first byte of the comment or text, on
+the rule of that text (Placing a finding). It is
 given only where reading (b), taking the items there as `freq.obj`
 does, would give no `syntax` or `value` finding of its own on the text.
 Where this
@@ -771,7 +822,9 @@ with digits and a point.
 listed separators.
 
 **Reading taken.** **[proposed]** (a). Not visible in the bytes; no
-finding. **[proposed]** Under the tests of
+finding.
+
+**In the bytes.** Under the tests of
 [README section 3](README.md#3-tokenizer-model): reading (b) would read
 a name of these shapes with an unlisted byte in its last places as an
 ordinary name, and its comment then without left-justified items, but

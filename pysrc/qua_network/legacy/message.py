@@ -223,9 +223,12 @@ def _bln_addr(scan, s, end, depth):
             _name_tokens(scan, p + 1, p + 1, q, d, "bln.group")
         else:
             # None of the three forms: still a bulletin (section 6), the
-            # bytes after BLN one bln.group.
-            scan.find("bln.addr", "unstated", p)
+            # bytes after BLN one bln.group. The unstated finding is not
+            # given where bln.group already fails at that byte (README
+            # section 3, Precedence).
             n, bad, uns = _name(line, p, q, _NAME)
+            if bad != p:
+                scan.find("bln.addr", "unstated", p)
             _name_tokens(scan, p, n, q, d, "bln.group")
     if uns is not None:
         scan.find("bln.group", "unstated", uns)
@@ -261,8 +264,11 @@ def _nws_addr(scan, s, end, depth):
 
 
 def _text_bytes(scan, rule, p, e):
-    for i in bad_text_bytes(scan.line[p:e]):
-        scan.find(rule, "syntax", p + i)
+    """One syntax finding for the field, at its first byte that is not a
+    text byte (README section 3, Placing a finding)."""
+    bad = bad_text_bytes(scan.line[p:e])
+    if bad:
+        scan.find(rule, "syntax", p + bad[0])
 
 
 def _message(scan, s, t0, end, depth, texts, kind):
@@ -272,15 +278,19 @@ def _message(scan, s, t0, end, depth, texts, kind):
     te = brace if brace >= 0 else end
     if te > t0:
         scan.tok("msg.text", t0, te, depth)
-        _text_bytes(scan, "msg.text", t0, te)
         if te - t0 > _TEXT_MAX:
             scan.find("msg.text", "value", t0 + _TEXT_MAX)
+    # A byte that is not a text byte gets its syntax finding on the most
+    # specific rule that holds it (README section 3, Placing a finding): a
+    # field of 07 section 4 in case 4, an nts.field in an NTS line, and
+    # otherwise msg.text.
     if kind == "tlm":
         # Case 4: 07 section 4 reads the text inside msg.text.
         scan.retag(s, depth, "tlm.def.dti")
         tlm_definition(scan, t0, te, depth + 1)
     else:
         if not _nts(scan, t0, te, depth, texts) and te > t0:
+            _text_bytes(scan, "msg.text", t0, te)
             texts.append((t0, te))
             noarchive_in(scan, t0, te, depth + 1)
         if tlm_keyword_case(scan, t0, te, depth + 1):
@@ -304,7 +314,9 @@ def _alnum_field(scan, rule, p, e, lengths):
     if run > hi:
         scan.find(rule, "value", p + hi)
     elif bad is None and run not in lengths:
-        scan.find(rule, "value", p)
+        # Too short: where the first missing byte was expected (README
+        # section 3, Placing a finding).
+        scan.find(rule, "value", p + run)
     if bad is not None:
         scan.find(rule, "syntax", bad)
 
@@ -347,6 +359,7 @@ def _nts(scan, t0, te, depth, texts):
             # An empty field has no token and is not counted.
             count += 1
             scan.tok("nts.field", p, fe, d)
+            _text_bytes(scan, "nts.field", p, fe)
             texts.append((p, fe))
             noarchive_in(scan, p, fe, d + 1)
         if q < 0:

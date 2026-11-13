@@ -114,8 +114,9 @@ def _grid(scan, p, n, depth):
     ranges = (_AR, _AR, DIGITS, DIGITS, _AX, _AX)
     bad = next((p + i for i in range(n) if line[p + i] not in ranges[i]), None)
     if bad is not None:
-        # Lower case (amb.grid.case).
-        scan.find("stat.grid", "syntax", bad)
+        # Lower case (amb.grid.case), on the most specific rule that holds
+        # the letter (README section 3, Placing a finding).
+        scan.find("grid.loc", "syntax", bad)
     sym_table(scan, p + n, d)
     sym_code(scan, p + n + 1, d)
 
@@ -124,8 +125,11 @@ def _stat_text(scan, s, end, depth, limit, grid):
     """stat.text from s, with the items found in it one level deeper."""
     line = scan.line
     scan.tok("stat.text", s, end, depth)
-    for i in bad_text_bytes(line[s:end]):
-        scan.find("stat.text", "syntax", s + i)
+    # One syntax finding, at the first byte outside the set (README section
+    # 3, Placing a finding).
+    bad = bad_text_bytes(line[s:end])
+    if bad:
+        scan.find("stat.text", "syntax", s + bad[0])
     if end - s > limit:
         scan.find("stat.text", "value", s + limit)
     d = depth + 1
@@ -142,7 +146,8 @@ def _time_other(scan, start, end, depth):
     """amb.stat.time: six digits and '/' or 'h', which reading (b) takes as a
     timestamp. The finding is given where that timestamp has no syntax or
     value finding and the text after it, read as stat.text after a
-    stat.time, gives none of its own."""
+    stat.time, gives none of its own. It goes on stat.text, the rule this
+    reading gives the bytes (README section 3, Placing a finding)."""
     line = scan.line
     p = start + 1
     if end - p < 7 or line[p + 6] not in b"/h" or not all(c in DIGITS for c in line[p : p + 6]):
@@ -156,7 +161,7 @@ def _time_other(scan, start, end, depth):
     mine = {(f.kind, f.offset) for f in scan.findings if f.kind in _SV}
     if any((f.kind, f.offset) not in mine for f in other.findings if f.kind in _SV):
         return
-    scan.find("stat.time", "ambiguous", p)
+    scan.find("stat.text", "ambiguous", p)
 
 
 # --- Station capabilities (09 section 3) --------------------------------
@@ -272,7 +277,12 @@ def _query(scan, start, end, depth):
         scan.find("qry.type", "syntax", p)
     if q >= end or line[q] != 0x3F:
         scan.find("qry.end", "syntax", q)
-        scan.residue(q, end, depth, "qry.end")
+        # Reading goes on where the start of the footprint can be told
+        # (README section 3, Output).
+        if q < end and _NUM.match(line, q, end):
+            _footprint(scan, q, end, depth)
+        else:
+            scan.residue(q, end, depth, "qry.end")
         return
     scan.tok("qry.end", q, q + 1, depth)
     if q + 1 < end:
@@ -402,11 +412,13 @@ def _user(scan, start, end, depth):
 _FREQ = re.compile(rb"[0-9A-O][0-9]{2}\.(?:[0-9]{3}|[0-9]{2} )[Mm][Hh][Zz]")
 _GHZ = re.compile(rb"(?:[0-9]{3}| [0-9]{2}|  [0-9])\.[0-9]{3}GHz")
 # Items without their leading SP; each is followed by SP or the end of the
-# text. Group 1, where present, marks a form that gives unstated.
+# text. Group 1, where present, marks a form that gives unstated. A range of
+# three digits is no form the document defines, so it is text (README
+# section 3, Kinds by situation).
 _RX = re.compile(rb"[0-9]{3}\.[0-9]{3}rx(?= |\Z)")
 _TONE = re.compile(rb"(?:[TtCcD][0-9]{3}|Toff|1750|l750|(d[0-9]{3}|toff))(?= |\Z)")
 _OFFSET = re.compile(rb"[+-][0-9]{3}(?= |\Z)")
-_RANGE = re.compile(rb"[RNSEW][0-9]{2}([0-9])?[mk](?= |\Z)")
+_RANGE = re.compile(rb"[RNSEW][0-9]{2}[mk](?= |\Z)")
 _DSTAR = re.compile(rb"D-STAR(?: |>([A-Z0-9 ]{6}) [A-Z])")
 _ITEMS = (("freq.tone", _TONE), ("freq.offset", _OFFSET), ("freq.range", _RANGE))
 
@@ -433,6 +445,16 @@ def _dstar(line, p, e):
     if call is not None and (call[0] == SP or b" " in call.rstrip(b" ")):
         return None
     return m.end()
+
+
+def _text_rule(scan, p, d):
+    """The rule of the text token, one level above d, that holds offset p:
+    the rule this reading gives bytes it leaves as text, on which an
+    ambiguous finding goes (README section 3, Placing a finding)."""
+    for t in reversed(scan.tokens):
+        if t.depth == d - 1 and t.start <= p < t.end:
+            return t.rule
+    return None
 
 
 def _item(scan, rule, rx, p, e, sp, d):
@@ -482,7 +504,7 @@ def frequency(scan, s, e, d, named=False):
         m = rx.match(line, s, e)
         if m:
             if not _reported(scan, s, m.end()):
-                scan.find(rule, "ambiguous", s)
+                scan.find(_text_rule(scan, s, d), "ambiguous", s)
             return
 
 
@@ -526,5 +548,5 @@ def _items(scan, p, e, d, after_freq):
         m = rx.match(line, q, e)
         if m:
             if not _reported(scan, p, m.end()):
-                scan.find(rule, "ambiguous", p)
+                scan.find(_text_rule(scan, p, d), "ambiguous", p)
             break

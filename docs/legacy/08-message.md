@@ -33,7 +33,14 @@ section 2.1 decides.
 `'~'` (0x20-0x7E), and well-formed multi-byte UTF-8 sequences (p. 93/71,
 p. 96/74). Any other byte (a control byte such as CR or LF, 0x7F, a byte
 of 0x80 or above that is not part of a well-formed sequence) gives
-`syntax`. Reading: [amb.msg.text](#amb.msg.text).
+`syntax`. A field gives one such finding, at its first such byte, on the
+most specific rule that holds the byte: an
+[`nts.field`](#nts.field) in an NTS line, a field of
+[07 section 4](07-telemetry.md#4-telemetry-definition-messages) in a
+definition message, and otherwise the text field itself
+([README section 3](README.md#3-tokenizer-model), Placing a finding).
+An earlier draft gave a finding at every such byte. Reading:
+[amb.msg.text](#amb.msg.text).
 
 ## 2. Common frame
 
@@ -56,23 +63,27 @@ AX.25 address. The tokenizer does not check it as a callsign and reports
 no `is-only` finding for it. UAP 2.5.2 notes that addressees of Internet
 services need not be callsigns.
 
-**[proposed]** Where the findings of the addressee go. The 9 bytes are
-one fixed field, so one `syntax` finding is given for them, at the first
-byte that fails, under the rule of the name part (`msg.addr.name`,
-`bln.group` or `nws.level`). For a `SP` inside the name that byte is the
-first byte after the padding has begun that is not `SP`. A `msg.addr`
-or `nws.addr` whose name part starts with `SP` has no name, whatever
-follows, so its finding is at that `SP`, where the name was expected.
-The `unstated` finding for other printable bytes is given once, at the
-first of them. A field that ends inside the 9 bytes gives `syntax` at
-its end against `msg.addr`, `bln.addr` or `nws.addr`, unless a byte
-before its end already failed; this includes a field that ends where
-the name part would start, which gives that finding and no finding for
-the missing name. A field that ends at offset 10 gives `syntax` against
-`msg.sep` at offset 10. Nothing after that is read.
-When the byte at offset 10 is present but is not `':'`, the `msg.sep`
-token keeps it, and the text is still read from offset 11 and classified
-by section 2.1.
+Where the findings of the addressee go, by
+[README section 3](README.md#3-tokenizer-model) (Output, Placing a
+finding). The 9 bytes are one fixed field, so one `syntax` finding is
+given for them, at the first byte that fails, under the rule of the
+name part (`msg.addr.name`, `bln.group` or `nws.level`), the most
+specific rule that holds it. For a `SP` inside the name that byte is
+the first byte after the padding has begun that is not `SP`. A
+`msg.addr` or `nws.addr` whose name part starts with `SP` has no name,
+whatever follows, so its finding is at that `SP`, where the name was
+expected. A field that ends inside the 9 bytes gives `syntax` at its
+end against `msg.addr`, `bln.addr` or `nws.addr`, unless a byte before
+its end already failed; this includes a field that ends where the name
+part would start, which gives that finding and no finding for the
+missing name. A field that ends at offset 10 gives `syntax` against
+`msg.sep` at offset 10. Nothing after that is read. When the byte at
+offset 10 is present but is not `':'`, the `msg.sep` token keeps it,
+and the text is still read from offset 11 and classified by section
+2.1.
+
+**[proposed]** The `unstated` finding for other printable bytes of the
+name part is given once, at the first of them.
 
 ### 2.1 Kind of packet
 
@@ -101,10 +112,12 @@ would give no `syntax` or `value` finding of its own
 ([amb.msg.order](#amb.msg.order)).
 
 A finding "of its own" is one that the other reading gives and this
-reading does not. A `syntax` or `value` finding that both readings give
-elsewhere in the packet does not stop an `ambiguous` finding
-([README section 3](README.md#3-tokenizer-model)). The same holds for
-every condition of this kind in this file.
+reading does not: this reading gives no finding of the same kind at the
+same offset, whatever its rule. A `syntax` or `value` finding that both
+readings give elsewhere in the packet does not stop an `ambiguous`
+finding ([README section 3](README.md#3-tokenizer-model), Which
+findings are the other reading's own). The same holds for every
+condition of this kind in this file.
 
 The token of byte 0 carries the identifier rule of the kind decided:
 `bln.dti` in case 1, `nws.dti` in case 2, `msg.dti` in cases 3 and 6,
@@ -128,11 +141,13 @@ message; whether it gets the `ambiguous` finding of
 **[proposed]** The other readings in this file. Under the conditions
 "read as that kind" and "read as a message by section 2.1 from case 3
 on", the other reading reads the whole field after the identifier, its
-addressee as `msg.addr`. Its rule IDs differ from this reading's, so a
+addressee as `msg.addr`. Its rule IDs differ from this reading's; a
 `syntax` or `value` finding is its own when this reading gives no
-finding of the same kind at the same offset. A text that matches a
-directed query gets no `syntax` or `value` finding from the rows of
-[09-other.md section 4.1](09-other.md#41-directed-queries), which give
+finding of the same kind at the same offset, as
+[README section 3](README.md#3-tokenizer-model) (Which findings are
+the other reading's own) has it for every other reading. A text that
+matches a directed query gets no `syntax` or `value` finding from the
+rows of [09-other.md section 4.1](09-other.md#41-directed-queries), which give
 none to a matching text; the `value` finding of the `msg.text` length
 limit (case 5) is the only one it can give. Whether a definition message (case 4) gives one is 07's to decide. The
 bytes that the precedence rule looks at are: the text from offset 11
@@ -169,15 +184,22 @@ A trailing CR, LF or `SP` is part of the field: after a message number it
 makes the number fail (`syntax`), and in text without a number it gives
 `syntax` for CR and LF only.
 
-**[proposed]** Findings of the identifier parts. `msg.id` gives `value`
-at its sixth byte when it starts with six or more letters or digits, and
-`syntax` at its first byte that is not a letter or digit; both can be
-given. A `'{'` with nothing after it gives `syntax` against `msg.id` at
-the end of the field. `msg.id.mm` and `msg.id.aa` follow the same
-pattern: `value` at the first byte past 2 letters or digits; `value` at
-the first byte of the part when it is all letters or digits but shorter
-than allowed, which for an empty `msg.id.mm` is the `'}'`; and `syntax`
-at the first other byte, a second `'}'` included.
+Findings of the identifier parts, by
+[README section 3](README.md#3-tokenizer-model) (Kinds by situation,
+Placing a finding, Precedence). `msg.id` gives `value` at its sixth
+byte, the first byte past the limit, when it starts with six or more
+letters or digits, and `syntax` at its first byte that is not a letter
+or digit; both can be given, as two independent defects. `msg.id.mm`
+and `msg.id.aa` follow the same pattern: `value` at the first byte past 2 letters or
+digits; `value` where the first missing letter or digit was expected
+when the part is all letters or digits but shorter than allowed, which
+is the `'}'` for `msg.id.mm` and the end of the field for `msg.id.aa`;
+and `syntax` at the first other byte, a second `'}'` included. An
+earlier draft placed the `value` finding of a short part at its first
+byte. **[proposed]** A `'{'` with nothing after it gives `syntax`
+against `msg.id` at the end of the field, where its first byte was
+expected. **[proposed]** An empty `msg.id.mm` is a part shorter than
+allowed, and gives `value` at the `'}'`.
 
 **[proposed]** `msg.text` (except in case 4 of section 2.1),
 [`bln.text`](#bln.text), [`nws.text`](#nws.text) and, in an NTS line,
@@ -270,6 +292,12 @@ of such an addressee runs from offset 4 to the first `SP`, and the rest
 is `msg.addr.pad`; an addressee with `SP` at offset 4 has no `bln.group`
 token. Its bytes are checked as for `msg.addr.name`.
 
+Where the byte at offset 4 already gives `syntax` against `bln.group`,
+such as a `':'`, the `unstated` finding against `bln.addr` is not given:
+it would report the same defect again
+([README section 3](README.md#3-tokenizer-model), Precedence). An
+earlier draft gave both.
+
 APRS12c also describes how a receiver files, replaces, clears and
 announces bulletins, keyed by sender and identifier, and how often
 bulletins and announcements are sent (p. 96/74, p. 99/77). These are
@@ -332,10 +360,14 @@ An empty field, between two `nts.sep` bytes or between one and the
 prefix or the end of `msg.text`, has no token and does not count: a
 `'#'` line with an empty field, such as a missing time, has 7 fields
 and gives `syntax`, and so does a type `1` line with nothing after the
-prefix. A byte that is not a text byte inside an `nts.field` gets the
-`syntax` finding of `msg.text`, which encloses it, and no second one
-against `nts.field`; the `nts.field` row states the same byte set
-less the separator.
+prefix.
+
+A byte that is not a text byte inside an `nts.field` gets one `syntax`
+finding against `nts.field`, the most specific rule that holds it, and
+none against `msg.text`, which encloses it
+([README section 3](README.md#3-tokenizer-model), Placing a finding);
+the `nts.field` row states the same byte set less the separator. An
+earlier draft gave the finding against `msg.text` instead.
 
 ## 9. Obsolete bulletin form
 
@@ -408,11 +440,16 @@ not a free-text field: a `'!x!'` in it is no token and gets the
 - **Readings.** (a) Text bytes as defined in section 1, limit in bytes,
   over-length a `value` finding. (b) Limit in characters. (c) No limit.
 - **Taken.** **[proposed]** (a). The diagram's byte row gives 0-67
-  (p. 93/71), and a byte limit can be checked without decoding. `'|'` and
-  `'~'` are text bytes. Text over 67 bytes gives `value`, and that
+  (p. 93/71). That the limit counts bytes, not characters, follows
+  [README section 3](README.md#3-tokenizer-model) (Length limits).
+  `'|'` and `'~'` are text bytes. Text over 67 bytes gives `value`, as
+  a field longer than its stated length (Kinds by situation), and that
   finding alone is given, also when (b) or (c) would accept it
-  ([README section 3](README.md#3-tokenizer-model), precedence). Where
-  (a) accepts the text, so do (b) and (c); no `ambiguous` finding.
+  (Precedence). Where (a) accepts the text, so do (b) and (c); no
+  `ambiguous` finding. The page also tells receivers to handle longer
+  text, which the Kinds bullet for a departure from a sending rule that
+  receivers are told to accept would report as `syntax`; which bullet
+  applies is open (section 12).
 - **Decoders.** FAP accepts bytes 0x20-0x7E and 0x80-0xFE, at least one
   (FAP.pm:1358); an empty text fails. Dire Wolf's message structure
   leaves room for the rest of a 256-byte field, with a comment that the
@@ -510,7 +547,7 @@ not a free-text field: a `'!x!'` in it is no token and gets the
   or more letters or digits. Reading (b) would take such text as an
   acknowledgement or rejection where only the case differs, so that
   case is visible and gives `ambiguous` (section 4).
-- **In the bytes.** **[proposed]** Under the test of
+- **In the bytes.** Under the test of
   [README section 3](README.md#3-tokenizer-model) a reading counts only
   where it accepts the text. Reading (b) only folds the case and keeps
   the shape of (a), so it counts only for text whose folded form has
@@ -638,14 +675,14 @@ not a free-text field: a `'!x!'` in it is no token and gets the
   An earlier draft gave none in NWS bulletins, as decided by the
   document's own example; that was dropped because the example does not
   stop reading (b) from dividing the bytes differently.
-- **In the bytes.** **[proposed]** Under the test of
+- **In the bytes.** Under the tests of
   [README section 3](README.md#3-tokenizer-model), reading (b) counts
   only where it accepts the text with the `'{'` and its letters or
   digits in it. NWS text has no length limit, so every `nws.ref` gives
   the finding. Bulletin text has the 67-byte limit, which this reading
-  applies to `bln.text` without `bln.ref`; a `bln.ref` gives the finding
-  only where the text from offset 11, `bln.ref` included, is at most 67
-  bytes, and otherwise reading (b) would give `value`. Where `bln.text`
+  applies to `bln.text` as tokenized, without `bln.ref` (Length
+  limits); a `bln.ref` gives the finding only where the text from
+  offset 11, `bln.ref` included, is at most 67 bytes, and otherwise reading (b) would give `value`. Where `bln.text`
   alone is over the limit, that `value` finding alone is given
   (precedence). Reading (a) divides a trailing reference the same way as
   (c), and fails on a `'{'` elsewhere, which (c) leaves as text; it adds
@@ -723,11 +760,16 @@ not a free-text field: a `'!x!'` in it is no token and gets the
 - **Readings.** (a) Recognise a field starting `BLN` and a digit or
   upper-case letter as the obsolete form. (b) Do not recognise it; leave
   it to the handling of unknown identifiers in 01.
-- **Taken.** **[proposed]** (a), as one token with an `obsolete` finding.
-  Nothing inside is tokenized. Not visible as an alternative: decided
-  silently, no finding beyond `obsolete`. **[proposed]** Under the test
-  of [README section 3](README.md#3-tokenizer-model), reading (b) would
-  give the `syntax` finding of a "do not use" identifier at byte 0
+- **Taken.** (a), as one token with an `obsolete` finding at its first
+  byte, as [README section 3](README.md#3-tokenizer-model) (Obsolete
+  and nested forms) requires of an obsolete form the document
+  describes: it is recognised when its defining bytes, `BLN` and the
+  bulletin identifier byte, match, and its inside is read only as far
+  as the document describes it. APRS12c gives it no layout (p. 98/76),
+  so nothing inside is tokenized. Not visible as an alternative:
+  decided silently, no finding beyond `obsolete`. Under the test of
+  README section 3, reading (b) would give the `syntax` finding of a
+  "do not use" identifier at byte 0
   ([01-frame.md](01-frame.md#7-data-type-identifier)), so it does not
   count.
 - **Decoders.** A search of the files read found no branch for an
@@ -800,4 +842,10 @@ admit `'}'`. 12b has the same pairing (12b PDF 95, 97).
 
 - Whether a C1 control (U+0080 to U+009F) counts as a printable UTF-8
   character ([amb.msg.text](#amb.msg.text)).
+- Whether message or bulletin text over 67 bytes, which p. 93/71,
+  p. 96/74 and p. 97/75 tell receivers to handle, is a field over its stated length (`value`) or a
+  departure from a sending rule that receivers are told to accept
+  (`syntax`): both are bullets of Kinds by situation in
+  [README section 3](README.md#3-tokenizer-model)
+  ([amb.msg.text](#amb.msg.text)).
 - The corpus questions of section 10.

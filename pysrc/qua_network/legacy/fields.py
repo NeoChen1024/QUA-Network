@@ -103,16 +103,36 @@ def _coord(scan, s, end, depth, rule, shape, order, deg_n, deg_max, lat_level):
     e = min(s + n, end)
     scan.tok(rule, s, e, depth)
     b = line[s:e]
-    bad = None
+    # Failing bytes as (offset, rule); the field gives one syntax finding, at
+    # the first of them (README section 3, Placing a finding).
+    bad = []
     for i, c in enumerate(b):
         allowed = shape[i] or _DIGIT_SP
         if c not in allowed:
-            bad = i
+            bad.append((i, rule))
             break
-    if bad is None and e < s + n:
-        bad = e - s
-    if bad is not None:
-        scan.find(rule, "syntax", s + bad)
+    if not bad and e < s + n:
+        bad.append((e - s, rule))
+    level = 0
+    if len(b) > order[0]:
+        # The order starts at the highest offset, so once it is present the
+        # whole order is. The level is the number of SP from the start of the
+        # order; a SP after an offset of the order that holds a digit breaks
+        # the order.
+        while level < 4 and b[order[level]] == SP:
+            level += 1
+        amb_rule = rule + ".amb"
+        digit_seen = False
+        for off in order:
+            if b[off] in DIGITS:
+                digit_seen = True
+            elif b[off] == SP and digit_seen:
+                bad.append((off, amb_rule))
+        if lat_level is not None and level > lat_level:
+            bad.append((order[lat_level], amb_rule))
+    if bad:
+        off, r = min(bad)
+        scan.find(r, "syntax", s + off)
     # Value ranges, on digits that are present (amb.lat.range).
     if _digits(b[:deg_n]):
         deg = int(b[:deg_n])
@@ -123,23 +143,7 @@ def _coord(scan, s, end, depth, rule, shape, order, deg_n, deg_max, lat_level):
         mins = [b[i] for i in (deg_n, deg_n + 1, deg_n + 3, deg_n + 4) if i < len(b)]
         if deg == deg_max and any(c in DIGITS and c != 0x30 for c in mins):
             scan.find(rule, "value", s + deg_n)
-    if e < s + n:
-        return e, False, 0
-    # The level is the number of SP from the start of the order; a SP after
-    # an offset of the order that holds a digit breaks the order.
-    level = 0
-    while level < 4 and b[order[level]] == SP:
-        level += 1
-    amb_rule = rule + ".amb"
-    digit_seen = False
-    for off in order:
-        if b[off] in DIGITS:
-            digit_seen = True
-        elif b[off] == SP and digit_seen:
-            scan.find(amb_rule, "syntax", s + off)
-    if lat_level is not None and level > lat_level:
-        scan.find(amb_rule, "syntax", s + order[lat_level])
-    return e, True, level
+    return e, e == s + n, level
 
 
 def lat(scan, s, end, depth):
@@ -191,15 +195,7 @@ def cmp_block(scan, s, end, depth, wx):
     Returns the end of the block, or None when the field ends inside it."""
     line = scan.line
     if end < s + 13:
-        scan.tok("cmp.block", s, end, depth)
-        bad = end
-        for i in range(s, end):
-            o, c = i - s, line[i]
-            ok = c in CMP_TABLE if o == 0 else 0x21 <= c <= 0x7E if o == 9 else is_b91(c) if o < 9 else True
-            if not ok:
-                bad = i
-                break
-        scan.find("cmp.block", "syntax", bad)
+        _cmp_short(scan, s, end, depth)
         return None
     scan.tok("cmp.block", s, s + 13, depth)
     d = depth + 1
@@ -252,6 +248,51 @@ def cmp_block(scan, s, end, depth, wx):
     elif tv & 0x40:
         scan.find("cmp.t", "value", ts)
     return s + 13
+
+
+def _cmp_short(scan, s, end, depth):
+    """A block cut short by the end of its field (02 section 6.2): each part
+    with a byte present is a token over the bytes it has, checked as in a
+    whole block; the part where the first missing byte was expected gives
+    the syntax finding there, unless a byte of it already failed."""
+    line = scan.line
+    scan.tok("cmp.block", s, end, depth)
+    d = depth + 1
+    c = line[s + 10] if s + 10 < end else None
+    cs_rule = "cmp.cs.none" if c == SP else "cmp.cs"
+    for rule, o, n in (("cmp.table", 0, 1), ("cmp.lat", 1, 4), ("cmp.lon", 5, 4), ("cmp.code", 9, 1), (cs_rule, 10, 2)):
+        p, q = s + o, min(s + o + n, end)
+        if p >= end:
+            scan.find(rule, "syntax", p)
+            return
+        scan.tok(rule, p, q, d)
+        bad = None
+        for i in range(p, q):
+            x = line[i]
+            if rule == "cmp.table":
+                ok = x in CMP_TABLE
+            elif rule == "cmp.code":
+                ok = 0x21 <= x <= 0x7E
+            elif rule == "cmp.cs.none" and i > p:
+                ok = is_b91(x) or x == SP
+            elif rule in ("cmp.cs", "cmp.cs.none") and i == p:
+                # c fits some step of 6.3 whatever T holds.
+                ok = x == SP or 0x21 <= x <= 0x7B
+            else:
+                ok = is_b91(x)
+            if not ok:
+                bad = i
+                break
+        if bad is None and q < s + o + n:
+            bad = q
+        if bad is not None:
+            scan.find(rule, "syntax", bad)
+        elif rule in ("cmp.lat", "cmp.lon") and _b91_value(scan, rule, p, 4) > _CMP_MAX:
+            scan.find(rule, "value", p)
+        if q < s + o + n:
+            return
+    # Only T is missing.
+    scan.find("cmp.t", "syntax", end)
 
 
 # --- Data extensions (02 section 7) -------------------------------------
@@ -475,9 +516,7 @@ def dao_kind(line, i):
     if digit and is_b91(a) and is_b91(o):
         return "unstated"
     if letter or digit:
-        fit = (lambda x: x in DIGITS) if d in UPPER else is_b91
-        if (a == SP) != (o == SP) and fit(o if a == SP else a):
-            return "unstated"
+        # One SP beside a precision byte is a fill no form shows: text.
         return None
     if is_b91(d) and a == SP and o == SP:
         return "unstated"
@@ -559,8 +598,10 @@ def comment(
         return None
     line = scan.line
     scan.tok("cmt.text", s, end, depth)
-    for i in bad_text_bytes(line[s:end]):
-        scan.find("cmt.text", "syntax", s + i)
+    bad = bad_text_bytes(line[s:end])
+    if bad:
+        # One syntax finding per field, at its first failing byte.
+        scan.find("cmt.text", "syntax", s + bad[0])
     d = depth + 1
     items = _altitudes(scan, s, end, d)
 
@@ -574,11 +615,18 @@ def comment(
         dao_bytes.update(range(i, i + 5))
         items.append(("cmt.dao", i, i + 5))
     counted = (end - s) - len(dao_bytes)
-    if len(daos) > 1 and ((end - s) - 5 <= limit or counted > limit):
-        # amb.cmt.dao: reading (b) or (c) takes the others as counted text; a
-        # length finding that this reading gives too does not count.
-        for i, _ in daos:
-            scan.find("cmt.dao", "ambiguous", i)
+    past = _past_limit(s, end, dao_bytes, limit)
+    if len(daos) > 1:
+        # amb.cmt.dao: reading (b) keeps the last candidate and (c) the first,
+        # counting the others as text. Each accepts when within the limit, or
+        # when its length finding falls on the byte of this reading's, which
+        # is then shared (README section 3).
+        last, first = daos[-1][0], daos[0][0]
+        b_ok = _past_limit(s, end, set(range(last, last + 5)), limit) in (None, past)
+        c_ok = _past_limit(s, end, set(range(first, first + 5)), limit) in (None, past)
+        for n, (i, _) in enumerate(daos):
+            if (n < len(daos) - 1 and b_ok) or (n > 0 and c_ok):
+                scan.find("cmt.dao", "ambiguous", i)
 
     if b91:
         blk = b91_block(scan, s, end, d, daos)
@@ -605,20 +653,17 @@ def comment(
 
     # amb.ext.count / amb.ext.compressed: a step-3 form that fits cleanly.
     # A course and speed, which has no marker, counts only at the comment
-    # start; the forms with a three-letter marker count anywhere.
+    # start; the forms with a three-letter marker count anywhere. The finding
+    # is on the rule this reading gives the run's first byte (README section 3,
+    # Placing a finding): an item that byte lies in, else cmt.text.
     for m in _STEP3_AT.finditer(line, s, end) if ext_search else ():
         x = step3(line, m.start(), end)
         if x is not None and x.clean() and (x.rule != "ext.csespd" or (x.start == s and start_cse)):
-            scan.find(x.rule, "ambiguous", x.start)
+            at = next((r for r, a, b in items if a <= x.start < b), "cmt.text")
+            scan.find(at, "ambiguous", x.start)
 
-    if counted > limit:
-        n = 0
-        for i in range(s, end):
-            if i not in dao_bytes:
-                n += 1
-                if n > limit:
-                    scan.find(limit_rule, "value", i)
-                    break
+    if past is not None:
+        scan.find(limit_rule, "value", past)
 
     if freq:
         # 09 section 7, after every syntax or value finding of the comment,
@@ -628,6 +673,18 @@ def comment(
 
         frequency(scan, s, end, d, freq_name)
     return Comment(s, end, counted, daos)
+
+
+def _past_limit(s, end, skip, limit):
+    """The first byte of line[s:end] past limit counted bytes, those in skip
+    not counted (8.1), or None when the field stays within the limit."""
+    n = 0
+    for i in range(s, end):
+        if i not in skip:
+            n += 1
+            if n > limit:
+                return i
+    return None
 
 
 def _item(rule):

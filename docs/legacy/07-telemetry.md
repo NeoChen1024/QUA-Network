@@ -31,7 +31,7 @@ includes the comma that ends it, as the diagrams count it.
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|
 | <a id="tlm.dti"></a>`tlm.dti` | Data type identifier | `'T'` at offset 0. | Required | 1 byte | p. 31/17, p. 88/68 |
-| <a id="tlm.seq"></a>`tlm.seq` | Sequence number | `'#'`, then three digits and `','`, or `'MIC'` with an optional `','`. **[proposed]** A digit run of another length gives a `value` finding ([amb.tlm.seq](#amb.tlm.seq)). | Required | The `','`, or the `'C'` of `MIC` when no comma follows | p. 88/68, p. 153/129 |
+| <a id="tlm.seq"></a>`tlm.seq` | Sequence number | `'#'`, then three digits and `','`, or `'MIC'` with an optional `','`. A digit run of another length is a delimited field outside its stated length and gives a `value` finding ([amb.tlm.seq](#amb.tlm.seq); [README section 3](README.md#3-tokenizer-model), Kinds by situation). | Required | The `','`, or the `'C'` of `MIC` when no comma follows | p. 88/68, p. 153/129 |
 | <a id="tlm.analog"></a>`tlm.analog` | Analog value, five times | Three digits, 000 to 999, then `','`. **[proposed]** Also a relaxed number: an optional `'-'`, then digits, or digits `'.'` digits, or `'.'` digits; it gives an `unstated` finding. Anything else, an empty value included, gives `syntax` ([amb.tlm.value](#amb.tlm.value)). | Required | The `','` | p. 88/68, p. 134/110, p. 157/133 |
 | <a id="tlm.digital"></a>`tlm.digital` | Digital value | Eight bytes, each `'0'` or `'1'`. | Required | 8 bytes | p. 88/68 |
 | <a id="tlm.cmt"></a>`tlm.cmt` | Comment | The rest, directly after the eighth bit, read as [`cmt.text`](02-fields.md#cmt.text). No length limit is stated. | Optional | End of information field | p. 88/68, p. 152/128 |
@@ -43,36 +43,45 @@ has no identifier of its own: it is found in a comment. A definition
 message shares the identifier `':'` with the other message kinds and
 carries [`tlm.def.dti`](#tlm.def.dti) (section 4).
 
-**[proposed]** All five analog values and the digital value are required;
-a report that ends early gives `syntax` at the first missing field. A
-comment that starts with `','` or SP gives an `ambiguous` finding at that
-byte ([amb.tlm.count](#amb.tlm.count)).
+**[proposed]** All five analog values and the digital value are required
+([amb.tlm.count](#amb.tlm.count)). A report that ends early gives
+`syntax` at the first missing field, where its first byte was expected
+([README section 3](README.md#3-tokenizer-model), Output).
 
-**[proposed]** Positions of findings, where the rows leave them open:
+A `','` or SP directly after the eighth bit is the first byte of the
+comment and gives no finding: no text of APRS12c puts a separator there
+([amb.tlm.count](#amb.tlm.count);
+[README section 3](README.md#3-tokenizer-model), Separators and
+padding). An earlier draft gave such a byte an `ambiguous` finding.
+
+Positions of findings, where the rows leave them open, by
+[README section 3](README.md#3-tokenizer-model) (Output, Placing a
+finding):
 
 - `tlm.seq`: a digit run longer than three gives `value` at its fourth
-  digit, a shorter one at its first digit; a byte that fits neither
-  form gives `syntax` there, and `'#'` directly followed by `','` gives
-  it at that `','`. **[proposed]** That byte is the first one at which
-  the bytes stop fitting both `'#'` and digits and `'#MIC'`, the later
-  of the two places where the forms stop matching: `#MIX,` gives it at
-  the `'X'`, `#M12,` at the `'1'`, and `#MI,` at the `','` where `'C'`
-  was expected. A field that does not start with `'#'` gives it at its
-  first byte. The `','` fixes the extent of the field. When no `','`
-  follows and the field is not `'#'` followed only by digits, nothing
-  delimits the sequence, and the bytes from offset 1 to the end are
-  residue; this includes a field that does not start with `'#'`, such
-  as a `'T'` followed by plain text.
+  digit, the first byte past the limit, and a shorter one where its
+  first missing digit was expected, which is the `','`; a byte that
+  fits neither form gives `syntax` there, and `'#'` directly followed
+  by `','` gives it at that `','`. An earlier draft placed the `value`
+  finding of a short run at its first digit. The `syntax` byte is the
+  first byte that fails, the first one at which the bytes fit neither
+  `'#'` and digits nor `'#MIC'`, which is the later of the two places
+  where the forms stop matching: `#MIX,` gives it at the `'X'`, `#M12,`
+  at the `'1'`, and `#MI,` at the `','` where `'C'` was expected. A
+  field that does not start with `'#'` gives it at its first byte. The
+  `','` fixes the extent of the field. When no `','` follows and the
+  field is not `'#'` followed only by digits, nothing delimits the
+  sequence, its extent cannot be told, and the bytes from offset 1 to
+  the end are residue; this includes a field that does not start with
+  `'#'`, such as a `'T'` followed by plain text.
 - `tlm.analog` and `tlm.eqns.coef`: `syntax` is at the first byte where
   the bytes stop fitting the relaxed number, or at the `','` or end of
-  the text when a byte is missing there (an empty value, `1.`, `-`). The
+  the text when a byte is missing there (an empty value, `1.`, `-`). A
+  value that runs to the end of the field with no `','` after it gives
+  `syntax` at the end, where the `','` was expected. **[proposed]** The
   optional `'-'` may stand before each of the three forms, as the value
   `-7.3` of the third example on p. 88/68 requires. The `unstated`
-  finding of a relaxed analog value is at its first byte. A value that
-  runs to the end of the field with no `','` after it gives `syntax` at
-  the end.
-- `tlm.cmt` carries the `ambiguous` finding of
-  [amb.tlm.count](#amb.tlm.count).
+  finding of a relaxed analog value is at its first byte.
 
 **[proposed]** `tlm.cmt` is searched for the items of
 [02-fields.md](02-fields.md#82-items-found-inside-a-comment) section
@@ -127,8 +136,11 @@ Finding a block:
   [`cmt.dao`](02-fields.md#cmt.dao) candidate that overlaps a block is
   therefore recorded too, and both get an `ambiguous` finding. Whether
   that is wanted is open in [02-fields.md](02-fields.md#11-open-items).
-  The bytes of a block count towards the comment's length limit; those
-  of a DAO do not ([amb.cmt.length](02-fields.md#amb.cmt.length)).
+- The bytes of a block count towards the comment's length limit, as the
+  bytes of every item found inside a field do
+  ([README section 3](README.md#3-tokenizer-model), Length limits);
+  whether those of a DAO count is decided in
+  [amb.cmt.length](02-fields.md#amb.cmt.length).
 
 Where blocks are looked for:
 
@@ -150,7 +162,7 @@ keyword.
 
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|
-| <a id="tlm.def.dti"></a>`tlm.def.dti` | Identifier of a definition message | `':'` at offset 0 of a message whose text 08 hands here (case 4 of its [section 2.1](08-message.md#21-kind-of-packet)). **[proposed]** The token of byte 0 carries this ID in place of [`msg.dti`](08-message.md#msg.dti) ([README section 3](README.md#3-tokenizer-model)). | Required | 1 byte | p. 31/17, p. 90/70 |
+| <a id="tlm.def.dti"></a>`tlm.def.dti` | Identifier of a definition message | `':'` at offset 0 of a message whose text 08 hands here (case 4 of its [section 2.1](08-message.md#21-kind-of-packet)). The token of byte 0 carries this ID in place of [`msg.dti`](08-message.md#msg.dti), as the identifier rule of the most specific format ([README section 3](README.md#3-tokenizer-model), Output). | Required | 1 byte | p. 31/17, p. 90/70 |
 
 The tokens of the table below lie inside the message text token.
 
@@ -173,7 +185,12 @@ that has one of them is reported by it alone (Precedence).
 Each list token below includes the comma before it, as the diagrams
 count it. The bytes of a field are those that
 [08-message.md](08-message.md) allows in message text, other than
-`','`. The length limit of [`msg.text`](08-message.md#msg.text) applies
+`','`. A byte outside them gives one `syntax` finding against the
+field's own rule, at the first such byte in the field, and none
+against `msg.text`: the field is the most specific rule that holds it
+([README section 3](README.md#3-tokenizer-model), Placing a finding).
+An earlier draft left such a byte to the `syntax` finding of
+`msg.text`. The length limit of [`msg.text`](08-message.md#msg.text) applies
 to the whole text, keyword included. **[proposed]** It applies even
 where every field is within its own limit
 ([err.tlm.parmlen](#err.tlm.parmlen)).
@@ -188,7 +205,7 @@ where every field is within its own limit
 | <a id="tlm.eqns.coef"></a>`tlm.eqns.coef` | One coefficient | **[proposed]** The relaxed number of `tlm.analog`. Anything else, an empty field included, gives `syntax` ([amb.tlm.eqns](#amb.tlm.eqns)). | Optional | The next `','` or the end | p. 92/72 |
 | <a id="tlm.bits"></a>`tlm.bits` | Bit sense and project title | `BITS.`, then the parts below. | Required keyword | End of message text | p. 92/72, p. 135/111 |
 | <a id="tlm.bits.sense"></a>`tlm.bits.sense` | Bit sense | Eight bytes, each `'0'` or `'1'`, B1 to B8 from left to right. | Required | 8 bytes | p. 92/72 |
-| <a id="tlm.bits.title"></a>`tlm.bits.title` | Project title | 0 to 23 bytes directly after the bits; a longer title gives a `value` finding. **[proposed]** A first byte `','` belongs to the title and gives an `ambiguous` finding ([amb.tlm.bitsep](#amb.tlm.bitsep)). | Optional | End of message text | p. 92/72 |
+| <a id="tlm.bits.title"></a>`tlm.bits.title` | Project title | 0 to 23 bytes directly after the bits; a longer title gives a `value` finding. A first byte `','` belongs to the title and gives an `ambiguous` finding ([amb.tlm.bitsep](#amb.tlm.bitsep); [README section 3](README.md#3-tokenizer-model), Separators and padding). | Optional | End of message text | p. 92/72 |
 
 Longest name, unit or label, the leading comma not counted, derived from
 the byte counts on p. 91/71, which include it:
@@ -212,8 +229,11 @@ their tokens. The `unstated` finding of an empty list is against
 A1 field that is empty with a `','` after it is shorter than its stated
 length and gives `value` at that `','`. A coefficient that fits the
 relaxed number gives no finding: unlike `tlm.analog`, `tlm.eqns.coef`
-has no stricter form beside it. A `BITS.` text that ends before the
-eighth bit gives `syntax` at its end against `tlm.bits.sense`.
+has no stricter form beside it.
+
+A `BITS.` text that ends before the eighth bit gives `syntax` at its end,
+where the first missing bit was expected, against `tlm.bits.sense`
+([README section 3](README.md#3-tokenizer-model), Output).
 
 ## 5. Ambiguities
 
@@ -241,26 +261,36 @@ the [README](README.md#4-decoders-consulted), not run.
   to the first `','`, taking the first analog value with it, and so
   read one analog field fewer. Under the test of README section 3 that
   counts only where reading (c) still accepts the report: where it
-  gives no `syntax` or `value` finding of its own. **[proposed]** A
-  finding is its own unless this reading gives the same finding, the
-  same rule, kind and offset; both readings use the `tlm.*` rules, so
-  the two failing at one byte under different rules are two findings,
-  and reading (c) fails. Reading (c) accepts, for example, a report
-  whose first value is all digits and whose comment starts with the
-  rest of a relaxed number (zero or more digits, then optionally `'.'`
-  and digits), a `','` and eight bytes `'0'` or `'1'`, which it takes
-  as the end of the fifth value and the digital value. There an `ambiguous` finding is given at
-  offset 5, the byte after `MIC`. A `syntax` or `value` finding that
-  both readings give on the same bytes elsewhere in the report does not
-  suppress the `ambiguous` finding. **[proposed]** That includes a
-  report that ends early at the same byte under both readings, such as
-  `T#MIC199,000,255,073`: both give `syntax` against `tlm.analog` at
-  the end, which is not reading (c)'s own. An earlier draft withheld
-  the finding wherever the report had such a finding. Another earlier
-  draft listed the accepting comment shapes as digits, `','` and eight
-  bits only, and said that reading (c) fails in every other report;
-  that left out a fifth value with a `'.'` and the shared findings, and
-  was replaced by the test above. **[proposed]** A `syntax` or `value`
+  gives no `syntax` or `value` finding of its own. Reading (c) accepts,
+  for example, a report whose first value is all digits and whose
+  comment starts with the rest of a relaxed number (zero or more
+  digits, then optionally `'.'` and digits), a `','` and eight bytes
+  `'0'` or `'1'`, which it takes as the end of the fifth value and the
+  digital value.
+
+  This paragraph only applies the tests of
+  [README section 3](README.md#3-tokenizer-model) to that reading. A
+  finding of reading (c) is shared, and not its own, when this reading
+  gives a finding of the same kind at the same offset, whatever its
+  rule (Which findings are the other reading's own). So where both
+  readings fail at one byte under different `tlm.*` rules, the finding
+  is shared: `T#MIC199,000,255,073,123,` gives `syntax` at its end
+  against `tlm.digital` here and against `tlm.analog` under reading
+  (c), and gets the `ambiguous` finding. An earlier draft compared the
+  rule as well, counted such a pair as reading (c)'s own, and gave no
+  `ambiguous` finding there. The finding is against `tlm.analog`, the
+  rule this reading gives offset 5, the byte after `MIC` and the first
+  byte that the readings divide differently (Placing a finding); an
+  earlier draft put it against `tlm.seq`. A `syntax` or `value` finding
+  that both readings give elsewhere in the report does not suppress the
+  `ambiguous` finding. That includes a report that ends early at the
+  same byte under both readings, such as `T#MIC199,000,255,073`: both
+  give `syntax` against `tlm.analog` at the end. An earlier draft
+  withheld the finding wherever the report had such a finding. Another
+  earlier draft listed the accepting comment shapes as digits, `','`
+  and eight bits only, and said that reading (c) fails in every other
+  report; that left out a fifth value with a `'.'` and the shared
+  findings, and was replaced by the test above. A `syntax` or `value`
   finding that this reading alone gives does suppress it (Precedence):
   for example a digital value with a digit other than `'0'` or `'1'`,
   which reading (c) takes into its fifth value and accepts.
@@ -320,21 +350,21 @@ the [README](README.md#4-decoders-consulted), not run.
   (p. 88/68). Fewer values, a missing digital value, or a separator before
   the comment are not addressed.
 - **Readings.** (a) Exactly five values and eight bits. (b) One to five
-  values; bits only after all five. (c) A comma or space before the
-  comment.
-- **Reading taken.** **[proposed]** (a), and no separator: the comment
-  starts with the byte after the eighth bit. Visible in the bytes. A
-  report that reading (b) would accept gets the `syntax` finding of the
-  first missing field alone, with no `ambiguous` beside it
-  ([README section 3](README.md#3-tokenizer-model), Precedence). A
-  comment whose first byte is `','` or SP, which reading (c) would take
-  as a separator, gives an `ambiguous` finding at that byte. This meets
-  the test of README section 3: reading (c) takes the rest as the
-  comment under the same rules, so it accepts exactly the reports that
-  this reading accepts. **[proposed]** A `syntax` or `value` finding
-  elsewhere in the report is given by both readings and does not
-  suppress the `ambiguous` finding. An earlier draft gave the finding
-  only in a report with no such finding.
+  values; bits only after all five. An earlier draft listed a third
+  reading, a comma or space before the comment, and gave an `ambiguous`
+  finding at a comment whose first byte is `','` or SP. No text of
+  APRS12c puts a separator there: both report diagrams place the
+  comment directly after the digital value (p. 88/68, p. 134/110), and
+  no example has a comment. By
+  [README section 3](README.md#3-tokenizer-model) (Separators and
+  padding) such a byte belongs to the comment, and with no text of the
+  document to name it gets no finding.
+- **Reading taken.** **[proposed]** (a). Visible in the bytes.
+- **In the bytes.** The comment starts with the byte after the eighth
+  bit, as above. A report that reading (b) would accept gets the
+  `syntax` finding of the first missing field alone, with no
+  `ambiguous` beside it
+  ([README section 3](README.md#3-tokenizer-model), Precedence).
 - **Decoders.** FAP: up to five values, fewer accepted; the sixth field,
   if any, is the bits, padded with `'0'` to eight (`FAP.pm:2361-2387`).
   Dire Wolf: the eight bytes after the fifth comma are the bits and the
@@ -368,10 +398,11 @@ the [README](README.md#4-decoders-consulted), not run.
 - **Reading taken.** **[proposed]** (a), with a block in an object or
   item comment recorded under an `unstated` finding. Visible in the
   bytes, as that finding.
-- **In the bytes.** **[proposed]** In an object or item comment the
-  block is a block token, as reading (b) would have it; the `unstated`
-  finding marks the place, and the readings do not divide the bytes
-  differently, so there is no `ambiguous` finding.
+- **In the bytes.** In an object or item comment the block is a block
+  token, as reading (b) would have it; the `unstated` finding marks the
+  place, and the readings do not divide the bytes differently, so there
+  is no `ambiguous` finding
+  ([README section 3](README.md#3-tokenizer-model)).
 - **Decoders.** FAP: in position, object and item comments and in Mic-E;
   the last block, 2 to 7 pairs (`_comments_to_decimal`, `FAP.pm:1199`;
   `FAP.pm:1859`; `_comment_telemetry`, `FAP.pm:1405`). Dire Wolf: in its
@@ -411,11 +442,11 @@ the [README](README.md#4-decoders-consulted), not run.
   and, in Mic-E, the device suffix is comment text, with no finding;
   recognising a block followed by text is left to a deviation
   recogniser.
-- **In the bytes.** **[proposed]** A DAO before a block that nothing
-  but the suffix follows is found where it stands under both readings
+- **In the bytes.** A DAO before a block that nothing but the suffix
+  follows is found where it stands under both readings
   ([02-fields.md](02-fields.md#82-items-found-inside-a-comment) section
   8.2), so the readings divide no bytes differently, and there is no
-  `ambiguous` finding. An earlier draft gave one at the first `'|'` of
+  `ambiguous` finding ([README section 3](README.md#3-tokenizer-model)). An earlier draft gave one at the first `'|'` of
   a run followed by text, which only the dropped part of reading (b)
   took as a block.
 - **Decoders.** All read accept either order and text after the block:
@@ -439,8 +470,10 @@ the [README](README.md#4-decoders-consulted), not run.
   message. Visible in the bytes: a text that starts with one of the four
   keywords in another case, which reading (b) would take as a definition
   message, is message text with an `ambiguous` finding at its first byte.
-  **[proposed]** Under the test of
-  [README section 3](README.md#3-tokenizer-model) the finding is given
+  Whether the addressee sends telemetry cannot be seen in the packet and
+  gives no finding.
+- **In the bytes.** By the tests of
+  [README section 3](README.md#3-tokenizer-model), the finding is given
   only when the rest of the text, read as that definition message, fits
   section 4 with no `syntax` or `value` finding of reading (b)'s own:
   for example `Bits.` followed by eight `'0'` or `'1'` bytes. Text such
@@ -448,15 +481,16 @@ the [README](README.md#4-decoders-consulted), not run.
   finding. A finding that both readings give, such as the length limit
   of [`msg.text`](08-message.md#msg.text), does not suppress the
   `ambiguous` finding. An earlier draft gave the finding for every such
-  keyword. Whether the addressee sends telemetry cannot be seen in the
-  packet and gives no finding. **[proposed]** The finding is against
-  [`msg.text`](08-message.md#msg.text), the field the bytes belong to
-  under this reading. **[proposed]** A finding of reading (b) is its own
-  unless this reading gives the same rule, kind and offset. A byte that
-  `msg.text` rejects under both readings and that a field of section 4
-  also rejects, such as a control byte among the eight bits of
-  `Bits.`, gives reading (b) a finding of its own under the field's
-  rule, and there is no `ambiguous` finding.
+  keyword. The finding is against [`msg.text`](08-message.md#msg.text),
+  the rule this reading gives the bytes (Placing a finding). A finding
+  of reading (b) is shared when this reading gives one of the same kind
+  at the same offset, whatever its rule (Which findings are the other
+  reading's own). A byte that is not a text byte, such as a control
+  byte among the eight bits of `Bits.`, gives `syntax` at that byte
+  against `msg.text` here and against `tlm.bits.sense` under reading
+  (b); the finding is shared, and the `ambiguous` finding is given. An
+  earlier draft compared the rule as well, counted such a finding as
+  reading (b)'s own, and gave no `ambiguous` finding there.
 - **Decoders.** Dire Wolf: exact; the definitions are stored for the
   addressee (`decode_aprs.c:1935-1953`). aprslib: exact (`telemetry.py:46`).
   pdn-aprs: exact (`telemetry_metadata`, `message.rs:197-202`). FAP: any
@@ -517,14 +551,17 @@ the [README](README.md#4-decoders-consulted), not run.
   (p. 92/72, p. 135/111); the example has a comma between them.
 - **Readings.** (a) No separator; a comma is part of the title.
   (b) A comma is required. (c) A comma is optional.
-- **Reading taken.** **[proposed]** (a), following the diagram, with an
-  `ambiguous` finding when the title starts with `','`. Visible in the
-  bytes, as that finding. When such a title, its `','` counted, is longer
-  than 23 bytes, the `value` finding of `tlm.bits.title` alone is given,
-  with no `ambiguous` beside it
-  ([README section 3](README.md#3-tokenizer-model), Precedence).
-- **In the bytes.** **[proposed]** The finding is at that `','`, the
-  byte after the eighth bit. Readings (b) and (c) take the bytes after
+- **Reading taken.** (a), as
+  [README section 3](README.md#3-tokenizer-model) (Separators and
+  padding) requires of a byte that the diagram does not show: the `','`
+  belongs to the title, the next field, and gets an `ambiguous` finding
+  because the example on p. 92/72, a text of the document, takes it as
+  a separator. Visible in the bytes, as that finding. When such a
+  title, its `','` counted, is longer than 23 bytes, the `value` finding
+  of `tlm.bits.title` alone is given, with no `ambiguous` beside it
+  (Precedence).
+- **In the bytes.** The finding is at that `','`, the byte after the
+  eighth bit. Readings (b) and (c) take the bytes after
   it as the title, one byte shorter, and every other byte as this
   reading does, so under the test of README section 3 they accept the
   message wherever this reading does. A `syntax` or `value` finding

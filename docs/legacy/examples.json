@@ -1067,17 +1067,20 @@
    "kind": "text-layer",
    "verdict": "syntax",
    "findings": [
-    "syntax obj.time @11"
+    "syntax obj.time @11",
+    "syntax sym.code @29"
    ],
    "basis": [
     "05-object-item.md#obj.time",
     "05-object-item.md#amb.obj.time",
     "05-object-item.md#err.obj.time",
     "05-object-item.md#err.area.gap",
-    "README.md#3-tokenizer-model"
+    "README.md#3-tokenizer-model",
+    "02-fields.md#1-scope",
+    "02-fields.md#sym.code"
    ],
-   "note": "The extraction lost the script-l symbol code and the line-area descriptor with its 100-mile corridor in braces, which should follow the longitude directly. The example also has no timestamp: the name fills offsets 1-9 and the latitude starts at 11. Under the reading taken, that gives a syntax finding at offset 11, and parsing stops there. The restored packet would still get the same verdict.",
-   "doubt": "The rule ID of the missing-timestamp finding is not named. amb.obj.time places it at offset 11. If the code reads the seven bytes as time.dhm by the 02-fields rule, it might report time.dhm at offset 15 ('.') or offset 17 instead."
+   "note": "The extraction lost the script-l symbol code and the line-area descriptor with its 100-mile corridor in braces, which should follow the longitude directly. The example also has no timestamp: the name fills offsets 1-9 and the latitude starts at 11. Offsets 11-16 are not all digits, so under the reading taken the timestamp is missing: a syntax finding on obj.time at offset 11, using no byte, and the position is read from offset 11 (amb.obj.time, 'After a missing timestamp'). Latitude 11-18, table '\\' at 19 and longitude 20-28 fit; the field ends where the symbol code was expected, so sym.code gives syntax at 29 (README section 3, Output and Placing a finding). The restored packet would still get the verdict syntax. Re-derived after the general rules of README section 3 were agreed.",
+   "doubt": "Earlier versions of this entry stopped parsing at offset 11. The rule ID of the cut-short finding is taken as sym.code, the most specific rule at fault; obj.pos is the selector and has no token."
   },
   {
    "id": "p80-6e46dd10",
@@ -1290,15 +1293,15 @@
    "kind": "text-layer",
    "verdict": "syntax",
    "findings": [
-    "syntax cmp.block @11"
+    "syntax cmp.cs @11"
    ],
    "basis": [
     "02-fields.md#cmp.block",
     "02-fields.md#cmp.cs",
     "06-weather.md#err.wx.cmp-example"
    ],
-   "note": "Extraction cut the compressed weather example at the escaped underscore; the printed field continues with the '_' symbol, cs, T and the weather data and tail. As extracted the block stops after the symbol code '>' at 10, so cs and T are missing from offset 11. The finding is on cmp.block under the short-block rule of 02 section 6.2, written after this entry was first derived.",
-   "doubt": "Rule id of a missing-byte finding inside the 13-byte block (cmp.cs vs cmp.block) is not stated explicitly; placed at the first missing byte."
+   "note": "Extraction cut the compressed weather example at the escaped underscore; the printed field continues with the '_' symbol, cs, T and the weather data and tail. As extracted the block stops after the symbol code '>' at 10, so cs and T are missing from offset 11. Under 02 section 6.2 (cut-short block) cs (11-12) and T are missing; cs is the first part missing, so the finding is on cmp.cs where its first byte was expected. Table, lat, lon and code are part tokens and fit. Re-derived after the general rules of README section 3 were agreed.",
+   "doubt": "02 section 6.2 now names the rule: the part cut short or first missing carries the finding. The cmp.cs ID for a cs part without T is [proposed] there."
   },
   {
    "id": "p86-1792492f",
@@ -1326,7 +1329,7 @@
    "verdict": "conform-ambiguous",
    "findings": [
     "unstated wx.sw @48",
-    "ambiguous wx.baro @48"
+    "ambiguous wx.sw @48"
    ],
    "basis": [
     "06-weather.md#wx.obj",
@@ -1339,7 +1342,7 @@
     "06-weather.md#amb.wx.width",
     "06-weather.md#amb.wx.required"
    ],
-   "note": "A weather object (byte 0 carries wx.obj). Wind 220/004 is at 37-43 and gust g005 at 44-47. The pressure element at 48 has only four digits, so it does not start an element, and the data ends there. The 5-byte tail splits into software code 'b' (not in the software list, so unstated) and unit 0990. Reading (b) of amb.wx.width would take the short pressure as the element and leave an empty tail with no finding of its own, so the tail gets an ambiguous finding at its first byte, against wx.baro. The missing temperature gives no finding in a complete report.",
+   "note": "A weather object (byte 0 carries wx.obj). Wind 220/004 is at 37-43 and gust g005 at 44-47. The pressure element at 48 has only four digits, so it does not start an element, and the data ends there. The 5-byte tail splits into software code 'b' (not in the software list, so unstated) and unit 0990. Reading (b) of amb.wx.width would take the short pressure as the element and leave an empty tail with no finding of its own, so the tail gets an ambiguous finding at its first byte, on wx.sw, the rule this reading gives that byte (amb.wx.width; README section 3, Placing a finding). The missing temperature gives no finding in a complete report. Re-derived after the general rules of README section 3 were agreed.",
    "doubt": "err.wx.object-baro describes only the tail split and does not mention the ambiguous finding. I took that finding from the second condition of amb.wx.width."
   },
   {
@@ -1349,14 +1352,14 @@
    "kind": "text-layer",
    "verdict": "syntax",
    "findings": [
-    "syntax cmp.block @17"
+    "syntax cmp.code @17"
    ],
    "basis": [
     "02-fields.md#cmp.block",
     "02-fields.md#cmp.code"
    ],
-   "note": "Extraction cut the timestamped compressed weather example before its '_' symbol code; the printed field continues with symbol, cs, T, weather data and tail. As extracted the block ends after the longitude, so the symbol code expected at 17 is missing. The finding is on cmp.block under the short-block rule of 02 section 6.2, written after this entry was first derived.",
-   "doubt": "Rule id for the missing byte (cmp.code vs cmp.block) not stated explicitly."
+   "note": "Extraction cut the timestamped compressed weather example before its '_' symbol code; the printed field continues with symbol, cs, T, weather data and tail. As extracted the block ends after the longitude, so the symbol code expected at 17 is missing. Under 02 section 6.2 (cut-short block) code, cs and T are missing; the symbol code is the first part missing, so the finding is on cmp.code at 17. Table, lat and lon are part tokens and fit. Re-derived after the general rules of README section 3 were agreed.",
+   "doubt": "02 section 6.2 now names the rule: the part cut short or first missing carries the finding. The cmp.cs ID for a cs part without T is [proposed] there."
   },
   {
    "id": "p86-929283de",
@@ -1365,16 +1368,22 @@
    "kind": "packet",
    "verdict": "syntax",
    "findings": [
-    "syntax obj.time @11"
+    "syntax obj.time @11",
+    "ambiguous wx.sw @66"
    ],
    "basis": [
     "06-weather.md#err.wx.object-time",
     "05-object-item.md#amb.obj.time",
     "05-object-item.md#obj.time",
+    "05-object-item.md#obj.pos",
+    "05-object-item.md#7-weather-and-storm-data-on-objects",
+    "06-weather.md#53-object",
+    "06-weather.md#7-software-and-unit-codes",
+    "06-weather.md#amb.wx.tail",
     "README.md#3-tokenizer-model"
    ],
-   "note": "A weather object printed without the timestamp that the diagram requires. The latitude begins at offset 11, so the reading gives a syntax finding there and stops parsing. The packet is not classified as weather, and no ambiguous finding is given beside the syntax finding (precedence).",
-   "doubt": "The rule ID for the missing timestamp is not stated (obj.time assumed), as for the FLIGHTPTH example."
+   "note": "A weather object printed without the timestamp that the diagram requires. Offsets 11-16 are not all digits, so the timestamp is missing: syntax on obj.time at 11, using no byte, and the position is read from 11 (amb.obj.time). Symbol code '_' at 29 with bytes after it makes this a weather object (byte 0 carries wx.obj): wind 220/004 at 30-36, then g, t, r, p, P, h and b elements at 37-65. 'w' at 66 is not an element letter and is not followed by a digit, so the data ends there (amb.wx.letters gives nothing). The 4-byte tail 'wRSW' splits as software code 'w' (in this reading's list) and listed unit 'RSW', with the ambiguous finding of amb.wx.tail on wx.sw at 66. The obj.time syntax finding is one both tail readings give, so it does not stop that finding (README section 3, Which findings are the other reading's own). Re-derived after the general rules of README section 3 were agreed.",
+   "doubt": "Earlier versions of this entry stopped parsing at offset 11 and did not classify the packet as weather."
   },
   {
    "id": "p87-002c2ca5",
@@ -2652,7 +2661,7 @@
    "kind": "packet",
    "verdict": "syntax",
    "findings": [
-    "syntax cmp.block @13"
+    "syntax cmp.t @13"
    ],
    "basis": [
     "02-fields.md#err.cmp.overlayexample",
@@ -2660,8 +2669,8 @@
     "02-fields.md#cmp.t",
     "02-fields.md#cmp.table"
    ],
-   "note": "Compressed overlay example with only 12 bytes after the identifier (document erratum, rendered page agrees): read by the fixed layout, table 'B', lat and lon shifted by one, symbol '7', cs 'P[' and the T byte missing at offset 13 (end of field). The finding is on cmp.block under the short-block rule of 02 section 6.2, written after this entry was first derived.",
-   "doubt": "Whether the missing-byte finding is recorded as cmp.t or as cmp.block; offset is the end of the field per the missing-byte rule."
+   "note": "Compressed overlay example with only 12 bytes after the identifier (document erratum, rendered page agrees): read by the fixed layout, table 'B', lat and lon shifted by one, symbol '7', cs 'P[' and the T byte missing at offset 13 (end of field). Under 02 section 6.2 (cut-short block) cs 'P[' is a cmp.cs token with no finding ('P' can be taken by a step, '[' is a base-91 digit), and T is missing at 13, the end of the field, so the finding is on cmp.t. Re-derived after the general rules of README section 3 were agreed.",
+   "doubt": "02 section 6.2 now names the rule: the part cut short or first missing carries the finding. The cmp.cs ID for a cs part without T is [proposed] there."
   },
   {
    "id": "p125-d815d504",

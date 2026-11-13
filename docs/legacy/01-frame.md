@@ -47,11 +47,11 @@ is read as an address that only APRS-IS can carry.
 
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|
-| <a id="addr.src"></a>`addr.src` | Source address | `addr.call` with optional `addr.ssid`, or `addr.is`. A `*` after it gives `syntax`. | yes | `line.gt` | p. 22/12; p. 107/83; UAP §1.1 |
-| <a id="addr.dest"></a>`addr.dest` | Destination address | `addr.call` with optional `addr.ssid`, or `addr.is`. Empty gives `syntax`. A `*` after it gives `syntax`. Its class is given by section 5. | yes | `,` or `line.sep` | p. 22/12; p. 25/13; UAP §1.2 |
+| <a id="addr.src"></a>`addr.src` | Source address | `addr.call` with optional `addr.ssid`, or `addr.is`. A `*` at its end gives `syntax` at the `*`; the token covers the `*`, which is a `residue` one level below it (README section 3, Output). The finding is not given when the address before the `*` already gives `syntax`, since a field gives at most one (README section 3, Placing a finding). An earlier draft left the `*` outside the token, as a residue beside it. | yes | `line.gt` | p. 22/12; p. 107/83; UAP §1.1 |
+| <a id="addr.dest"></a>`addr.dest` | Destination address | `addr.call` with optional `addr.ssid`, or `addr.is`. Empty gives `syntax`. A `*` at its end gives `syntax` at the `*`, which the token covers as for `addr.src`. Its class is given by section 5. | yes | `,` or `line.sep` | p. 22/12; p. 25/13; UAP §1.2 |
 | <a id="addr.call"></a>`addr.call` | Callsign, AX.25 form | 1 to 6 bytes, each `A`–`Z` or a digit. | yes, in the AX.25 form | `-`, `*`, `,`, `>` or `:` | p. 22/12; p. 107/83; UAP §1 |
 | <a id="addr.ssid"></a>`addr.ssid` | SSID, AX.25 form | `-` then `1`–`9`, or `1` followed by `0`–`5`. SSID 0 is written by leaving the suffix out. **[agreed]** After an `addr.call`, the suffix `-0`, or `-0` and one more digit (`N0CALL-0`, `N0CALL-01`), is a wrong text form of an address that AX.25 can carry: this rule gives `syntax`, and the address is not `addr.is`. Two digits above 15 give `value` ([amb.addr.form](#amb.addr.form)). | no | `*`, `,`, `>` or `:` | p. 107/83; UAP §1.1 |
-| <a id="addr.is"></a>`addr.is` | Address only APRS-IS can carry | Not in the AX.25 form and not an `addr.call` with a suffix that `addr.ssid` reports, but 1 to 9 bytes, each 0x21–0x7E other than `>`, `,`, `:` and `*`. One token for the whole address; gives `is-only`. Anything else in an address position gives `syntax` ([amb.addr.form](#amb.addr.form)). | — | as the position it is in | p. 108/84; UAP ch. 4 |
+| <a id="addr.is"></a>`addr.is` | Address only APRS-IS can carry | Not in the AX.25 form and not an `addr.call` with a suffix that `addr.ssid` reports, but 1 to 9 bytes, each 0x21–0x7E other than `>`, `,`, `:` and `*`. One token for the whole address; gives `is-only`. Anything else in an address position gives `syntax` ([amb.addr.form](#amb.addr.form)), at the first byte outside the set, or at the tenth byte of a longer name (README section 3, Placing a finding). | — | as the position it is in | p. 108/84; UAP ch. 4 |
 
 ## 4. The path
 
@@ -70,7 +70,7 @@ not rejected.
 | <a id="path.obsolete"></a>`path.obsolete` | Obsolete alias | A `path.digi` whose callsign is exactly `RELAY`, `TRACE` or `WIDE` (no digit), with any SSID. Gives `obsolete`. | no | — | p. 20/10; p. 155/131; UAP §5.5 |
 | <a id="path.nogate"></a>`path.nogate` | Gating block | A `path.digi` whose callsign is `NOGATE` or `RFONLY`. Classified; no finding, wherever it stands. | no | — | p. 110/86 |
 | <a id="path.q"></a>`path.q` | q-construct | `q`, `A`, then one byte `A`–`Z` or `a`–`z`, as a whole entry, no `*`. The first such entry. **[proposed]** An entry `qA?*` is not `path.q`; before the first q-construct it is read as `path.digi`. Gives `is-only` ([amb.path.q](#amb.path.q)). | no | `,` or `line.sep` | p. 155/131; UAP ch. 4 |
-| <a id="path.is"></a>`path.is` | Entry after the q-construct | 1 or more bytes, each 0x21–0x7E other than `,` and `:`. AX.25 form gives no finding; anything else gives `is-only`. **[proposed]** The text-form SSID rules of `addr.ssid` are not applied here: `N0CALL-0` is simply not in the AX.25 form. A trailing `*` gives `unstated`. | no | `,` or `line.sep` | UAP ch. 4 |
+| <a id="path.is"></a>`path.is` | Entry after the q-construct | 1 or more bytes, each 0x21–0x7E other than `,` and `:`; a byte outside that set gives `syntax` at that byte (README section 3, Placing a finding). AX.25 form gives no finding; anything else gives `is-only`. **[proposed]** The text-form SSID rules of `addr.ssid` are not applied here: `N0CALL-0` is simply not in the AX.25 form. A trailing `*` gives `unstated`. | no | `,` or `line.sep` | UAP ch. 4 |
 
 ## 5. Destination classes
 
@@ -116,7 +116,7 @@ the inner identifier.
 | <a id="dest.generic"></a>`dest.generic` | Generic beacon address | One of the prefixes `ALL`, `AP`, `CQ`, `DF`, `DGPS`, `DRILL`, `DX`, `GPS`, `ID`, `JAVA`, `MAIL`, `MICE`, `QST`, `QTH`, `RTCM`, `SKY`, `SPACE`, `SPC`, `SYM`, `TEL`, `TEST`, `TLM`, `WX`, extended by zero or more bytes `A`–`Z` or digits to at most 6 bytes; or exactly `BEACON`. | — | end of the callsign | p. 29/19 |
 | <a id="dest.grid"></a>`dest.grid` | Locator destination | The 6-byte form of [`grid.loc`](03-position.md#grid.loc), upper case only, every letter in its Maidenhead range ([amb.grid.range](03-position.md#amb.grid.range)). Gives `obsolete`. | — | end of the callsign | p. 28/18; p. 42/26 |
 | <a id="dest.altnet"></a>`dest.altnet` | Alternate net | Any destination not taken above, including callsigns and digipeater aliases. No finding. | — | end of the callsign | p. 29/19; UAP §5.2 |
-| <a id="dest.ssid"></a>`dest.ssid` | Destination SSID | The `addr.ssid` of the destination. Non-zero on any class other than `dest.mice` gives `obsolete` ([amb.dest.ssid](#amb.dest.ssid)). **[proposed]** Not given when `addr.ssid` already reports the suffix (`syntax` or `value`). | no | — | p. 22/12; p. 25/13; p. 27/17; p. 29/19; UAP §1.2.1 |
+| <a id="dest.ssid"></a>`dest.ssid` | Destination SSID | The `addr.ssid` of the destination. Non-zero on any class other than `dest.mice` gives `obsolete` ([amb.dest.ssid](#amb.dest.ssid)). Not given when `addr.ssid` already reports the suffix (`syntax` or `value`) (README section 3, Precedence). | no | — | p. 22/12; p. 25/13; p. 27/17; p. 29/19; UAP §1.2.1 |
 
 The two bytes `xy` of `dest.sym`, as given by Appendix 2 (p. 139/115 to
 p. 141/117), follow a fixed pattern by symbol code range. The second byte
@@ -186,11 +186,12 @@ The `discouraged` findings for raw and positionless weather are those of
 [06-weather.md section 2](06-weather.md#2-recognition), given here at
 byte 0.
 
-**[proposed]** The rule carried by the byte-0 token is the identifier
-rule of the most specific format the packet is classified as. It is
-assigned once classification is complete, so it can depend on bytes
-after byte 0: on the symbol code for weather, and on the addressee and
-text for a `:` packet. The identifier rules are:
+The rule carried by the byte-0 token is the identifier rule of the most
+specific format the packet is classified as. It is assigned once
+classification is complete, so it can depend on bytes after byte 0: on
+the symbol code for weather, and on the addressee and text for a `:`
+packet ([README section 3](README.md#3-tokenizer-model), Output). The
+identifier rules are:
 
 | Byte | Identifier rules |
 |---|---|
@@ -229,14 +230,18 @@ field is read by that rule, which gives `obsolete`; that finding
 replaces the finding of the table above, and the verdict is not
 `unknown-format`.
 
-**[proposed]** Token structure. For an obsolete object there is no
-identifier byte: the `obj.obsolete` token covers the whole field at
-depth 0, and the object field tokens of
+Token structure. For an obsolete object there is no identifier byte:
+the `obj.obsolete` token covers the whole field at depth 0, and the
+object field tokens of
 [05-object-item section 2](05-object-item.md#2-object-report) lie one
 level deeper. For an obsolete bulletin there is no identifier byte
 either: the `bln.obsolete` token covers the whole field at depth 0, with
-nothing tokenized inside it. An earlier draft said only that byte 0 is
-part of the first token of the rule that matched.
+nothing tokenized inside it, since the document gives no layout for it
+([amb.bln.obsolete](08-message.md#amb.bln.obsolete)). The inside of each
+is read as far as the document describes it
+([README section 3](README.md#3-tokenizer-model), Output; Obsolete and
+nested forms). An earlier draft said only that byte 0 is part of the
+first token of the rule that matched.
 
 ## 8. Third-party payloads
 
@@ -250,12 +255,12 @@ field is tokenized from `dti` again, one depth level down.
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|
 | <a id="tp.dti"></a>`tp.dti` | Identifier | `}`, 1 byte: the byte-0 token of this field carries `tp.dti`. | yes | 1 byte | p. 31/17; p. 108/84 |
-| <a id="tp.src"></a>`tp.src` | Original source | `addr.call` with optional `addr.ssid`; or 1 to 9 bytes, each 0x21–0x7E other than `>`, `:` and `*`, which gives `is-only`. A `*` gives `syntax` ([amb.tp.header](#amb.tp.header)). | yes | `>` | p. 108/84; p. 109/85 |
+| <a id="tp.src"></a>`tp.src` | Original source | `addr.call` with optional `addr.ssid`; or 1 to 9 bytes, each 0x21–0x7E other than `>`, `:` and `*`, which gives `is-only`. A `*` gives `syntax` ([amb.tp.header](#amb.tp.header)). Anything else gives `syntax` at the first byte outside the set, or at the tenth byte of a longer name (README section 3, Placing a finding). | yes | `>` | p. 108/84; p. 109/85 |
 | <a id="tp.gt"></a>`tp.gt` | Source terminator | `>`, 1 byte. | yes | 1 byte | p. 108/84 |
-| <a id="tp.dest"></a>`tp.dest` | Original destination | As `addr.dest`, classified by section 5 with the inner identifier. | yes | `,` | p. 108/84 |
-| <a id="tp.path"></a>`tp.path` | Retained original path | Zero or more entries, each `,` then an address as `path.digi`, `path.q` or `path.is`, without `*`. **[proposed]** The token includes the `,`; the entry is read one level below it under the rules of section 4, including the limit of 8 and the obsolete and gating classes, without `path.used`. A `*` here gives `syntax` ([amb.tp.header](#amb.tp.header)). | no | the `,` before `tp.net` | p. 108/84; p. 138/114 |
-| <a id="tp.net"></a>`tp.net` | Network identifier | `,` then an address, AX.25 form or `addr.is` (`TCPIP` in the examples), without `*`. | yes | `,` | p. 108/84 |
-| <a id="tp.gate"></a>`tp.gate` | Receiving gateway | `,` then `addr.call` with optional `addr.ssid`, then `*`. A missing `*`, or an address not in the AX.25 form, gives `syntax` ([amb.tp.header](#amb.tp.header)). It is the last entry of the inner header. | yes | `tp.sep` | p. 108/84; p. 109/85 |
+| <a id="tp.dest"></a>`tp.dest` | Original destination | As `addr.dest`, classified by section 5 with the inner identifier, including a `*` at its end. | yes | `,` | p. 108/84 |
+| <a id="tp.path"></a>`tp.path` | Retained original path | Zero or more entries, each `,` then an address as `path.digi`, `path.q` or `path.is`, without `*`. **[proposed]** The token includes the `,`; the entry is read one level below it under the rules of section 4, including the limit of 8 and the obsolete and gating classes. A `*` here gives `syntax` ([amb.tp.header](#amb.tp.header)), so `path.used` does not apply. The `*` and the bytes after it are a `residue` below the token, and the finding is at the `*`, unless the address before it already gives `syntax` (README section 3, Output; Placing a finding). | no | the `,` before `tp.net` | p. 108/84; p. 138/114 |
+| <a id="tp.net"></a>`tp.net` | Network identifier | `,` then an address, AX.25 form or `addr.is` (`TCPIP` in the examples), without `*`. A `*` gives `syntax` at the `*`, unless the address before it already gives `syntax`; the `*` and the bytes after it are a `residue` below the token (README section 3, Output; Placing a finding). **[proposed]** An empty one gives `syntax` where its first byte was expected. | yes | `,` | p. 108/84 |
+| <a id="tp.gate"></a>`tp.gate` | Receiving gateway | `,` then `addr.call` with optional `addr.ssid`, then `*`. A missing `*`, or an address not in the AX.25 form, gives `syntax` ([amb.tp.header](#amb.tp.header)): one finding, at the first byte that does not fit the AX.25 form, or where the `*` was expected (README section 3, Placing a finding). An earlier draft gave both defects a finding, the address one at its first byte. It is the last entry of the inner header. | yes | `tp.sep` | p. 108/84; p. 109/85 |
 | <a id="tp.sep"></a>`tp.sep` | Inner header end | `:`, the first `:` after `tp.dti`. | yes | 1 byte | p. 108/84 ([amb.tp.header](#amb.tp.header)) |
 | <a id="tp.info"></a>`tp.info` | Original information field | Tokenized from `dti` at depth + 1, under every rule of this directory. An empty field gives `syntax` under this rule. A further `}` is followed ([amb.tp.nest](#amb.tp.nest)). | yes | end of the enclosing field | p. 108/84; p. 110/86 |
 | <a id="tp.aea"></a>`tp.aea` | AEA-form inner header | Every address separated by `>` instead of `,`: source, any retained digipeaters, the network identifier, the gateway with `*`, then the original destination, then `:`. Gives `obsolete` ([amb.tp.aea](#amb.tp.aea)). **[proposed]** Recognised when there is no `,`, at least four non-empty addresses, and exactly one `*`, at the end of the second-to-last address. Each address is read one level below; the last is classified as a destination by section 5. | no | `tp.sep` | p. 137/113; p. 138/114 |
@@ -272,11 +277,13 @@ occur inside an address, nor what ends the header if it does.
 **Readings.** (a) The header ends at the first `:` of the line. (b) It
 ends at the first `:` after a well-formed address list.
 
-**Reading taken.** **[proposed]** (a). No address byte set in this file
-admits `:`, so on a line whose header (a) accepts, the first `:` is also
-the first one after a well-formed address list, and (b) ends the header
-at the same byte. The two differ only on lines where (a) already gives
-`syntax` in the header, and that finding alone is given
+**Reading taken.** **[proposed]** (a).
+
+**In the bytes.** No address byte set in this file admits `:`, so on a
+line whose header (a) accepts, the first `:` is also the first one after
+a well-formed address list, and (b) ends the header at the same byte.
+The two differ only on lines where (a) already gives `syntax` in the
+header, and that finding alone is given
 ([README section 3](README.md#3-tokenizer-model), Precedence). No
 `ambiguous` finding.
 
@@ -305,9 +312,14 @@ one.
 **Readings.** (a) Over 256 bytes is malformed. (b) It is a value beyond a
 stated limit. (c) No limit applies on APRS-IS.
 
-**Reading taken.** **[proposed]** (b): `value` at byte 257, as for every
-stated length limit in this directory. Visible in the bytes, since (c)
-would accept them; the `value` finding alone is given
+**Reading taken.** **[proposed]** (b), not (c). The kind and place then
+follow: `value` at byte 257, the first byte past the limit, as for every
+stated length limit in this directory
+([README section 3](README.md#3-tokenizer-model), Kinds by situation;
+Length limits).
+
+**In the bytes.** Visible, since (c) would accept them; the `value`
+finding alone is given
 ([README section 3](README.md#3-tokenizer-model), Precedence).
 
 **Decoders (read).** Xastir drops a field over 256 bytes
@@ -343,11 +355,14 @@ the four separators `>` `,` `:` `*`. **[agreed]** An explicit `-0` and
 an SSID with a leading zero, such as `N0CALL-0` and `N0CALL-01`, are a
 wrong text form of an address that AX.25 can carry, not an address only
 APRS-IS can carry: [`addr.ssid`](#addr.ssid) gives `syntax`, and there
-is no `is-only` finding. **[proposed]** A numeric SSID over 15 gives
-`value`, also from `addr.ssid`. Where another reading would accept
-those bytes, the `syntax` or `value` finding alone is given
+is no `is-only` finding. A numeric SSID over 15 gives `value`, also
+from `addr.ssid`, as a value outside the stated range 0 to 15
+([README section 3](README.md#3-tokenizer-model), Kinds by situation).
+
+**In the bytes.** Where another reading would accept an SSID that
+`addr.ssid` reports, the `syntax` or `value` finding alone is given
 ([README section 3](README.md#3-tokenizer-model), Precedence).
-**[proposed]** The choice of (b) gives no `ambiguous` finding. On an
+The choice of (b) gives no `ambiguous` finding. On an
 address in the AX.25 form the three readings agree. On any other
 address (a) gives `syntax`, and so does (c) everywhere but the source
 and the entries after the q-construct; a reading that fails does not
@@ -386,8 +401,10 @@ than one.
 the last one marks the station heard.
 
 **Reading taken.** **[proposed]** (a): the second `*` among `path.digi`
-entries gives `syntax`. Visible in the bytes, since (b) would accept
-them; the `syntax` finding alone is given
+entries gives `syntax`.
+
+**In the bytes.** Visible, since (b) would accept them; the `syntax`
+finding alone is given
 ([README section 3](README.md#3-tokenizer-model), Precedence).
 
 **Decoders (read).** FAP keeps a flag per entry and accepts any number
@@ -415,7 +432,9 @@ as APRS-IS entries.
 **Reading taken.** **[proposed]** (b). The tokenizer does not check the
 third byte against a list, since the list is in a document outside the
 references. Entries after the q-construct are not counted against the
-limit of 8. **[proposed]** Every q-construct carries the question,
+limit of 8.
+
+**In the bytes.** Every q-construct carries the question,
 whichever entries follow it, and the bytes of one packet cannot narrow
 it, so it is decided by the reading
 ([README section 3](README.md#3-tokenizer-model)): `is-only` is the
@@ -469,7 +488,7 @@ which an earlier draft gave `ambiguous`: a locator is recognised by
 shape alone, and gives way to the classes before it
 ([README section 3](README.md#3-tokenizer-model)).
 
-**In the bytes.** **[proposed]** By the tests of
+**In the bytes.** By the tests of
 [README section 3](README.md#3-tokenizer-model):
 
 - With a Mic-E identifier both readings take the destination as
@@ -516,7 +535,9 @@ given.
 (c) Treat it as malformed.
 
 **Reading taken.** **[proposed]** (b): `obsolete` for any class other
-than `dest.mice`. Every non-zero destination SSID carries the question,
+than `dest.mice`.
+
+**In the bytes.** Every non-zero destination SSID carries the question,
 and the bytes of one packet cannot narrow it, so it is decided by the
 reading ([README section 3](README.md#3-tokenizer-model)); `obsolete`
 is the only finding, with no `ambiguous` beside it.
@@ -547,7 +568,9 @@ bytes are needed.
 
 **Reading taken.** **[proposed]** (a). Under (b) a five-byte `GPSxy`,
 `SPCxy` or `SYMxy` would be `dest.generic`, which accepts it, instead of
-`dest.sym`. **[proposed]** Every five-byte symbol destination carries
+`dest.sym`.
+
+**In the bytes.** Every five-byte symbol destination carries
 the question, and the bytes of one packet cannot narrow it, so it is
 decided by the reading
 ([README section 3](README.md#3-tokenizer-model)): no `ambiguous`
@@ -575,9 +598,13 @@ cannot tell from the bytes which applies.
 **Readings.** (a) Apply the icon when the packet has no other symbol.
 (b) Apply it only to formats without a symbol field. (c) Never.
 
-**Reading taken.** **[proposed]** The tokenizer reports nothing; the
-choice belongs to the decoding layer, which applies the precedence of
-p. 127/103. **[proposed]** The three readings tokenize the SSID alike
+**Reading taken.** The tokenizer reports nothing: what the SSID means
+is a value for the decoding layer
+([README section 3](README.md#3-tokenizer-model): the tokenizer finds
+boundaries and does not compute values). **[proposed]** The decoding
+layer applies the precedence of p. 127/103.
+
+**In the bytes.** The three readings tokenize the SSID alike
 and differ only in what the decoding layer makes of it, so none divides
 or classifies the bytes differently: not visible in the bytes
 ([README section 3](README.md#3-tokenizer-model)), no finding.
@@ -612,9 +639,12 @@ of the field the identifier. In the table below, FAP, aprslib, aprsc
 and pdn-aprs search for a later `!`, and Xastir strips a prefix.
 
 **Reading taken.** **[proposed]** (a): no later `!` is looked for and no
-prefix is stripped. Such packets are left to a deviation recogniser. No
-finding is given beyond the one that byte 0 already gives in the table
-of section 7; the decoder behaviour above gives no `ambiguous` finding.
+prefix is stripped. Such packets are left to a deviation recogniser.
+
+**In the bytes.** No finding is given beyond the one that byte 0
+already gives in the table of section 7; the decoder behaviour above
+gives no `ambiguous` finding
+([README section 3](README.md#3-tokenizer-model)).
 
 **Decoders (read).**
 
@@ -649,10 +679,12 @@ prohibition) and `unstated` for the rest. **[agreed]** Before that
 verdict, the two obsolete forms without an identifier are tried, the
 object of `obj.obsolete` first and then the bulletin of `bln.obsolete`
 (section 7), since p. 80/62 and p. 98/76 describe them. A match gives
-`obsolete` in place of the finding at `dti`. Where (c) would accept a
+`obsolete` in place of the finding at `dti`.
+
+**In the bytes.** Where (c) would accept a
 "do not use" field, the `syntax` finding alone is given
 ([README section 3](README.md#3-tokenizer-model), Precedence).
-**[proposed]** Otherwise no `ambiguous` finding: (a) fails on every
+Otherwise no `ambiguous` finding: (a) fails on every
 such field and does not count, and (c) would read as status text every
 field that reaches `dti.unknown` or an obsolete form. Every such field
 carries that question, and the bytes of one packet cannot narrow it, so
@@ -686,18 +718,24 @@ Read a position or NMEA sentence unless it fails.
 
 **Reading taken.** **[proposed]** (a). A position cannot start with `!`
 (neither a digit nor a symbol table identifier), so `!!` is never also
-a position. **[proposed]** A field that starts `$ULTW` is also an NMEA
+a position.
+
+**In the bytes.** A field that starts `$ULTW` is also an NMEA
 sentence in one case: when byte 5 is a letter `A`–`Z` and byte 6 is
 `,`, the five bytes after `$` are a valid
 [`nmea.addr`](03-position.md#nmea.addr). A hex digit `A`–`F` after
-`ULTW` can therefore start either. **[proposed]** So can any other
+`ULTW` can therefore start either. So can any other
 letter there: [`wx.raw.data`](06-weather.md#wx.raw.data) checks no
 byte, so the Ultimeter reading accepts every such field, and the
 condition below does not depend on byte 5 beyond its being a letter.
-Where (b), reading the whole field as NMEA by 03-position, would itself give no `syntax` or `value`
-finding, the field gets `ambiguous` at offset 1, the finding that
+Where (b), reading the whole field as NMEA by 03-position, would itself
+give no `syntax` or `value` finding, the field gets `ambiguous` at
+offset 1, the finding that
 [amb.wx.rawdti](06-weather.md#amb.wx.rawdti) gives against
-`wx.raw.ultpkt`. Every other field divides the same way under both
+`wx.raw.ultpkt`: the rule (a) gives those bytes, at the first byte
+where the readings divide them
+([README section 3](README.md#3-tokenizer-model), Placing a finding).
+Every other field divides the same way under both
 readings: where (a) reads a position or an NMEA sentence, (b) reads the
 same. A `!` or `$` field that fails as a position or as NMEA would be
 raw weather under (b), but (a) already reports it as `syntax`, which
@@ -740,7 +778,8 @@ read in the AX.25 form, since it is the station that sent the packet on
 RF. Where (b) or (c) would divide an inner header that gives one of
 these `syntax` findings differently, that finding alone is given
 ([README section 3](README.md#3-tokenizer-model), Precedence).
-**[proposed]** On an inner header that (a) reads with no `syntax`
+
+**In the bytes.** On an inner header that (a) reads with no `syntax`
 finding, the only `*` is on the last entry before the first `:`, so (c)
 ends the header at the same byte. (b), which admits exactly the
 network identifier and the gateway, reads the same entries when no
@@ -772,10 +811,14 @@ field can itself start with `}`.
 **Readings.** (a) Follow it, one level deeper each time. (b) Stop after
 one level and keep the rest opaque.
 
-**Reading taken.** **[proposed]** (a). Each further level gives
-`unstated` at its `tp.dti`. The 256-byte field bounds the depth. Every
-nested `}` carries the question, and the bytes of one packet cannot
-narrow it, so it is decided by the reading
+**Reading taken.** (a), as for any structure the document describes one
+level deep and that recurs deeper: each further level gives `unstated`
+at its `tp.dti`
+([README section 3](README.md#3-tokenizer-model), Obsolete and nested
+forms). The 256-byte field bounds the depth.
+
+**In the bytes.** Every nested `}` carries the question, and the bytes
+of one packet cannot narrow it, so it is decided by the reading
 ([README section 3](README.md#3-tokenizer-model)): `unstated` is the
 only finding, with no `ambiguous` beside it.
 
@@ -813,7 +856,8 @@ APRS-IS carries TNC-2 text (UAP §1, ch. 4), so an AEA line header gives
 ([README section 3](README.md#3-tokenizer-model), Precedence). An inner
 header with no `,` cannot be read in the TNC-2 form, which puts a `,`
 before `tp.net` and `tp.gate`, and one with a `,` is never `tp.aea`.
-**[proposed]** So (b) fails on every inner header that (a) reads as
+
+**In the bytes.** So (b) fails on every inner header that (a) reads as
 `tp.aea`, and a reading that fails does not count: no `ambiguous`
 finding.
 

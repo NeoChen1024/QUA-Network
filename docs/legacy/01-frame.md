@@ -112,13 +112,15 @@ form: it gives `syntax` on `addr.dest`, by reading (c) of
 the next class without a finding of its own. An earlier draft said that
 only APRS-IS can carry such a destination. For a third-party packet the
 outer destination is classified with the outer data type identifier and
-the inner one with the inner identifier. **[proposed]** P. 152/128
-lets a Maidenhead locator be received in lower case
+the inner one with the inner identifier.
+
+P. 152/128 lets a Maidenhead locator be received in lower case
 ([amb.grid.case](03-position.md#amb.grid.case)), but that allowance
 does not reach a destination: the destination is an address first, and
 an address in lower case is already outside the AX.25 form, with its
 finding on `addr.dest`; the class is then chosen by the bytes as
-written (below), and [`dest.grid`](#dest.grid) takes upper case only.
+written (below), and [`dest.grid`](#dest.grid) takes upper case only
+(the paragraph above; [amb.addr.form](#amb.addr.form), reading (c)).
 
 A destination not in the AX.25 form, such as that lower-case one, is
 classified by the bytes as written, and the address gives its `syntax`
@@ -299,7 +301,7 @@ field is tokenized from `dti` again, one depth level down.
 | <a id="tp.src"></a>`tp.src` | Original source | `addr.call` with optional `addr.ssid`; or 1 to 9 bytes, each 0x21–0x7E other than `>`, `:` and `*`, which gives `is-only`. A `*` gives `syntax` ([amb.tp.header](#amb.tp.header)). Anything else gives `syntax` at the first byte outside the set, or at the tenth byte of a longer name (README section 3, Placing a finding). | yes | `>` | p. 108/84; p. 109/85 |
 | <a id="tp.gt"></a>`tp.gt` | Source terminator | `>`, 1 byte. | yes | 1 byte | p. 108/84 |
 | <a id="tp.dest"></a>`tp.dest` | Original destination | As `addr.dest`, classified by section 5 with the inner identifier, including a `*` at its end. An address not in the AX.25 form gives `syntax` on this rule ([amb.addr.form](#amb.addr.form)). | yes | `,` | p. 108/84 |
-| <a id="tp.path"></a>`tp.path` | Retained original path | Zero or more entries, each `,` then an address as `path.digi`, `path.q` or `path.is`, without `*`. **[proposed]** The token includes the `,`; the entry is read one level below it under the rules of section 4, including the limit of 8 and the obsolete and gating classes. A `*` here gives `syntax` ([amb.tp.header](#amb.tp.header)), so `path.used` does not apply. The `*` and the bytes after it are a `residue` below the token, and the finding is at the `*`, unless the address before it already gives `syntax` (README section 3, Output; Placing a finding). | no | the `,` before `tp.net` | p. 108/84; p. 138/114 |
+| <a id="tp.path"></a>`tp.path` | Retained original path | Zero or more entries, each `,` then an address as `path.digi`, `path.q` or `path.is`, without `*`. A `*` in an entry and the bytes after it are a `residue` below the token, and the finding that the `*` gives is placed at the `*`, unless the address before it already gives `syntax` (README section 3, Output; Placing a finding). **[proposed]** The token includes the `,`; the entry is read one level below it under the rules of section 4, including the limit of 8 and the obsolete and gating classes. A `*` here gives `syntax` ([amb.tp.header](#amb.tp.header)), so `path.used` does not apply. | no | the `,` before `tp.net` | p. 108/84; p. 138/114 |
 | <a id="tp.net"></a>`tp.net` | Network identifier | `,` then an address in the AX.25 form (`TCPIP` in the examples), without `*`. **[agreed]** Any other address gives `syntax` on this rule at its first byte that does not fit that form ([amb.addr.form](#amb.addr.form)); an earlier draft also took `addr.is` here. A `*` gives `syntax` at the `*`, unless the address before it already gives `syntax`; the `*` and the bytes after it are a `residue` below the token (README section 3, Output; Placing a finding). An empty one is a missing field and gives `syntax` where its first byte was expected ([README section 3](README.md#3-tokenizer-model), Kinds by situation). | yes | `,` | p. 108/84 |
 | <a id="tp.gate"></a>`tp.gate` | Receiving gateway | `,` then `addr.call` with optional `addr.ssid`, then `*`. A missing `*`, or an address not in the AX.25 form, gives `syntax` ([amb.tp.header](#amb.tp.header)): one finding, at the first byte that does not fit the AX.25 form, or where the `*` was expected (README section 3, Placing a finding). An earlier draft gave both defects a finding, the address one at its first byte. It is the last entry of the inner header. | yes | `tp.sep` | p. 108/84; p. 109/85 |
 | <a id="tp.sep"></a>`tp.sep` | Inner header end | `:`, the first `:` after `tp.dti`. **[agreed]** A `}` field with no `:` after `tp.dti` gives `syntax` on this rule at the end of the field, where the `:` was expected, and the bytes after `tp.dti` are a `residue`. Its verdict is `unknown-format`, as for a line with no [`line.sep`](#line.sep): without the end of the inner header no carried information field is found, so the data type of the carried packet cannot be determined ([README section 3](README.md#3-tokenizer-model), Output). An earlier draft gave the `syntax` finding only and left the verdict open. | yes | 1 byte | p. 108/84 ([amb.tp.header](#amb.tp.header)) |
@@ -697,8 +699,12 @@ cannot tell from the bytes which applies.
 **Reading taken.** The tokenizer reports nothing: what the SSID means
 is a value for the decoding layer
 ([README section 3](README.md#3-tokenizer-model): the tokenizer finds
-boundaries and does not compute values). **[proposed]** The decoding
-layer applies the precedence of p. 127/103.
+boundaries and does not compute values). Whether the decoding layer
+applies the precedence of p. 127/103 is left to that layer, which is
+not yet written: it is part of the cross-cutting open item on SSID
+meanings in [section 11](#11-open-items). An earlier draft proposed
+that the decoding layer apply that precedence, which prescribed
+behaviour for a layer that does not exist yet.
 
 **In the bytes.** The three readings tokenize the SSID alike
 and differ only in what the decoding layer makes of it, so none divides
@@ -878,10 +884,14 @@ retained path. (b) The inner path is exactly network identifier and
 gateway (UAP §2.6). (c) The header ends at the `:` after the `*`.
 
 **Reading taken.** **[proposed]** (a), with the inner source excluding
-`:`. A `*` anywhere but on the gateway gives `syntax`. The gateway is
-read in the AX.25 form, since it is the station that sent the packet on
-RF. Where (b) or (c) would divide an inner header that gives one of
-these `syntax` findings differently, that finding alone is given
+`:`. A `*` anywhere but on the gateway gives `syntax`.
+
+The gateway is read in the AX.25 form: in an inner header the text
+allows the relaxed form only at the source
+([amb.addr.form](#amb.addr.form), reading (c)), and the gateway is the
+station that sent the packet on RF. Where (b) or (c) would divide an
+inner header that gives one of the `syntax` findings above
+differently, that finding alone is given
 ([README section 3](README.md#3-tokenizer-model), Precedence).
 
 **In the bytes.** On an inner header that (a) reads with no `syntax`
@@ -966,12 +976,15 @@ elsewhere, an empty address or only three addresses, is not `tp.aea`:
 it falls to the TNC-2 reading of section 8 and gets that reading's
 findings. An earlier draft of this sentence asked only that one of the
 addresses be followed by `*`, which did not match the row.
+
 **[proposed]** At line level
 APRS-IS carries TNC-2 text (UAP §1, ch. 4), so an AEA line header gives
 `syntax`, and that finding alone is given
-([README section 3](README.md#3-tokenizer-model), Precedence). An inner
-header with no `,` cannot be read in the TNC-2 form, which puts a `,`
-before `tp.net` and `tp.gate`, and one with a `,` is never `tp.aea`.
+([README section 3](README.md#3-tokenizer-model), Precedence).
+
+An inner header with no `,` cannot be read in the TNC-2 form, which
+puts a `,` before [`tp.net`](#tp.net) and [`tp.gate`](#tp.gate), and
+one with a `,` is never `tp.aea` (the [`tp.aea`](#tp.aea) row).
 
 **In the bytes.** So (b) fails on every inner header that (a) reads as
 `tp.aea`, and a reading that fails does not count: no `ambiguous`
@@ -1151,4 +1164,6 @@ walkthrough shows one space in every copy (1.0.1 PDF p. 96, rendered);
   "printable ASCII" on p. 108/84 can be read to include.
 - Cross-cutting: the reading treats a destination SSID and a source SSID
   as values only; their meanings belong to a decoding layer not yet
-  written.
+  written. So does the precedence of p. 127/103 among the symbol in
+  the information field, the destination symbol and the source SSID
+  ([amb.src.ssid](#amb.src.ssid)).

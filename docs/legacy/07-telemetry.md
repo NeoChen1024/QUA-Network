@@ -295,11 +295,15 @@ required, since its earliest stopping point is not stated, so an empty
 list is not a missing field; A1 is required only when a `','` follows
 it.
 
-**[proposed]** Positions of the other findings. The `unstated` finding
-of an empty list is against `tlm.parm`, `tlm.unit` or `tlm.eqns`, at the
-byte after the keyword. A coefficient that fits the relaxed number gives
-no finding: unlike `tlm.analog`, `tlm.eqns.coef` has no stricter form
-beside it.
+Positions of the other findings. The `unstated` finding of an empty
+list is against `tlm.parm`, `tlm.unit` or `tlm.eqns`, at the byte after
+the keyword: nothing stands where the rule allows a list, and the
+finding is placed where the list was expected
+([README section 3](README.md#3-tokenizer-model), Placing an
+`unstated` or `obsolete` finding). A coefficient that fits the relaxed
+number gives no finding: unlike `tlm.analog`, `tlm.eqns.coef` has no
+stricter form beside it ([amb.tlm.eqns](#amb.tlm.eqns); README
+section 3, Kinds by situation).
 
 A `BITS.` text that ends before the eighth bit gives `syntax` at its end,
 where the first missing bit was expected, against `tlm.bits.sense`
@@ -527,7 +531,10 @@ the [README](README.md#4-decoders-consulted), not run.
   device suffix is comment text, with no finding, under both listed
   readings; recognising a block followed by text is left to a deviation
   recogniser ([README section 3](README.md#3-tokenizer-model)).
-  **[proposed]** (a): the block comes before the DAO.
+  (a): the block comes before the DAO, as p. 88/68 requires, followed
+  over the general placement of the DAO on p. 35/21
+  ([README section 3](README.md#3-tokenizer-model), Pages that
+  disagree).
 - **In the bytes.** A DAO before a block that nothing but the suffix
   follows is found where it stands under both readings
   ([02-fields.md](02-fields.md#82-items-found-inside-a-comment) section

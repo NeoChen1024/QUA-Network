@@ -49,10 +49,11 @@ neither, then text. A report with a locator has no timestamp.
 | <a id="stat.beam"></a>`stat.beam` | Beam heading and power | The last 3 bytes of `stat.text` when they are `^`, then a heading byte (a digit or `A`–`Z`), then a power byte 0x31–0x4B (`1` to `9`, `:` to `@`, `A` to `K`). A depth + 1 token inside `stat.text`. Any other last 3 bytes are plain text. | no | end of field | p. 105/81 |
 | <a id="stat.freq"></a>`stat.freq` | Frequency in status text | The rules of section 7 apply at the start of `stat.text`, after the leading `SP` when there is a `stat.grid`. | no | — | p. 111/87; p. 115/91 |
 
-**[proposed]** Tokens. A `stat.time` is a
+Tokens. A `stat.time` is a
 [`time.dhm`](02-fields.md#time.dhm) token, as a position timestamp is in
-03. A `stat.grid` token covers the locator and the symbol, with
-[`grid.loc`](03-position.md#grid.loc), [`sym.table`](02-fields.md#sym.table)
+03 ([README section 3](README.md#3-tokenizer-model), A field defined as
+another rule). **[proposed]** A `stat.grid` token covers the locator
+and the symbol, with [`grid.loc`](03-position.md#grid.loc), [`sym.table`](02-fields.md#sym.table)
 and [`sym.code`](02-fields.md#sym.code) one level deeper.
 
 A locator letter that fails gives one `syntax` finding on `grid.loc`,
@@ -114,10 +115,13 @@ it, so a `SP` inside one is a byte outside its set and gives `syntax`
 there. An item of `SP` only is empty and has no `cap.pad`: `syntax` on
 `cap.item` at its first byte. Only `SP` before `=` gives `syntax` on
 `cap.token` at the item's first byte; only `SP` after it gives `syntax`
-on `cap.value` at the byte after `=`. Reading (b) of
-[amb.cap.form](#amb.cap.form) divides the bytes as this reading does, so
-it has no finding of its own and every `cap.pad` gets its `ambiguous`
-finding.
+on `cap.value` at the byte after `=`.
+
+Reading (b) of [amb.cap.form](#amb.cap.form) divides the bytes as this
+reading does, so it has no finding of its own and every `cap.pad` gets
+its `ambiguous` finding
+([README section 3](README.md#3-tokenizer-model), Which findings are
+the other reading's own).
 
 ## 4. General queries
 
@@ -294,8 +298,19 @@ in any order would give no `syntax` or `value` finding of its own
 ([amb.freq.items](#amb.freq.items)). The text after the last item is
 comment text.
 
-**[proposed]** Tokens and findings. The tokens of this section lie one
-level below the comment or text. An item token includes its leading
+Tokens and findings. The tokens of this section lie one level below
+the comment or text ([README section 3](README.md#3-tokenizer-model),
+Output: items found inside a comment are deeper tokens). The
+`unstated` finding of `freq.tone` is at the first byte of the item
+after its `SP`: a leading `SP` that the rule states is not part of
+what was found (README section 3, Placing an `unstated` or `obsolete`
+finding). `freq.objname` gives no token: the name stays
+[`obj.name`](05-object-item.md#obj.name) or
+[`item.name`](05-object-item.md#item.name) (the
+[`freq.objname`](#freq.objname) row;
+[amb.freq.objname](#amb.freq.objname)).
+
+**[proposed]** An item token includes its leading
 `SP`, so `freq.rx` is 10 bytes and a 2-digit `freq.range` 5; a
 left-justified item has none. `freq.dstar` does not include the `SP`
 before it; its 7-byte form ends with the `SP` after `D-STAR`, and
@@ -308,10 +323,7 @@ stands directly after the frequency or after its `freq.offset`, with no
 for after it. A `freq.range` whose letter is already taken ends the
 items and is not out of order. Only a tone or an offset can be out of
 order: `freq.rx` stands only directly after a frequency, and
-`freq.range` is last. The `unstated` finding of `freq.tone` is at the
-first byte of the item after its `SP`. `freq.objname` and `freq.obj`
-give no token: the name stays [`obj.name`](05-object-item.md#obj.name)
-or [`item.name`](05-object-item.md#item.name).
+`freq.range` is last. `freq.obj` gives no token either.
 
 The `ambiguous` findings of [amb.freq.items](#amb.freq.items) and
 [amb.freq.nofreq](#amb.freq.nofreq) are given on the rule this reading
@@ -343,9 +355,13 @@ of the text that have the shape of a local-time DHM or HMS timestamp.
 **Readings.** (a) Text. (b) A timestamp in a form the status format does
 not allow.
 
-**Reading taken.** **[proposed]** (a), with `ambiguous` at the first
-digit when the bytes are 6 digits and `/` or `h`. Visible in the bytes,
-hence the `ambiguous` finding.
+**Reading taken.** (a), with `ambiguous` at the first digit when the
+bytes are 6 digits and `/` or `h`: bytes that do not match the status
+timestamp form, 6 digits and `z` only (p. 104/80), are the text that
+can also stand there
+([README section 3](README.md#3-tokenizer-model), Forms that can stand
+at one place), and the `ambiguous` finding is that of In the bytes.
+Visible in the bytes, hence the `ambiguous` finding.
 
 **In the bytes.** **[agreed]** Reading (b) means accepting the seven
 bytes as a timestamp, as the decoders that accept these forms do, and
@@ -405,8 +421,9 @@ since the byte after a 4-byte reading's symbol would have to be both
 therefore decides nothing in a packet that conforms, and needs no
 finding.
 
-**[proposed]** The Maidenhead rules of
-[03-position.md](03-position.md#amb.grid.range) apply to the locator.
+The Maidenhead rules of 03-position.md apply to the locator, through
+[`grid.loc`](03-position.md#grid.loc): reading (a) of
+[03 amb.grid.range](03-position.md#amb.grid.range).
 **[agreed]** A first-pair letter outside `A`–`R`, in either case, means
 the bytes are no locator: they are `stat.text`, with no finding, by the
 rule for forms recognised by shape alone
@@ -631,9 +648,13 @@ and a directed query is recognised by its whole shape, so a text whose
 type is not one of the listed five is a message, with no finding
 ([README section 3](README.md#3-tokenizer-model), Classes that a
 keyword declares). An earlier draft carried this as part of the
-proposal that follows. **[proposed]** (a), and (d) also for a `{`
-anywhere and for a callsign of other bytes: the text is a message,
-with no finding. Not visible as an alternative where (a) matches: the
+proposal that follows. (d) also for a `{` anywhere and for a callsign
+of other bytes: such a text does not match the rows of section 4.1,
+which hold no `{`, since a directed query never carries a message
+identifier (p. 103/79), and give [`qry.dir.call`](#qry.dir.call) only
+letters, digits and `-`. It is a message, with no finding (README
+section 3, Classes that a keyword declares).
+**[proposed]** (a). Not visible as an alternative where (a) matches: the
 type has a fixed length, so (b) and (c) place the callsign at the same
 bytes. Decided silently; no `ambiguous` finding.
 

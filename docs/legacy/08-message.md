@@ -58,9 +58,11 @@ of three rules of this file, or a rule of 07 or 09 (section 2.1).
 | <a id="msg.addr.pad"></a>`msg.addr.pad` | Padding | `SP` bytes. | Required when the name is shorter than 9 bytes | Offset 9 | p. 93/71 |
 | <a id="msg.sep"></a>`msg.sep` | Separator | `':'` at offset 10. Any other byte there gives `syntax`; the tokenizer does not look for an earlier `':'`. | Required | Fixed 1 byte | p. 93/71 |
 
-**[proposed]** The addressee is part of the information field, not an
-AX.25 address. The tokenizer does not check it as a callsign and reports
-no `is-only` finding for it. UAP 2.5.2 notes that addressees of Internet
+The addressee is part of the information field, not an AX.25 address.
+The tokenizer does not check it as a callsign and reports no `is-only`
+finding for it ([README section 3](README.md#3-tokenizer-model),
+Output: the `is-only` kind; [amb.msg.addressee](#amb.msg.addressee),
+reading (a)). UAP 2.5.2 notes that addressees of Internet
 services need not be callsigns.
 
 Where the findings of the addressee go, by
@@ -154,26 +156,33 @@ the addressee, with no `msg.text` token; it is still message text for
 the length limit of `msg.text`, whose `value` finding this file gives,
 as in case 4 and as reading (c) of [amb.bln.forms](#amb.bln.forms)
 assumes. An earlier draft named [amb.msg.order](#amb.msg.order) here,
-for a reading of that entry since dropped. A message whose text starts
-with one of the four keywords in another case is read here as a
-message; whether it gets the `ambiguous` finding of
+for a reading of that entry since dropped.
+
+A message whose text starts with one of the four keywords in another
+case is read here as a message (case 4 of section 2.1;
+[README section 3](README.md#3-tokenizer-model), Letter case); whether
+it gets the `ambiguous` finding of
 [amb.tlm.keyword](07-telemetry.md#amb.tlm.keyword) is 07's to decide.
 
-**[proposed]** The other readings in this file. Under the condition
-"read as a message by section 2.1 from case 3 on", the other reading
-reads the whole field after the identifier, its addressee as
-`msg.addr`. Its rule IDs differ from this reading's; a `syntax` or
+The other readings in this file. Under the condition "read as a
+message by section 2.1 from case 3 on", the other reading reads the
+whole field after the identifier, its addressee as `msg.addr`: reading
+(c) of [amb.bln.forms](#amb.bln.forms) reads a `BLN` addressee of
+another shape as a message, and such an addressee cannot reach case 2
+of section 2.1. The other reading's rule IDs differ from this reading's; a `syntax` or
 `value` finding is its own when this reading gives no finding of the
 same kind at the same offset, as
 [README section 3](README.md#3-tokenizer-model) (Which findings are
 the other reading's own) has it for every other reading. A text that
 matches a directed query gets no `syntax` or `value` finding from the
 rows of [09-other.md section 4.1](09-other.md#41-directed-queries),
-which give none to a matching text; the `value` finding of the
-`msg.text` length limit (case 5) is the only one it can give. Whether
-a definition message (case 4) gives one is 07's to decide. The bytes
-that the precedence rule looks at are: the text from offset 11 for
-[amb.msg.ack](#amb.msg.ack); and the addressee for
+which give none to a matching text. Whether a definition message
+(case 4) gives one is 07's to decide.
+
+**[proposed]** The `value` finding of the `msg.text` length limit
+(case 5) is the only one that a text matching a directed query can
+give. The bytes that the precedence rule looks at are: the text from
+offset 11 for [amb.msg.ack](#amb.msg.ack); and the addressee for
 [amb.bln.forms](#amb.bln.forms). The `ambiguous` finding of
 amb.bln.forms is given against `bln.addr` at offset 4. An earlier
 draft also gave one against `msg.addr` at offset 1 for an addressee
@@ -247,7 +256,7 @@ identifier rule of its own: the token of byte 0 carries
 | <a id="msg.rej.kw"></a>`msg.rej.kw` | Keyword | `rej`, lower case, at offset 11. | Required | Fixed 3 bytes | p. 94/72 |
 | <a id="msg.ack.num"></a>`msg.ack.num` | Number acknowledged or rejected | Either 1-5 letters or digits, or the reply-ack identifier copied: 2 letters or digits, `'}'`, and 0 or 2 letters or digits. Nothing follows. | Required | End of information field | p. 94/72, p. 95/73 |
 
-**[proposed]** The text has the shape of an acknowledgement or rejection
+The text has the shape of an acknowledgement or rejection
 exactly when it is `ack` or `rej` followed by a `msg.ack.num` and nothing
 else. Otherwise it is message text (section 3). The tokenizer reports
 `ambiguous` against `msg.text` at offset 11 when the text does not have
@@ -259,8 +268,10 @@ or more letters or digits, a valid `msg.ack.num` followed by a message
 identifier (UAP 5.32), `ack` starting a sentence, or `ACKNOWLEDGED`,
 is message text and gives no finding from this rule. When the packet
 already gives a `syntax` or `value` finding for those bytes, such as a
-trailing CR, that finding alone is given. Reading:
-[amb.msg.ack](#amb.msg.ack).
+trailing CR, that finding alone is given. This applies
+[amb.msg.ack](#amb.msg.ack)
+([README section 3](README.md#3-tokenizer-model), Letter case,
+Precedence).
 
 ## 5. Group and special addressees
 
@@ -281,8 +292,11 @@ tokens; they are listed so that the tokenizer's reports can be grouped.
   acknowledged as usual
   ([amb.qry.response](09-other.md#amb.qry.response)).
 
-**[proposed]** These addressees are tokenized as `msg.addr` with no
-further finding.
+These addressees are tokenized as `msg.addr` with no further finding:
+only `BLN` and `NWS-` are addressee keywords
+([README section 3](README.md#3-tokenizer-model), Classes that a
+keyword declares), and these names are read as any other by
+[amb.msg.addressee](#amb.msg.addressee).
 
 ## 6. Bulletins and announcements
 
@@ -317,15 +331,25 @@ whose extent the fixed 9 bytes give
 ([README section 3](README.md#3-tokenizer-model), Kinds by situation).
 The tokenizer reports `unstated` against `bln.addr` and
 tokenizes the bytes after `BLN` as one depth-1 `bln.group`.
-**[proposed]** It also gives the `ambiguous` finding of [amb.bln.forms](#amb.bln.forms), at
+It also gives the `ambiguous` finding of [amb.bln.forms](#amb.bln.forms), at
 offset 4, where the packet read as a message would give no `syntax` or
-`value` finding of its own.
+`value` finding of its own ([amb.bln.forms](#amb.bln.forms), In the
+bytes; [README section 3](README.md#3-tokenizer-model), Placing a
+finding).
 
-**[proposed]** The `unstated` finding against `bln.addr` is at offset 4,
-the first byte that fits none of the three forms. The `bln.group` token
-of such an addressee runs from offset 4 to the first `SP`, and the rest
-is `msg.addr.pad`; an addressee with `SP` at offset 4 has no `bln.group`
-token. Its bytes are checked as for `msg.addr.name`.
+The `unstated` finding against `bln.addr` is at offset 4, the first
+byte after `BLN`, the part that every stated form shares
+([README section 3](README.md#3-tokenizer-model), Placing an
+`unstated` or `obsolete` finding). The bytes of its `bln.group` token
+are checked as for `msg.addr.name`, as the [`bln.group`](#bln.group)
+row has it. An earlier draft gave as the reason for offset 4 that it
+is the first byte that fits none of the three forms, which a letter
+followed by a group name, whose letter fits `bln.ann`, does not bear
+out.
+
+**[proposed]** The `bln.group` token of such an addressee runs from
+offset 4 to the first `SP`, and the rest is `msg.addr.pad`; an
+addressee with `SP` at offset 4 has no `bln.group` token.
 
 Where the byte at offset 4 already gives `syntax` against `bln.group`,
 such as a `':'`, the `unstated` finding against `bln.addr` is not given:

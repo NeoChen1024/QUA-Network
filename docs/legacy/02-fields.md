@@ -194,8 +194,8 @@ symbol gives no finding. See [amb.sym.overlay](#amb.sym.overlay).
 A packet is meant to carry one symbol; when the information field, the
 destination address and the source SSID each carry one, the information
 field wins (p. 127/103). That comparison spans the header and is not a
-check on these fields. The tokenizer reports nothing for it; the
-precedence is applied by the decoding layer, as
+check on these fields. The tokenizer reports nothing for it; whether
+the decoding layer applies the precedence is left to that layer, as
 [amb.src.ssid](01-frame.md#amb.src.ssid) states.
 
 Symbols carried in the destination address or the source SSID are read
@@ -320,9 +320,11 @@ step 1 of 6.3.
 
 ### 6.5 What follows the block
 
-**[proposed]** No data extension follows a compressed block. The bytes
-after `T` are what the format puts there, usually a comment
-([`cmt.text`](#cmt.text)). When the bytes directly after `T` match an
+No data extension follows a compressed block
+([amb.ext.compressed](#amb.ext.compressed), reading (a);
+[README section 3](README.md#3-tokenizer-model), Pages that
+disagree). The bytes after `T` are what the format puts there,
+usually a comment ([`cmt.text`](#cmt.text)). When the bytes directly after `T` match an
 extension form that 7.1 would try at a slot of the same report, with no
 `syntax` or `value` finding of that form, they get an `ambiguous`
 finding at their first byte and stay comment text; see
@@ -376,9 +378,10 @@ placement for its own runs.
      position report the descriptor is never read
      ([amb.pos.ext](03-position.md#amb.pos.ext)), and the slot is tried
      as in step 3.
-  2. **[proposed]** When [06-weather.md](06-weather.md) reads the
+  2. When [06-weather.md](06-weather.md) reads the
      report as a weather report: [`ext.dirspd`](#ext.dirspd), and
-     nothing else.
+     nothing else
+     ([06-weather section 5.1](06-weather.md#51-uncompressed-position)).
   3. Otherwise [`ext.csespd`](#ext.csespd), [`ext.phgr`](#ext.phgr),
      [`ext.phg`](#ext.phg), [`ext.rng`](#ext.rng), [`ext.dfs`](#ext.dfs).
      PHGR comes before PHG because it is the longer match.
@@ -410,7 +413,9 @@ placement for its own runs.
   [amb.area.symbol](05-object-item.md#amb.area.symbol): a reading in
   which the bytes decide would take them as a descriptor
   ([README section 3](README.md#3-tokenizer-model)).
-- **[proposed]** There is no slot after a compressed block (6.5).
+- There is no slot after a compressed block (6.5;
+  [amb.ext.compressed](#amb.ext.compressed);
+  [README section 3](README.md#3-tokenizer-model), Pages that disagree).
 
 ### 7.2 Fields
 
@@ -539,9 +544,11 @@ field is stated in [03-position.md](03-position.md#3-df-reports).
   are looked for). An earlier draft searched every item below over the
   whole `cmt.text` token of any format, and let a format name further
   free-text fields to be searched the same way.
-- **[proposed]** Within those fields each item is searched for
-  independently of the others, and each occurrence it takes is a token
-  one level deeper than the field. An earlier draft also named here the
+- Within those fields each occurrence that an item takes is a token
+  one level deeper than the field
+  ([README section 3](README.md#3-tokenizer-model), Output: items found
+  inside a comment). **[proposed]** Each item is searched for
+  independently of the others. An earlier draft also named here the
   exception for a base-91 telemetry block, which the bullet on blocks
   below states.
 - **[proposed]** When occurrences of two items overlap, both are

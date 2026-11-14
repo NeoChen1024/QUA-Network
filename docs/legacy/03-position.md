@@ -279,9 +279,13 @@ extension-shaped comment start.
 **Readings.** (a) Comment text. (b) An extension, as after an
 uncompressed position.
 
-**Reading taken.** **[proposed]** (a), with `ambiguous` at the comment
-start when its bytes match an extension, since (b) is what several
-decoders read.
+**Reading taken.** (a), with `ambiguous` at the comment start when its
+bytes match an extension, as
+[02-fields amb.ext.compressed](02-fields.md#amb.ext.compressed) reads
+the same bytes ([README section 3](README.md#3-tokenizer-model), Pages
+that disagree). The finding rests on the listed reading (b) and the
+test of In the bytes below, not on what decoders read (README
+section 3).
 
 **In the bytes.** Visible. (b) accepts those bytes when they match one
 of the extensions listed under `pos.ext` and give no `syntax` or
@@ -420,8 +424,12 @@ course and speed with another symbol are bearing data or comment.
 **Readings.** (a) Comment unless the symbol is `/\`. (b) Bearing data for
 any symbol.
 
-**Reading taken.** **[proposed]** (a), with `ambiguous` (`df.notdf`),
-because Dire Wolf, aprslib and Xastir read (b).
+**Reading taken.** (a), with `ambiguous` (`df.notdf`), as
+[02-fields amb.ext.brgnrq](02-fields.md#amb.ext.brgnrq), reading (b),
+and [02-fields section 7.4](02-fields.md#74-bearing-and-nrq) decide.
+The finding rests on the listed reading (b) and the test of In the
+bytes below, not on what decoders read
+([README section 3](README.md#3-tokenizer-model)).
 
 **In the bytes.** Visible. The finding is at the first of the 8 bytes,
 when they follow an `ext.csespd` under a symbol other than `/\` and their bearing
@@ -447,7 +455,9 @@ The revision history records a change of the separator to `/`
 **Readings.** (a) Exactly the 6 bytes of the diagram. (b) The 6 bytes
 and then free text. (c) Other separators, as older units sent.
 
-**Reading taken.** **[proposed]** (a). **[agreed]** The bearing is a
+**Reading taken.** (a), the narrowest reading: (b) and (c) only widen
+what it accepts ([README section 3](README.md#3-tokenizer-model),
+Kinds by situation). **[agreed]** The bearing is a
 bearing, so a bearing above 360 gives `value` at its first digit: the
 range is implied by the unit
 ([README section 3](README.md#3-tokenizer-model), Kinds by situation).
@@ -487,8 +497,13 @@ bytes can be a subsquare or the start of the comment.
 **Readings.** (a) Take 6 bytes when bytes 5 and 6 are in range. (b) Take
 6 only when `]` follows.
 
-**Reading taken.** **[proposed]** (a). When the 6-byte locator is not
-followed by `]`, the tokenizer gives `ambiguous` at byte 5.
+**Reading taken.** (a): the 6-byte locator is the longer form, tried
+before the 4-byte one whose comment covers its last two bytes
+([README section 3](README.md#3-tokenizer-model), Forms that can
+stand at one place), as
+[02-fields section 7.1](02-fields.md#71-the-extension-slot) tries PHGR
+before PHG. **[proposed]** When the 6-byte locator is not followed by
+`]`, the tokenizer gives `ambiguous` at byte 5.
 
 **In the bytes.** Visible. Byte 5 is the first subsquare letter, the
 first byte where the readings divide

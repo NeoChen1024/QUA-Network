@@ -204,6 +204,42 @@ byte was expected. An `ambiguous` finding goes on the rule this reading
 gives the bytes, at the first byte where the readings divide them
 differently. An entry may state an exception, and then says so.
 
+**[agreed]** Placing an `unstated` or `obsolete` finding. As the author
+decided, these findings are placed as Placing a finding places the
+others. An `obsolete` finding goes on the rule of the obsolete form, at
+the first byte of its token. An `unstated` finding goes on the rule
+whose form or value the document leaves unstated for what was found,
+at the first byte of what was found:
+
+- a form the document does not state, such as an unlisted code, a
+  combination it does not list or an element of unstated width: the
+  first byte of the form, with its letter or opening delimiter;
+- a value written in a way the document does not state, such as a
+  checksum in lower-case hexadecimal: the first byte of the value;
+- a byte outside a set the rule states: that byte;
+- a field that fits none of its stated forms: the first byte after the
+  part that every stated form shares;
+- nothing, at a place where the rule allows something but does not
+  require it: the place where it was expected.
+
+An `SP` or other separator between the form and what comes before it
+is not part of what was found. An entry may state an exception, and
+then says so.
+
+**[agreed]** A field defined as another rule. As the author decided, a
+field that a format defines as an instance of a rule of another entry,
+such as a status timestamp defined as
+[`time.dhm`](02-fields.md#time.dhm), is tokenized as that rule: its
+token carries that rule's ID, and its bytes give that rule's findings.
+The field's own ID names it in the tables and in the findings that
+only the field gives, such as a missing field (When a fixed field is
+present). The timestamps of [`pos.time`](03-position.md#pos.time) and
+[`obj.time`](05-object-item.md#obj.time) are read this way. A field
+whose bytes are only read or checked as those of another rule, and
+that has a limit or findings of its own, keeps its own ID, as
+[`stat.text`](09-other.md#stat.text) checked as `cmt.text` and
+[`tp.dest`](01-frame.md#tp.dest) read as `addr.dest` do.
+
 **[agreed]** When a fixed field is present. As the author decided, the
 entry of a field whose place and width the format fixes names the test
 that makes the field present. When the test fails, the field is

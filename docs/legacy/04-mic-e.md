@@ -209,22 +209,27 @@ The obsolete Mic-E telemetry takes the place of the prefix
 | <a id="mice.grid"></a>`mice.grid` | Maidenhead locator | [`grid.loc`](03-position.md#grid.loc): two letters `'A'`–`'R'`, two digits, optionally two letters `'A'`–`'X'` ([amb.grid.range](03-position.md#amb.grid.range)); then `'/'` `'G'`; then SP when free text follows, which belongs to this token. Lower-case letters give a `syntax` finding, by the status report rule of p. 105/81 ([amb.mice.grid](#amb.mice.grid); README section 3, Letter case). **[proposed]** After the prefix and any altitude ([amb.mice.grid](#amb.mice.grid)). | Optional | The `'G'`, or the SP after it | p. 42/26, p. 73/55, p. 105/81, p. 152/128 |
 | <a id="mice.type.suffix"></a>`mice.type.suffix` | Device type suffix | After a 0x60 or 0x27 prefix: the last two bytes. Raw bytes, nothing stripped first ([amb.mice.suffix](#amb.mice.suffix); [README section 3](README.md#3-tokenizer-model)). **[agreed]** After a Kenwood prefix, the one-byte suffix is taken only when the pair (prefix, last byte) is in the `micelegacy` list of `3rdparty/aprs-deviceid/tocalls.yaml` at commit `c50d026` (2026-10-19): `'>'` with `'='`, `'^'` or `'&'`, and `']'` with `'='`. A last byte that does not form a listed pair is status text. **[agreed]** The two-byte suffix after a 0x60 or 0x27 prefix is checked against the `mice` list of the same file at the same commit, not against the five examples of p. 73/55: a listed suffix gives no finding, an unlisted one `unstated` (the register is open). **[agreed]** After a 0x60 or 0x27 prefix, a single byte left where the two-byte suffix stands gives a `syntax` finding: a fixed-width field that does not fit ([amb.mice.pipe](#amb.mice.pipe)). | Optional | End of information field | p. 73/55, p. 88/68; aprs-deviceid `tocalls.yaml` at `c50d026` |
 
-**[proposed]** Between these parts the status text is read as a position
-comment ([amb.mice.extension](#amb.mice.extension)):
+Between these parts the status text is read as a position comment
+(p. 72/54):
 
-- one data extension, [`ext.phg`](02-fields.md#ext.phg),
+- one data extension, only at the start of the free text
+  ([amb.mice.extension](#amb.mice.extension), reading (a)).
+  **[proposed]** Its forms are [`ext.phg`](02-fields.md#ext.phg),
   [`ext.phgr`](02-fields.md#ext.phgr), [`ext.rng`](02-fields.md#ext.rng)
-  or [`ext.dfs`](02-fields.md#ext.dfs), only at the start of the free
-  text;
+  and [`ext.dfs`](02-fields.md#ext.dfs);
 - [`cmt.alt`](02-fields.md#cmt.alt), [`cmt.dao`](02-fields.md#cmt.dao)
   and [`cmt.noarchive`](02-fields.md#cmt.noarchive) where their own rules
-  place them;
+  place them
+  ([02-fields section 8.2](02-fields.md#82-items-found-inside-a-comment);
+  [README section 3](README.md#3-tokenizer-model), Where comment items
+  are looked for);
 - a frequency (`freq.*`) at the start of the free text, after any data
   extension, as
   [09-other.md section 7](09-other.md#7-frequency-specification)
   places it;
 - [`tlm.b91`](07-telemetry.md#tlm.b91), searched for only in the bytes
-  before the suffix ([amb.mice.pipe](#amb.mice.pipe)).
+  before the suffix ([amb.mice.pipe](#amb.mice.pipe);
+  [07-telemetry section 3](07-telemetry.md#3-base-91-comment-telemetry)).
 
 A standard APRS position inside the status text, which p. 72/54 says
 overrides the encoded one, is not read as a position; its bytes are free
@@ -233,14 +238,22 @@ position ([amb.mice.extension](#amb.mice.extension)).
 
 How the tokenizer applies this section:
 
-- **[proposed]** The parts are read in this order: the prefix or
-  `mice.tlm`, the altitude, then the suffix from the last bytes, then
-  the locator, the data extension and the free text, which ends where
-  the suffix starts. The free text is one
-  [`cmt.text`](02-fields.md#cmt.text) token beside the other parts,
-  with the items of
+- The parts are read in this order: the prefix or `mice.tlm` at
+  offset 9 (p. 72/54, p. 73/55), the altitude where
+  [amb.mice.alt](#amb.mice.alt) places it, then the suffix from the
+  last bytes ([README section 3](README.md#3-tokenizer-model), Forms
+  that can stand at one place; [amb.mice.pipe](#amb.mice.pipe)), and
+  last the data extension, at the start of the free text
+  ([amb.mice.extension](#amb.mice.extension)), and the free text, which
+  ends where the suffix starts. The free text is one
+  [`cmt.text`](02-fields.md#cmt.text) token beside the other parts (the
+  `mice.status` row), with the items of
   [02-fields section 8.2](02-fields.md#82-items-found-inside-a-comment)
-  one level below it.
+  one level below it ([README section 3](README.md#3-tokenizer-model),
+  Output: items found inside a comment are deeper tokens).
+  **[proposed]** The locator is read after the suffix and before the
+  data extension, at its place after the prefix and any altitude
+  ([amb.mice.grid](#amb.mice.grid)).
 - A `'}'` three bytes after the place of the altitude makes the four
   bytes `mice.alt`: the `'}'` fixes the extent of a field whose place
   is fixed, so the field keeps its token when its bytes are wrong
@@ -248,9 +261,11 @@ How the tokenizer applies this section:
   before the `'}'` that is not a [`b91.digit`](02-fields.md#b91.digit)
   gives `syntax` at the first such byte. Such an altitude still stands
   at the start in the sense of [amb.mice.alt](#amb.mice.alt).
-- **[proposed]** After `mice.tlm` the bytes are read as status text
-  whose prefix `mice.tlm` replaces: an altitude and a locator may
-  follow it directly, and there is no suffix.
+- After `mice.tlm` there is no suffix: `mice.type.suffix` is taken only
+  after a prefix (section 5, `mice.type.suffix`). **[proposed]** The
+  bytes after `mice.tlm` are read as status text whose prefix
+  `mice.tlm` replaces: an altitude and a locator may follow it
+  directly.
 - `/G` closes the locator the way the `']'` of a beacon does
   ([README section 3](README.md#3-tokenizer-model), forms recognised by
   shape alone): two letters, two digits and optionally two letters,
@@ -268,9 +283,11 @@ How the tokenizer applies this section:
   byte ([README section 3](README.md#3-tokenizer-model), Placing a
   finding): at its first byte that is lower case or outside its range,
   else at the byte after the `'G'` when free text follows there without
-  the SP. **[proposed]** Nothing, or only a
-  [`tlm.b91`](07-telemetry.md#tlm.b91) block or a DAO, before the
-  suffix needs no SP. A SP directly after `/G` belongs to `mice.grid`
+  the SP. When nothing stands after `/G` before the suffix, no SP is
+  needed: p. 73/55 asks for one only before a plain text comment.
+  **[proposed]** Nor is one needed when only a
+  [`tlm.b91`](07-telemetry.md#tlm.b91) block or a DAO stands there. A
+  SP directly after `/G` belongs to `mice.grid`
   whatever follows it, also when nothing, or only those parts or the
   suffix, follows; it is never free text of its own.
 - The `ambiguous` findings of section 7 are given on the rule this
@@ -288,17 +305,21 @@ How the tokenizer applies this section:
   [amb.mice.alt](#amb.mice.alt) and
   [amb.mice.extension](#amb.mice.extension), is the `cmt.text` token
   less the items found in it.
-- **[proposed]** In the status text the search of
+- In the status text the search of
   [amb.mice.extension](#amb.mice.extension) is the only one for
-  extension-shaped runs. A course and speed is not a Mic-E extension
-  form, so seven bytes of its shape give no finding, at the start of
-  the free text or later. An earlier draft said that this search took
-  the place of that of [amb.ext.count](02-fields.md#amb.ext.count),
-  which no longer looks for runs.
-- **[proposed]** The status text has no length limit, so the
-  conditions of [amb.cmt.dao](02-fields.md#amb.cmt.dao) and
-  [amb.ext.phg](02-fields.md#amb.ext.phg) that compare a comment with
-  its limit always hold here.
+  extension-shaped runs: [amb.ext.count](02-fields.md#amb.ext.count)
+  looks for none past the slot, and
+  [amb.ext.compressed](02-fields.md#amb.ext.compressed) looks only
+  after a compressed block. An earlier draft said that this search took
+  the place of that of amb.ext.count, which no longer looks for runs.
+  **[proposed]** A course and speed is not a Mic-E extension form, so
+  seven bytes of its shape give no finding, at the start of the free
+  text or later.
+- The status text has no length limit (the `mice.status` row), so the
+  conditions of [amb.ext.phg](02-fields.md#amb.ext.phg) (In the bytes)
+  that compare a comment with its limit always hold here. An earlier
+  draft also named [amb.cmt.dao](02-fields.md#amb.cmt.dao), which no
+  longer compares a comment with its limit.
 
 ## 6. APRS-IS transport
 
@@ -492,12 +513,15 @@ the [README](README.md#4-decoders-consulted), not run.
   the type codes, sets the 1.0.1 prohibition aside
   ([README section 3](README.md#3-tokenizer-model), Pages that
   disagree; [err.mice.status](#err.mice.status)).
-  **[proposed]** 0x1D followed by five bytes is
-  `mice.tlm`. When the bytes after a 0x60 or 0x27 prefix also match
+
+  0x1D followed by five bytes is `mice.tlm` (p. 72/54;
+  [README section 3](README.md#3-tokenizer-model), Obsolete and nested
+  forms). A SP at offset 9, which UAP 2.2.1 attributes to the original
+  Mic-E, is free text: a prefix that the document never mentions is
+  decoder behaviour (README section 3).
+  **[proposed]** When the bytes after a 0x60 or 0x27 prefix also match
   reading (b), with hexadecimal digits of either case, the tokenizer
-  reports `ambiguous`. Visible in the bytes, as that finding. A SP at
-  offset 9, which UAP 2.2.1 attributes to the original Mic-E, is free
-  text.
+  reports `ambiguous`.
 - **In the bytes.** The `ambiguous` finding is on `mice.type.prefix`
   at offset 9, where the readings first divide the bytes. Under the
   test of [README section 3](README.md#3-tokenizer-model) it is given
@@ -738,8 +762,11 @@ the [README](README.md#4-decoders-consulted), not run.
   not stated.
 - **Readings.** (a) Four or six characters, then `/G`. (b) Six only.
   (c) Any symbol after the locator.
-- **Reading taken.** **[proposed]** (a), after the prefix and any
-  altitude. Without `/G` the bytes are free text. **[agreed]** Upper
+- **Reading taken.** Without `/G` the bytes are free text: `/G` is
+  matched as p. 73/55 names it and closes the locator
+  ([README section 3](README.md#3-tokenizer-model), Symbols that a
+  format names, and forms recognised by shape alone). **[proposed]**
+  (a), after the prefix and any altitude. **[agreed]** Upper
   case, and lower case gives `syntax`, as decided by the author: the
   rule of p. 105/81 for the locator of a status report, sent in upper
   case and accepted by receivers in lower case, applies to the Mic-E

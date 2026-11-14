@@ -375,7 +375,8 @@ def _free_text(scan, s, e, d, alt_at_start):
             scan.find("cmt.dao", k, i)
         items.append(("cmt.dao", i, i + 5))
     if len(daos) > 1:
-        # amb.cmt.dao: with no limit, reading (b) or (c) always accepts.
+        # amb.cmt.dao: the bytes of a candidate count toward a comment limit whether read as a
+        # DAO or as text, so readings (b) and (c) count as this one does; each candidate is ambiguous.
         for i, _ in daos:
             scan.find("cmt.dao", "ambiguous", i)
     if span is not None:

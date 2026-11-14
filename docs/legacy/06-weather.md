@@ -37,10 +37,12 @@ Byte offsets below count from the first byte of the information field
 
 ## 2. Recognition
 
-**[proposed]** The tokenizer decides that a packet is a weather report
-from the data type identifier and, for the position and object forms,
-from the symbol code. Each row names a form that the rest of this file
-then applies.
+The tokenizer decides that a packet is a weather report from the data
+type identifier ([01-frame section 7](01-frame.md#7-data-type-identifier))
+and, for the position form, from the symbol code as well
+([amb.pos.wxsym](03-position.md#amb.pos.wxsym)). Each row names a form
+that the rest of this file then applies. **[proposed]** The object form
+is decided from the symbol code in the same way.
 
 The ID of each row is the identifier rule of that form: the token of
 the data type identifier byte at offset 0 carries it
@@ -78,11 +80,11 @@ names). An earlier draft carried this as **[proposed]**.
 never read as weather and gets no finding here, whatever follows its
 symbol. See [amb.wx.symbol](#amb.wx.symbol).
 
-**[proposed]** The weather rules are not applied to items, to Mic-E
-reports or to any other format. Where such a report, read as weather,
-would give no `syntax` or `value` finding of its own, it gets an
-`ambiguous` finding; see [amb.wx.carriers](#amb.wx.carriers).
-Storm data (section 8) is read in items as well.
+Storm data (section 8) is read in items as well as in positions and
+objects (p. 87/67). **[proposed]** The weather rules are not applied to
+items, to Mic-E reports or to any other format. Where such a report,
+read as weather, would give no `syntax` or `value` finding of its own,
+it gets an `ambiguous` finding; see [amb.wx.carriers](#amb.wx.carriers).
 
 A finding "of its own" is one of the other reading for which this
 reading gives no finding of the same kind at the same offset; the rule
@@ -524,9 +526,12 @@ read by [`cmt.text`](02-fields.md#cmt.text) and the rules of the
 carrying format. An earlier draft carried the rule for a missing field
 and its end of the storm data as one **[proposed]** item.
 
-**[proposed]** The comment after the storm fields has the length limit
-that the carrying format sets for a comment after a data extension (36
-bytes in 03 and 05).
+The comment after the storm fields follows a data extension, so it has
+the length limit that the carrying format sets for a comment after a
+data extension: 36 bytes in 03 and 05, counted from the end of the
+storm fields ([`pos.cmt`](03-position.md#pos.cmt);
+[`obj.cmt`](05-object-item.md#obj.cmt);
+[README section 3](README.md#3-tokenizer-model), Length limits).
 
 No run in that comment gets a finding of
 [amb.ext.count](02-fields.md#amb.ext.count), neither a course and speed
@@ -635,12 +640,20 @@ extension.
   because the document makes the weather symbol select the complete
   report (p. 82/62); it is Xastir's behaviour, recorded under Decoders
   ([README section 3](README.md#3-tokenizer-model)).
-- **Taken.** **[proposed]** (a), as most decoders do. A report whose
-  information field ends at the symbol code is a plain position or
-  object and gives no finding (section 2). A report with any bytes after
-  the position block is weather. If those bytes are not weather data
-  (for example a PHG extension and a comment), the tokenizer reports
-  `syntax`.
+- **Taken.** (a) over (b)
+  ([README section 3](README.md#3-tokenizer-model), Symbols that a
+  format names). The drop of the content-based reading rests on the
+  statement of section 2 that the symbol decides, which is still
+  **[proposed]**. A position report whose information field ends at the
+  symbol code is a plain position and gives no finding (section 2). A
+  position report with any bytes after the position block is weather.
+  If those bytes are not weather data (for example a PHG extension and a
+  comment), the tokenizer reports `syntax`
+  ([amb.pos.wxsym](03-position.md#amb.pos.wxsym)). **[proposed]** The
+  same holds for an object: one that ends at the symbol code is a plain
+  object and gives no finding, and one with any bytes after the
+  position block is weather, with `syntax` where those bytes are not
+  weather data.
 - **In the bytes.** Not visible: with (b) dropped, every `'_'` report
   is read one way. A report with another symbol code is not weather and
   gets no finding from this file, whatever follows its symbol.
@@ -858,8 +871,10 @@ extension.
   extra digit of an over-long value cannot start an element, so the
   data ends there and the rest fails the tail: `syntax`. An earlier
   draft carried (a) as **[proposed]**, with that argument as its own.
-  **[proposed]** (c): the rendered page puts the decimal-point sentence
-  in the description column of the snowfall entry (p. 84/64). A value
+  (c), the narrower of the two readings of the decimal point
+  ([README section 3](README.md#3-tokenizer-model), Kinds by
+  situation); the rendered page also puts the decimal-point sentence in
+  the description column of the snowfall entry (p. 84/64). A value
   of another width, or a decimal point outside snowfall, gives that
   `syntax` finding alone, although (b) or (d) would accept the bytes
   (README section 3, Precedence).

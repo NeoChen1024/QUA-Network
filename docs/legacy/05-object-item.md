@@ -197,12 +197,15 @@ Details of the descriptor:
   ([README section 3](README.md#3-tokenizer-model), Output).
 - **[proposed]** The corridor width is read when the first byte of the
   descriptor is `'1'` or `'6'`, whether or not a later part fits.
-- **[proposed]** After a compressed block there is no descriptor (02
-  section 7.1). Seven bytes directly after the block that fit
-  `ext.area` get the `ambiguous` finding of
-  [02-fields section 6.5](02-fields.md#65-what-follows-the-block), since
-  7.1 would try that form at a slot of a `\l` report. A course and
-  speed there gets no finding, since 7.1 would not try one.
+- After a compressed block there is no descriptor
+  ([amb.ext.compressed](02-fields.md#amb.ext.compressed), reading (a);
+  [02-fields section 7.1](02-fields.md#71-the-extension-slot)). Seven
+  bytes directly after the block that fit `ext.area` get the
+  `ambiguous` finding of
+  [02-fields section 6.5](02-fields.md#65-what-follows-the-block) and
+  of the In the bytes paragraph of amb.ext.compressed, since 7.1 would
+  try that form at a slot of a `\l` report (step 1). A course and speed
+  there gets no finding, since 7.1 would not try one.
 
 ## 5. Signposts
 
@@ -377,14 +380,15 @@ the [README](README.md#4-decoders-consulted), not run.
   report from there. A name of nine SP gives `syntax`,
   as no name is left once the padding is removed: it is an empty required field
   ([README section 3](README.md#3-tokenizer-model), Kinds by
-  situation: an empty required field is a missing field). **[proposed]** p. 76/58 and p. 77/59 state the
+  situation: an empty required field is a missing field). P. 76/58 and p. 77/59 state the
   byte set of object and item names as printable ASCII, where the
   comment, message and status text admit UTF-8 as well; the names are
   not a field where printable ASCII is only recommended, so the
   exemption of [README section 3](README.md#3-tokenizer-model) does not
-  apply, and the narrowest byte set the text supports is taken (README
-  section 3, Kinds by situation). A byte above 0x7E in a name gives
-  `syntax` at that byte, and the nine-byte length counts bytes.
+  apply. A byte above 0x7E in a name gives `syntax` at that byte (README
+  section 3, Kinds by situation: a byte outside the byte set that a
+  rule states), and the nine-byte length counts bytes (README section 3,
+  Length limits).
 - **Placement.** The finding for nine SP is at offset 1, the first
   byte of the field at fault. After a `syntax` finding on `obj.state`
   the report is read on from offset 11, since the layout fixes where
@@ -529,11 +533,14 @@ the [README](README.md#4-decoders-consulted), not run.
 - **Reading taken.** **[agreed]** (c): corridor and signpost braces are
   read only within the scope of their symbols, and readings (a) and (b)
   differ only in where the braces stand within that scope. Braces in
-  other reports are comment text with no finding. **[proposed]** The
-  scope is a line area, type `'1'` or `'6'`, for the corridor, and the
-  `'\'` `'m'` symbol for the signpost, in object and item reports
+  other reports are comment text with no finding.
+
+  The scope is a line area, type `'1'` or `'6'`, for the corridor, and
+  the `'\'` `'m'` symbol for the signpost, in object and item reports
   (section 5); braces in an area of another type are comment text as
-  well. **[proposed]** The corridor holds one or more digits.
+  well (p. 80/62; reading (c)).
+
+  **[proposed]** The corridor holds one or more digits.
   **[agreed]** Corridor and signpost: (a). The text says only "in the
   comment", and the examples of p. 80/62 put the braces at its start,
   which fixes the spot

@@ -41,8 +41,15 @@ followed by gap lengths. There is no other form.
 bytes is the plain form and 1 to 31 bytes is the gap form. A decoder MUST
 reject any other length.
 
-**[agreed]** A sender MUST use the gap form when it is shorter than 32
-bytes, and the plain form otherwise.
+**[agreed]** A sender MAY use the plain form for every bitmap. It MAY use
+the gap form when the gap form is 31 bytes or shorter. Every receiver
+MUST accept both forms, including a receiver that does not show icons
+(RFC 5.4).
+
+**[agreed]** A sender SHOULD use the gap form when it is shorter than 32
+bytes.
+
+**[agreed]** The gap form has no length byte (RFC 5.7).
 
 ### 3.1 Plain form
 
@@ -94,11 +101,12 @@ The smallest bitmap in this form is the empty one, the three bytes
 
 ### 3.3 Test vectors
 
-`vectors/icon-bitmap.json` is authoritative. An entry with `pixels` gives 32
-bytes of pixels in the plain order and the `field` a sender produces for
-them; a decoder returns the same pixels for that field. An entry marked
-`decode_only` gives a `field` that a sender does not produce and a decoder
-accepts. An entry with `reject` gives a `field` that a decoder rejects.
+`vectors/icon-bitmap.json` is authoritative. An entry with `pixels` and
+without `decode_only` gives 32 bytes of pixels in the plain order and the
+shortest `field` for them. A decoder returns the same pixels for that
+field. An entry marked `decode_only` gives a `field` that is not the
+shortest for its bitmap and that a decoder accepts. An entry with `reject`
+gives a `field` that a decoder rejects.
 
 | Bitmap | Field |
 |---|---|
@@ -159,12 +167,12 @@ a later change in xterm does not change this specification.
 
 - **[agreed]** A PDU that carries an icon also carries a symbol, in the
   classic or the Unicode form. The icon is bound to that symbol.
-- **[agreed]** A receiver that does not support icons, or holds no icon for
+- **[agreed]** A receiver that does not show icons, or holds no icon for
   the station, shows the symbol.
 
 ## 6. Receiver state
 
-A receiver that supports icons holds, for each station identifier, at most
+A receiver that shows icons holds, for each station identifier, at most
 one icon together with the symbol it is bound to.
 
 - **[agreed]** An icon received from an identifier replaces the icon held
@@ -194,6 +202,9 @@ stations it tracks.
 ## 8. Text form
 
 **[proposed]** In canonical text the icon is written in hexadecimal.
+
+**[agreed]** Canonical text writes the bitmap as the 32 bytes of the plain
+form, whichever form the sender used (RFC 5.4).
 
 ## 9. Gateways and display services
 

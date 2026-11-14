@@ -3,9 +3,9 @@
 An open specification attempt at modernizing APRS.
 
 A research project on a redesign of the APRS application protocol:
-one versioned binary PDU with a lossless text form, independent of AX.25 and
-of the physical layer, specified in a document rather than by an
-implementation.
+one versioned binary PDU with a text form that is lossless for content,
+independent of AX.25 and of the physical layer, specified in a document
+rather than by an implementation.
 
 The project is exploratory. Nothing is frozen, including the name: "QUA
 Network" is a working name and may be replaced by a better one. It comes

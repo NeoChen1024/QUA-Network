@@ -58,7 +58,7 @@ def encode_bitmap(plain):
 def decode_bitmap(field):
     """32 bytes of pixels from a bitmap field. Raises IconError for a field the specification tells a decoder to reject."""
     if len(field) == PLAIN_BYTES:
-        # Accepted even where a sender should have used the gap form.
+        # Accepted even where the gap form is shorter.
         return bytes(field)
     if not 1 <= len(field) < PLAIN_BYTES:
         raise IconError("bitmap field length")

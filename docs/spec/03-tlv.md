@@ -36,13 +36,17 @@ what is written is its difference from the tag of the TLV before.
 | 14 | See section 5 | |
 | 15 | | Invalid |
 
+**[agreed]** The value of a TLV is 255 bytes at most.
+
 **[proposed]** The length of the value in bytes, from `L`:
 
 | `L` | Extension | Length |
 |---|---|---|
 | 0 to 12 | None | `L` |
-| 13 | One byte `e` | `13 + e`, from 13 to 268 |
+| 13 | One byte `e` from 0 to 242 | `13 + e`, from 13 to 255 |
 | 14, 15 | | Invalid |
+
+**[agreed]** A length extension byte with a value above 242 is invalid.
 
 **[proposed]** The extension byte of the delta, if any, comes directly
 after the first byte. The extension byte of the length, if any, comes next.
@@ -71,6 +75,7 @@ A relay or a gateway MUST NOT change it.
 area is used up. It MUST reject the PDU if:
 
 - `D` is 15, or `L` is 14 or 15;
+- the extension byte of the length is above 242;
 - an extension byte or a value extends beyond the end of the area.
 
 **[agreed]** A decoder skips a TLV whose tag it does not know, and keeps it

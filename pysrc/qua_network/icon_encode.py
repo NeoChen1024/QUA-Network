@@ -136,7 +136,7 @@ ENCODE = [
     ("noise; plain form", noise()),
 ]
 
-# A sender does not produce these, and a decoder accepts them.
+# The shortest-form encoder does not produce these, and a decoder accepts them.
 DECODE_ONLY = [
     ("plain form of the empty bitmap, whose gap form is 3 bytes", "0" * 256),
     ("plain form of the house, whose gap form is shorter", HOUSE),

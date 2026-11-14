@@ -25,9 +25,11 @@ Each design item carries one of three labels:
 QUA Network is a redesign of the APRS application protocol. It keeps callsigns
 as addresses and runs on existing KISS TNCs, but it does not depend on
 AX.25, and it replaces the ad hoc text formats with one versioned binary PDU
-that has a mandatory, lossless text form. The PDU is placed directly in the
-frame of whatever link carries it, so the same packet can cross 1200 baud
-AFSK, IL2P, LoRa, or an IP trunk without re-encoding.
+that has a mandatory text form, lossless for content (5.4). The PDU is
+placed directly in the frame of whatever link carries it, so the same
+packet can cross 1200 baud AFSK, IL2P, LoRa, or an IP trunk without
+re-encoding. QUA Network follows the possible uses of APRS loosely. It is
+not a copy of APRS (3.2).
 
 The name comes from the Q code QUA, "Here is news of ..." followed by a
 call sign, which is what a station's beacon is, whatever it carries:
@@ -45,8 +47,8 @@ The four ideas that everything else depends on:
 
 1. One self-contained PDU: a small fixed header plus TLV fields, with its own
    source, sequence number and integrity check.
-2. A canonical text representation that maps one-to-one onto the binary form,
-   enforced by round-trip test vectors.
+2. A canonical text representation that maps one-to-one onto the
+   uncompressed binary form (5.4), enforced by round-trip test vectors.
 3. One MTU everywhere: every conformant link carries the largest legal PDU,
    so gateways forward packets unmodified. Channel occupancy is bounded by an
    airtime budget, not by a second, smaller byte limit.
@@ -135,7 +137,8 @@ when a second, independent implementation can be written from the document.
 ### 3.1 Goals
 
 - G1. A single, versioned, extensible packet format.
-- G2. A lossless text form that a person can read, type and `grep`.
+- G2. A text form, lossless for content, that a person can read, type and
+  `grep`.
 - G3. Independence from the physical layer, including links slower than
   1200 baud AFSK.
 - G4. A core position report that fits every conformant link without
@@ -152,6 +155,17 @@ when a second, independent implementation can be written from the document.
 - A new modulation. QUA Network defines framing semantics and reuses existing
   PHYs.
 - Replacing APRS-IS on day one. Coexistence and gatewaying are expected.
+- **[agreed]** A copy of APRS. QUA Network follows the possible uses of APRS
+  loosely. It is not an exact copy of APRS. To hold the whole content of a
+  legacy APRS packet without loss is not a goal. APRS already has many
+  obsolete designs, and many features that remain only for historical
+  reasons. A single field can still convert without loss, as the classic
+  symbol of 5.6 does.
+
+A translation between APRS and QUA Network at a gateway can therefore lose
+information (section 14, question 10). The project still studies where
+implementations depart from the APRS documents, and where those documents
+contradict themselves (Appendix E, `docs/legacy/`).
 
 ### 3.3 Device baseline
 
@@ -203,9 +217,9 @@ substantial share of the mean frame (section 13).
 
 - **[agreed]** The header is minimal. No application data may be placed in
   link-layer address fields.
-- **[proposed]** Header contents: protocol version, flags, source callsign and
-  SSID (encoded as in 5.8), a per-source sequence number, hop limit, and
-  payload length. Everything else is a TLV.
+- **[proposed]** Header contents: protocol version (5.10), flags, source
+  callsign and SSID (encoded as in 5.8), a per-source sequence number, hop
+  limit, and payload length. Everything else is a TLV.
 - **[proposed]** The header never changes in transit. It carries the hop
   limit chosen by the source, not a count that relays decrement; the number
   of hops used is read from the trailer (5.9). The payload length counts
@@ -247,6 +261,13 @@ substantial share of the mean frame (section 13).
   and MUST preserve it when relaying or logging.
 - **[agreed]** TLV order is canonical. Two encodings of the same content
   MUST NOT both be valid.
+- **[agreed]** Field compression is the one exception. A field that has a
+  compressed form is valid without compression, and in any compressed
+  encoding that decodes to the same content (5.6, 5.7). The rule above
+  applies to the uncompressed form of the PDU (5.4).
+- **[agreed]** The value of a TLV is 255 bytes at most
+  ([`docs/spec/03-tlv.md`](../spec/03-tlv.md) section 2). A longer value
+  cannot fit the PDU limit of section 6, so it has no use.
 - **[agreed]** The container follows the option format of CoAP (RFC 7252
   section 3.1): the first byte of a TLV holds the difference between its
   tag and the tag before it in four bits and the length in the other four,
@@ -293,9 +314,33 @@ are to be checked against them.
 
 ### 5.4 Canonical text representation
 
-- **[agreed]** Every PDU has exactly one text representation, and every valid
-  text representation has exactly one PDU. The mapping is lossless in both
+- **[agreed]** QUA Network defines two representations of a PDU: binary and
+  text. The mapping between them is one-to-one when the PDU has no
+  compressed field. Such a PDU has exactly one text form. A valid text form
+  converts to exactly one such PDU. The mapping is lossless in both
   directions.
+- **[agreed]** The mapping holds between implementations of the same
+  version (5.10). An implementation of an earlier minor version writes a
+  TLV of a later minor version as hex, so its text form is different.
+- **[agreed]** The mapping makes no claim about a legacy APRS packet. A
+  translation between APRS and QUA Network can lose information (3.2).
+- **[agreed]** A compressed field is an icon bitmap in the gap form (5.6)
+  or a string marked compressed (5.7). A fixed encoding, such as the
+  identifier of 5.8, is not a compressed field.
+- **[agreed]** The uncompressed form of a PDU has the same content and no
+  compressed field. In it, every icon bitmap is in the plain form, and
+  every string is passthrough.
+- **[agreed]** Every receiver MUST be able to decode every compressed form
+  that the specification defines. The decoder rules are the same for every
+  receiver, so every receiver of one major version builds the same
+  uncompressed form (5.10).
+- **[agreed]** The specification fixes, for one major version, the TLVs
+  that can hold a compressed field (5.10). A receiver skips a TLV that it
+  does not know, or shows it as hex. That TLV holds no compressed field,
+  so the receiver still builds the same uncompressed form.
+- **[agreed]** The text form shows the uncompressed content of a compressed
+  field. A PDU with a compressed field therefore has the same text form as
+  its uncompressed form. Its text form converts to the uncompressed form.
 - **[agreed]** The text form is one line of printable ASCII, with fixed
   whitespace rules and a single escaping rule for strings. It should be
   possible to type a packet by hand on a keyboard-only terminal.
@@ -312,13 +357,59 @@ A non-normative sketch of what a position report might look like:
 QUA1 N0CALL-9 seq=1042 hop=2 pos=24.2500000,120.6700000 alt=152.00 sym=/> cmt="mobile"
 ```
 
+An earlier revision claimed the mapping for every PDU, compressed fields
+included. Section 5.7 proposed a canonical encoder to make that true, and
+5.6 applied the same rules to the icon. The author narrowed the mapping to
+the case with no field compression. The reason is that the rules become
+simpler and an implementation becomes easier to write.
+
+The earlier revision also did not consider implementations of different
+versions. The mapping has a meaning only between implementations of the
+same version.
+
 ### 5.5 Conformance
 
 - **[agreed]** The specification ships round-trip test vectors. An
   implementation conforms only if binary to text to binary is bit-identical
-  for every vector, including vectors with unknown TLVs.
-- **[agreed]** Signatures are computed over the binary form. Because the
-  mapping is bijective, a text log is sufficient to re-verify them.
+  for every vector with no compressed field, including vectors with unknown
+  TLVs.
+- **[agreed]** For a vector with a compressed field, binary to text gives
+  the text of the content. Text to binary gives the uncompressed form.
+- **[agreed]** The source computes a signature over the uncompressed form
+  of the PDU (5.4). The uncompressed form does not depend on the form that
+  the source chose, so the rules are much simpler.
+- **[agreed]** In the uncompressed form, a string is passthrough and has
+  no length byte (5.7). Every TLV length and the payload length of 5.1 are
+  those of the uncompressed form. The other header fields are as sent.
+- **[agreed]** A receiver that verifies a signature first rebuilds the
+  uncompressed form. A text log is sufficient for this, because the text
+  form converts to the uncompressed form (5.4). The author considers the
+  cost of decompression acceptable for the devices of 3.3.
+- **[agreed]** The PDU limit of section 6 applies to the bytes as sent and
+  to the uncompressed form (5.7).
+- **[agreed]** The uncompressed value of every field fits a TLV (5.2).
+  This follows from the limit on the uncompressed form.
+- **[agreed]** The limit on the uncompressed form counts the largest hop
+  trace that the PDU can get (5.9). The hop trace therefore takes room from
+  the PDU. The author accepts this, so that the protocol is rigorous.
+- **[agreed]** The largest hop trace is the control byte and 3 bytes for
+  each hop of the hop limit of the PDU. The frame with the uncompressed
+  form, that trailer and the checksum fits the MTU of 6.1.
+- **[agreed]** A signature does not show which form the source used. A
+  relay or a gateway that changes the form does not obey 6.2, and the
+  signature still verifies. The author accepts this. The content is more
+  important than the bytes as sent.
+- The frame checksum of 5.1 is a different check. It covers the bytes as
+  sent.
+
+An earlier revision computed signatures over the bytes as sent. It relied
+on the canonical encoder of 5.7, so that a text log gave the same bytes.
+The author replaced it. The uncompressed form does not change when a
+sender compresses a field, so the rules are much simpler.
+
+An earlier decision let the uncompressed form be longer than the PDU
+limit, if the bytes as sent fitted. The author replaced it with the first
+item of 5.7, for the reason given there.
 
 ### 5.6 Symbols
 
@@ -390,7 +481,7 @@ section keeps the summary and the reasons.
 A station can also send a small picture of its own: a 16 by 16 one-bit
 bitmap with a foreground and a background colour of one byte each, in an
 optional TLV beside the symbol. The bitmap is sent plain, or in a compressed
-form when that is shorter. It does not replace the symbol. The icon is
+form that is often shorter. It does not replace the symbol. The icon is
 bound to the symbol it is sent with, a receiver holds at most one icon per
 station, and a station withdraws its icon by sending a different symbol
 without one.
@@ -404,7 +495,7 @@ Why it is built this way:
   That is why the symbol stays beside it.
 - Binding the icon to the symbol gives a way to withdraw it without a
   separate message, and keeps a meaningful fallback for receivers that do
-  not support icons or have not yet received one. An earlier version made
+  not show icons or have not yet received one. An earlier version made
   the symbol field a bare placeholder while an icon was in use; it was
   dropped because such receivers would then have nothing to show.
 - One icon per station, replaced by the next, keeps a receiver's memory
@@ -421,15 +512,25 @@ Why it is built this way:
 
 **[agreed]** The bitmap has two forms and no more: plain, at 32 bytes, or
 each row XORed with the one above and the distances between the set bits
-of the result coded in Elias gamma (the gap form). The rules of 5.7 apply:
-the gap form if and only if it is strictly shorter, one exactly specified
-encoder, test vectors, and a decoder that rejects a malformed gap form.
-The details of the bit stream are in the specification file.
+of the result coded in Elias gamma (the gap form). The gap form has one
+exactly specified bit stream, test vectors, and a decoder that rejects a
+malformed gap form. The details of the bit stream are in the specification
+file.
 
-**[agreed]** There is one exception to rejecting a non-canonical encoding:
-a decoder accepts a plain form that the gap form would have made shorter.
-Rejecting it was considered and dropped, because the decoder would have to
-compute the length of the gap form of every plain bitmap it receives.
+**[agreed]** A sender can use either form, and a decoder accepts both.
+The specification file recommends the gap form when it is shorter, because
+it costs less airtime.
+
+**[agreed]** The gap form has no length byte of the kind that 5.7 gives a
+compressed string. An icon bitmap is always 32 bytes before compression,
+and the length byte is for fields of variable length.
+
+An earlier revision applied the canonical encoder rule of 5.7 to the icon:
+the gap form if and only if it was strictly shorter. A decoder accepted a
+longer plain form as an exception. To reject that plain form, a decoder
+would have to compute the gap form of every plain bitmap. The author
+dropped the rule for the same reason as the rule of 5.7. The checks of the
+gap form bit stream in the specification file stay as they were.
 
 Rows of a drawn picture resemble their neighbours, so the row XOR leaves
 mostly zeros with single set bits where an outline moves, and a gap is one
@@ -521,31 +622,78 @@ and two colours cost two bytes more than the shape alone.
 
 ### 5.7 Text compression
 
-- **[agreed]** Only free-text string fields are compressed (comment, status,
-  message body). Tags, lengths and binary values are sent as they are. The
-  TLV structure is always readable without decompressing anything.
+- **[agreed]** Compression saves airtime. It is not a way to send content
+  that does not fit the PDU limit in its uncompressed form. The
+  uncompressed form of a PDU MUST fit the PDU limit of section 6.
+- **[agreed]** Of the string fields, only free-text fields are compressed
+  (comment, status, message body). The only other compressed field is the
+  icon bitmap of 5.6. Tags, lengths and other binary values are sent as
+  they are. The TLV structure is always readable without decompressing
+  anything.
 - **[agreed]** The method is Unishox2, a codec designed for short Unicode
   strings.
-- **[agreed]** The sender compresses each string as a trial. If the result is
-  not strictly shorter than the UTF-8 original, the string is sent unchanged
-  (passthrough). Unishox2 can expand some inputs, so this rule is required.
+- **[agreed]** A sender SHOULD compress each string as a trial. It SHOULD
+  send the compressed form only if that form is strictly shorter than the
+  UTF-8 original. Otherwise it SHOULD send the string unchanged
+  (passthrough). Unishox2 can expand some inputs. Passthrough is therefore
+  always allowed.
+- **[agreed]** A compressed string starts with a length byte. The length
+  byte gives the length of the uncompressed string, in bytes. A
+  passthrough string has no length byte.
+- **[agreed]** Only a compressed field of variable length has a length
+  byte. A TLV value is 255 bytes at most (5.2), so one byte is sufficient.
+- **[agreed]** The length byte counts as part of the compressed form when
+  the sender compares the lengths.
+- **[agreed]** A decoder does not run an encoder. It does not reject a
+  field because the sender did not choose the shortest form.
+- **[open]** Which malformed compressed strings a decoder rejects
+  (section 14, question 16).
 - **[proposed]** Each text field carries a marker saying which form it holds:
   passthrough or compressed. If per-string preset selection is adopted (see
   "Choice of preset" below), the marker becomes a preset number, with 0 for
   passthrough.
-- **[proposed]** Because the rule is "compressed if and only if strictly
-  shorter", the form is determined by the content, and the binary-to-text
-  round trip of 5.4 holds. A decoder MUST reject a field that is marked
-  compressed but is not what the canonical encoder produces for that string.
-  Recompressing and comparing is cheap at these lengths.
+- **[open]** How a text field carries the marker. A passthrough string has
+  no length byte, so the marker is not a byte of a passthrough string.
+  Whether the length byte holds the preset number is also open (section
+  14, question 16).
+- **[agreed]** The specification pins the exact decoder behaviour of every
+  compressed form that it allows. It does not pin an encoder. Two
+  independent decoders give the same string for the same field.
 - **[proposed]** The specification pins the allowed Unishox2 preset or
-  presets and one exact encoder behaviour for each, and ships test vectors
-  taken from real corpus strings. Two independent implementations must
-  produce identical bytes.
-- The canonical text form shows the decompressed string. Compression is not
+  presets, and ships test vectors taken from real corpus strings.
+- The canonical text form shows the uncompressed string. Compression is not
   visible in text.
 - The short Unicode symbol of 5.6 is not compressed; at 8 bytes or less
   there is nothing to gain.
+
+An earlier revision proposed a canonical encoder. A sender used the
+compressed form if and only if it was strictly shorter. The specification
+pinned one exact encoder behaviour. A decoder recompressed each string and
+rejected any other bytes. The purpose was the round trip of 5.4 for a
+compressed string. The author dropped the decoder check and the pinned
+encoder, because they were too strict and made the rules too complex.
+
+The trial rule of the sender was a requirement. The author changed it to a
+recommendation, together with the canonical encoder and for the same
+reason. The icon rule of 5.6 changed in the same way.
+
+**[open]** The details of Unishox2 in this section are still under study:
+the presets and the exact decoder. The author considers a reduced Unishox2
+implementation that has only the presets that this project can use. It
+would make the work simpler and let the specification freeze (section 14,
+question 16).
+
+The first item of this section has these consequences:
+
+- Whether the sender segments content depends on the content only. It does
+  not depend on how well an encoder compresses, and the specification does
+  not pin an encoder.
+- A frame that a receiver rebuilds from the text form fits the limit,
+  with every hop trace that the frame can get (5.5).
+- A receiver needs a buffer of one PDU limit only.
+
+The cost is that compression cannot put a longer text into one PDU. The
+sender segments that text (6.5).
 
 #### What Unishox2 contains
 
@@ -582,11 +730,15 @@ of date.
 (`USX_PSET_DFLT`, `USX_PSET_ALPHA_ONLY`, `USX_PSET_FAVOR_ALPHA`,
 `USX_PSET_NO_DICT`, `USX_PSET_URL` and others). Three ways to use them:
 
-| Approach | Who decides | Extra bits | Canonical |
-|---|---|---|---|
-| One preset for everything | The specification | none | by construction |
-| A. Preset fixed per field type | The specification | none | by construction |
-| B. Preset chosen per string | The content, by rule | a small preset number per string | needs the rule below |
+| Approach | Who decides | Extra bits |
+|---|---|---|
+| One preset for everything | The specification | none |
+| A. Preset fixed per field type | The specification | none |
+| B. Preset chosen per string | The sender | a small preset number per string |
+
+Every compressed string also has the length byte of this section. Whether
+the preset number is part of the length byte is open (section 14,
+question 16).
 
 **B is the leading candidate. It is not fixed.** A comment field holds URLs,
 English sentences, Chinese, frequencies and more, so a preset fixed by
@@ -594,26 +746,27 @@ field type is barely a choice. Selecting per string also removes the
 language-bias concern: a preset with English fragments is used only on
 strings where it actually wins.
 
-If B is adopted, these rules keep the encoding canonical (**[proposed]**):
+If B is adopted, these rules apply (**[proposed]**):
 
-- Compress the string with every allowed preset and take the shortest
-  result.
-- On a tie, take the lowest preset number.
-- If no result is strictly shorter than the UTF-8 original, send
-  passthrough.
 - The marker of each text field is the preset number, 0 meaning
   passthrough.
-- A decoder reruns the same rule on the decoded string and rejects the
-  field if the sender's choice is not the canonical one.
+- The sender chooses the preset. A sender that wants the shortest result
+  compresses the string with every allowed preset and compares.
+- A decoder uses the preset that the marker gives. It does not check the
+  choice of the sender.
+
+An earlier revision made the choice canonical. The sender took the
+shortest result, and the lowest preset number on a tie. A decoder reran
+the rule and rejected any other choice. The author dropped this with the
+canonical encoder above, for the same reason.
 
 Costs of B:
 
 - The allowed set has to be small, three or four presets, so that the
-  marker is 2 bits. Each extra preset is one more compression pass on both
-  sides and one more set of conformance vectors.
-- Every allowed preset needs an encoder that two implementations reproduce
-  byte for byte. A preset with back-references keeps the determinism
-  question open (see `USX_PSET_NO_DICT` below).
+  marker is 2 bits. Each extra preset is one more compression pass for a
+  sender that compares, and one more set of conformance vectors.
+- Every allowed preset needs a decoder definition that is exact enough for
+  two implementations to give the same string.
 
 Other considerations, whichever approach is taken:
 
@@ -623,10 +776,9 @@ Other considerations, whichever approach is taken:
 - `USX_PSET_NO_DICT` is described in the source as the preset for input
   with no repeating sequences. It appears to disable back-references. If
   so, it removes the one part of the encoder where a matching strategy has
-  to be chosen, which would make byte-identical output across
-  implementations much easier to guarantee. Repeats inside a comment of a
-  few dozen bytes are rare, so the loss should be small. Both points are to
-  be confirmed by reading the encoder and by measurement.
+  to be chosen, which makes an encoder simpler to write. Repeats inside a
+  comment of a few dozen bytes are rare, so the loss should be small. Both
+  points are to be confirmed by reading the encoder and by measurement.
 - Unishox2 also accepts custom presets. A preset built from APRS traffic
   would be a small dictionary that ages, which the no-dictionary rule
   excludes.
@@ -640,9 +792,10 @@ extra rules.
 
 Unishox2's behaviour is in practice defined by its reference
 implementation. Adopting it by reference would repeat pitfall 11. The
-specification therefore has to state the encoder precisely, or cite the
-published Unishox2 description and back it with test vectors. Whether the
-reference encoder is fully deterministic across platforms is to be checked.
+specification therefore has to state the decoder precisely, or cite the
+published Unishox2 description and back it with test vectors. The encoder
+does not have to give the same bytes on every platform. No decoder
+compares bytes, and the signature covers the uncompressed form (5.5).
 
 An earlier revision considered compressing the whole body, TLV structure
 included. It was dropped: binary values barely compress, structural
@@ -786,6 +939,8 @@ Relaying, all **[proposed]**:
   It SHOULD leave room for the whole path, 3 bytes for each hop of its
   limit, which is 21 bytes at a limit of 7. Any relay on
   the path can then always forward, and none has to truncate.
+- The limit on the uncompressed form already counts the whole path (5.5).
+  How that rule and the two rules above fit together is to be reviewed.
 
 Properties to keep in mind:
 
@@ -863,6 +1018,55 @@ Test vectors:
 
 Computed with the `blake3` Python package (1.0.11).
 
+### 5.10 Versions
+
+- **[agreed]** The protocol has a major version and a minor version. Two
+  implementations have the same version when both numbers are the same.
+- **[agreed]** The protocol guarantees backward compatibility only inside
+  one major version.
+- **[agreed]** Therefore a major version does not get a new compressed
+  field format.
+- **[agreed]** A change that adds no compressed field format and breaks no
+  compatibility needs only a new minor version.
+- **[agreed]** A new compressed field format is one of these, and each
+  needs a new major version:
+  - a new compressed form, such as a new codec or a new preset;
+  - a new TLV that holds a compressed field.
+- **[agreed]** Inside one major version, a receiver can decode every PDU.
+  It skips a TLV that it does not know (5.2), and it builds the same
+  uncompressed form as every other receiver (5.4).
+- **[agreed]** A change breaks compatibility if it has one of these
+  effects. As a result, existing stations, relays and gateways can no
+  longer reasonably interoperate with the changed ones:
+  - it changes how an existing station, relay or gateway reads the value
+    of a field;
+  - it clearly changes what a station, a relay or a gateway does with
+    data that it receives.
+- **[agreed]** The test is a receiver of an earlier minor version that
+  gets a PDU that is valid after the change. The change breaks
+  compatibility if that receiver does one of these:
+  - it rejects the PDU or one of its fields;
+  - it reads a different value from a field that it knows;
+  - it acts differently on the PDU: relay, deduplication, authentication
+    or acknowledgement;
+  - it builds a different uncompressed form (5.4).
+- **[agreed]** The same test applies in the other direction: a receiver
+  of the later minor version that gets a PDU of the earlier one.
+- **[agreed]** These changes do not break compatibility:
+  - a new TLV that holds no compressed field and that an earlier receiver
+    can skip, if the other fields keep their meaning without it;
+  - a new value in a list that the specification leaves open, if it is not
+    a new compressed field format.
+- **[agreed]** The header carries the major version and the minor version.
+  The version marker of the text form follows the header (5.4).
+- **[proposed]** The two numbers are 4 bits each and share one byte. The
+  major version is the upper 4 bits. A comparison of two version bytes as
+  numbers then gives the order of the versions.
+
+The specification can fix the compressed field formats, because few fields
+need compression. In practice these are the strings and the bitmap. The
+other fields are compact binary encodings of data.
+
 ## 6. Size budget
 
 ### 6.1 One MTU
@@ -876,6 +1080,7 @@ Computed with the `blake3` Python package (1.0.11).
   bytes, so the PDU limit is somewhat lower. The exact value (for example
   240 bytes, leaving 15 for the envelope) is fixed when the LoRa and FSK
   bindings are drafted.
+- The uncompressed form of the PDU also fits the limit (5.7).
 - Existing traffic supports this: all but a very small share of RF-origin
   APRS payloads are 255 bytes or shorter (section 13), so the limit matches
   what 1200 baud networks carry today.
@@ -893,6 +1098,7 @@ it.
 - **[agreed]** A gateway MUST NOT remove TLVs, shorten values, or otherwise
   alter a PDU. The only part of a frame a relay changes is the trailer that
   holds the hop trace (5.9).
+- A change of the form of a compressed field alters the PDU (5.5).
 - **[agreed]** Access links never fragment. On a half-duplex broadcast channel
   one lost fragment loses the packet, there is no retransmission, and every
   receiver must hold reassembly state.
@@ -944,6 +1150,8 @@ by speed. It recommends a bitrate and lets the airtime budget do the rest.
   own sequence number, carrying a message identifier, a segment index and the
   segment total. Segments are acknowledged and retransmitted individually,
   and a receiver can display the segments it has.
+- The uncompressed form fits the limit (5.7), so compression does not
+  change whether the sender segments content.
 - **[agreed]** Segment boundaries fall on UTF-8 code point boundaries, so
   every segment is valid text on its own.
 - **[agreed]** Gateways do not segment on behalf of a source. A gateway cannot
@@ -1134,9 +1342,10 @@ before any of it is treated as sound.
   gives up batch verification.
 - **No key identifier.** The key is looked up by callsign. At most one byte
   of key index is kept for rotation.
-- **Signature coverage.** Signatures and MACs cover everything the source
-  wrote: the header and all TLVs. The hop trace follows the authentication
-  tag and is not covered (5.9).
+- **Signature coverage.** Signatures and MACs cover the content of
+  everything the source wrote: the header and all TLVs, in the uncompressed
+  form of the PDU (5.5). They do not cover the choice of compressed form.
+  The hop trace follows the authentication tag and is not covered (5.9).
 - **Unsigned packets** remain valid. Clients show them as unverified, and
   gateways MAY restrict some classes, such as messages, to verified sources.
 
@@ -1211,7 +1420,8 @@ before any of it is treated as sound.
 ## 12. Pitfalls to avoid
 
 1. Application data in link-layer fields (Mic-E, WIDEn-N).
-2. More than one valid encoding of the same content.
+2. More than one valid encoding of the same content, other than the field
+   compression of 5.2.
 3. Floating point on the wire.
 4. Decoding that depends on state from other packets.
 5. Fragmentation on a broadcast access channel.
@@ -1246,6 +1456,13 @@ before any of it is treated as sound.
 26. A non-commercial condition on the specification text.
 27. Reference material published with no licence statement.
 28. A project name that depends on someone else's trademark.
+29. A requirement that a format hold every packet of the protocol it
+    replaces without loss. The format then has to keep the obsolete designs
+    of that protocol.
+30. A canonical encoding that a decoder enforces by running the encoder.
+    It is too strict, and it makes the rules too complex.
+31. Compression used to send content that does not fit the size limit in
+    its uncompressed form.
 
 ## 13. Measurements from the APRS-IS corpus
 
@@ -1351,12 +1568,16 @@ anything is decided on them.
    7.3).
 6. Time-slotted access and coexistence with legacy stations (9).
 7. Cryptographic review of the TESLA parameters, the truncated Schnorr
-   challenge, and the chain rollover construction (10.4, 10.6).
+   challenge, and the chain rollover construction (10.4, 10.6). Also of a
+   signature or a MAC over the uncompressed form instead of the bytes as
+   sent (5.5).
 8. The format and distribution of infrastructure attestations (10.5).
 9. Area identifiers: how they are assigned and by whom (8.2).
-10. Migration: translation between legacy APRS and QUA Network at gateways is
-    lossy in at least one direction. What is preserved, and how is the loss
-    marked?
+10. Migration: a translation between legacy APRS and QUA Network at a
+    gateway can lose information (3.2). Which kinds of legacy packet does a
+    gateway translate? What does it do with a legacy packet that has no QUA
+    Network form? How is a translated packet marked? Who is the source of a
+    translated PDU, and who issues its sequence number (6.5)?
 11. Message reliability: acknowledgement, retry policy and segment
     retransmission.
 12. Regional variation in traffic mix, and whether the MTU decision should
@@ -1364,10 +1585,21 @@ anything is decided on them.
 13. Packed format for high-speed trunks (8.2). Deferred.
 14. Recommended sizes per packet class (6.3).
 15. The byte limit of the Unicode symbol form, proposed as 8 (5.6).
-16. Unishox2: whether presets are chosen per string (the leading
-    candidate) or one preset is pinned; which presets are allowed; how the
-    encoder is specified independently of the reference implementation; and
-    whether it is deterministic across platforms (5.7).
+16. Unishox2 (5.7):
+    - Are presets chosen per string (the leading candidate), or is one
+      preset pinned? Which presets are allowed? Whether presets are used
+      at all is not decided. It waits for the measurement of step 11 in
+      section 15, because the strings of the corpus are not tested yet.
+    - How is the decoder specified independently of the reference
+      implementation? Does a reduced implementation with only the allowed
+      presets replace the reference implementation?
+    - Which malformed compressed strings does a decoder reject? What does
+      it do when the length byte gives a wrong length?
+    - How does a text field mark its form and its preset, and is the
+      preset number part of the length byte? A preset number there leaves
+      fewer bits for the length.
+    - What does a receiver do with a PDU whose uncompressed form does not
+      fit the PDU limit?
 17. Use of the unused identifier values: the all-zero identifier, and
     37^12 up to 2^63 in the low 63 bits. Also whether the SSID positions
     use base 36 so that no SSID pattern needs rejecting (5.8).
@@ -1384,6 +1616,13 @@ anything is decided on them.
 22. The final name ("QUA Network" is a working name), its check against
     existing trademarks, and the rule for its use by modified versions of
     the specification (11).
+23. Versions (5.10):
+    - What does a receiver do with a PDU of a major version that it does
+      not know?
+    - Under the test of 5.10, a value that a decoder rejects today cannot
+      get a meaning in a later minor version. Which values does the
+      specification reserve as "ignore" instead? This waits for the
+      definition of the formats.
 
 ## 15. Next steps
 
@@ -1391,21 +1630,33 @@ anything is decided on them.
 2. Extract packets above 255 bytes and all `{` packets; identify senders and
    PHY.
 3. Separate LoRa traffic by destination tocall.
-4. Parse the corpus into semantic records, taking APRS12c (Appendix D) as
-   the reference for intended meaning. The reading of APRS12c that the
-   parser follows is written down first, in `docs/legacy/`. Then a strict
-   tokenizer records every field's position on the raw bytes, and a field
-   inventory counts presence, sizes and co-occurrence as input to the TLV
-   tag table (5.2). Record the true parse-failure rate and the distribution
-   of comment length.
+4. Divide the corpus into fields, taking APRS12c (Appendix D) as the
+   reference for intended meaning. One purpose is to learn which fields
+   occur in the corpus and how large their values are. The other is to
+   list where APRS12c fails, for the divergence catalogue (Appendix E).
+   The purpose is not to define a record that holds every legacy packet
+   (3.2).
+
+   The reading of APRS12c that the parser follows is written down first,
+   in `docs/legacy/`. Then a strict tokenizer records every field's
+   position on the raw bytes, and a field inventory counts presence, sizes
+   and co-occurrence as input to the TLV tag table (5.2). Record the true
+   parse-failure rate and the distribution of comment length.
 5. Train a zstd dictionary on the corpus and record per-packet compressed
    size as an approximate lower bound for any candidate encoding.
 6. Draft the header and TLV tag table. Re-encode the corpus. Report, per
    candidate: the length distribution per packet class and the resulting
-   airtime per PHY.
-7. Check semantic round trip: APRS to semantic record to QUA Network to
-   semantic record must be equal.
-8. Publish the canonical text grammar and the first test vectors.
+   airtime per PHY. The re-encoding can drop legacy content that has no
+   QUA Network field (3.2). It measures size and airtime only.
+7. Dropped. An earlier revision listed a check of a semantic round trip
+   here: APRS to semantic record to QUA Network to semantic record, with
+   equal records. The author dropped the check. It tested a goal that QUA
+   Network does not have: to record legacy packet content without loss
+   (3.2). The round trip that the specification requires is inside its own
+   format (5.4, 5.5), and step 8 covers it. The number stays so that step
+   numbers do not change.
+8. Publish the canonical text grammar and the first test vectors,
+   including vectors with a compressed field (5.5).
 9. Consider publishing the raw corpus.
 10. Build the divergence catalogue by differential testing of existing
     parsers against the corpus (Appendix E).
@@ -1422,6 +1673,8 @@ anything is decided on them.
     that legacy APRS software on the channel ignores them.
 13. Extend the icon measurement of 5.6 to the APRS symbol table drawn at
     16 by 16.
+14. Study a reduced Unishox2 implementation that has only the presets that
+    QUA Network can use (5.7; section 14, question 16).
 
 ## Appendix A. Transceiver packet limits
 
@@ -1553,7 +1806,9 @@ for explaining a difference once it has been found.
 1. Run the corpus through several independent parsers. Candidates, to be
    confirmed: aprslib (Python), Ham::APRS::FAP (Perl) or its C port libfap,
    the Dire Wolf decoder, aprsc, javAPRSlib, Xastir, YAAC.
-2. Normalise each parser's output into the same semantic record.
+2. Normalise each parser's output into one common record, so that the
+   outputs can be compared. This record exists only for the comparison. It
+   is not a QUA Network format.
 3. Compare. Every packet on which parsers disagree, or which some accept and
    others reject, becomes a catalogue entry.
 4. Read the relevant code to find the cause, and record it.
@@ -1575,8 +1830,8 @@ theoretical differences without showing which ones matter.
 | Category | Meaning for QUA Network |
 |---|---|
 | Violates the specification but is common on air | Gateways translating legacy traffic must tolerate it. |
-| Not defined by the specification | QUA Network must define it explicitly. |
-| Ambiguous, and implementations read it differently | The canonical encoding must remove the ambiguity. |
+| Not defined by the specification | If QUA Network keeps this use, its specification defines it explicitly. |
+| Ambiguous, and implementations read it differently | If QUA Network keeps this use, its definition has one reading only. |
 | De facto extension outside the specification | Decide whether to adopt it as a registered TLV. |
 
 ### E.3 Entry format

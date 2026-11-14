@@ -174,6 +174,32 @@ changes; link to it instead of restating formats, constants or figures here.
 - Comments explain intent, invariants or non-obvious control flow, not
   individual statements.
 
+### Document language
+
+Write documents in simple technical English. The model is ASD-STE100
+(Simplified Technical English), applied at about 80%: its writing rules
+apply, but its dictionary of approved words does not.
+
+- One sentence has one statement or one instruction. A sentence that
+  describes has a maximum of 25 words. A sentence that gives a step has a
+  maximum of 20 words.
+- Use the active voice and the present tense. Name the subject: the
+  document, the tool, the sender or the packet.
+- One word has one meaning, and one meaning has one word. Do not use a
+  different word for the same thing. A document that has its own terms
+  lists them, as `docs/legacy/README.md` does.
+- Put the condition first: "If ..., the tokenizer ...". Use a list for two
+  or more conditions or steps.
+- Do not put more than three nouns together.
+- One paragraph has one topic and a maximum of six sentences.
+- Do not use metaphors, idioms or Latin abbreviations.
+- Technical names stay as they are: rule IDs, field names, byte notation,
+  packet examples and quoted text. A table cell can contain a phrase that
+  is not a full sentence.
+
+These rules apply to `docs/legacy/` now. The RFC and `docs/spec/` follow
+them when they are next revised.
+
 ## Local toolchain and verification
 
 - Use the repository-root `./.venv`, managed by uv. Do not fall back to

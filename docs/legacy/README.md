@@ -2,288 +2,405 @@
 
 | | |
 |---|---|
-| Status | Draft. Not frozen. Items carry the labels **[agreed]**, **[proposed]** and **[open]** with the meaning given in the RFC. |
+| Status | Draft. Not frozen. Paragraphs and rows are marked **[agreed]**, **[proposed]** or **[open]**, with the meaning that the RFC gives them. |
 | Reference | `APRS12c.pdf` in submodule `3rdparty/aprsspec`, commit `5830d42f`. See [RFC Appendix D](../rfc/qua-network-rfc-0.md#appendix-d-reference-documents). |
-| Used by | `qua-legacy-tokenize` and `qua-legacy-fields` (package `qua_network.legacy`), RFC section 15, step 4. They read 01-frame, 02-fields, 03-position, 04-mic-e, 05-object-item, 06-weather, 07-telemetry, 08-message and 09-other. |
+| Used by | `qua-legacy-tokenize` and `qua-legacy-fields` (package `qua_network.legacy`), for RFC section 15, step 4. These tools apply 01-frame, 02-fields, 03-position, 04-mic-e, 05-object-item, 06-weather, 07-telemetry, 08-message and 09-other. |
 
 ## 1. Purpose and premise
 
-The files in this directory record how this project's legacy tokenizer
-reads the bytes of APRS packets, with APRS12c as the reference. They do
-not specify QUA Network, and they do not restate or repair APRS.
+The files in this directory record how the legacy tokenizer of this
+project reads the bytes of APRS packets. APRS12c is the reference. These
+files do not specify QUA Network. They do not restate APRS, and they do
+not repair it.
 
-**[agreed]** Premise. APRS12c is not a coherent specification. It leaves
-fields undelimited, byte sets and receiver actions unstated, and it
-contradicts itself between pages, between a diagram and its examples, and
-between the editions it compiles. No reading can remove this, and this
-project does not try to. The reading is a measuring instrument: it exists
-so that the corpus can be divided into fields and counted (RFC section
-15, step 4), and so that the places where the document fails are listed
-for the divergence catalogue (RFC Appendix E). It makes no claim about
-what APRS means. A choice made at one place is a working choice for that
-place; it sets no precedent, and two choices need not agree with each
-other.
+**[agreed]** Premise. The premise has these parts:
 
-"Conforms" in this project therefore means only that the bytes break no
-statement of APRS12c that the rules of section 3 treat as stated. A
-packet that conforms may still be read differently by every deployed
-decoder.
+- APRS12c is not a coherent specification. It does not delimit all
+  fields. It does not specify all byte sets or all actions of the
+  receiver.
+- APRS12c contradicts itself between pages, between a diagram and its
+  examples, and between the editions that it compiles.
+- No interpretation can remove these faults, and this project does not
+  try to remove them.
+- These files are a measurement tool. They have two purposes. First, the
+  tokenizer uses them to divide the corpus into fields and to count the
+  fields (RFC section 15, step 4). Second, they list the places where
+  APRS12c fails, for the divergence catalogue (RFC Appendix E).
+- These files make no claim about what APRS means.
+- A choice at one place is a working choice for that place only. It is
+  not a precedent. Two working choices do not have to agree with each
+  other.
 
-The text and tables of the legacy documents are not reproduced. Each rule
-is described in this project's own words and cites the page it comes from.
+Thus, in this project, "conform" means only this: the bytes break no
+statement of APRS12c that the rules of section 3 treat as specified.
+Deployed decoders can still read a packet that conforms in different
+ways.
 
-An earlier draft of this directory decided every open point of APRS12c
-one by one, each as a reading with a status label, and added general
-paragraphs to keep those decisions consistent with each other. As the
-author decided, that direction is dropped: it amounts to writing a new
-edition of APRS, which is not this project's work, and most of the
-decisions had no measurable effect on the corpus. As the author decided,
-none of the individual decisions of that draft is carried over, including
-those that recorded a reason of the author's: the general rules replace
-them all. They remain in the history of this repository, up to commit
-`722e30a`.
+These files do not copy the text and tables of the legacy documents. Each
+rule describes the behaviour in the words of this project and cites the
+page of its source.
+
+An earlier draft of this directory decided each open point of APRS12c
+separately. It recorded each decision as an interpretation with a status
+label. It also added general paragraphs to keep these decisions
+consistent with each other. The author dropped that direction for two
+reasons:
+
+- It is the same as writing a new edition of APRS, which is not the work
+  of this project.
+- Most of the decisions had no measurable effect on the corpus.
+
+The author also decided that no decision of that draft continues into
+these files. This includes the decisions that recorded a reason of the
+author. The general rules replace all of them. The earlier draft stays in
+the history of this repository, up to commit `722e30a`.
 
 ## 2. Conventions
 
-**Citations.** `p. N/M` is PDF page N, printed page M, of `APRS12c.pdf` at
-the commit above. The printed numbers are not monotonic, because the
-document is a compilation; the PDF page is the one to look up. Other
-documents are named: `UAP` is `Understanding-APRS-Packets.pdf` in the same
-submodule, cited by section. Errata also cite two earlier editions, only
-to say where a defect first appears: `12b PDF p. N` is a PDF page of
-`APRS12b.pdf` in the same submodule, and `1.0.1 PDF p. N` a PDF page of
-the original APRS 1.0.1 reference of 29 August 2000, which is not in the
-repository and is linked from the
-[documentation index](../README.md#external-references). Neither
-edition is a reference for the reading itself. `APRS-IS q` and
-`APRS-IS q-alg` name the two APRS-IS pages on the q-construct, at the
-snapshots the documentation index pins; they are a register in the
-sense of section 3, to which APRS12c defers by naming the q-construct
-(p. 155/131).
+**Terms.** These files use the terms below with one meaning each. They do
+not use other words for these meanings.
 
-**Bytes.** Packets are byte strings, not text. A literal byte is written
-in code, `'!'`; a range as `0x21`–`0x7B`; `SP` is 0x20. "Digit" means
-`'0'`–`'9'`. Case is significant unless an entry says otherwise.
+| Term | Meaning |
+|---|---|
+| APRS12c | The reference document of these files (see "Citations"). |
+| specify | APRS12c specifies a format, a byte set, a width, a range or a limit. An example shows bytes. |
+| interpretation | One possible meaning of text in APRS12c. |
+| format | The byte structure of a packet type or of a field. The column "Format" of a rule table gives the format of the field. |
+| field | A named part of a packet, at any level. A field can be inside another field, for example the altitude in a comment. |
+| Item, Object | With a capital letter, these words are only the APRS Item report and the APRS Object report. |
+| text | Bytes with no structure. |
+| place | Where a field can be in a packet. "Position" is only a geographic position. |
+| marker | A keyword, a symbol or a fixed place that starts a field. |
+| accept, reject | An interpretation accepts bytes when the bytes match it. It rejects bytes when they do not match it. |
+| conform | Only for the verdict (section 3.2). |
+| token, finding, verdict, residue | The outputs of the tokenizer (section 3.2). |
+| rule | A row of a rule table. It has an ID. |
+| general rule | One of the seven rules of section 3.1, "rule 1" to "rule 7". |
+| stricter format | Of two formats, the format that permits fewer byte strings. |
+| typing error | A clear error in APRS12c that no other part of APRS12c supports, for example an extra or a missing character. |
+| erratum | A catalogue row where two parts of APRS12c disagree, or where APRS12c has a typing error. Its ID starts with `err.`. |
+| working choice | The behaviour that the tokenizer uses at one place when no general rule applies. |
+| the tokenizer | The tool that applies these files (package `qua_network.legacy`). |
+| the author | The author of this project. |
+| the sender | The station that made the packet. |
+| corpus | The capture of packets. |
 
-**Rules.** Each file has rule tables with the columns
+**Citations.** `p. N/M` is PDF page N and printed page M of `APRS12c.pdf`,
+at the commit above. The printed page numbers do not always increase,
+because APRS12c is a compilation. Use the PDF page to find a page. Other
+documents have names. `UAP` is `Understanding-APRS-Packets.pdf` in the
+same submodule, and a citation of it gives the section.
 
-| ID | Field | Layout | Required | Ends at | Source |
+Errata also cite two earlier editions. They cite them only to show where
+a defect first occurs:
+
+- `12b PDF p. N` is a PDF page of `APRS12b.pdf` in the same submodule.
+- `1.0.1 PDF p. N` is a PDF page of the original APRS 1.0.1 reference of
+  29 August 2000. This edition is not in the repository. The
+  [documentation index](../README.md#external-references) links to it.
+
+These two editions are not a reference for the interpretations in these
+files.
+
+`APRS-IS q` and `APRS-IS q-alg` are the two APRS-IS pages about the
+q-construct, at the snapshots that the documentation index pins. They are
+a register in the sense of section 3. APRS12c defers to them when it
+names the q-construct (p. 155/131).
+
+**Bytes.** Packets are byte strings, not character strings. These files
+use this notation:
+
+- A literal byte is in code font, for example `'!'`.
+- These files write a range as `0x21`–`0x7B`.
+- `SP` is 0x20.
+- "Digit" means `'0'`–`'9'`.
+
+Case is significant, unless a row says otherwise.
+
+**Rules.** Each numbered file has rule tables with these columns:
+
+| ID | Field | Format | Required | Ends at | Source |
 |---|---|---|---|---|---|
 
-The ID is lower case and dotted, unique across this directory, and is what
-the tokenizer reports. Each file owns the prefixes listed in section 5. An
-ID is never reused for a different rule. A rule table states what APRS12c
-states, with the page; it carries no label.
+The ID is in lower case, with dots. It is unique in this directory, and
+the tokenizer reports it. Each file owns the prefixes that section 5
+lists. These files never use an ID again for a different rule. A rule
+table records what APRS12c specifies, with the page. It has no label.
 
-**Catalogue.** Each file lists the places where APRS12c fails for its
-formats, in one table with the columns
+**Catalogue.** Each numbered file lists the places where APRS12c fails
+for its formats. The list is one table with these columns:
 
-| ID | Pages | What the document leaves open | Class | Rule | What the tokenizer does |
+| ID | Pages | What APRS12c leaves open | Class | Rule | What the tokenizer does |
 |---|---|---|---|---|---|
 
-The ID is `amb.<prefix>.<topic>`, where `<prefix>` is one of the rule
-prefixes of the file (section 5) and `<topic>` is one or more lower-case
-words joined by `.` or `-`; the row carries an anchor of the same name,
-`<a id="amb.<prefix>.<topic>"></a>`. The class is one of `unstated`,
-`conflict` and `ambiguous`, and the rule is the general rule of section
-3.1 that the class falls under. The last column says, in one phrase, what
-follows from that rule for these bytes and which finding, if any, is
-given. A row is an application of a general rule, not a decision, and
-carries no label.
+The ID is `amb.<prefix>.<topic>`. `<prefix>` is one of the rule prefixes
+of the file (section 5). `<topic>` is one or more lower-case words,
+joined by `.` or `-`. The row has an anchor with the same name,
+`<a id="amb.<prefix>.<topic>"></a>`.
 
-**[agreed]** A row that the general rules do not settle has `none` in its
-rule column, and its last column gives a working choice: the simplest
-behaviour, which sets no precedent (section 1). Such a row goes to the
-author only when a run of the field inventory or of a probe shows that it
-touches more than 0.01% of the packets of the capture. It is marked
-**[open]** while it waits for the author.
+The class is one of `unstated`, `conflict` and `ambiguous`. The column
+"Rule" gives the general rule of section 3.1 for that class. The last
+column tells in one phrase what that rule causes for these bytes. It also
+gives the finding, if there is one. A row applies a general rule. It is
+not a decision, and it has no label.
 
-A catalogue row does not argue for a reading, and does not record what
-deployed decoders do: how decoders differ is found by differential
-testing (RFC Appendix E), and how often a row matters is read from the
-field inventory, which counts findings by rule ID.
+**[agreed]** If the general rules do not decide a row, its column "Rule"
+contains `none`. Its last column then gives a working choice. A working
+choice is the simplest behaviour, and it is not a precedent (section 1).
+A run of the field inventory or of a probe can show an effect on more
+than 0.01% of the packets of the corpus. Only then does the row go to the
+author. While the row waits for the author, it is marked **[open]**.
 
-**Errata.** A place where two parts of APRS12c disagree (an example that
-does not fit its diagram, an arithmetic error, two pages that differ) is
-a catalogue row of class `conflict` with the ID `err.<prefix>.<topic>`,
-formed and anchored as above. A row keeps the ID it was first given,
-also when its class turns out to be another. A fault that lies outside the document's
-content, such as a wrong character in the PDF's text layer, is not an
-erratum.
+A catalogue row does not argue for an interpretation. It does not record
+what deployed decoders do. Differential testing (RFC Appendix E) finds
+how decoders are different. The field inventory counts findings by rule
+ID, and it shows how often a row matters.
 
-**Reviewed exceptions.** A file may end with a section of this name. An
-entry there departs from the general rules at one place, because the
-author has read the passage and found that it does not say what it
-means. Each entry is **[agreed]**, cites the page, states what the
-tokenizer does instead, and gives the author's reason. Nothing else in
-these files departs from the general rules.
+**Errata.** At some places, two parts of APRS12c disagree. For example,
+an example does not match its diagram, a calculation has an error, or two
+pages are different. Such a place is a catalogue row of class
+`conflict`, with the ID `err.<prefix>.<topic>`. Its ID and its anchor
+follow the pattern above. A row keeps its first ID, also when its class
+changes later. An error outside the content of APRS12c is not an erratum,
+for example a wrong character in the text layer of the PDF.
 
-## 3. Reading rules and tokenizer model
+**Reviewed exceptions.** A file can end with a section that has this
+name. An entry in that section departs from the general rules at one
+place. The reason is that the author read the passage and found that it
+does not say what it means. Each entry is marked **[agreed]** and cites
+the page. It tells what the tokenizer does instead, and it gives the
+reason of the author. Nothing else in these files departs from the
+general rules.
+
+## 3. Interpretation rules and tokenizer model
 
 ### 3.1 General rules
 
-**[agreed]** These seven rules are the whole of the reading. Everything
-in the numbered files applies them, except the reviewed exceptions
-(section 2).
+**[agreed]** These seven general rules are the complete interpretation.
+Each numbered file applies them. The only departures are the reviewed
+exceptions (section 2).
 
-1. **What is stated is followed.** Where APRS12c fixes the bytes of a
-   field, by a format diagram, a table or explicit rule text (a byte
-   set, a width, a count, a delimiter, a range, a length limit), bytes
-   that break it give `syntax`, and a value outside a stated range or
-   limit gives `value`. Nothing else gives either finding. A range that
-   the unit itself defines counts as stated: minutes and seconds up to
-   59, hours up to 23, a latitude up to 90, a longitude up to 180, a
-   bearing or course up to 360. Where the text can be read in more than
-   one way, bytes conform when at least one reading accepts all of them;
-   `syntax` or `value` is given only when every reading rejects them.
-   Free text is not such a reading: once a keyword, a symbol or a fixed
-   place announces a structured field, the bytes are judged as that
-   field, and taking them as comment or other free text instead does
-   not make them conform. A form the document marks obsolete gives `obsolete`; one it advises
-   against gives `discouraged`.
-2. **What is not stated is not guessed.** Where the document provides a
-   place but gives no rule for what was found there (a code outside a
-   list it does not close, a case it does not give, a combination it
-   does not mention), the finding is `unstated`, which does not affect
-   the verdict. The tokenizer does not look for a field at a place the
-   document does not name for it: bytes of that shape there stay in the
-   field that holds them, usually a comment or other free text, with no
-   finding. Where the document says only that a field can hold an item,
-   the whole field is the place; where it fixes a spot, such as
-   directly after another field, only that spot is. Where an unknown
-   code leaves the extent of what follows unknown, the rest is residue.
-3. **Where the document contradicts itself, both sides are accepted.**
-   When two parts of APRS12c disagree about what is allowed, bytes that
-   satisfy either part conform, with no finding, and the place is listed
-   as an erratum. The reading does not say which part is right. An
-   example packet is part of the document and counts as one of the
-   sides, in the form it shows. The exception is a passage that is
-   plainly a slip of the pen, whether an example, a sentence, a diagram
-   or a table, such as a stray or missing character that nothing else
-   in the document supports: it is listed as an erratum and allows
-   nothing.
-   Where the two parts would divide the same bytes into different
-   fields, rule 4 applies as well.
-4. **Where two readings fit the same bytes, the finding is
-   `ambiguous`.** When the document's text can be read in two ways that
-   would both accept these bytes but divide or classify them
-   differently, the packet gets an `ambiguous` finding at the first byte
-   where the two differ. The token follows a fixed default that takes no
-   side on what was meant: at a place where the document allows a
-   structured field, bytes that match the whole stated shape of that
-   field are that field, and bytes that do not are text of the field
-   that holds them. Where two structured fields both match, the more
-   specific one is taken, the one whose shape constrains more of the
-   bytes, as the more specific rule carries a finding (section 3.3).
-   An ambiguity that
-   every instance of a form carries, and that the bytes of one packet
-   cannot narrow, gives no finding: it would only repeat the count of
-   the form.
-5. **Outside sources count only where APRS12c names them.** A register
-   or definition kept elsewhere is used where the document defers to it
-   by name, at the version this project pins: `3rdparty/aprs-deviceid`
-   for device and software identifiers, the APRS-IS pages for the
-   q-construct, the Maidenhead letter ranges, NMEA 0183 sentence
-   framing. No other source adds a rule.
-6. **Decoder behaviour and corpus figures are recorded, never decisive.**
-   What deployed decoders accept and how often a form occurs on air do
-   not change what a rule gives. They belong to the divergence catalogue
-   and the field inventory.
-7. **Only an exception the author has reviewed departs from these
-   rules.** It is written as a reviewed exception (section 2), with the
-   author's reason.
+**Rule 1. APRS12c specifies the bytes of a field.** The tokenizer follows
+what APRS12c specifies.
+
+- Condition: APRS12c specifies the bytes of a field. It uses a format
+  diagram, a table or an explicit requirement in its words. The
+  requirement can specify a byte set, a width, a count, a delimiter, a
+  range or a length limit.
+- Finding: If the bytes break the specified format, the tokenizer gives
+  `syntax`. If a value is outside a specified range or limit, the
+  tokenizer gives `value`. Nothing else gives `syntax` or `value`.
+- Ranges of units: A range that the unit itself defines counts as
+  specified. These ranges are:
+  - minutes and seconds: up to 59;
+  - hours: up to 23;
+  - a latitude: up to 90;
+  - a longitude: up to 180;
+  - a bearing or a course: up to 360.
+- More than one interpretation: If APRS12c permits more than one
+  interpretation, one interpretation that accepts all the bytes is
+  sufficient. The tokenizer gives `syntax` or `value` only if every
+  interpretation rejects the bytes.
+- Text is not an interpretation of this kind. If a marker (a keyword, a
+  symbol or a fixed place) starts a structured field, the tokenizer reads
+  the bytes as that field. An interpretation of the bytes as a comment or
+  as other text does not prevent the finding.
+- Obsolete and discouraged formats: If APRS12c marks a format as
+  obsolete, the tokenizer gives `obsolete`. If APRS12c advises against a
+  format, the tokenizer gives `discouraged`.
+
+**Rule 2. APRS12c does not specify the bytes at a place.** The tokenizer
+does not guess.
+
+- Condition: APRS12c has a place for a field, but no requirement for the
+  bytes at that place. Examples:
+  - a code outside a list that APRS12c does not close;
+  - a case that APRS12c does not list;
+  - a combination that APRS12c does not mention.
+- Finding: `unstated`. This finding has no effect on the verdict.
+- Places: The tokenizer looks for a field only where APRS12c names a
+  place for it. At any other place, bytes with the format of the field
+  stay in the field that contains them, with no finding. That field is
+  usually a comment or other text.
+  - If APRS12c says only that field A can contain field B, the tokenizer
+    looks for B in all of A.
+  - If APRS12c specifies one place for B, for example directly after
+    another field, the tokenizer looks for B only there.
+- Residue: If an unknown code makes the end of the following bytes
+  unknown, the rest of the bytes are residue.
+
+**Rule 3. Two parts of APRS12c disagree.** The tokenizer accepts both
+parts.
+
+- Condition: Two parts of APRS12c disagree about which bytes are
+  permitted.
+- Finding: If the bytes match either part, the tokenizer gives no
+  finding. The catalogue lists the place as an erratum. These files do
+  not say which part is correct.
+- Examples: An example packet is a part of APRS12c. It is one of the two
+  parts, with the bytes that it shows.
+- Typing errors: A typing error is a clear error that no other part of
+  APRS12c supports, for example an extra or a missing character. It can
+  be in an example, a sentence, a diagram or a table. A typing error
+  permits nothing. The catalogue lists it as an erratum.
+- If the two parts divide the same bytes into different fields, rule 4
+  also applies.
+
+**Rule 4. Two interpretations accept the same bytes.**
+
+- Condition: APRS12c has two interpretations. The two interpretations
+  accept the bytes. The two interpretations give different fields, or
+  give the bytes different classes.
+- Finding: `ambiguous`. The tokenizer puts the finding at the first byte
+  where the interpretations are different.
+- Token: The tokenizer uses this procedure. The procedure does not
+  decide what the sender meant.
+  1. If APRS12c permits a structured field here, and the bytes match its
+     full format, the bytes are that field.
+  2. If not, the bytes are text of the field that contains them.
+  3. If two structured fields match, the tokenizer uses the field with
+     the stricter format.
+- Exception: If every packet of a format has the same ambiguity, and the
+  bytes of one packet cannot reduce it, the tokenizer gives no finding.
+  The finding would only repeat the count of the format.
+
+**Rule 5. APRS12c names a source outside APRS12c.** Only these sources
+count.
+
+- Condition: APRS12c names a register or a definition outside APRS12c
+  and defers to it.
+- Use: The tokenizer uses that source at the version that this project
+  pins. The sources are:
+  - `3rdparty/aprs-deviceid` for identifiers of devices and software;
+  - the APRS-IS pages for the q-construct;
+  - the letter ranges of Maidenhead locators;
+  - the sentence frame of NMEA 0183.
+- No other source adds a requirement.
+
+**Rule 6. Decoder behaviour and corpus figures do not decide.** What
+deployed decoders accept does not change the output of a rule. How often
+a format occurs on air also does not change it. The divergence catalogue
+and the field inventory record these facts.
+
+**Rule 7. Only a reviewed exception departs from these rules.** An
+exception departs from these rules only if the author has reviewed it.
+The file records it as a reviewed exception (section 2), with the reason
+of the author.
 
 ### 3.2 Output
 
 **[agreed]** The tokenizer is strict. It reports where a packet departs
-from the rules of section 3.1 and does not repair it. Deviations seen on
-air are the subject of the divergence catalogue (RFC Appendix E), not of
-the tokenizer.
+from the rules of section 3.1. It does not repair the packet. The
+divergence catalogue (RFC Appendix E) records the deviations on air. The
+tokenizer does not classify them.
 
-**[agreed]** For each packet the tokenizer produces:
+**[agreed]** For each packet, the tokenizer produces these outputs:
 
-- **Tokens.** `(rule ID, start, end, depth)`, as byte offsets into the
-  raw TNC2 line. The depth-0 tokens cover the line exactly, in order,
-  with no gap and no overlap. Bytes the tokenizer cannot account for
-  form a `residue` token, which names the rule at which parsing stopped.
-  A field whose place and extent the format fixes keeps its token when
-  its bytes are wrong. Deeper tokens lie inside one token of the level
-  above: the parts of a Mic-E destination address, items found inside a
-  comment, the inner packet of a third-party payload.
+- **Tokens.** `(rule ID, start, end, depth)`. Start and end are byte
+  offsets into the raw TNC2 line. The tokens have these properties:
+  - The depth-0 tokens cover the line exactly and in order, with no gap
+    and no overlap.
+  - If the tokenizer cannot account for some bytes, these bytes are a
+    `residue` token. The `residue` token names the rule where the
+    tokenizer stopped.
+  - If the format specifies the place and the length of a field, the
+    field keeps its token when its bytes are wrong.
+  - A deeper token is inside one token of the level above. Examples are
+    the fields of a Mic-E destination address, the fields inside a
+    comment, and the inner packet of a third-party payload.
 - **Findings.** `(rule ID, kind, offset)`. The kinds are:
 
   | Kind | Meaning | Effect on the verdict |
   |---|---|---|
-  | `syntax` | The bytes break a stated layout (rule 1). | `syntax` |
-  | `value` | The bytes fit, but a value is outside a stated range, or a field is longer than a stated limit (rule 1). | `value` |
-  | `ambiguous` | A second reading of the document's text also fits these bytes (rule 4). | `conform-ambiguous` |
-  | `obsolete` | The form is marked obsolete. | none |
-  | `discouraged` | APRS12c advises against the form. | none |
-  | `is-only` | An address that AX.25 cannot carry; possible only on APRS-IS. | none |
-  | `unstated` | The document gives no rule for what was found (rule 2). | none |
+  | `syntax` | The bytes break a specified format (rule 1). | `syntax` |
+  | `value` | The bytes match the format, but a value is outside a specified range, or a field is longer than a specified limit (rule 1). | `value` |
+  | `ambiguous` | A second interpretation of APRS12c also accepts these bytes (rule 4). | `conform-ambiguous` |
+  | `obsolete` | APRS12c marks the format as obsolete. | none |
+  | `discouraged` | APRS12c advises against the format. | none |
+  | `is-only` | An address that AX.25 cannot contain. It is possible only on APRS-IS. | none |
+  | `unstated` | APRS12c has no requirement for the bytes at this place (rule 2). | none |
 
-- **Verdict.** The most severe of `conform`, `conform-ambiguous`,
-  `value`, `syntax`, `unknown-format`, in increasing order.
-  `unknown-format` is given when the data type cannot be determined.
+- **Verdict.** The verdict is the most severe of `conform`,
+  `conform-ambiguous`, `value`, `syntax` and `unknown-format`. This list
+  is in increasing order of severity. If the tokenizer cannot find the
+  data type, the verdict is `unknown-format`.
 
-**[agreed]** As the author decided, each format has an identifier rule of
-its own, such as `pos.dti` or `stat.dti`, carried by the token of the
-data type identifier byte, so that the format can be read from the
-tokens. The list is in
-[01-frame.md section 7](01-frame.md#7-data-type-identifier).
+**[agreed]** The author decided that each format has its own identifier
+rule, for example `pos.dti` or `stat.dti`. The token of byte 0 has the
+rule ID of this identifier rule. Thus the tokens show the format. The
+list is in [01-frame.md section 7](01-frame.md#7-data-type-identifier).
 
-**[agreed]** The tokenizer finds boundaries and checks bytes and stated
-ranges. It does not compute values (degrees, knots, decoded telemetry).
-**[agreed]** As the author decided, the one exception is a checksum that
-a form carries, such as the NMEA `*hh`: the tokenizer verifies it,
-because a mismatch means the bytes are not what was sent.
+**[agreed]** The tokenizer finds the boundaries of fields. It checks
+bytes and specified ranges. It does not calculate values, for example
+degrees, knots or decoded telemetry. **[agreed]** The author decided one
+exception: a checksum in a format, for example the NMEA `*hh`. The
+tokenizer verifies the checksum, because a mismatch shows that the bytes
+are not the bytes that the sender sent.
 
 ### 3.3 Counting findings
 
-These paragraphs say how findings are counted and placed. They are
-properties of the tool's output, not readings of APRS12c.
+These paragraphs tell how the tokenizer counts findings and where it puts
+them. They describe the output of the tool. They are not interpretations
+of APRS12c.
 
-**[agreed]** As the author decided, when bytes already give a `syntax` or
-`value` finding, that finding alone is given, and no `ambiguous`,
-`unstated` or `obsolete` finding beside it for the same fault, so that
-one defect is counted once, at its most severe kind.
+**[agreed]** The author decided this: if bytes already give a `syntax` or
+`value` finding, the tokenizer gives only that finding. It does not also
+give an `ambiguous`, `unstated` or `obsolete` finding for the same fault.
+Thus the tokenizer counts one defect once, at its most severe kind.
 
-**[agreed]** As the author decided, bytes outside 7-bit ASCII in a field
-where APRS12c only recommends printable ASCII give no finding: many
-senders put UTF-8 there, and a finding would bury everything else. The
-field inventory counts such bytes per field as a statistic of its own.
+**[agreed]** The author decided this: in a field where APRS12c only
+recommends printable ASCII, bytes outside 7-bit ASCII give no finding.
+Many senders put UTF-8 in these fields, and a finding would hide all
+other findings. The field inventory counts these bytes for each field, as
+a separate statistic.
 
-**[agreed]** A field gives at most one `syntax` finding, at its first
-failing byte. A missing field gives its finding at the byte where it was
-expected, which may be the end of the line; consecutive missing fields at
-one byte give one finding, on the first. Identical findings (the same
-rule, kind and offset) are given once. A length limit that the document gives in
-characters is counted in characters of the field as tokenized, each byte
-that is not a UTF-8 continuation byte starting one, since by rule 1 one
-accepting reading is enough. When two rules would each give a finding at one byte
-for one fault, only the more specific rule gives it.
+**[agreed]** The tokenizer counts and puts findings as follows:
 
-**[agreed]** Kinds. A byte outside a stated byte set, a fixed-width
-field whose bytes do not fit, a missing required field and a list with a
-number of fields other than the one stated give `syntax`. A delimited or
-variable-length field longer or shorter than a stated length, a value
-outside a stated range and a code outside a closed list give `value`. A
-list is closed unless the document says it is not, as "such as", "etc."
-or "include" do; a code outside an open list gives `unstated`.
-**[agreed]** As the author decided, a list that names software, devices
-or other implementations is open, whatever its wording: the document
-cannot limit which implementations exist. **[agreed]** Bytes
-that no rule accounts for stay in the free-text field that holds them;
-where there is none, they are residue.
+- A field gives a maximum of one `syntax` finding, at its first byte that
+  fails.
+- If a field is missing, the tokenizer puts its finding at the byte where
+  the field was expected. This byte can be the end of the line.
+- If consecutive fields are missing at one byte, the tokenizer gives one
+  finding, for the first field.
+- The tokenizer gives identical findings (the same rule, kind and offset)
+  only once.
+- If APRS12c specifies a length limit in characters, the tokenizer counts
+  the characters of the field as tokenized. Each byte that is not a UTF-8
+  continuation byte starts a character. The reason is rule 1: one
+  interpretation that accepts the bytes is sufficient.
+- If two rules give a finding for one fault at one byte, only the rule
+  of the deepest token that contains the byte gives it.
+
+**[agreed]** Kinds. The kinds of findings are as follows:
+
+- These faults give `syntax`:
+  - a byte outside a specified byte set;
+  - a fixed-width field whose bytes do not match;
+  - a missing required field;
+  - a list with a number of fields that is not the specified number.
+- These faults give `value`:
+  - a delimited or variable-length field that is longer or shorter than a
+    specified length;
+  - a value outside a specified range;
+  - a code outside a closed list.
+- If APRS12c does not say that a list is open, the list is closed. Words
+  such as "such as", "etc." or "include" say that a list is open. A code
+  outside an open list gives `unstated`.
+
+**[agreed]** The author decided that a list of software, devices or
+other implementations is open, whatever words APRS12c uses for it.
+APRS12c cannot limit which implementations exist. **[agreed]** If no
+rule accounts for some bytes, they stay in the field of text that
+contains them. If there is no such field, the bytes are residue.
 
 ## 4. Decoders consulted
 
 The numbered files do not record what deployed decoders do (rule 6). The
-earlier draft of this directory did, from source code read and not run at
-the commits below; those notes are in the history of this repository at
-commit `722e30a` and are a starting point for the divergence catalogue
-(RFC Appendix E). The code is not copied: several of these projects are
-GPL.
+earlier draft of this directory recorded it. That draft read the source
+code at the commits below, and it did not run the code. The notes are in
+the history of this repository at commit `722e30a`. They are a starting
+point for the divergence catalogue (RFC Appendix E). This project does
+not copy the code, because several of these projects are GPL.
 
 | Decoder | Repository | Commit | Licence | Read |
 |---|---|---|---|---|
@@ -291,7 +408,7 @@ GPL.
 | Dire Wolf | <https://github.com/wb2osz/direwolf> | `eda1383` | GPL-2.0 | `src/decode_aprs.c` and the files it calls; also `src/digipeater.c` and `src/dwgpsnmea.c` |
 | aprslib (Python) | <https://github.com/rossengeorgiev/aprs-python> | `c2a0f18` | GPL-2.0-or-later | `aprslib/parsing/`, `aprslib/base91.py` |
 | Xastir | <https://github.com/Xastir/Xastir> | `387d559` | GPL-2.0 | `src/db.c`, `src/util.c`, `src/objects.c` |
-| aprsc | <https://github.com/hessu/aprsc> | `963b2e5` | BSD-3-Clause | `src/parse_aprs.c`, `src/incoming.c`, `src/worker.h`; only what an APRS-IS server inspects or drops |
+| aprsc | <https://github.com/hessu/aprsc> | `963b2e5` | BSD-3-Clause | `src/parse_aprs.c`, `src/incoming.c`, `src/worker.h`; only what an APRS-IS server examines or drops |
 | javAPRSlib | <https://github.com/ab0oo/javAPRSlib> | `2a51ce6` | GPL-3.0 / LGPL | `src/main/java/net/ab0oo/aprs/parser/` |
 | ebarkie/aprs (Go) | <https://github.com/ebarkie/aprs> | `21df478` | MIT | `*.go` |
 | aprs-parser-rs | <https://github.com/Turbo87/aprs-parser-rs> | `e1e1a61` | MIT / Apache-2.0 | `src/` |
@@ -302,11 +419,11 @@ GPL.
 | File | Covers | Rule prefixes |
 |---|---|---|
 | [01-frame.md](01-frame.md) | The TNC2 line, addresses, destination classes, the data type identifier, third-party payloads. | `line`, `addr`, `path`, `dest`, `src`, `dti`, `tp` |
-| [02-fields.md](02-fields.md) | Fields shared by several formats: timestamps, latitude and longitude, position ambiguity, symbol table and code, the compressed position block, base-91, data extensions, items found in comments. | `time`, `lat`, `lon`, `sym`, `cmp`, `b91`, `ext`, `cmt` |
+| [02-fields.md](02-fields.md) | Fields that several formats use: timestamps, latitude and longitude, position ambiguity, symbol table and code, the compressed position block, base-91, data extensions, fields in comments. | `time`, `lat`, `lon`, `sym`, `cmp`, `b91`, `ext`, `cmt` |
 | [03-position.md](03-position.md) | Position reports, DF reports, Maidenhead beacons, raw NMEA. | `pos`, `df`, `grid`, `nmea` |
 | [04-mic-e.md](04-mic-e.md) | Mic-E: destination address, information field, status text. | `mice` |
-| [05-object-item.md](05-object-item.md) | Objects, items, area objects, signposts. | `obj`, `item`, `area` |
-| [06-weather.md](06-weather.md) | Weather reports of every form, storm data. | `wx`, `storm` |
+| [05-object-item.md](05-object-item.md) | Objects, Items, area objects, signposts. | `obj`, `item`, `area` |
+| [06-weather.md](06-weather.md) | Weather reports of every format, storm data. | `wx`, `storm` |
 | [07-telemetry.md](07-telemetry.md) | Telemetry reports, base-91 comment telemetry, telemetry definition messages. | `tlm` |
 | [08-message.md](08-message.md) | Messages, acknowledgements, bulletins, announcements, NWS bulletins, NTS. | `msg`, `bln`, `nws`, `nts` |
 | [09-other.md](09-other.md) | Status reports, capabilities, general and directed queries, user-defined data, test packets, frequency specifications in comments. | `stat`, `cap`, `qry`, `udf`, `inv`, `freq` |
@@ -314,15 +431,17 @@ GPL.
 
 ## 6. Open items
 
-- The example packets of APRS12c are checked against this reading
-  (RFC section 15, step 4): [examples.json](examples.json) holds the
-  verdict this reading gives each example, derived from these files
-  without running the tokenizer, and `qua-legacy-examples check`
-  compares. When a file changes, the entries it decides are derived
-  again in the same way, not copied from the tokenizer's output.
-- Deviation recognisers and the divergence catalogue entries they belong
-  to (RFC Appendix E). How deployed decoders read the places that the
-  catalogue rows list is found by differential testing, not recorded in
-  these files (rule 6); which deviations get a recogniser is open.
-- APRS12c is itself a draft with known issues. When a later draft of the
-  reference appears, this reading is checked against it page by page.
+- `qua-legacy-examples check` compares the example packets of APRS12c
+  with these files (RFC section 15, step 4).
+  [examples.json](examples.json) contains the verdict that these files
+  give each example. These verdicts come from these files, not from a run
+  of the tokenizer. If a file changes, whoever changes it derives again
+  the entries that it decides. That person uses the same method and does
+  not copy the output of the tokenizer.
+- Deviation recognisers and the divergence catalogue entries that they
+  belong to (RFC Appendix E). Differential testing finds how deployed
+  decoders read the places that the catalogue rows list. These files do
+  not record it (rule 6). Which deviations get a recogniser is open.
+- APRS12c is itself a draft with known issues. If a later draft of
+  APRS12c appears, this project checks these files against it page by
+  page.

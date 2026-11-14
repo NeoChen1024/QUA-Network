@@ -67,7 +67,7 @@ def _status(scan, start, end, depth, texts):
     line = scan.line
     p = start + 1
     limit, grid = 62, False
-    if end - p >= 7 and all(c in DIGITS for c in line[p : p + 6]) and line[p + 6] == 0x7A:
+    if end - p >= 7 and line[p : p + 6].isdigit() and line[p + 6] == 0x7A:
         # stat.time: DHM zulu only.
         timestamp7(scan, p, end, depth)
         p, limit = p + 7, 55
@@ -150,7 +150,7 @@ def _time_other(scan, start, end, depth):
     reading gives the bytes (README section 3, Placing a finding)."""
     line = scan.line
     p = start + 1
-    if end - p < 7 or line[p + 6] not in b"/h" or not all(c in DIGITS for c in line[p : p + 6]):
+    if end - p < 7 or line[p + 6] not in b"/h" or not line[p : p + 6].isdigit():
         return
     other = Scan(line)
     timestamp7(other, p, end, depth)

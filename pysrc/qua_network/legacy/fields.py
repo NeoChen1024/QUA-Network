@@ -22,7 +22,8 @@ def is_b91(c):
 
 
 def _digits(b):
-    return len(b) > 0 and all(c in DIGITS for c in b)
+    # bytes.isdigit: one or more ASCII digits.
+    return b.isdigit()
 
 
 def missing(scan, rule, p, end):

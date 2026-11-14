@@ -13,19 +13,15 @@ from qua_network.legacy.fields import (
     DIGITS,
     SP,
     SYM_TABLE,
-    _altitudes,
-    bad_text_bytes,
+    altitudes,
+    comment_fault,
     dao_candidates,
     emit_ext,
     is_b91,
     item_overlaps,
-    lat,
-    lon,
     noarchive_in,
-    noarchive_outside,
     step3,
     sym_code,
-    sym_table,
     text_spans,
 )
 from qua_network.legacy.model import Scan
@@ -118,25 +114,11 @@ def destination(scan, start):
         scan.find("mice.dest", "value", ds + 2)
     kinds = {k for _, k in flags}
     if len(kinds) > 1:
+        # amb.mice.dest: the document calls the comment type "unknown".
         first = flags[0][1]
-        scan.find("mice.dest", "value", next(p for p, k in flags if k != first))
-
-    _dest_ssid(scan, t)
-
-
-def _dest_ssid(scan, t):
-    """mice.dest.ssid: a non-zero SSID is a generic path code (obsolete).
-    The token stays 01-frame's dest.ssid."""
-    i = scan.tokens.index(t)
-    if i + 1 >= len(scan.tokens):
-        return
-    s = scan.tokens[i + 1]
-    if s.rule != "dest.ssid" or s.start != t.end or s.depth != t.depth:
-        return
-    v = scan.line[s.start + 1 : s.end]
-    # "-0", a leading zero and values above 15 are addr.ssid's findings.
-    if v.isdigit() and not v.startswith(b"0") and int(v) <= 15:
-        scan.find("mice.dest.ssid", "obsolete", s.start)
+        scan.find("mice.dest", "unstated", next(p for p, k in flags if k != first))
+    # mice.dest.ssid gives no finding of its own (01 err.dest.ssid); the
+    # token stays 01-frame's dest.ssid.
 
 
 # --- Information field (04 section 4) -----------------------------------
@@ -202,52 +184,71 @@ def _load_suffixes(reg):
 _KENWOOD_PAIRS, _OTHER_SUFFIXES = _load_suffixes(pinned_register())
 _HEX = frozenset(b"0123456789ABCDEFabcdef")
 # A fifth or sixth byte outside A-X, in either case, is no subsquare letter
-# (amb.grid.range); only the 4-byte locator is then tried.
-# '/G' closes the locator as ']' closes that of a beacon, so letters out of
-# range before it are a locator with a syntax finding (README section 3).
+# (amb.grid.range); only the 4-byte locator is then tried. '/G' closes the
+# locator, so letters out of range before it are a locator with a syntax
+# finding.
 _GRID = re.compile(rb"[A-Za-z]{2}[0-9]{2}(?:[A-Za-z]{2})?/G")
 _AR = frozenset(b"ABCDEFGHIJKLMNOPQR")
 _AX = frozenset(b"ABCDEFGHIJKLMNOPQRSTUVWX")
-_ALT_RUN = re.compile(rb"[!-{]{3}\}")
-_MARKED = re.compile(rb"(?=PHG|RNG|DFS)")
-_POSITION = re.compile(rb"(?=[0-9]{2}[0-9 ]{2}\.[0-9 ]{2}[NS].[0-9]{3}[0-9 ]{2}\.[0-9 ]{2}[EW].)", re.S)
+_GRID_RANGES = (_AR, _AR, DIGITS, DIGITS, _AX, _AX)
+_ALT_RUN = re.compile(rb"[!-|]{3}\}")
+# Where a form of step 3 of 02 section 7.1 can start.
+_EXT_AT = re.compile(rb"(?=PHG|RNG|DFS|(?:[0-9]{3}|\.{3}| {3})/(?:[0-9]{3}|\.{3}| {3}))")
 
 
 def status(scan, start, end, depth):
-    """The status text from offset 9; returns its free-text spans."""
+    """The status text from offset 9."""
     line = scan.line
     s = start + 9
     if s >= end:
-        return []
+        return
     scan.tok("mice.status", s, end, depth)
     d = depth + 1
     c = line[s]
-    prefix = None
-    p = s
     if c == 0x1D:
         te = min(s + 6, end)
-        scan.tok("mice.tlm", s, te, d)
-        scan.find("mice.tlm", "obsolete", s)
+        _telemetry(scan, s, te, end, d)
         if te < s + 6:
             scan.find("mice.tlm", "syntax", te)
-        elif te < end:
-            scan.find("mice.tlm", "unstated", te)
-        p = te
-    elif c in _KENWOOD or c in _OTHER:
+        return
+    if c in _OTHER:
+        n = 4 if c == 0x60 else 10
+        if end - s > n and all(b in _HEX for b in line[s + 1 : s + 1 + n]):
+            # err.mice.status, amb.mice.byte9: the flag and its hexadecimal
+            # channels are the more specific of the two readings.
+            _telemetry(scan, s, s + 1 + n, end, d)
+            if _prefix_accepts(line, s, end, d, c):
+                scan.find("mice.tlm", "ambiguous", s)
+            return
+    if c in _KENWOOD or c in _OTHER:
         scan.tok("mice.type.prefix", s, s + 1, d)
-        prefix = c
-        p = s + 1
-    texts = _after_prefix(scan, p, end, d, prefix)
-    if prefix in _OTHER:
-        _byte9(scan, s, end, d, prefix)
-    return texts
+        _after_prefix(scan, s + 1, end, d, c)
+    else:
+        _after_prefix(scan, s, end, d, None)
+
+
+def _telemetry(scan, s, te, end, d):
+    """mice.tlm over line[s:te]. The document names nothing after it, so the
+    bytes that follow stay in mice.status with no deeper token."""
+    scan.tok("mice.tlm", s, te, d)
+    scan.find("mice.tlm", "obsolete", s)
+    if te < end:
+        scan.find("mice.tlm", "unstated", te)
+
+
+def _prefix_accepts(line, s, end, d, prefix):
+    """Whether the status text read with a device prefix at s gives no syntax
+    or value finding (amb.mice.byte9)."""
+    scratch = Scan(line)
+    _after_prefix(scratch, s + 1, end, d, prefix)
+    return not any(f.kind in _BAD for f in scratch.findings)
 
 
 def _after_prefix(scan, p, end, d, prefix):
     """Altitude, suffix, locator, extension and free text, in that order of
     reading. Without a prefix there is no suffix."""
     line = scan.line
-    # The altitude stands first (amb.mice.alt); '}' fixes its extent.
+    # An altitude first after the type byte; '}' fixes its extent.
     alt = p + 4 <= end and line[p + 3] == 0x7D
     if alt:
         scan.tok("mice.alt", p, p + 4, d)
@@ -264,57 +265,68 @@ def _after_prefix(scan, p, end, d, prefix):
         if end > p and (bytes((prefix,)), line[end - 1 : end]) in _KENWOOD_PAIRS:
             te = end - 1
     elif prefix in _OTHER:
-        if end == p:
-            scan.find("mice.type.suffix", "unstated", end)
-        elif end == p + 1:
-            te = p
-            scan.find("mice.type.suffix", "syntax", p)
-        else:
-            te = end - 2
-            # The register is open: an unlisted suffix keeps its token.
-            sfx = line[te:end]
-            if (None, sfx) not in _OTHER_SUFFIXES and (bytes((prefix,)), sfx) not in _OTHER_SUFFIXES:
-                scan.find("mice.type.suffix", "unstated", te)
+        te = _other_suffix(scan, line, p, end, prefix)
 
-    # The locator, after the prefix and any altitude (amb.mice.grid).
-    m = _GRID.match(line, p, te)
-    if m:
-        ge = m.end()
-        n = ge - 2 - p
-        # Upper case and the Maidenhead ranges (amb.grid.range, amb.grid.case).
-        ranges = (_AR, _AR, DIGITS, DIGITS, _AX, _AX)
-        bad = next((p + i for i in range(n) if line[p + i] not in ranges[i]), None)
-        if ge < te and line[ge] == SP:
-            # The SP after /G is the locator's whatever follows it.
-            ge += 1
-        elif bad is None and not _tail_ok(line, ge, te):
-            bad = ge
-        scan.tok("mice.grid", p, ge, d)
-        if bad is not None:
-            scan.find("mice.grid", "syntax", bad)
+    ge = _grid(scan, p, te, te, d)
+    grid = ge is not None
+    if grid:
         p = ge
-    elif _grid_other_symbol(line, p, te):
-        # The finding is on the rule this reading gives the bytes, the free
-        # text (README section 3, Placing a finding).
-        scan.find("cmt.text", "ambiguous", p)
 
-    # One data extension at the start of the free text (amb.mice.extension);
-    # a course and speed is not one of the Mic-E forms.
     x = step3(line, p, te) if p < te else None
-    if x is not None and x.rule != "ext.csespd":
+    if x is not None:
         emit_ext(scan, x, d)
-        if x.h_alpha:
-            # amb.ext.phg: reading (b) takes the bytes as text, and the
-            # status text has no length limit to fail on.
-            scan.find(x.rule, "ambiguous", x.start)
         p += x.n
 
-    texts = []
     if p < te:
-        texts = _free_text(scan, p, te, d, alt)
+        _free_text(scan, p, te, d, alt, grid, x is not None)
     if te < end:
         scan.tok("mice.type.suffix", te, end, d)
-    return texts
+
+
+def _other_suffix(scan, line, p, end, prefix):
+    """Where the two-byte suffix after a 0x60 or 0x27 prefix starts, or end
+    when there is none (amb.mice.suffix)."""
+    te = end - 2
+    if te < p or 0x80 <= line[te] <= 0xBF and _utf8(line, p, end):
+        # Fewer than two bytes, or two that would cut a character of text
+        # that is well formed as a whole: no suffix.
+        scan.find("mice.type.suffix", "unstated", end)
+        return end
+    sfx = line[te:end]
+    # The register is open: an unlisted suffix keeps its token.
+    if (None, sfx) not in _OTHER_SUFFIXES and (bytes((prefix,)), sfx) not in _OTHER_SUFFIXES:
+        scan.find("mice.type.suffix", "unstated", te)
+    return te
+
+
+def _utf8(line, s, e):
+    try:
+        line[s:e].decode("utf-8")
+    except UnicodeDecodeError:
+        return False
+    return True
+
+
+def _grid(scan, p, mend, te, d):
+    """mice.grid at p, matched within line[p:mend]; returns its end, or None.
+    te ends what may follow it: a SP is needed only before plain text."""
+    line = scan.line
+    m = _GRID.match(line, p, mend)
+    if m is None:
+        return None
+    ge = m.end()
+    n = ge - 2 - p
+    # Upper case and the Maidenhead ranges (amb.grid.range, amb.grid.case).
+    bad = next((p + i for i in range(n) if line[p + i] not in _GRID_RANGES[i]), None)
+    if ge < te and line[ge] == SP:
+        # The SP after /G is the locator's whatever follows it.
+        ge += 1
+    elif bad is None and not _tail_ok(line, ge, te):
+        bad = ge
+    scan.tok("mice.grid", p, ge, d)
+    if bad is not None:
+        scan.find("mice.grid", "syntax", bad)
+    return ge
 
 
 def _tail_ok(line, q, te):
@@ -329,37 +341,15 @@ def _tail_ok(line, q, te):
     return blk is not None and blk[0] == q
 
 
-def _grid_other_symbol(line, p, te):
-    """Reading (c) of amb.mice.grid: an upper-case locator in range followed
-    by a symbol other than /G, then SP or what may end the status text."""
-    for n in (6, 4):
-        if p + n + 2 > te:
-            continue
-        loc = line[p : p + n]
-        if not (loc[0] in _AR and loc[1] in _AR and loc[2] in DIGITS and loc[3] in DIGITS):
-            continue
-        if n == 6 and not (loc[4] in _AX and loc[5] in _AX):
-            continue
-        table, code = line[p + n], line[p + n + 1]
-        if table not in SYM_TABLE or not 0x21 <= code <= 0x7E or (table, code) == (0x2F, 0x47):
-            continue
-        q = p + n + 2
-        if q < te and line[q] == SP or _tail_ok(line, q, te):
-            return True
-    return False
-
-
-def _free_text(scan, s, e, d, alt_at_start):
+def _free_text(scan, s, e, d, alt, grid, ext):
     """The free text between the parts, read as a position comment
-    (04 section 5) with no length limit. Returns its free-text spans: all of
-    it but a base-91 telemetry block (02 amb.cmt.noarchive)."""
+    (04 section 5) with no length limit. alt, grid and ext say whether an
+    altitude, a locator and an extension stood at the start."""
     line = scan.line
     scan.tok("cmt.text", s, e, d)
-    # One syntax finding, at the first byte outside the set (README section
-    # 3, Placing a finding).
-    bad = bad_text_bytes(line[s:e])
-    if bad:
-        scan.find("cmt.text", "syntax", s + bad[0])
+    bad = comment_fault(line[s:e])
+    if bad is not None:
+        scan.find("cmt.text", "syntax", s + bad)
     dd = d + 1
     # The block is found first, with every DAO candidate, since one may
     # follow it; the other searches leave its bytes alone (07 section 3).
@@ -367,88 +357,69 @@ def _free_text(scan, s, e, d, alt_at_start):
     span = b91_span(line, s, e, daos)
     if span is not None:
         daos = [(i, k) for i, k in daos if not span[0] <= i < span[1]]
-    items, alt_faults = _altitudes(scan, s, e, dd, span)
+    items = altitudes(scan, s, e, dd, span)
     for i, k in daos:
         scan.tok("cmt.dao", i, i + 5, dd)
         if k:
             scan.find("cmt.dao", k, i)
         items.append(("cmt.dao", i, i + 5))
     if len(daos) > 1:
-        # amb.cmt.dao: the bytes of a candidate count toward a comment limit whether read as a
-        # DAO or as text, so readings (b) and (c) count as this one does; each candidate is ambiguous.
+        # amb.cmt.dao: a reading that keeps one candidate reads the others as text.
         for i, _ in daos:
             scan.find("cmt.dao", "ambiguous", i)
     if span is not None:
         b91_block(scan, s, e, dd, daos, span)
         items.append(("tlm.b91",) + span)
     items.extend(noarchive_in(scan, s, e, dd, span))
+    if not grid or not alt or not ext:
+        # The block is no text for these searches (07 section 3).
+        items.extend(_later(scan, text_spans(s, e, span), e, dd, grid, alt, ext))
     item_overlaps(scan, items)
-
-    # A malformed altitude is the item up to its last fitting byte (README
-    # section 3, Items that stop fitting), so its bytes are not free text either.
-    taken = [(a, b) for _, a, b in items]
-    taken += [(t.start, t.end) for t in scan.tokens if t.depth == dd and t.rule in ("cmt.alt", "cmt.alt.neg")]
-
-    def in_text(i, j):
-        return not any(i < ie and is_ < j for is_, ie in taken)
-
-    # amb.mice.extension: a later run of a marked extension, and a standard
-    # position anywhere in the text. These findings and that of amb.mice.alt
-    # are on cmt.text, the rule this reading gives the bytes.
-    for m in _MARKED.finditer(line, s, e):
-        x = step3(line, m.start(), e)
-        if x is not None and x.clean() and in_text(x.start, x.start + x.n):
-            scan.find("cmt.text", "ambiguous", x.start)
-    for m in _POSITION.finditer(line, s, e):
-        i = m.start()
-        if i + 19 <= e and in_text(i, i + 19) and _position_fits(line, i):
-            scan.find("cmt.text", "ambiguous", i)
-    # amb.mice.alt: a later altitude, when none stands at the start.
-    if not alt_at_start:
-        for m in _ALT_RUN.finditer(line, s, e):
-            if in_text(m.start(), m.end()):
-                scan.find("cmt.text", "ambiguous", m.start())
 
     # 09 section 7 at the start of the free text, after its syntax findings.
     frequency(scan, s, e, dd)
-    # 02 cmt.alt: no ambiguous finding where a malformed altitude reports the byte.
-    scan.withdraw("ambiguous", alt_faults)
-    return text_spans(s, e, span)
 
 
-def _position_fits(line, i):
-    """An uncompressed position at i that gives no syntax or value finding."""
-    scratch = Scan(line)
-    _, ok, level = lat(scratch, i, i + 19, 0)
-    if not ok:
-        return False
-    sym_table(scratch, i + 8, 0)
-    _, ok, _ = lon(scratch, i + 9, i + 19, 0, level)
-    if not ok:
-        return False
-    sym_code(scratch, i + 18, 0)
-    return not any(f.kind in _BAD for f in scratch.findings)
-
-
-def _byte9(scan, s, end, d, prefix):
-    """amb.mice.byte9: reading (b) takes a 0x60 or 0x27 followed by 4 or 10
-    hexadecimal digits as the obsolete telemetry, and the rest as status
-    text with no prefix and no suffix."""
+def _later(scan, spans, e, dd, grid, alt, ext):
+    """The first locator, altitude and extension in the free text when none
+    stood at the start (amb.mice.grid, amb.mice.alt, amb.mice.extension):
+    the whole text is their place, so the first run of each is that item,
+    with no ambiguous finding. A course and speed, which only its shape
+    marks, is taken only where it gives no syntax or value finding; the
+    other forms are announced by their keyword. Returns their spans as
+    items of the text."""
     line = scan.line
-    n = 4 if prefix == 0x60 else 10
-    h = s + 1
-    if end - h < n or not all(c in _HEX for c in line[h : h + n]):
-        return
-    if any(f.kind in _BAD and h <= f.offset < h + n for f in scan.findings):
-        return
-    scratch = Scan(line)
-    _after_prefix(scratch, h + n, end, d, None)
-    # A finding of the same kind at the same offset is shared; the rule ID is
-    # not compared (README section 3).
-    mine = {(f.kind, f.offset) for f in scan.findings}
-    if any(f.kind in _BAD and (f.kind, f.offset) not in mine for f in scratch.findings):
-        return
-    scan.find("mice.type.prefix", "ambiguous", s)
+    out = []
+    if not grid:
+        for a, b in spans:
+            m = _GRID.search(line, a, b)
+            if m:
+                ge = _grid(scan, m.start(), b, e, dd)
+                out.append(("mice.grid", m.start(), ge))
+                break
+    if not alt:
+        for a, b in spans:
+            m = _ALT_RUN.search(line, a, b)
+            if m:
+                scan.tok("mice.alt", m.start(), m.end(), dd)
+                scan.find("mice.alt", "discouraged", m.start())
+                out.append(("mice.alt", m.start(), m.end()))
+                break
+    if not ext:
+        for a, b in spans:
+            x = next(
+                (
+                    x
+                    for x in (step3(line, m.start(), b) for m in _EXT_AT.finditer(line, a, b))
+                    if x and (x.rule != "ext.csespd" or x.clean())
+                ),
+                None,
+            )
+            if x is not None:
+                emit_ext(scan, x, dd)
+                out.append((x.rule, x.start, x.start + x.n))
+                break
+    return out
 
 
 # --- The packet ---------------------------------------------------------
@@ -460,5 +431,4 @@ def read(scan, start, end, depth):
         scan.find("mice.dti", "obsolete", start)
     destination(scan, start)
     fixed(scan, start, end, depth)
-    texts = status(scan, start, end, depth)
-    noarchive_outside(scan, start, end, texts)
+    status(scan, start, end, depth)

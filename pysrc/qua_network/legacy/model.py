@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Tokens, findings and verdicts (docs/legacy/README.md section 3)."""
+"""Tokens, findings and verdicts (docs/legacy/README.md sections 3.2 and 3.3)."""
 
 from typing import NamedTuple
 
@@ -49,7 +49,7 @@ class Scan:
         self.tokens.append(Token(rule, start, end, depth, stop))
 
     def find(self, rule, kind, offset):
-        # Identical findings are given once (README section 3).
+        # Identical findings are given once (README section 3.3).
         f = Finding(rule, kind, offset)
         if f not in self._seen:
             self._seen.add(f)
@@ -58,7 +58,7 @@ class Scan:
     def missing(self, rule, offset):
         """A required field is missing at offset: syntax where it was
         expected. Only the first of consecutive missing fields that fail at
-        one byte gives it (README section 3, Missing fields at one byte)."""
+        one byte gives it (README section 3.3)."""
         if offset not in self._missing:
             self._missing.add(offset)
             self.find(rule, "syntax", offset)
@@ -69,14 +69,14 @@ class Scan:
 
     def withdraw(self, kind, offsets):
         """Take back the findings of kind at offsets, where a rule already
-        reports those bytes (README section 3, Precedence). They stay seen, so
+        reports those bytes (README section 3.3). They stay seen, so
         a later identical finding is not given either."""
         if offsets:
             self.findings = [f for f in self.findings if f.kind != kind or f.offset not in offsets]
 
     def retag(self, start, depth, rule):
         """Give the identifier token at (start, depth) the rule of the format
-        the packet is classified as (README section 3)."""
+        the packet is classified as (README section 3.2)."""
         for i, t in enumerate(self.tokens):
             if t.start == start and t.depth == depth and t.end == start + 1:
                 self.tokens[i] = t._replace(rule=rule)
@@ -85,7 +85,7 @@ class Scan:
     def residue(self, start, end, depth, stop, fault=False):
         """A residue token naming stop. fault gives its syntax finding at
         start, on stop, unless a missing field already gave one at that byte
-        (README section 3, Missing fields at one byte)."""
+        (README section 3.3)."""
         if end > start:
             self.tok("residue", start, end, depth, stop)
             if fault and start not in self._missing:

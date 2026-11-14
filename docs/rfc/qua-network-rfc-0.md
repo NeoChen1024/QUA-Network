@@ -1558,10 +1558,13 @@ for explaining a difference once it has been found.
    others reject, becomes a catalogue entry.
 4. Read the relevant code to find the cause, and record it.
 
-The reading in `docs/legacy/` already cites, for each ambiguity of APRS12c,
-what several of these decoders do as read in their source. That is a
-starting point for step 4, not a substitute for steps 1 to 3: it shows what
-the code does, not how often it matters.
+The reading in `docs/legacy/` lists the places where APRS12c is silent,
+ambiguous or contradicts itself, without recording what decoders do there.
+An earlier draft of it noted, for each such place, what several of these
+decoders do as read in their source; those notes remain in the repository
+history (`docs/legacy/README.md` section 4 gives the commit). They are a
+starting point for step 4, not a substitute for steps 1 to 3: they show
+what the code does, not how often it matters.
 
 This finds the differences that occur in real traffic and attaches a
 frequency to each, so they can be ranked. Reading code alone finds many

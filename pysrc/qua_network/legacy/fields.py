@@ -17,8 +17,8 @@ LOWER = frozenset(b"abcdefghijklmnopqrstuvwxyz")
 
 
 def is_b91(c):
-    """b91.digit: '!' to '{' (amb.b91.set)."""
-    return 0x21 <= c <= 0x7B
+    """b91.digit: '!' to '|' (err.b91.range)."""
+    return 0x21 <= c <= 0x7C
 
 
 def _digits(b):
@@ -106,7 +106,7 @@ def _coord(scan, s, end, depth, rule, shape, order, deg_n, deg_max, lat_level):
     scan.tok(rule, s, e, depth)
     b = line[s:e]
     # Failing bytes as (offset, rule); the field gives one syntax finding, at
-    # the first of them (README section 3, Placing a finding).
+    # the first of them.
     bad = []
     for i, c in enumerate(b):
         allowed = shape[i] or _DIGIT_SP
@@ -118,24 +118,28 @@ def _coord(scan, s, end, depth, rule, shape, order, deg_n, deg_max, lat_level):
     level = 0
     if len(b) > order[0]:
         # The order starts at the highest offset, so once it is present the
-        # whole order is. The level is the number of SP from the start of the
-        # order; a SP after an offset of the order that holds a digit breaks
-        # the order.
-        while level < 4 and b[order[level]] == SP:
-            level += 1
-        amb_rule = rule + ".amb"
-        digit_seen = False
-        for off in order:
-            if b[off] in DIGITS:
-                digit_seen = True
-            elif b[off] == SP and digit_seen:
-                bad.append((off, amb_rule))
-        if lat_level is not None and level > lat_level:
-            bad.append((order[lat_level], amb_rule))
+        # whole order is.
+        if lat_level is None:
+            # lat.amb: blanks from the right; a SP after an offset of the
+            # order that holds a digit breaks it.
+            while level < 4 and b[order[level]] == SP:
+                level += 1
+            digit_seen = False
+            for off in order:
+                if b[off] in DIGITS:
+                    digit_seen = True
+                elif b[off] == SP and digit_seen:
+                    bad.append((off, "lat.amb"))
+        else:
+            # lon.amb: a SP that the latitude's level does not cover is a case
+            # the document does not give (amb.lat.ambiguity).
+            beyond = [off for off in order[lat_level:] if b[off] == SP]
+            if beyond:
+                scan.find("lon.amb", "unstated", s + min(beyond))
     if bad:
         off, r = min(bad)
         scan.find(r, "syntax", s + off)
-    # Value ranges, on digits that are present (amb.lat.range).
+    # Value ranges, on digits that are present.
     if _digits(b[:deg_n]):
         deg = int(b[:deg_n])
         if deg > deg_max:
@@ -214,13 +218,9 @@ def cmp_block(scan, s, end, depth, wx):
     cs, ts = s + 10, s + 12
     tv = t - 33
     if c == SP:
-        # Step 1: s and T are fillers (amb.cmp.filler).
+        # Step 1: s and T are ignored fillers, any byte (amb.cmp.filler).
         scan.tok("cmp.cs.none", cs, cs + 2, d)
-        if not (is_b91(sb) or sb == SP):
-            scan.find("cmp.cs.none", "syntax", cs + 1)
         scan.tok("cmp.t", ts, ts + 1, d)
-        if not (is_b91(t) or t == SP):
-            scan.find("cmp.t", "syntax", ts)
         return s + 13
     if is_b91(t) and (tv >> 3) & 3 == 2:
         rule = "cmp.cs.alt"
@@ -233,17 +233,10 @@ def cmp_block(scan, s, end, depth, wx):
     else:
         rule = "cmp.cs"
     scan.tok(rule, cs, cs + 2, d)
-    if rule == "cmp.cs":
-        scan.find("cmp.cs", "syntax", cs)
-    else:
-        if rule == "cmp.cs.alt" and not is_b91(c):
-            scan.find(rule, "syntax", cs)
-        elif rule == "cmp.cs.alt":
-            # amb.cmp.cs: a reading by the range of c alone would take
-            # course and speed, or range.
-            scan.find(rule, "ambiguous", cs)
-        if is_b91(c) and not is_b91(sb):
-            scan.find(rule, "syntax", cs + 1)
+    if rule == "cmp.cs" or not is_b91(c):
+        scan.find(rule, "syntax", cs)
+    elif not is_b91(sb):
+        scan.find(rule, "syntax", cs + 1)
     scan.tok("cmp.t", ts, ts + 1, d)
     if not is_b91(t):
         scan.find("cmp.t", "syntax", ts)
@@ -256,7 +249,8 @@ def _cmp_short(scan, s, end, depth):
     """A block cut short by the end of its field (02 section 6.2): each part
     with a byte present is a token over the bytes it has, checked as in a
     whole block; the part where the first missing byte was expected gives
-    the syntax finding there, unless a byte of it already failed."""
+    the syntax finding there, unless a byte of it already failed. Without T
+    the step of 6.3 is unknown, so c fails only where no step takes it."""
     line = scan.line
     scan.tok("cmp.block", s, end, depth)
     d = depth + 1
@@ -275,11 +269,8 @@ def _cmp_short(scan, s, end, depth):
                 ok = x in CMP_TABLE
             elif rule == "cmp.code":
                 ok = 0x21 <= x <= 0x7E
-            elif rule == "cmp.cs.none" and i > p:
-                ok = is_b91(x) or x == SP
-            elif rule in ("cmp.cs", "cmp.cs.none") and i == p:
-                # c fits some step of 6.3 whatever T holds.
-                ok = x == SP or 0x21 <= x <= 0x7B
+            elif rule == "cmp.cs.none":
+                ok = True
             else:
                 ok = is_b91(x)
             if not ok:
@@ -311,21 +302,21 @@ def _part(b):
 class Ext:
     """A form of 02 section 7.2 that fits at an offset."""
 
-    __slots__ = ("rule", "start", "n", "findings", "h_alpha")
+    __slots__ = ("rule", "start", "n", "findings")
 
-    def __init__(self, rule, start, n, findings, h_alpha=False):
+    def __init__(self, rule, start, n, findings):
         self.rule = rule
         self.start = start
         self.n = n
         self.findings = findings  # [(rule, kind, offset)]
-        self.h_alpha = h_alpha  # amb.ext.phg: h is not a digit
 
     def clean(self):
         """No syntax or value finding of the form itself."""
         return not any(k in ("syntax", "value") for _, k, _ in self.findings)
 
 
-def _csespd(line, p, end, rule="ext.csespd"):
+def _csespd(line, p, end):
+    rule = "ext.csespd"
     if end - p < 7 or line[p + 3] != 0x2F:
         return None
     kc, ks = _part(line[p : p + 3]), _part(line[p + 4 : p + 7])
@@ -335,41 +326,33 @@ def _csespd(line, p, end, rule="ext.csespd"):
     over = kc == "d" and int(line[p : p + 3]) > 360
     if over:
         f.append((rule, "value", p))
-    if kc != ks and rule == "ext.csespd":
-        # 02 section 7.3: two values whose kinds differ, a combination the
-        # document says nothing about. In a weather report each part is an
-        # item of weather data, which may be unknown on its own (06 section
-        # 5.1), so ext.dirspd gives no finding for it.
+    if kc != ks:
+        # amb.ext.csespd: a known value beside an unknown one is a combination
+        # the document does not give, and a reading that takes only the listed
+        # pairs reads the bytes as comment text.
         f.append((rule, "unstated", p))
         if not over:
-            # amb.ext.csespd: reading (c) takes only the listed forms.
             f.append((rule, "ambiguous", p))
     return Ext(rule, p, 7, f)
 
 
-def dirspd(line, p, end):
-    """ext.dirspd at p: the layout and range of ext.csespd (7.2, 7.3); parts of
-    different kinds give no finding (06 section 5.1)."""
-    return _csespd(line, p, end, "ext.dirspd")
-
-
 def _hgd(line, q):
-    """PHG/DFS h, g, d at q; returns (fits, d_is_9, h_alpha)."""
+    """PHG/DFS h, g, d at q; returns (fits, d_is_9)."""
     h, g, d = line[q], line[q + 1], line[q + 2]
-    fits = 0x30 <= h <= 0x7E and g in DIGITS and d in DIGITS
-    return fits, d == 0x39, h not in DIGITS
+    return 0x30 <= h <= 0x7E and g in DIGITS and d in DIGITS, d == 0x39
 
 
 def _phg(line, p, end):
     if end - p < 7 or line[p : p + 3] != b"PHG" or line[p + 3] not in DIGITS:
         return None
-    fits, d9, ha = _hgd(line, p + 4)
+    fits, d9 = _hgd(line, p + 4)
     if not fits:
         return None
-    phgr = end - p >= 9 and (line[p + 7] in DIGITS or line[p + 7] in UPPER) and line[p + 8] == 0x2F
+    # PHGR: a rate byte '0'-'9', or 'A' (10) "and so on", then '/'.
+    phgr = end - p >= 9 and (line[p + 7] in DIGITS or 0x41 <= line[p + 7] <= 0x7E) and line[p + 8] == 0x2F
     rule = "ext.phgr" if phgr else "ext.phg"
     f = [(rule, "value", p + 6)] if d9 else []
-    return Ext(rule, p, 9 if phgr else 7, f, ha and not d9)
+    return Ext(rule, p, 9 if phgr else 7, f)
 
 
 def _rng(line, p, end):
@@ -381,10 +364,10 @@ def _rng(line, p, end):
 def _dfs(line, p, end):
     if end - p < 7 or line[p : p + 3] != b"DFS" or line[p + 3] not in DIGITS:
         return None
-    fits, d9, ha = _hgd(line, p + 4)
+    fits, d9 = _hgd(line, p + 4)
     if not fits:
         return None
-    return Ext("ext.dfs", p, 7, [("ext.dfs", "value", p + 6)] if d9 else [], ha and not d9)
+    return Ext("ext.dfs", p, 7, [("ext.dfs", "value", p + 6)] if d9 else [])
 
 
 def step3(line, p, end):
@@ -393,12 +376,8 @@ def step3(line, p, end):
     return _csespd(line, p, end) or _phg(line, p, end) or _rng(line, p, end) or _dfs(line, p, end)
 
 
-_AREA_LITERAL = re.compile(rb"T[0-9]{2}/C[0-9]{2}")
-
-
-def area_literal(line, p, end):
-    """amb.ext.area: the descriptor's name spelled with literal letters."""
-    return end - p >= 7 and _AREA_LITERAL.match(line, p) is not None
+# The parts of ext.area, as (rule, start, end) from its first byte (05).
+AREA_PARTS = (("area.type", 0, 1), ("area.lat", 1, 3), ("area.color", 3, 5), ("area.lon", 5, 7))
 
 
 def area_bad(line, p, end):
@@ -420,10 +399,19 @@ def area_bad(line, p, end):
     return None
 
 
-def area_high(line, p, end):
-    """Seven bytes at p that fit ext.area with a colour of 10 to 15, which no
-    form of step 3 of 7.1 takes (amb.area.symbol)."""
-    return end - p >= 7 and line[p + 3] == 0x31 and area_bad(line, p, end) is None
+def emit_area(scan, p, end, depth):
+    """An ext.area token at p, cut short by end, with one syntax finding at
+    its first byte that does not fit and its parts one level deeper as far
+    as they are present (05 section 4). Returns its end."""
+    e = min(p + 7, end)
+    scan.tok("ext.area", p, e, depth)
+    bad = area_bad(scan.line, p, end)
+    if bad is not None:
+        scan.find("ext.area", "syntax", bad)
+    for rule, a, b in AREA_PARTS:
+        if p + b <= end:
+            scan.tok(rule, p + a, p + b, depth + 1)
+    return e
 
 
 _BRG = re.compile(rb"/([0-9]{3})/[0-9]{3}")
@@ -435,6 +423,19 @@ def brgnrq_shape(line, p, end):
     return int(m.group(1)) if m else None
 
 
+def brgnrq_after(scan, p, end, depth):
+    """Bearing and NRQ directly after an ext.csespd outside a DF report, as
+    7.4 reads them: bytes of the shape with a bearing of at most 360 are an
+    ext.brgnrq token with an ambiguous finding at its first byte. Returns
+    where the comment starts."""
+    brg = brgnrq_shape(scan.line, p, end)
+    if brg is None or brg > 360:
+        return p
+    scan.tok("ext.brgnrq", p, p + 8, depth)
+    scan.find("ext.brgnrq", "ambiguous", p)
+    return p + 8
+
+
 def emit_ext(scan, x, depth):
     scan.tok(x.rule, x.start, x.start + x.n, depth)
     for f in x.findings:
@@ -442,6 +443,24 @@ def emit_ext(scan, x, depth):
 
 
 # --- Comment (02 section 8) ---------------------------------------------
+
+
+def comment_fault(b):
+    """The offset in b of the first byte that breaks the comment's byte set
+    (02 section 8.1), or None: a byte that is not part of well-formed UTF-8,
+    or the first of the CR and LF bytes that end b. Control bytes elsewhere
+    are UTF-8 characters (amb.cmt.bytes)."""
+    try:
+        b.decode("utf-8")
+        bad = None
+    except UnicodeDecodeError as e:
+        bad = e.start
+    i = len(b)
+    while i and b[i - 1] in (0x0A, 0x0D):
+        i -= 1
+    if i < len(b) and (bad is None or i < bad):
+        bad = i
+    return bad
 
 
 def bad_text_bytes(b):
@@ -500,12 +519,12 @@ def dao_kind(line, i):
         return ""
     if (letter or digit) and a == SP and o == SP:
         return ""
-    if digit and is_b91(a) and is_b91(o):
-        return "unstated"
-    if letter or digit:
-        # One SP beside a precision byte is a fill no form shows: text.
+    if letter:
+        # Upper case with a non-digit, or one SP beside a precision byte, is
+        # no form of p. 36/22: text.
         return None
-    if is_b91(d) and a == SP and o == SP:
+    if is_b91(d) and (a == SP and o == SP or is_b91(a) and is_b91(o)):
+        # A datum whose precision mode, or whose meaning, is not given.
         return "unstated"
     return None
 
@@ -522,22 +541,17 @@ def dao_candidates(line, s, e):
     return out
 
 
-def _altitudes(scan, s, e, d, skip=None):
+def altitudes(scan, s, e, d, skip=None):
     """cmt.alt and cmt.alt.neg in line[s:e]; returns the spans of the
-    well-formed occurrences, and the offsets inside the field of the syntax
-    findings of malformed runs.
+    well-formed occurrences, as (rule, start, end).
 
-    '/A=' declares the altitude (README section 3, Classes that a keyword
-    declares). A run that stops fitting its form keeps a token up to its last
-    fitting byte, with its syntax finding on the rule of the token at the
-    first byte that does not fit; it is not an occurrence for the repetition
-    rule (02 cmt.alt). Where that byte starts another item, the caller takes
-    back the ambiguous findings there once the field is read (02 cmt.alt;
-    README section 3, Precedence). A '/A=' inside skip, the (start, end) of
-    a base-91 telemetry block, is the block's (07 section 3)."""
+    A '/A=' run that stops fitting its form keeps a token up to its last
+    fitting byte, with its syntax finding at the first byte that does not
+    fit; it is not an occurrence for the repetition rule
+    (amb.cmt.alt.malformed). A '/A=' inside skip, the (start, end) of a
+    base-91 telemetry block, is the block's (07 section 3)."""
     line = scan.line
     occ = []
-    faults = set()
     i = line.find(b"/A=", s, e)
     while i >= 0:
         if skip is not None and skip[0] <= i < skip[1]:
@@ -555,28 +569,11 @@ def _altitudes(scan, s, e, d, skip=None):
             occ.append((rule, i))
         else:
             scan.find(rule, "syntax", q)
-            if q < e:
-                faults.add(q)
         i = line.find(b"/A=", i + 1, e)
     if len(occ) > 1:
         for rule, i in occ:
             scan.find(rule, "ambiguous", i)
-    return [(rule, i, i + 9) for rule, i in occ], faults
-
-
-class Comment:
-    """What comment() found: its extent, the bytes it counts, its DAOs and
-    the extent of its base-91 telemetry block, or None."""
-
-    __slots__ = ("start", "end", "counted", "daos", "block")
-
-    def __init__(self, start, end, counted, daos, block=None):
-        self.start, self.end, self.counted, self.daos, self.block = start, end, counted, daos, block
-
-    def texts(self):
-        """The free-text spans of the comment: all of it but the block, whose
-        pairs are not free text (02 amb.cmt.noarchive)."""
-        return text_spans(self.start, self.end, self.block)
+    return [(rule, i, i + 9) for rule, i in occ]
 
 
 def text_spans(s, e, block):
@@ -586,51 +583,61 @@ def text_spans(s, e, block):
     return [(a, b) for a, b in ((s, block[0]), (block[1], e)) if a < b]
 
 
-def comment(
-    scan,
-    s,
-    end,
-    depth,
-    limit,
-    limit_rule,
-    b91=True,
-    freq=True,
-    dao=True,
-    extra=(),
-    start_cse=True,
-    freq_name=False,
-    ext_search=True,
-):
+def past_chars(line, s, end, limit, skip=()):
+    """The offset of the first character of line[s:end] past limit counted
+    characters, or None. Each byte that is not a UTF-8 continuation byte
+    starts a character (amb.cmt.length); the bytes of the spans in skip,
+    sorted by start, are not counted."""
+    if end - s <= limit:
+        # A character has at least one byte.
+        return None
+    n = 0
+    spans = iter(skip)
+    nxt = next(spans, None)
+    i = s
+    while i < end:
+        if nxt is not None and i >= nxt[0]:
+            i = max(i, nxt[1])
+            nxt = next(spans, None)
+            continue
+        if not 0x80 <= line[i] <= 0xBF:
+            if n == limit:
+                return i
+            n += 1
+        i += 1
+    return None
+
+
+def comment(scan, s, end, depth, limit, limit_rule, b91=True, freq=True, dao=True, extra=(), start_cse=False):
     """cmt.text from s to end with the items of 02 section 8.2.
 
-    Each item is searched for only in the fields its chapter names (02
-    section 8.2; README section 3, Where comment items are looked for), so
+    Each item is looked for only in the fields that 02 section 8.2 lists, so
     the caller says which: b91 searches base-91 telemetry (07), freq looks
     for a frequency at the start (09 section 7), dao looks for DAO
-    candidates, and ext_search runs the search of 02 amb.ext.compressed. The
-    altitude and '!x!' are always looked for. limit and limit_rule are the
-    format's length limit and the rule that reports it, and freq_name says
-    that the comment belongs to an object or item named as a frequency,
-    whose items are left-justified (09 freq.obj). extra
-    holds (rule, start, end) of items the format itself found in the comment
-    and has tokenized, for the overlap rule of 8.2. start_cse=False leaves out
-    the extension-shaped run at the comment start, for a comment that does not
-    directly follow a compressed block: one after an uncompressed position,
-    whose slot is the only place of an extension (02 amb.ext.count), storm
-    data (06 section 8), or a report in which 7.1 would try no form of step 3
-    at a slot. The bytes of a base-91 telemetry
-    block belong to the block: no other item, and no extension-shaped run, is
-    looked for inside it, and a '!x!' there is left to noarchive_outside
-    through Comment.texts() (07 section 3). Returns a Comment, or None when
-    the comment is empty."""
-    if s >= end:
-        return None
+    candidates. The altitude and '!x!' are always looked for. limit and
+    limit_rule are the format's length limit, in characters, and the rule
+    that reports it. extra holds (rule, start, end) of items the format
+    itself found in the comment and has tokenized, for amb.cmt.overlap.
+    With start_cse the comment directly follows a compressed block, and a
+    form of step 3 of 7.1 at its start is that extension
+    (amb.ext.compressed): its token comes first, at depth, and the comment
+    after it may hold 36 characters. The bytes of a base-91 telemetry block
+    belong to the block: no other item is looked for inside it (07 section
+    3)."""
     line = scan.line
+    if start_cse and s < end:
+        x = step3(line, s, end)
+        if x is not None and x.clean():
+            emit_ext(scan, x, depth)
+            scan.find(x.rule, "ambiguous", s)
+            s += x.n
+            limit = 36
+    if s >= end:
+        return
     scan.tok("cmt.text", s, end, depth)
-    bad = bad_text_bytes(line[s:end])
-    if bad:
-        # One syntax finding per field, at its first failing byte.
-        scan.find("cmt.text", "syntax", s + bad[0])
+    bad = comment_fault(line[s:end])
+    if bad is not None:
+        scan.find("cmt.text", "syntax", s + bad)
     d = depth + 1
     # The block is found first, with every DAO candidate, since one may
     # follow it; the other searches leave its bytes alone (07 section 3).
@@ -638,21 +645,15 @@ def comment(
     span = b91_span(line, s, end, daos) if b91 else None
     if span is not None:
         daos = [(i, k) for i, k in daos if not span[0] <= i < span[1]]
-    items, alt_faults = _altitudes(scan, s, end, d, span)
+    items = altitudes(scan, s, end, d, span)
 
-    # DAO candidates (8.3) outside the block. Their bytes count toward the
-    # limit like those of any other item (8.1).
     for i, k in daos:
         scan.tok("cmt.dao", i, i + 5, d)
         if k:
             scan.find("cmt.dao", k, i)
         items.append(("cmt.dao", i, i + 5))
-    counted = end - s
-    past = s + limit if counted > limit else None
     if len(daos) > 1:
-        # amb.cmt.dao: reading (b) keeps the last candidate and (c) the first.
-        # Both count the comment as this reading does, so a length finding of
-        # theirs is shared (README section 3) and each candidate is ambiguous.
+        # amb.cmt.dao: a reading that keeps one candidate reads the others as text.
         for i, _ in daos:
             scan.find("cmt.dao", "ambiguous", i)
 
@@ -660,22 +661,12 @@ def comment(
         b91_block(scan, s, end, d, daos, span)
         items.append(("tlm.b91",) + span)
 
-    items.extend(noarchive_in(scan, s, end, d, span))
+    noarchive_in(scan, s, end, d, span)
     items.extend(extra)
-
     item_overlaps(scan, items)
 
-    # amb.ext.compressed: a step-3 form that fits cleanly at the start of the
-    # comment after a compressed block, where reading (b) takes it as an
-    # extension. After an uncompressed position no run is looked for: a chain
-    # or a later extension is decoder behaviour (amb.ext.count). The finding
-    # is on the rule this reading gives the run's first byte (README section
-    # 3, Placing a finding): an item that byte lies in, else cmt.text.
-    x = step3(line, s, end) if ext_search and start_cse else None
-    if x is not None and x.clean() and (span is None or not span[0] <= s < span[1]):
-        at = next((r for r, a, b in items if a <= s < b), "cmt.text")
-        scan.find(at, "ambiguous", s)
-
+    # err.cmt.daolimit: the DAO may go beyond the limit, so its bytes are not counted.
+    past = past_chars(line, s, end, limit, [(i, i + 5) for i, _ in daos])
     if past is not None:
         scan.find(limit_rule, "value", past)
 
@@ -685,11 +676,7 @@ def comment(
         # module, so it is imported here.
         from qua_network.legacy.other import frequency
 
-        frequency(scan, s, end, d, freq_name)
-    # 02 cmt.alt: no ambiguous finding where a malformed altitude reports the
-    # byte, whichever search of the field gave it.
-    scan.withdraw("ambiguous", alt_faults)
-    return Comment(s, end, counted, daos, span)
+        frequency(scan, s, end, d)
 
 
 def _item(rule):
@@ -697,65 +684,34 @@ def _item(rule):
 
 
 def item_overlaps(scan, items):
-    """Occurrences of two different items that overlap (02 section 8.2): an
-    ambiguous finding on each. items holds (rule, start, end) and is sorted
-    in place."""
+    """Occurrences of two different items that overlap: an ambiguous finding
+    on each (amb.cmt.overlap). '!x!' marks the packet and claims no bytes, so
+    it takes no part. items holds (rule, start, end) and is sorted in
+    place."""
     items.sort(key=lambda t: t[1])
     for a in range(len(items)):
         ra, sa, ea = items[a]
+        if ra == "cmt.noarchive":
+            continue
         for b in range(a + 1, len(items)):
             rb, sb, _ = items[b]
             if sb >= ea:
                 break
-            if _item(ra) != _item(rb):
+            if rb != "cmt.noarchive" and _item(ra) != _item(rb):
                 scan.find(ra, "ambiguous", sa)
                 scan.find(rb, "ambiguous", sb)
 
 
 def noarchive_in(scan, s, e, d, skip=None):
     """cmt.noarchive tokens in the free-text field line[s:e]; returns their
-    spans. A match inside skip, the span of a base-91 telemetry block, is not
-    free text and is left to noarchive_outside (amb.cmt.noarchive)."""
+    spans. A match inside skip, the span of a base-91 telemetry block, lies
+    outside free text (amb.cmt.noarchive)."""
     line = scan.line
-    nx = []
+    out = []
     i = line.find(b"!x!", s, e)
-    while i >= 0 and i + 3 <= e:
-        if skip is None or not skip[0] <= i < skip[1]:
-            nx.append(i)
-        i = line.find(b"!x!", i + 1, e)
-    for i in nx:
-        scan.tok("cmt.noarchive", i, i + 3, d)
-        if len(nx) > 1:
-            scan.find("cmt.noarchive", "ambiguous", i)
-    return [("cmt.noarchive", i, i + 3) for i in nx]
-
-
-def noarchive_outside(scan, start, end, texts):
-    """'!x!' in the information field outside the free-text spans (amb.cmt.noarchive).
-
-    No finding where the reading already reports the bytes (README section 3,
-    Precedence): a syntax or value finding of the rule whose token holds the
-    byte, or of a field missing there. A finding of another rule, such as the
-    length limit of the comment around a base-91 block, is an independent
-    defect and does not count. Nor inside a residue, whose rule cannot be
-    told."""
-    line = scan.line
-    i = line.find(b"!x!", start, end)
-    if i < 0:
-        return
-    residues = [(t.start, t.end) for t in scan.tokens if t.rule == "residue"]
-    held = {}
-    for t in scan.tokens:
-        held.setdefault(t.rule, []).append((t.start, t.end))
-
-    def reports(f):
-        if f.kind not in ("syntax", "value"):
-            return False
-        return scan.missed(f.offset) or any(a <= f.offset < b for a, b in held.get(f.rule, ()))
-
-    reported = {f.offset for f in scan.findings if reports(f)}
     while i >= 0:
-        inside = any(ts <= i and i + 3 <= te for ts, te in texts) or any(rs <= i < re_ for rs, re_ in residues)
-        if not inside and not reported.intersection(range(i, i + 3)):
-            scan.find("cmt.noarchive", "ambiguous", i)
-        i = line.find(b"!x!", i + 1, end)
+        if skip is None or not skip[0] <= i < skip[1]:
+            scan.tok("cmt.noarchive", i, i + 3, d)
+            out.append(("cmt.noarchive", i, i + 3))
+        i = line.find(b"!x!", i + 1, e)
+    return out

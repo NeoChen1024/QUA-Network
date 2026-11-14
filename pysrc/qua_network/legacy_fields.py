@@ -5,7 +5,7 @@ Every packet is tokenized; the inventory counts, per rule ID of the
 reading: how many packets carry the token, how many tokens there are, the
 distribution of their byte length, and how many of them hold bytes outside
 7-bit ASCII (counted apart from the findings, docs/legacy/README.md
-section 3). It also counts verdicts, the identifier rule carried by byte 0,
+section 3.3). It also counts verdicts, the identifier rule carried by byte 0,
 the findings by rule and kind, and the formats whose reader is not written
 yet. Each finding keeps a few example lines: those with the smallest
 BLAKE3 digest, so that the choice does not depend on the order in which

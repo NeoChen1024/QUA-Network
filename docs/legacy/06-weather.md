@@ -2,1500 +2,233 @@
 
 | | |
 |---|---|
-| Status | Draft. Not frozen. Items carry the labels **[agreed]**, **[proposed]** and **[open]** with the meaning given in the RFC. |
-| Reference | `APRS12c.pdf` in submodule `3rdparty/aprsspec`, commit `5830d42f`. Conventions, tokenizer model and decoder commits: [README](README.md). |
+| Status | Draft. Not frozen. A catalogue row that the general rules do not settle is marked **[open]**. |
+| Reference | `APRS12c.pdf` in submodule `3rdparty/aprsspec`, commit `5830d42f`. Conventions, general rules and tokenizer model: [README](README.md). |
 
 ## 1. Scope
 
-This file states how the tokenizer reads weather reports of every form
-and storm data:
+Raw weather station output (`!!`, `#`, `$ULTW`, `*`), the positionless
+report (`_`), complete reports carried by a position report or an object
+(and an item, [amb.wx.carriers](#amb.wx.carriers)), the weather data
+elements, the software and unit codes, and storm data. Shared fields
+(timestamps, positions, symbols, the compressed block, data extensions)
+are read by [02-fields.md](02-fields.md); NWS bulletins by
+[08-message.md](08-message.md). No weather is looked for in Mic-E or
+status reports, which no page names for it (README rule 2).
 
-- raw weather station output (`!!`, `#`, `$ULTW`, `*`);
-- the positionless weather report (`_`);
-- complete weather reports carried by a position report, with or without
-  a timestamp, or by an object, each uncompressed or compressed;
-- the weather data elements, the software code and the unit code;
-- storm data in position, object and item reports.
-
-Fields shared with other formats (timestamps, latitude and longitude,
-symbol, the compressed block, the data extension) are tokenized by the
-rules of [02-fields.md](02-fields.md) and are only referenced here.
-[01-frame.md](01-frame.md#7-data-type-identifier) dispatches on the data
-type identifier byte; the token of that byte carries the identifier rule
-of the weather form, defined in section 2. National Weather Service
-bulletins are messages and are read in [08-message.md](08-message.md).
-
-Raw and positionless reports carry no symbol. APRS12c lets such a station
-give one through a generic destination address, or mark a balloon with
-source SSID 11, and asks it to send its position in a separate packet
-(p. 85/65). Those are matters of the address fields
-([01-frame.md](01-frame.md)) and of station behaviour; nothing in the
-information field is tokenized for them here.
-
-Byte offsets below count from the first byte of the information field
-(the data type identifier is offset 0).
+Offsets count from the data type identifier, offset 0.
 
 ## 2. Recognition
 
-The tokenizer decides that a packet is a weather report from the data
-type identifier ([01-frame section 7](01-frame.md#7-data-type-identifier))
-and, for the position form, from the symbol code as well
-([amb.pos.wxsym](03-position.md#amb.pos.wxsym)). Each row names a form
-that the rest of this file then applies. **[agreed]** As the author
-decided, the object form is decided from the symbol code in the same
-way ([amb.wx.symbol](#amb.wx.symbol)). An earlier draft carried this
-sentence as **[proposed]**.
-
-The ID of each row is the identifier rule of that form: the token of
-the data type identifier byte at offset 0 carries it
-([README section 3](README.md#3-tokenizer-model), Output).
+The token of the identifier byte carries the rule of the weather form
+([01-frame.md](01-frame.md#7-data-type-identifier)).
 
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|
-| <a id="wx.raw.ultlog.dti"></a>`wx.raw.ultlog.dti` | Ultimeter logging form | DTI `'!'` followed at offset 1 by a second `'!'` ([`wx.raw.ultlog`](#wx.raw.ultlog)). Reading: [amb.wx.rawdti](#amb.wx.rawdti). | - | Fixed 1 byte | p. 31/17, p. 82/62 |
-| <a id="wx.raw.ultpkt.dti"></a>`wx.raw.ultpkt.dti` | Ultimeter packet form | DTI `'$'` followed by the 4 bytes `ULTW` at offsets 1-4 ([`wx.raw.ultpkt`](#wx.raw.ultpkt)). Reading: [amb.wx.rawdti](#amb.wx.rawdti). | - | Fixed 1 byte | p. 31/17, p. 82/62 |
-| <a id="wx.raw.peet"></a>`wx.raw.peet` | Peet Bros form | DTI `'#'` or `'*'`. No marker bytes follow the DTI. | - | Fixed 1 byte | p. 31/17, p. 82/62 |
-| <a id="wx.pl"></a>`wx.pl` | Positionless report | DTI `'_'`. | - | Fixed 1 byte | p. 31/17, p. 83/63 |
-| <a id="wx.pos"></a>`wx.pos` | Weather with position | DTI `'!'`, `'='`, `'/'` or `'@'`, a position whose [`sym.code`](02-fields.md#sym.code) or [`cmp.code`](02-fields.md#cmp.code) is `'_'`, and at least one byte after the position block. Handed over by [`pos.wx`](03-position.md#pos.wx). Reading: [amb.wx.symbol](#amb.wx.symbol). | - | Fixed 1 byte | p. 82/62, p. 85/65 to p. 86/66 |
-| <a id="wx.obj"></a>`wx.obj` | Weather on an object | DTI `';'`, an object (see [05-object-item.md](05-object-item.md#7-weather-and-storm-data-on-objects)) whose symbol code is `'_'`, and at least one byte after the position block, in either position form. Reading: [amb.wx.symbol](#amb.wx.symbol), [amb.wx.carriers](#amb.wx.carriers). | - | Fixed 1 byte | p. 55/37, p. 85/65, p. 86/66 |
+| <a id="wx.raw.ultlog.dti"></a>`wx.raw.ultlog.dti` | Ultimeter logging form | `'!'` followed by a second `'!'` ([amb.wx.rawdti](#amb.wx.rawdti)). | - | 1 byte | p. 31/17, p. 82/62 |
+| <a id="wx.raw.ultpkt.dti"></a>`wx.raw.ultpkt.dti` | Ultimeter packet form | `'$'` followed by `ULTW` ([amb.wx.rawdti](#amb.wx.rawdti)). | - | 1 byte | p. 31/17, p. 82/62 |
+| <a id="wx.raw.peet"></a>`wx.raw.peet` | Peet Bros form | `'#'` or `'*'`. | - | 1 byte | p. 31/17, p. 82/62 |
+| <a id="wx.pl"></a>`wx.pl` | Positionless report | `'_'`. | - | 1 byte | p. 31/17, p. 83/63 |
+| <a id="wx.pos"></a>`wx.pos` | Weather with position | `'!'`, `'='`, `'/'` or `'@'`, a position whose symbol code is `'_'` (any table byte, overlays included, p. 125/101), and at least one byte after the position block ([amb.wx.symbol](#amb.wx.symbol)). | - | 1 byte | p. 82/62, p. 85/65, p. 86/66 |
+| <a id="wx.obj"></a>`wx.obj` | Weather on an object | `';'`, an object whose symbol code is `'_'`, in either position form, and at least one byte after the position block ([err.wx.object-dti](#err.wx.object-dti)). | - | 1 byte | p. 55/37, p. 85/65, p. 86/66 |
 
-**[agreed]** The raw and positionless forms are marked "not
-recommended" (p. 82/62, p. 83/63). Each gives a `discouraged` finding at
-offset 0, from the `dti` rules of
-[01-frame.md](01-frame.md#7-data-type-identifier). See
-[amb.wx.status](#amb.wx.status). For raw weather the advice is limited
-to RF: p. 82/62 and p. 85/65 ask senders to convert to the complete
-format on RF, while the headings and diagram titles of p. 82/62 call
-the raw formats not recommended without that limit. The positionless
-format is called not recommended with no limit (p. 83/63). The finding
-is given whatever the q-construct in the path shows, as
-[05-object-item section 2](05-object-item.md#2-object-report) decides
-for every discouragement limited to RF.
-
-A `'_'` report is weather whatever its symbol table byte, overlays
-included, and gets no finding for the table byte from this file: the
-complete weather formats name only the symbol code and leave the table
-byte open (p. 85/65, p. 86/66;
-[README section 3](README.md#3-tokenizer-model), Symbols that a format
-names). An earlier draft carried this as **[proposed]**.
-
-The symbol decides: a report with another symbol code is never read as
-weather and gets no finding here, whatever follows its symbol. No page
-describes weather elements after the symbol of a report with another
-symbol code, so reading them there adds something the document never
-mentions, a form at a place the document does not describe for it,
-which is decoder behaviour
-([README section 3](README.md#3-tokenizer-model), A listed reading, its
-second paragraph; Obsolete and nested forms). The text supports this:
-p. 82/62 identifies the complete report by the weather symbol, and
-p. 85/65 gives `'_'` as its symbol code in every case. See
-[amb.wx.symbol](#amb.wx.symbol). An earlier draft carried this
-paragraph as **[proposed]**.
-
-Storm data (section 8) is read in items as well as in positions and
-objects (p. 87/67). **[agreed]** As the author decided, the weather
-rules are applied to position reports and to objects, in either
-position form, and not to items
-([amb.wx.carriers](#amb.wx.carriers)). Where an item with symbol code
-`'_'`, read as weather, would give no `syntax` or `value` finding of its
-own, it gets an `ambiguous` finding. An earlier draft carried this as
-**[proposed]**, and gave that finding to Mic-E reports and to any other
-format as well.
-
-Mic-E reports and status reports are not weather by any listed
-reading, whatever their symbol, and get no finding from this file: no page mentions weather in either, so reading it there adds
-something the document never mentions
-([README section 3](README.md#3-tokenizer-model), A listed reading;
-[amb.wx.carriers](#amb.wx.carriers)).
-
-A finding "of its own" is one of the other reading for which this
-reading gives no finding of the same kind at the same offset; the rule
-IDs are not compared
-([README section 3](README.md#3-tokenizer-model), Which findings are the
-other reading's own). A `syntax` or `value` finding that both readings
-give elsewhere in the packet does not stop an `ambiguous` finding. The
-same holds for every condition of this kind in this file. An earlier
-draft counted a finding as this reading's own only when this reading
-gave the identical finding, rule ID included.
-
-**[agreed]** A position report whose information field ends at the
-`'_'` symbol code does not match `wx.pos`. It is an ordinary position
-report, read by [03-position.md](03-position.md#pos.wx) with no finding
-([amb.pos.wxsym](03-position.md#amb.pos.wxsym)). **[agreed]** As the
-author decided, the same holds for an object: one that ends at the
-symbol code does not match `wx.obj` and is an ordinary object, read by
-[05-object-item.md](05-object-item.md#7-weather-and-storm-data-on-objects)
-with no finding, since an object that ends at its symbol is a form the
-text describes (p. 76/58; [README section 3](README.md#3-tokenizer-model),
-A form that the text describes). An object with any bytes after the
-position block is weather, with `syntax` where those bytes are not
-weather data, as amb.pos.wxsym decides for positions. An earlier draft
-carried the object sentence as **[proposed]**.
-Every other `'_'` report of those kinds is handed to this file at the
-byte after the position block.
+<a id="amb.wx.status"></a>The raw and positionless forms are marked "not
+recommended" (p. 82/62, p. 83/63): each gives `discouraged` at offset 0
+from the `dti` rules of 01. A position report or object that ends at its
+`'_'` symbol code is a plain report, with no finding.
 
 ## 3. Raw weather reports
 
-APRS12c names the weather stations that produce these forms and gives
-one example of each, but it does not define their content (p. 82/62). The
-tokenizer finds the boundaries only.
-
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|
-| [`wx.raw.ultlog.dti`](#wx.raw.ultlog.dti), [`wx.raw.ultpkt.dti`](#wx.raw.ultpkt.dti), [`wx.raw.peet`](#wx.raw.peet) | DTI | `'!'`, `'$'`, or `'#'` and `'*'`, at offset 0. | Required | Fixed 1 byte | p. 82/62 |
-| <a id="wx.raw.ultlog"></a>`wx.raw.ultlog` | Ultimeter logging marker | `'!'` at offset 1. | Required for `wx.raw.ultlog.dti` | Fixed 1 byte | p. 82/62 |
-| <a id="wx.raw.ultpkt"></a>`wx.raw.ultpkt` | Ultimeter packet marker | `ULTW` at offsets 1-4. | Required for `wx.raw.ultpkt.dti` | Fixed 4 bytes | p. 82/62 |
-| <a id="wx.raw.data"></a>`wx.raw.data` | Station output | All remaining bytes, content not defined by APRS12c. Starts at offset 2 (`!!`), 5 (`$ULTW`) or 1 (`#`, `*`). | Required, at least 1 byte | End of information field | p. 82/62, p. 132/108 |
-
-`wx.raw.data` is one token. The tokenizer checks no byte set, length or
-structure in it and reports no finding on its content, because APRS12c
-states none: the tokenizer finds boundaries and checks the bytes and
-ranges that the document states, and reading a station's own layout
-there would add a form the document never mentions, which is decoder
-behaviour, not a reading
-([README section 3](README.md#3-tokenizer-model)).
-
-**[agreed]** An empty `wx.raw.data` is a missing field and gives a
-`syntax` finding at the end of the information field (README section 3,
-Kinds by situation: an empty required field). The data column is the
-report's only content, and the diagram does not mark it optional
-(p. 82/62, p. 132/108). The `inv.data` of
-[09-other section 6](09-other.md#6-invalid-or-test-data) has the same
-`1 | n` diagram and is read as possibly empty: p. 123/99 makes that
-field a catch-all for data that fits no format, so it has no content
-that it must carry. An earlier draft carried this paragraph and the one
-before it as one **[proposed]** item, on the grounds that the diagram
-gives the data a length of `n` and every example has content.
+| <a id="wx.raw.ultlog"></a>`wx.raw.ultlog` | Ultimeter logging marker | `'!'` at offset 1. | For `wx.raw.ultlog.dti` | 1 byte | p. 82/62 |
+| <a id="wx.raw.ultpkt"></a>`wx.raw.ultpkt` | Ultimeter packet marker | `ULTW` at offsets 1-4. | For `wx.raw.ultpkt.dti` | 4 bytes | p. 82/62 |
+| <a id="wx.raw.data"></a>`wx.raw.data` | Station output | n bytes whose content APRS12c does not define; no byte is checked. None at all gives `unstated` at the end of the field. | Yes | End of field | p. 82/62, p. 132/108 |
 
 ## 4. Positionless weather report
 
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|
-| [`wx.pl`](#wx.pl) | DTI | `'_'` at offset 0. | Required | Fixed 1 byte | p. 83/63 |
-| [`time.mdhm`](02-fields.md#time.mdhm) | Timestamp | 8 digits, month, day, hour, minute; offsets 1-8. | Required | Fixed 8 bytes | p. 38/22, p. 83/63 |
-| [`wx.wdir`](#wx.wdir) ... | Weather data | Elements from offset 9, section 6. The first four are wind direction `c`, wind speed `s`, gust `g` and temperature `t`, in that order. | Required | First byte that does not start an element | p. 83/63, p. 84/64 |
-| [`wx.sw`](#wx.sw), [`wx.unit`](#wx.unit) | Tail | Section 7. | Optional | End of information field | p. 83/63 |
+| [`wx.pl`](#wx.pl) | DTI | `'_'`. | Yes | 1 byte | p. 83/63 |
+| [`time.mdhm`](02-fields.md#time.mdhm) | Timestamp | 8 digits, MDHM. | Yes | 8 bytes | p. 83/63 |
+| [`wx.wdir`](#wx.wdir) ... | Weather data | Section 6; `c`, `s`, `g`, `t` lead, in that order. | Yes | Section 6.2 | p. 83/63, p. 84/64 |
+| [`wx.sw`](#wx.sw), [`wx.unit`](#wx.unit) | Tail | Section 7. | No | End of field | p. 83/63 |
 
 ## 5. Complete weather reports
 
-A complete report is a position report or an object whose symbol code is
-`'_'`, with at least one byte after the position block (section 2). The
-position part is read as for any other report of its kind. In
-place of the course and speed that would follow the symbol, the report
-carries the wind. Wind direction `c` and wind speed `s` elements do not
-occur in the weather data, because the wind field replaces them
-(p. 85/65). The diagrams show gust and temperature next; in a complete
-report they are optional ([amb.wx.required](#amb.wx.required)).
+The position part is read as for any report of its kind. In place of
+the `c` and `s` elements the report carries the wind (p. 85/65); every
+element after it may come in any order, and none is required
+([amb.wx.required](#amb.wx.required)).
 
 ### 5.1 Uncompressed position
 
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|
-| [`wx.pos`](#wx.pos) | DTI | `'!'` or `'='` (no timestamp), `'/'` or `'@'` (timestamp). | Required | Fixed 1 byte | p. 85/65, p. 86/66 |
-| [`time.dhm`](02-fields.md#time.dhm), [`time.hms`](02-fields.md#time.hms) | Timestamp | 7 bytes, only after `'/'` or `'@'`. | Required with `'/'`, `'@'`; absent otherwise | Fixed 7 bytes | p. 86/66 |
-| [`lat`](02-fields.md#lat), [`sym.table`](02-fields.md#sym.table), [`lon`](02-fields.md#lon) | Position | As in 02. | Required | Fixed 8 + 1 + 9 bytes | p. 85/65 |
-| [`sym.code`](02-fields.md#sym.code) | Symbol code | `'_'`. | Required | Fixed 1 byte | p. 85/65 |
-| [`ext.dirspd`](02-fields.md#ext.dirspd) | Wind | 3-byte direction, `'/'`, 3-byte speed, directly after the symbol code. Reading: [amb.wx.required](#amb.wx.required). | Required | Fixed 7 bytes | p. 45/27, p. 85/65 |
-| [`wx.gust`](#wx.gust) ... | Weather data | Elements, section 6, in any order (section 6.2). | Optional | First byte that does not start an element | p. 85/65, p. 86/66 |
-| [`wx.sw`](#wx.sw), [`wx.unit`](#wx.unit) | Tail | Section 7. | Optional | End of information field | p. 85/65 |
+| [`wx.pos`](#wx.pos) | DTI | `'!'`, `'='` (no timestamp), `'/'`, `'@'` (timestamp). | Yes | 1 byte | p. 85/65, p. 86/66 |
+| [`time.dhm`](02-fields.md#time.dhm), [`time.hms`](02-fields.md#time.hms) | Timestamp | 7 bytes, after `'/'` or `'@'` only. | With `'/'`, `'@'` | 7 bytes | p. 86/66 |
+| [`lat`](02-fields.md#lat), [`sym.table`](02-fields.md#sym.table), [`lon`](02-fields.md#lon), [`sym.code`](02-fields.md#sym.code) | Position | As in 02; symbol code `'_'`. | Yes | 19 bytes | p. 85/65 |
+| [`ext.dirspd`](02-fields.md#ext.dirspd) | Wind | Direction, `'/'`, speed, 3 bytes each. Each part is three digits, a number with one `'.'`, or unknown fill ([amb.wx.unknown](#amb.wx.unknown)), on its own. A direction above 360 gives `value`; other bytes give `syntax` at the first that fails. | Yes | 7 bytes | p. 45/27, p. 84/64, p. 85/65 |
+| [`wx.gust`](#wx.gust) ... | Weather data | Section 6. | No | Section 6.2 | p. 85/65 |
+| [`wx.sw`](#wx.sw), [`wx.unit`](#wx.unit) | Tail | Section 7. | No | End of field | p. 85/65 |
 
-**[agreed]** The wind field is present when its byte at offset 3, the
-fourth of its seven, is `'/'`
-([README section 3](README.md#3-tokenizer-model), When a fixed field
-is present). It is then the 7-byte
-[`ext.dirspd`](02-fields.md#ext.dirspd) token: bytes that do not fit
-its layout give one `syntax` finding against `ext.dirspd` at the first
-byte that fails, and the weather data after the seven bytes is read as
-usual. Otherwise the wind field is missing.
-
-A wind field cut short by the end of the field covers the bytes
-present, with its finding at the first byte that fails or, when those
-fit, at the end of the field (README section 3, Output). A direction of
-three digits above 360 keeps its `value` finding when the speed part
-fails, since the two are independent defects (README section 3,
-Precedence).
-
-**[agreed]** A 3-byte part has three forms and no selector rule. Its
-first byte selects the form, `'.'` the dots and `SP` the spaces; any
-other first byte selects neither, and the part takes the digits, the
-form taken by default ([README section 3](README.md#3-tokenizer-model),
-Forms that can stand at one place). The finding is at the first byte
-where the selected form fails: a part that starts with `'.'` or `SP`
-fails at the first byte that differs from it, and any other part at its
-first byte that is not a digit. A leading element of a positionless
-report is read the same way (section 6.2). An earlier draft carried
-this as **[proposed]**, stated by reference to section 6.2.
-
-For a missing wind field the tokenizer reports `syntax` against
-`ext.dirspd` at the first byte after the symbol code, where the field
-was expected, uses no byte for it, and reads the weather data from
-that byte ([README section 3](README.md#3-tokenizer-model), When a
-fixed field is present and Placing a finding). An earlier draft, as **[proposed]**,
-made the wind field present only when all seven bytes matched
-`ext.dirspd`. A wind field with one wrong byte was then missing, and
-its bytes were read as weather data; they gave `syntax` at the first
-byte after the symbol code and a residue there, where the first byte
-at fault came later.
-
-**[agreed]** In a weather report, the two parts of the wind field are
-the wind direction and wind speed items that it replaces (p. 85/65),
-and each item may be written as dots or spaces when it is not known
-(p. 84/64). Each part takes its forms on its own, so a wind field whose
-two parts are of different kinds, such as `.../000` or `220/...`, is a
-form that the text describes and gets no finding (README section 3, A
-form that the text describes). A direction of three digits above 360
-still gives `value`
-([02-fields section 7.3](02-fields.md#73-values)). An earlier draft
-gave such a wind field the `unstated` finding of that section, as for
-a course and speed whose parts are of different kinds, and no
-`ambiguous` finding: the reading of
-[amb.ext.csespd](02-fields.md#amb.ext.csespd) that takes only the
-listed forms would fail the required wind field here, so it did not
-accept the report.
+The wind field is present when the fourth of its seven bytes is `'/'`;
+it then keeps its 7-byte token, cut short by the end of the field, with
+one `syntax` finding at the first byte that fails. Otherwise it is
+missing: `syntax` at the byte after the symbol code, and the weather data
+is read from that byte. A wind field whose direction part fits has read
+`c` and `s` (section 6.2).
 
 ### 5.2 Compressed position
 
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|
-| [`wx.pos`](#wx.pos) | DTI | `'!'`, `'='`, `'/'` or `'@'`. | Required | Fixed 1 byte | p. 86/66 |
-| [`time.dhm`](02-fields.md#time.dhm), [`time.hms`](02-fields.md#time.hms) | Timestamp | 7 bytes, only after `'/'` or `'@'`. | As in 5.1 | Fixed 7 bytes | p. 86/66 |
-| [`cmp.block`](02-fields.md#cmp.block) | Compressed block | 13 bytes: table, 4 bytes latitude, 4 bytes longitude, symbol code `'_'`, the 2 bytes [`cmp.cs`](02-fields.md#cmp.cs) carrying the wind, and [`cmp.t`](02-fields.md#cmp.t). Reading: [amb.wx.cmpwind](#amb.wx.cmpwind). | Required | Fixed 13 bytes | p. 86/66 |
-| [`wx.gust`](#wx.gust) ... | Weather data | Elements, section 6, in any order (section 6.2), directly after the compression type byte. | Optional | First byte that does not start an element | p. 86/66 |
-| [`wx.sw`](#wx.sw), [`wx.unit`](#wx.unit) | Tail | Section 7. | Optional | End of information field | p. 86/66 |
-
-No 7-byte wind field follows the compressed block: the wind is in its
-`cs` bytes (p. 86/66). Seven bytes of the shape of `ext.dirspd` after the
-block are not a wind field here; they are read as weather data and fail
-there, giving `syntax` (UAP 5.33 describes such a packet).
+| [`wx.pos`](#wx.pos) | DTI | `'!'`, `'='`, `'/'`, `'@'`. | Yes | 1 byte | p. 86/66 |
+| [`time.dhm`](02-fields.md#time.dhm), [`time.hms`](02-fields.md#time.hms) | Timestamp | 7 bytes, after `'/'` or `'@'` only. | With `'/'`, `'@'` | 7 bytes | p. 86/66 |
+| [`cmp.block`](02-fields.md#cmp.block) | Compressed block | As in 02, symbol code `'_'`; the `cs` bytes carry the wind ([amb.wx.cmpwind](#amb.wx.cmpwind)). | Yes | 13 bytes | p. 86/66 |
+| [`wx.gust`](#wx.gust) ... | Weather data | Section 6, directly after the block; no 7-byte wind field. | No | Section 6.2 | p. 86/66 |
+| [`wx.sw`](#wx.sw), [`wx.unit`](#wx.unit) | Tail | Section 7. | No | End of field | p. 86/66 |
 
 ### 5.3 Object
 
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|
-| [`wx.obj`](#wx.obj) | DTI | `';'`. | Required | Fixed 1 byte | p. 86/66 |
-| [`obj.name`](05-object-item.md#obj.name), [`obj.state`](05-object-item.md#obj.state), [`obj.time`](05-object-item.md#obj.time) | Object header | As in [05-object-item.md](05-object-item.md#2-object-report). The weather diagram shows the live state `'*'` and a 7-byte timestamp. | Required | Fixed 9 + 1 + 7 bytes | p. 86/66 |
-| [`obj.pos`](05-object-item.md#obj.pos) | Position and symbol | As 5.1 (uncompressed) or 5.2 (compressed); symbol code `'_'`. Reading: [amb.wx.carriers](#amb.wx.carriers). | Required | As 5.1 or 5.2 | p. 55/37, p. 85/65, p. 86/66 |
-| [`ext.dirspd`](02-fields.md#ext.dirspd) | Wind | Uncompressed only, as 5.1. | Required | Fixed 7 bytes | p. 86/66 |
-| [`wx.gust`](#wx.gust) ... | Weather data | As 5.1 or 5.2. | Optional | First byte that does not start an element | p. 86/66 |
-| [`wx.sw`](#wx.sw), [`wx.unit`](#wx.unit) | Tail | Section 7. | Optional | End of information field | p. 86/66 |
-
-An object with a compressed position and symbol code `'_'` is read as
-5.2 after the object header ([amb.wx.carriers](#amb.wx.carriers)).
-APRS12c diagrams only the uncompressed weather object (p. 86/66), but
-lets the compressed format stand in place of the lat/long format
-anywhere that shape occurs (p. 55/37), and says that a complete report
-may use the lat/long and compressed lat/long position formats and that
-an object may carry weather (p. 85/65). An earlier draft carried this
-paragraph as **[proposed]**, citing p. 85/65 as allowing "any" position
-format, a paraphrase of a page that names those two formats.
+| [`wx.obj`](#wx.obj) | DTI | `';'` ([err.wx.object-dti](#err.wx.object-dti)). | Yes | 1 byte | p. 86/66 |
+| [`obj.name`](05-object-item.md#obj.name), [`obj.state`](05-object-item.md#obj.state), [`obj.time`](05-object-item.md#obj.time) | Object header | As in 05. | Yes | As in 05 | p. 86/66 |
+| [`obj.pos`](05-object-item.md#obj.pos) | Position | Uncompressed as 5.1, or compressed as 5.2, which may stand wherever the lat/long form does (p. 55/37). | Yes | As 5.1 or 5.2 | p. 55/37, p. 86/66 |
+| [`ext.dirspd`](02-fields.md#ext.dirspd), [`wx.gust`](#wx.gust) ..., [`wx.sw`](#wx.sw), [`wx.unit`](#wx.unit) | Wind, data, tail | As 5.1 or 5.2. | As 5.1 | As 5.1 | p. 86/66 |
 
 ## 6. Weather data elements
 
-Weather data is a run of elements with no separator. Each element is one
-letter followed by a value of fixed width (p. 84/64). Each element is one
-depth-0 token covering the letter and its value.
-
 ### 6.1 Elements
 
-"Unknown" in the table is the fill a sender uses when the value is not
-known: the whole value written as `'.'` bytes, or the whole value written
-as `SP` bytes (p. 84/64). Reading:
-[amb.wx.unknown](#amb.wx.unknown).
+Each element is one letter and a value of fixed width, with no separator
+(p. 84/64), and is one token. A value is digits, or a number with one
+`'.'` among its digits ([amb.wx.width](#amb.wx.width)), or unknown fill:
+`'.'` and SP only ([amb.wx.unknown](#amb.wx.unknown)). A `value` finding
+is at the first byte of the value.
 
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|
-| <a id="wx.wdir"></a>`wx.wdir` | Wind direction | `'c'`, then 3 digits, degrees. A value above 360 gives `value` (range taken from [`ext.dirspd`](02-fields.md#ext.dirspd), which replaces it). Unknown allowed. | Positionless: required, first element. Absent in complete reports. | Fixed 4 bytes | p. 45/27, p. 84/64 |
-| <a id="wx.wspd"></a>`wx.wspd` | Wind speed | `'s'`, then 3 digits, sustained one-minute speed. Unknown allowed. | Positionless: required, second element. Absent in complete reports. | Fixed 4 bytes | p. 84/64 |
-| <a id="wx.gust"></a>`wx.gust` | Gust | `'g'`, then 3 digits, peak in the last five minutes. Unknown allowed. | Positionless: required, third element. Complete reports: optional. Reading: [amb.wx.required](#amb.wx.required). | Fixed 4 bytes | p. 84/64 |
-| <a id="wx.temp"></a>`wx.temp` | Temperature | `'t'`, then 3 digits, or `'-'` and 2 digits for -01 to -99. `-00` gives `value`. Unknown allowed. | Positionless: required, fourth element. Complete reports: optional. | Fixed 4 bytes | p. 84/64 |
-| <a id="wx.rain1h"></a>`wx.rain1h` | Rain, last hour | `'r'`, then 3 digits, hundredths of an inch. Unknown allowed. | Optional | Fixed 4 bytes | p. 84/64 |
-| <a id="wx.rain24h"></a>`wx.rain24h` | Rain, last 24 hours | `'p'`, then 3 digits, hundredths of an inch. Unknown allowed. | Optional | Fixed 4 bytes | p. 84/64 |
-| <a id="wx.rainmid"></a>`wx.rainmid` | Rain since midnight | `'P'`, then 3 digits, hundredths of an inch. Unknown allowed. | Optional | Fixed 4 bytes | p. 84/64 |
-| <a id="wx.hum"></a>`wx.hum` | Humidity | `'h'`, then 2 digits, percent; `00` stands for 100. Unknown allowed. | Optional | Fixed 3 bytes | p. 84/64 |
-| <a id="wx.baro"></a>`wx.baro` | Pressure | `'b'`, then 5 digits, tenths of a hectopascal. Unknown allowed. | Optional | Fixed 6 bytes | p. 84/64 |
-| <a id="wx.lum"></a>`wx.lum` | Luminosity | `'L'`, then 3 digits, 000 to 999 W/m². Unknown allowed. | Optional; not in a report that holds all three of `r`, `p` and `P` (section 6.2). Reading: [amb.wx.lum](#amb.wx.lum). | Fixed 4 bytes | p. 84/64 |
-| <a id="wx.lumk"></a>`wx.lumk` | Luminosity, 1000 and up | `'l'` (lower case), then 3 digits; the value is 1000 more than the digits. Unknown allowed. | Optional; as `wx.lum`. Reading: [amb.wx.lum](#amb.wx.lum). | Fixed 4 bytes | p. 84/64 |
-| <a id="wx.snow"></a>`wx.snow` | Snowfall, last 24 hours | `'s'`, then 3 bytes: digits with at most one `'.'`, inches. Unknown allowed. Which `'s'` this is: [amb.wx.order](#amb.wx.order). Decimal point: [amb.wx.width](#amb.wx.width). | Optional | Fixed 4 bytes | p. 84/64 |
-| <a id="wx.rawrain"></a>`wx.rawrain` | Raw rain counter | `'#'`, then 3 digits. Width not stated in the text; 3 by [amb.wx.rawrain](#amb.wx.rawrain). | Optional | Fixed 4 bytes | p. 84/64 |
-
-A letter is an element only when its full value follows and matches the
-layout in its row. A defined letter whose value does not match does not
-start an element. The leading places of a positionless report are the
-exception (section 6.2): there the letter fixes the element and its
-width, and a value that does not match gives `syntax` inside the
-element ([README section 3](README.md#3-tokenizer-model), Output).
-
-The `value` findings of this table are at the first byte of the value,
-the byte after the letter, which is the first byte at fault
-([README section 3](README.md#3-tokenizer-model), Placing a finding).
-An earlier draft put them on the letter. **[agreed]** The `unstated`
-finding of a repeated element (6.2) is at the first byte of the
-element, its letter. An earlier draft placed an `unstated` finding of
-`wx.rawrain` there too; as the author decided,
-[amb.wx.rawrain](#amb.wx.rawrain) gives `wx.rawrain` no such finding.
+| <a id="wx.wdir"></a>`wx.wdir` | Wind direction | `c`, 3 bytes, degrees; above 360 gives `value` (README rule 1). | Positionless, first | 4 bytes | p. 84/64 |
+| <a id="wx.wspd"></a>`wx.wspd` | Wind speed | `s`, 3 bytes, mph. | Positionless, second | 4 bytes | p. 84/64 |
+| <a id="wx.gust"></a>`wx.gust` | Gust | `g`, 3 bytes, mph. | Positionless, third | 4 bytes | p. 84/64 |
+| <a id="wx.temp"></a>`wx.temp` | Temperature | `t`, 3 bytes, °F; below zero `'-'` and 2 digits, -01 to -99, so `-00` gives `value`. | Positionless, fourth | 4 bytes | p. 84/64 |
+| <a id="wx.rain1h"></a>`wx.rain1h` | Rain, last hour | `r`, 3 bytes. | No | 4 bytes | p. 84/64 |
+| <a id="wx.rain24h"></a>`wx.rain24h` | Rain, 24 hours | `p`, 3 bytes. | No | 4 bytes | p. 84/64 |
+| <a id="wx.rainmid"></a>`wx.rainmid` | Rain since midnight | `P`, 3 bytes. | No | 4 bytes | p. 84/64 |
+| <a id="wx.hum"></a>`wx.hum` | Humidity | `h`, 2 bytes, %; `00` is 100. | No | 3 bytes | p. 84/64 |
+| <a id="wx.baro"></a>`wx.baro` | Pressure | `b`, 5 bytes, tenths of hPa. | No | 6 bytes | p. 84/64 |
+| <a id="wx.lum"></a>`wx.lum` | Luminosity | `L`, 3 bytes, 000 to 999 W/m² ([amb.wx.lum](#amb.wx.lum)). | No | 4 bytes | p. 84/64 |
+| <a id="wx.lumk"></a>`wx.lumk` | Luminosity, 1000 up | `l`, 3 bytes, 1000 more than the digits. | No | 4 bytes | p. 84/64 |
+| <a id="wx.snow"></a>`wx.snow` | Snowfall, 24 hours | `s` outside the leading places, 3 bytes, inches ([amb.wx.order](#amb.wx.order)). | No | 4 bytes | p. 84/64 |
+| <a id="wx.rawrain"></a>`wx.rawrain` | Raw rain counter | `#`; no width is stated ([amb.wx.rawrain](#amb.wx.rawrain)). | No | 1 byte | p. 84/64 |
 
 ### 6.2 Order and end of the data
 
-In a positionless report the leading elements `c`, `s`, `g`, `t` are
-read at fixed places, in that order, and the remaining elements may
-come in any order ([amb.wx.order](#amb.wx.order), (a)). They are
-required there, so a missing one gives `syntax` against its ID at the
-offset where it was expected, and reading continues
-([amb.wx.required](#amb.wx.required), (b);
-[README section 3](README.md#3-tokenizer-model), When a fixed field is
-present). A complete report has no leading elements: after the wind,
-every element, gust and temperature included, may come in any order
-([amb.wx.required](#amb.wx.required), (b), under which only the
-positionless report has required elements). An earlier draft carried
-this paragraph as **[proposed]**.
+In a positionless report `c`, `s`, `g` and `t` stand at four leading
+places, in that order; "the remaining" may follow in any order
+(p. 84/64). A leading place is present when it holds its letter; it is
+then 4 bytes wide, and a value that does not fit gives one `syntax`
+finding at the first byte at which neither the number nor the fill fits.
+A place without its letter is a missing element: `syntax` where it was
+expected, no byte used, and only the first of several missing places at
+one byte gives it. A complete report has no leading places.
 
-**[agreed]** A leading place is present when it holds the letter of its
-element (README section 3, When a fixed field is present). A place that
-holds another byte, or no byte because the field has ended, is a
-missing element: its finding is at that byte, or at the end of the
-field, no byte is used, and the next place is at the same byte. An
-earlier draft carried this test and the width below as one
-**[proposed]** item.
+After that, an element is read wherever its letter is followed by a
+value that fits its width. An element whose field this report has
+already read keeps its token and gives `unstated` at its letter. A wind
+field that has read `c` and `s` has read those fields; `wx.wspd` and
+`wx.snow` are different fields ([amb.wx.order](#amb.wx.order)).
 
-When several places are missing at one byte, only the first gives its
-finding, and a residue that starts there gives none (README section 3,
-Missing fields at one byte). A present leading element is 4 bytes wide
-whatever follows the letter, the width of its row in section 6.1
-(README section 3, Output). **[agreed]** The value of a leading element
-has no selector rule either: as for a part of the wind field
-(section 5.1), its first byte selects the form, `'.'` the dots and `SP`
-the spaces, and any other first byte selects neither, so the value
-takes the digits, after the sign of a temperature, the form taken by
-default ([README section 3](README.md#3-tokenizer-model), Forms that can
-stand at one place). A value that starts with `'.'` or `SP` then fails
-at the first byte that differs from it, and any other value at its
-first byte that is not a digit (after the sign of a temperature). An
-earlier draft carried this as **[proposed]**.
+The data ends at the first byte that starts no such element. What
+follows is, in this order:
 
-A leading element whose value does not fit gives one `syntax` finding
-against its ID at the first byte that fails, the token is kept, and the
-next place follows it. When the field ends inside a leading element,
-reading stops after it; its one `syntax` finding is at the first byte
-that fails, or at the end of the field when the bytes present fit. When
-the field ends before a leading place, that element gets the one
-`syntax` finding, at the end of the field; the places after it are
-missing at the same byte and give none
-([README section 3](README.md#3-tokenizer-model), Output and Missing
-fields at one byte). This is the exception to section 6.1 and to
-[amb.wx.unknown](#amb.wx.unknown) named there.
-
-The positionless report keeps reading after a missing leading element,
-where storm data ends at its first missing field (section 8): weather
-elements carry letters of their own, and a report that omits only `c`
-would otherwise have its `s004` read after the leading places, as
-snowfall.
-
-**[agreed]** An element whose field has already been read in this
-report is still tokenized, and the tokenizer reports `unstated` against
-it. `wx.wspd` and `wx.snow` are different fields for this purpose.
-**[agreed]** In a complete report whose wind field matches, the wind
-field has read the wind direction and the wind speed, so a `c` element
-there is tokenized as `wx.wdir` and gets this `unstated` finding. The
-wind field matches when it is an `ext.dirspd` (section 5.1), or when its
-`cs` bytes are of any kind but the `cmp.cs` token of the last step of
-[02-fields section 6.3](02-fields.md#63-reading-the-cs-bytes)
-(section 5.2, [amb.wx.cmpwind](#amb.wx.cmpwind)). Where it does not
-match, it has read nothing, and a `c` element is `wx.wdir` with no
-finding of this kind. Either way an `s` there is snowfall
-([amb.wx.order](#amb.wx.order)). **[agreed]** An `ext.dirspd` that is
-present by the test of section 5.1 matches when its direction part fits
-(three digits, `'...'` or three `SP`), whatever its speed part. One
-whose direction part gives `syntax` has read nothing, like the `cmp.cs`
-token of the last step, whose `c` byte fits no kind; a speed part that
-gives `syntax`, like a `cs` token whose `s` byte fails, leaves the
-direction read. An earlier draft, as **[proposed]**, made an
-`ext.dirspd` whose bytes give `syntax` anywhere not match, and compared
-it with the `cmp.cs` token of the last step on the grounds that both
-give `syntax`; a `cs` token of a kind whose `s` byte fails still
-matches, so the comparison held only for the direction.
-
-A report that holds `L` or `l` does not also hold all three rain
-elements `r`, `p` and `P` ([amb.wx.lum](#amb.wx.lum)). The element that
-completes the set of `r`, `p`, `P` and `L` or `l`, in byte order, gives
-`syntax` against its own ID at its letter
-([README section 3](README.md#3-tokenizer-model), Kinds by situation: a
-count that departs from the one stated; Placing a finding: the first
-byte past a limit). It keeps its token, and reading continues. `L` and
-`l` are one parameter and count once.
-
-The weather data ends at the first byte, after the leading elements,
-that does not start an element of section 6.1. A letter that APRS12c
-does not define ends the data: nothing delimits an element, so an
-unknown letter leaves its extent unknown, and reading stops there
-([README section 3](README.md#3-tokenizer-model), Kinds by situation).
-Reading: [amb.wx.letters](#amb.wx.letters), [amb.wx.width](#amb.wx.width).
+1. the tail of section 7, when it is 1 to 5 bytes and either does not
+   start with `#` or gives no finding as a tail;
+2. `wx.rawrain` at a `#`, with `unstated`, and the rest a residue with no
+   finding ([amb.wx.rawrain](#amb.wx.rawrain));
+3. otherwise a residue named `wx.unit`, with `syntax` at its first byte
+   ([amb.wx.comment](#amb.wx.comment), [amb.wx.letters](#amb.wx.letters)).
 
 ## 7. Software and unit codes
 
-After the weather data, a report may carry a 1-byte code for the APRS
-software at the station and a 2-4 byte code for the weather station unit,
-with no separator (p. 83/63). Both are optional, and nothing else is
-defined after them.
-
-Listed software codes (p. 83/63): `d`, `M`, `P`, `S`, `W`, `X`. This
-reading adds `w` ([err.wx.software-case](#err.wx.software-case)) and
-**[agreed]** `O`, `K`, `B` and `Y`
-([err.wx.unit-length](#err.wx.unit-length)).
-
-Listed unit codes (p. 83/63): `Dvs`, `HKT`, `PIC`, `RSW`, `U-II`, `U2R`,
-`U2k`, `U2kr`, `U5`, `Upkm`. Any other unit code of 2-4 bytes is
-allowed. **[agreed]** A unit code has 2-4 bytes; there is no 1-byte unit
-code ([err.wx.unit-length](#err.wx.unit-length)).
+After the data a report may carry a 1-byte software code and a 2-4 byte
+unit code, with no separator, and nothing after them (p. 83/63, p. 85/65,
+p. 86/66). Neither byte set is stated.
 
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|
-| <a id="wx.sw"></a>`wx.sw` | Software code | 1 byte, a letter. A letter outside the listed set gives `unstated`. | Optional | Fixed 1 byte | p. 83/63 |
-| <a id="wx.unit"></a>`wx.unit` | Unit code | 2-4 bytes of letters, digits and `'-'`. A code not in the list gives no finding. | Optional | End of information field | p. 83/63 |
+| <a id="wx.sw"></a>`wx.sw` | Software code | 1 byte. The codes `d`, `M`, `P`, `S`, `W`, `X`, and `w` ([err.wx.software-case](#err.wx.software-case)), an open list, as it names software (README section 3.3): another byte gives `unstated`. | No | 1 byte | p. 83/63 |
+| <a id="wx.unit"></a>`wx.unit` | Unit code | 2-4 bytes, any code (the list is open), or one of `O`, `K`, `B`, `Y` ([err.wx.unit-length](#err.wx.unit-length)). | No | End of field | p. 83/63 |
 
-The tail is everything after the weather data, to the end of the
-information field: the diagrams put the software and unit codes last
-and draw no field after them (p. 83/63, p. 85/65, p. 86/66), and bytes
-after the data are not a comment ([amb.wx.comment](#amb.wx.comment),
-(a)). If it is empty, there is no `wx.sw` and no `wx.unit`.
-
-A tail holds only letters, digits and `'-'`, and at most 5 bytes: one
-software code and one unit code, of the bytes the listed codes use.
-The text allows any other unit code of 2-4 bytes without naming its
-bytes, and the narrowest reading that the text supports is taken
-([README section 3](README.md#3-tokenizer-model), Kinds by situation).
-Bytes after the data that are longer than 5 bytes, or hold another
-byte, are not a tail: they are the residue of
-[amb.wx.comment](#amb.wx.comment), whose `syntax` finding alone is
-given, although a wider reading of the unit code might accept some of
-them (README section 3, Precedence).
-
-Otherwise the tail is split by its length. A software code has 1 byte
-and is a letter (p. 83/63), and a unit code has 2-4 bytes
-([err.wx.unit-length](#err.wx.unit-length)), so a tail of 1, 2 or 5
-bytes splits only one way, and so does a tail of 3 or 4 bytes that
-starts with a digit or `'-'`, which cannot be a software code. A tail
-of 3 or 4 bytes that starts with a letter is split by the order of
-tests of [amb.wx.tail](#amb.wx.tail), (a). An earlier draft carried
-this paragraph and the two before it as one **[proposed]** rule.
-
-| Tail length | Read as | Finding |
-|---|---|---|
-| 1 | `wx.sw`. | `unstated` for a letter not in the software list. A digit or `'-'`: `syntax`. |
-| 2 | `wx.unit` of 2 bytes. | None. |
-| 3 or 4, first byte a letter | In this order: if the bytes after the first form a listed unit code, `wx.sw` + `wx.unit`; otherwise, if the whole tail is a listed unit code, `wx.unit`; otherwise, if the first byte is a listed software code, `wx.sw` + `wx.unit`; otherwise `wx.unit` of 3 or 4 bytes. | `ambiguous` at the first byte of the tail, on the rule of its first token: `wx.sw` when the tail is split, `wx.unit` when it is kept whole. The tail splits two ways in every case; the finding is not given where a `syntax` or `value` finding already reports a byte of the tail ([amb.wx.tail](#amb.wx.tail)). Also `unstated` when the first byte is read as `wx.sw` and is not in the software list. |
-| 3 or 4, first byte a digit or `'-'` | `wx.unit` of 3 or 4 bytes. | None. |
-| 5 | `wx.sw` + `wx.unit` of 4 bytes. | `unstated` when the first byte is a letter not in the software list; `syntax` when it is not a letter. |
-
-A tail can also get an `ambiguous` finding at its first byte where
-another reading would end the weather data at a different byte: see
-[amb.wx.width](#amb.wx.width) and [amb.wx.letters](#amb.wx.letters).
+A tail of 1 byte is a unit code when it is `O`, `K`, `B` or `Y`, and a
+software code otherwise. A tail of 5 bytes is a software code and a
+4-byte unit. A tail of 2 to 4 bytes is a software code and a unit when
+its first byte is a listed software code and the rest is a unit code,
+and one unit code otherwise ([amb.wx.tail](#amb.wx.tail)).
 
 ## 8. Storm data
 
-Storm data describes a tropical storm, hurricane or tropical depression.
-It is usually sent as an object, and may also be sent as a position
-report or an item (p. 87/67). The storm's direction and speed of motion
-are the 7-byte [`ext.csespd`](02-fields.md#ext.csespd) after the symbol
-code; the storm fields follow it, where the comment would begin.
-
-The tokenizer reads storm data when all of these hold, by the one
-listed reading of [amb.storm.placement](#amb.storm.placement)
-([README section 3](README.md#3-tokenizer-model)):
-
-- the report is an uncompressed position report (03), object or item
-  (05);
-- its symbol is `\@` or `/@`: symbol code `'@'` with the table byte
-  `'\'` or `'/'` (p. 87/67);
-- the 7 bytes after the symbol code are an
-  [`ext.csespd`](02-fields.md#ext.csespd);
-- the next byte is `'/'` and the two after it are `TS`, `HC` or `TD`.
-
-Storm-shaped bytes that these conditions leave as comment stay comment
-text and give no finding
-([amb.storm.placement](#amb.storm.placement); README section 3).
-
-The table byte is matched as p. 87/67 names it
-([README section 3](README.md#3-tokenizer-model), Symbols that a
-format names). With a table byte other than `'/'` or `'\'`, an overlay
-character included, the report is not a storm report, and the bytes
-after its [`ext.csespd`](02-fields.md#ext.csespd) are the comment. The
-wider reading of that rule, that the named `'\'` accepts any overlay,
-is visible in the bytes: where the table byte is an overlay character
-and the other conditions above hold, the `'/'` of the storm type gets
-an `ambiguous` finding on [`cmt.text`](02-fields.md#cmt.text), the rule
-this reading gives it (README section 3, Placing a finding), when that
-reading would read the storm fields with no `syntax` or `value`
-finding of its own, the comment after them within its limit included.
-Where this reading gives those bytes a `syntax` or `value` finding,
-such as a comment over its limit, that finding alone is given
-(Precedence). An earlier draft read the storm data with any table byte,
-as **[proposed]**, and reported `unstated` against
-[`sym.table`](02-fields.md#sym.table) for a byte other than `'/'` or
-`'\'`, except where `sym.table` already gave `syntax`.
+Storm data may be carried by a position report, an object or an item
+whose symbol is `\@` or `/@` (p. 87/67); an overlay table byte selects
+the alternate table, so `\@` with an overlay is the storm symbol too
+(p. 125/101). It stands directly after the 7-byte
+[`ext.csespd`](02-fields.md#ext.csespd), the storm's direction and speed,
+of an uncompressed report, where the comment would begin (p. 33/19,
+p. 34/20). A storm type there announces storm data, which is then read
+part by part: a part present by its leading byte is a token of its
+width, cut short by the end of the field, with `syntax` at its first
+byte that fails; a required part without its leading byte gives
+`syntax` where it was expected. Without a storm type the bytes are the
+comment ([amb.storm.placement](#amb.storm.placement)). Bytes after the
+storm data are the comment of the carrying format, with its limit after
+a data extension.
 
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|
-| [`ext.csespd`](02-fields.md#ext.csespd) | Direction and speed of motion | 3 bytes, `'/'`, 3 bytes, directly after the symbol code. | Required | Fixed 7 bytes | p. 87/67 |
-| <a id="storm.type"></a>`storm.type` | Storm type | `'/'`, then `TS` (tropical storm), `HC` (hurricane) or `TD` (tropical depression). | Required | Fixed 3 bytes | p. 87/67 |
-| <a id="storm.wind"></a>`storm.wind` | Sustained wind | `'/'`, then 3 digits, knots. | Required | Fixed 4 bytes | p. 87/67 |
-| <a id="storm.gust"></a>`storm.gust` | Peak gust | `'^'`, then 3 digits, knots. | Required | Fixed 4 bytes | p. 87/67 |
-| <a id="storm.press"></a>`storm.press` | Central pressure | `'/'`, then 4 digits, hectopascals. | Required | Fixed 5 bytes | p. 87/67 |
-| <a id="storm.rhurr"></a>`storm.rhurr` | Radius of hurricane winds | `'>'`, then 3 digits, nautical miles. | Required | Fixed 4 bytes | p. 87/67 |
-| <a id="storm.rts"></a>`storm.rts` | Radius of tropical storm winds | `'&'`, then 3 digits, nautical miles. | Required | Fixed 4 bytes | p. 87/67 |
-| <a id="storm.rgale"></a>`storm.rgale` | Radius of 50-knot winds | `'%'`, then 3 digits, nautical miles. | Optional | Fixed 4 bytes | p. 87/67 |
-
-Once `storm.type` has matched, a storm field whose marker byte stands
-at its place is that field, of the width its row gives: a value that
-does not fit gives one `syntax` finding against its ID at the first
-byte that fails, the token is kept, and the next field follows it. A
-field cut short by the end of the information field covers the bytes
-present, with its finding at the first byte that fails or, when those
-fit, at the end of the field, and reading stops there
-([README section 3](README.md#3-tokenizer-model), Output). A value
-written wholly as `'.'` bytes or wholly as `SP` bytes is no form that
-APRS12c defines for these fields, so it gives that `syntax` finding, at
-its first byte (README section 3, Kinds by situation: a byte pattern
-outside every form). An earlier draft accepted such a value with
-`unstated` at the marker byte, and ended the storm data at any field
-that did not match, with the bytes from there on read as the comment.
-
-A required field whose marker byte is not at its place is missing: it
-uses no byte and gives `syntax` against its ID at that byte
-([README section 3](README.md#3-tokenizer-model), When a fixed field is
-present: the marker byte is the test). **[agreed]** The storm data ends
-there, and the bytes from there on are the comment. The marker bytes do
-not identify their fields: `'/'` marks the storm type, the sustained
-wind and the pressure. Reading on after a gap would take a pressure for
-a sustained wind, or comment text that starts with `'/'` for a storm
-field. Bytes after the last storm field are the comment of the report,
-read by [`cmt.text`](02-fields.md#cmt.text) and the rules of the
-carrying format. An earlier draft carried the rule for a missing field
-and its end of the storm data as one **[proposed]** item.
-
-The comment after the storm fields follows a data extension, so it has
-the length limit that the carrying format sets for a comment after a
-data extension: 36 bytes in 03 and 05, counted from the end of the
-storm fields ([`pos.cmt`](03-position.md#pos.cmt);
-[`obj.cmt`](05-object-item.md#obj.cmt);
-[README section 3](README.md#3-tokenizer-model), Length limits).
-
-No run in that comment gets a finding of
-[amb.ext.count](02-fields.md#amb.ext.count), neither a course and speed
-nor a run that begins with a marker: that entry gives none for a run
-after the slot's extension, and bytes of an extension's shape there are
-comment text ([README section 3](README.md#3-tokenizer-model), Fixed
-spots and repeats). An earlier draft still gave a run with a marker
-that finding, under reading (c) of that entry, which looked for such
-runs anywhere in a comment; reading (c) adds a search that the document
-never mentions and is recorded there as decoder behaviour (README
-section 3). The chain of reading (b), a further extension directly
-after the slot's one, is recorded there as decoder behaviour too; it
-never reached this comment, which does not directly follow the
-extension.
-
-## 9. Ambiguities
-
-<a id="amb.wx.rawdti"></a>
-### amb.wx.rawdti
-
-- **Open.** `'!'` starts both a position report without timestamp and the
-  Ultimeter logging output; `'$'` starts both raw NMEA and the Ultimeter
-  packet output (p. 31/17, p. 82/62). APRS12c gives no rule to tell them
-  apart. The examples start `!!` and `$ULTW` (p. 82/62).
-- **Readings.** (a) Decide by the bytes after the DTI: a second `'!'`, or
-  `ULTW`. (b) Try the position or NMEA grammar first and fall back to raw
-  weather.
-- **Taken.** (a): the form that marker bytes select is tried first
-  ([README section 3](README.md#3-tokenizer-model), Forms that can
-  stand at one place), as in
-  [amb.dti.shared](01-frame.md#amb.dti.shared). A second `'!'` cannot start a position
-  (neither a latitude digit nor a valid symbol table byte), so reading (b)
-  gives the same result for `!!`. A `'$'` field not followed by `ULTW` is
-  NMEA ([03-position.md](03-position.md)).
-- **In the bytes.** Under the test of
-  [README section 3](README.md#3-tokenizer-model), visible in one case
-  only: a field that starts `$ULTW`, then a letter `'A'`-`'Z'` and a
-  `','`. Reading (b) would try NMEA first, and the five bytes after the
-  `'$'` are then a valid [`nmea.addr`](03-position.md#nmea.addr). Where
-  the whole field, read as NMEA by 03, would give no `syntax` or `value`
-  finding of its own, it gets an `ambiguous` finding against
-  `wx.raw.ultpkt` at offset 1. Every other field divides the same way
-  under both readings:
-  `!!` cannot start a position, and a `'$'` field without `ULTW` is NMEA
-  under both. A `'!'` or `'$'` field that fails as a position or as NMEA
-  would be raw weather under (b), but this reading already reports it as
-  `syntax`, and that finding alone is given (precedence).
-- **Decoders.**
-
-  | Decoder | What it does | Where |
-  |---|---|---|
-  | FAP | After a `!` DTI, a second `!` selects the Ultimeter logging parser. `$` with `$ULTW` selects the packet parser; only `$GP` is NMEA. `#` and `*` are not parsed. | `parseaprs`, FAP.pm:2648, 2686 |
-  | Dire Wolf | `!!` and `$ULTW` go to its Ultimeter decoder; other `$` is NMEA. The `#` and `*` cases are commented out. | `decode_aprs`, decode_aprs.c:343, 355-363 |
-  | aprslib | `#`, `*` and `$` are listed as unsupported formats. `!!` goes to the position parser and fails there. | `parsing/__init__.py`:48-54, 206 |
-  | Xastir | Second `!` plus 40 hex-or-dash bytes is Ultimeter logging; `$` plus `ULTW` and 44 hex-or-dash bytes is packet mode; `#` and `*` need 13 hex-or-dash bytes. | `decode_info_field`, db.c:14999, 15144-15173 |
-  | aprsc | Marks `!!`, `#`, `*`, `_` and `$ULT` as weather. | `parse_aprs_body`, parse_aprs.c:1205, 1290; `parse_aprs_nmea`, parse_aprs.c:333 |
-  | javAPRSlib | `$ULTW` is skipped; `#`, `*` and `_` all go to the same element parser. | `Parser.java`:179, 264-267 |
-  | pdn-aprs | `!!`, `#`, `*` and `$ULTW` are raw weather, reported as obsolete; content must be printable ASCII. | `decode.rs`:28, 42-44; `raw_weather`, other.rs:19 |
-
-- **Corpus.** For `!` and `$` packets, the distribution of the first
-  bytes after the DTI, and how many `!!` and `$ULTW` fields contain bytes
-  other than hex digits and `'-'`.
-
-<a id="amb.wx.status"></a>
-### amb.wx.status
-
-- **Open.** Raw and positionless reports are "not recommended" (p. 82/62,
-  p. 83/63), not obsolete. UAP 5.19 calls the vendor format obsolete.
-- **Readings.** (a) Report `obsolete`. (b) Report nothing. (c) Report
-  `discouraged`.
-- **Taken.** **[agreed]** (c): a `discouraged` finding at offset 0 of
-  every raw and positionless report, given by the `dti` rules of
-  [01-frame.md](01-frame.md#7-data-type-identifier), as
-  [README section 3](README.md#3-tokenizer-model) assigns that kind to
-  forms that are only "not recommended". An earlier draft took (a),
-  since `obsolete` does not change the verdict; it was dropped because
-  `obsolete` is kept for forms the document marks obsolete. A later
-  draft took (b), for want of a fitting kind; it was dropped when the
-  README added `discouraged`. This is a question of which finding kind to
-  use, not of how the bytes divide: no `ambiguous` finding.
-- **Decoders.** pdn-aprs reports raw and positionless weather as obsolete
-  (`raw_weather`, other.rs:20; `positionless_weather`, other.rs:32). Dire
-  Wolf leaves a note to report it as obsolete (decode_aprs.c:345, 363).
-  The others do not distinguish it.
-- **Corpus.** Counts of raw and positionless weather packets by form.
-
-<a id="amb.wx.symbol"></a>
-### amb.wx.symbol
-
-- **Open.** A complete report is "identified" by the weather symbol,
-  written `/_` or `\_` (p. 82/62); `\_` takes an overlay (p. 140/116).
-  Not stated: whether an overlay byte as table counts, whether every
-  `'_'` report must carry weather, and what a weather-station position
-  with nothing after the symbol is (p. 85/65 asks raw and positionless
-  stations to send their position separately).
-- **Readings.** (a) Code `'_'` with any table byte that
-  [`sym.table`](02-fields.md#sym.table) accepts. An earlier draft also
-  listed (b), only `/_` and `\_`. It was dropped because the complete
-  weather diagrams leave the table byte open and name only the code
-  (p. 85/65, p. 86/66), and p. 140/116 lets `\_` carry an overlay, which
-  is written in the table byte, so (b) contradicts the document
-  ([README section 3](README.md#3-tokenizer-model), Symbols that a
-  format names). An earlier draft based the drop on p. 140/116 alone.
-  An earlier draft also listed a third reading, deciding by content (a `g`
-  and a `t` at fixed places) rather than by symbol. It was dropped
-  because it reads weather elements after the symbol of a report with
-  another symbol code, a place no page describes for them, so it adds
-  something the document never mentions
-  ([README section 3](README.md#3-tokenizer-model), A listed reading, its
-  second paragraph; Obsolete and nested forms); p. 82/62, which
-  identifies the complete report by the weather symbol, and p. 85/65,
-  which gives `'_'` as its symbol code in every case, support this. It
-  is Xastir's behaviour, recorded under Decoders. An earlier draft based
-  the drop on p. 82/62 alone.
-- **Taken.** (a) over (b)
-  ([README section 3](README.md#3-tokenizer-model), Symbols that a
-  format names). The content-based reading is decoder behaviour by the
-  rules of README section 3 cited under Readings, as section 2 states.
-  An earlier draft rested its drop on the statement of section 2 that
-  the symbol decides, while that statement was **[proposed]**. A
-  position report whose information field ends at the
-  symbol code is a plain position and gives no finding (section 2). A
-  position report with any bytes after the position block is weather.
-  If those bytes are not weather data (for example a PHG extension and a
-  comment), the tokenizer reports `syntax`
-  ([amb.pos.wxsym](03-position.md#amb.pos.wxsym)). **[agreed]** As the
-  author decided, the same holds for an object: one that ends at the
-  symbol code is a plain object and gives no finding, a form the text
-  describes (p. 76/58; README section 3, A form that the text
-  describes), and one with any bytes after the position block is
-  weather, with `syntax` where those bytes are not weather data
-  (section 2). An earlier draft carried the object sentence as
-  **[proposed]**.
-- **In the bytes.** Not visible: with (b) dropped, every `'_'` report
-  is read one way. A report with another symbol code is not weather and
-  gets no finding from this file, whatever follows its symbol.
-- **Decoders.**
-
-  | Decoder | What it does | Where |
-  |---|---|---|
-  | FAP | Symbol code `'_'`, any table, sends the rest to the weather parser instead of the comment parser. | `parseaprs`, FAP.pm:2624, 2641; `_object_to_decimal`, FAP.pm:1281 |
-  | Dire Wolf | Symbol code `'_'`, any table, selects weather; it notes that a `'_'` report carrying PHG and text breaks the format. | `aprs_ll_pos`, decode_aprs.c:930, 974; `aprs_ll_pos_time`:1064, 1084; `aprs_object`:2175, 2193 |
-  | aprslib | Symbol code `'_'`, any table. | `parse_position`, position.py:62 |
-  | Xastir | Decides by content, the dropped third reading: for `/` and `@`, a `'/'`, `g` and `t` at fixed offsets after an uncompressed position, and `g` and `t` at fixed offsets after a compressed one; in general, for `!`, `=`, Mic-E reports, objects and items, `g` and `t` (and `h`) found in the data. Symbol not checked. | `decode_info_field`, db.c:15029, 15080, 15100-15104; `extract_weather`, db.c:3335-3387, called for objects at db.c:9872 and for items at db.c:9993 |
-  | aprsc | Code `'_'` with any valid table byte, overlays included. | `pbuf_fill_pos`, parse_aprs.c:84 |
-  | javAPRSlib | Code `'_'`, any table. | `Parser.java`:160, 191 |
-  | pdn-aprs | Code `'_'`, any table. | `is_weather_symbol`, comment.rs:19 |
-
-- **Corpus.** Distribution of table bytes among `'_'` reports; how many
-  `'_'` reports end at the symbol, and how many have bytes after it that
-  do not start with a wind field.
-
-<a id="amb.wx.carriers"></a>
-### amb.wx.carriers
-
-- **Open.** Weather is diagrammed for position reports and uncompressed
-  objects (p. 85/65, p. 86/66); p. 82/62 names the four position data
-  type identifiers. A complete report may give its location in the
-  lat/long and compressed lat/long position formats, and an object may
-  carry weather (p. 85/65); the compressed format may be used in place
-  of the lat/long format anywhere that shape occurs (p. 55/37). The
-  weather pages do not mention items: they name only objects
-  (p. 85/65), while the storm data page names items where it means them
-  (p. 87/67). The data table lists raw weather data under objects and
-  items (p. 33/19), and items are handled the same way as objects apart
-  from their differences (p. 75/57). Mic-E reports and status reports
-  with a `'_'` symbol are not mentioned; the data table lists Mic-E data
-  apart from the lat/long and compressed formats (p. 33/19).
-- **Readings.** (a) Apply the weather rules to items as to objects
-  (p. 75/57). (b) Apply them to position reports and objects only, in
-  either position form. An earlier draft also listed (c), only the
-  diagrammed carriers, under which a compressed object with `'_'` was
-  not weather and its bytes after the block were an object comment. It
-  was dropped because it contradicts p. 55/37, which lets the compressed
-  format stand wherever the lat/long shape occurs, the weather object
-  layout of p. 86/66 included; it is decoder behaviour, and no finding
-  comes from it ([README section 3](README.md#3-tokenizer-model), A
-  listed reading). An earlier draft also applied (a) to Mic-E reports
-  and to any other format with a `'_'` symbol, and built it for Mic-E by
-  reading the status text as the weather data of a complete report. For
-  Mic-E reports and status reports it was dropped because no page
-  mentions weather in either, so it adds something the document never
-  mentions (README section 3, A listed reading; Obsolete and nested
-  forms); javAPRSlib and Xastir do it, recorded under Decoders.
-- **Taken.** **[agreed]** As the author decided, (b): position reports
-  and objects, in either position form. A compressed object carries
-  weather because the compressed format may stand in place of the
-  lat/long format anywhere that shape occurs (p. 55/37), an object may
-  carry weather (p. 85/65), and the object weather layout has that shape
-  (p. 86/66): the compressed weather object is a form the text describes
-  ([README section 3](README.md#3-tokenizer-model), A form that the text
-  describes). (b) is taken over (a) for items by the format pages, which
-  name only objects for weather (p. 85/65) and name items only for storm
-  data (p. 87/67), followed over the general page p. 75/57 (README
-  section 3, Pages that disagree), and by the Output paragraph of README
-  section 3, which gives identifier rules for position and object
-  reports that carry weather only (`wx.pos`, `wx.obj`). Items are read
-  by their own rules, with no weather tokens. Mic-E reports and status
-  reports are not weather under either reading (Readings). An earlier
-  draft carried (b) as **[proposed]**, and based compressed objects on
-  "any position format", a paraphrase of p. 85/65, which names the
-  lat/long and compressed lat/long position formats.
-- **In the bytes.** Visible, under the test of
-  [README section 3](README.md#3-tokenizer-model), in one case: an item
-  with symbol code `'_'` and bytes after its position, which this
-  reading reads as an item with a data extension or comment and reading
-  (a) as weather. Where the item, read with the bytes after its position
-  as weather data and tail by sections 5 to 7, would give no `syntax` or
-  `value` finding of its own, it gets an `ambiguous` finding at the
-  first byte after the position block. An item that ends at its symbol
-  code is an ordinary item under both readings, as an object is
-  (section 2). Where this reading itself gives a `syntax` or `value`
-  finding on those bytes, that finding alone is given (Precedence). An
-  earlier draft called the question not visible. The finding is on the
-  rule that this reading gives the byte, at the level where the readings
-  divide the bytes (README section 3, Placing a finding): the data
-  extension at its slot or [`cmt.text`](02-fields.md#cmt.text). An
-  earlier draft put it on [`wx.obj`](#wx.obj), the identifier rule of
-  the weather form that reading (a) takes the item for. Earlier drafts
-  also gave the finding to a compressed object under reading (c) and to
-  a Mic-E report, on [`mice.status`](04-mic-e.md#mice.status) at
-  offset 9, under (a); both went with those readings.
-- **Decoders.** FAP reads weather in positions and in objects of both
-  kinds (`_object_to_decimal`, FAP.pm:1281), but not in items
-  (FAP.pm:1484 skips the comment and calls no weather parser) or Mic-E
-  reports (FAP.pm:1826-1873 reads a comment only). Dire Wolf reads
-  weather in both object kinds (`aprs_object`, decode_aprs.c:2175,
-  2193), with a source comment that the document does not explicitly
-  mention a compressed weather object, and not in items (`aprs_item`,
-  decode_aprs.c:2235, has no call to `weather_data`) or Mic-E reports
-  (`aprs_mic_e`, decode_aprs.c:1403-1780). aprslib reads objects through
-  `parse_position` (position.py:62), does not parse items (`)` is in its
-  unsupported list, parsing/\_\_init\_\_.py:53), and reads only a
-  comment in Mic-E reports (parsing/mice.py:180-218). javAPRSlib reads
-  weather in positions and in Mic-E reports, by symbol `'_'` and a
-  length above 20 bytes (Parser.java:160-165, 174-196), and not in
-  objects or items. pdn-aprs reads positions, objects of both kinds and
-  items through one body reader (decode.rs:128-135; object.rs:60, 87;
-  comment.rs:19, 44), and not Mic-E reports; its Mic-E encoder refuses
-  weather (mic_e.rs:354-357). aprs-parser-rs has no weather parser (a
-  search of src/). Xastir ignores the symbol: it runs its content test
-  (`extract_weather`, db.c:3262-3400) on `!` and `=` positions and
-  Mic-E reports (db.c:9526-9552), objects (db.c:9872) and items
-  (db.c:9993) alike. None reads a status report as weather. All read at
-  the commits of [README section 4](README.md#4-decoders-consulted).
-- **Corpus.** In the capture window `aprsis-20261104-03.log` to
-  `aprsis-20261113-07.log` (221 files, 75,037,495 packets): no
-  compressed object or item with symbol code `'_'`; 2,627 items with
-  `'_'` that end at the symbol (1 sender) and 2 with bytes after it
-  (1 sender), neither given the `ambiguous` finding, since the item's own
-  reading reports their bytes; 18,408 Mic-E reports with `'_'`
-  (42 senders), none of whose status texts the weather rules accept;
-  and 2 status reports with a locator and symbol `'_'` (1 sender).
-
-<a id="amb.wx.order"></a>
-### amb.wx.order
-
-- **Open.** The weather data must contain at least wind direction, wind
-  speed, gust and temperature, and "the remaining" may come in another
-  order (p. 84/64). Not stated: whether the four lead and in that order,
-  whether an element may repeat, and which `'s'` is snowfall, since
-  snowfall uses the wind-speed letter (p. 84/64).
-- **Readings.** (a) The required elements lead in the order of the
-  diagram; the rest in any order; an `'s'` after the leading elements is
-  snowfall. (b) All elements in any order; the first `'s'` is wind speed.
-  (c) As (a) with no repetition.
-- **Taken.** **[agreed]** (a), with a repeated element tokenized and
-  given `unstated` (section 6.2). Only the positionless report has
-  required elements ([amb.wx.required](#amb.wx.required)), so in a
-  complete report no element leads, and every `'s'` is snowfall. A
-  required element missing from its place gives `syntax`, and that
-  finding alone is given, although (b) would accept the bytes
-  ([README section 3](README.md#3-tokenizer-model), precedence).
-  Otherwise the order is decided silently, with no `ambiguous` finding.
-  A repeated element is visible in the bytes; since no listed reading
-  accepts those bytes with a different division, it is reported as
-  `unstated` rather than `ambiguous`.
-- **In the bytes.** Under the test of
-  [README section 3](README.md#3-tokenizer-model), no `ambiguous`
-  finding. In a positionless report that (a) accepts, the first `'s'` is
-  the leading wind speed under (b) too, and a later `'s'` is snowfall
-  under both. **[agreed]** In a complete report, reading (b) counts the
-  wind field as the wind speed (section 5), so an `'s'` element there is
-  snowfall under (b) as under (a).
-- **Where (a) accepts.** The readings divide the bytes the same way
-  wherever (a) accepts them, so the test of README section 3 gives no
-  finding.
-- **Decoders.**
-
-  | Decoder | What it does | Where |
-  |---|---|---|
-  | FAP | Requires wind then `g`, `t` at the start, with fallbacks for missing `g` or `t`; then removes each other element wherever it is found, first match only, so order is free and repeats are left over. Any `'s'` after the start is snowfall. | `_wx_parse`, FAP.pm:2119-2129, 2175 |
-  | Dire Wolf | Wind, then `g`, then `t` at fixed places; then any order in a loop, which accepts repeats. An `'s'` in the loop is snowfall. | `weather_data`, decode_aprs.c:3075-3144, 3164-3260 |
-  | aprslib | Turns a leading `ddd/sss` into `c`/`s`, then treats the first `'s'` anywhere as wind speed; any order. | `parse_weather_data`, weather.py:48-52 |
-  | Xastir | Searches each letter anywhere and removes the first match; snowfall only after a wind speed was found. | `extract_weather`, db.c:3486; `extract_weather_item`, db.c:3155 |
-  | javAPRSlib | Matches each letter anywhere in the rest of the packet. | `parseWeatherData`, WeatherParser.java:90-146 |
-  | pdn-aprs | Any order; stops at a field already read; snowfall is an `'s'` once the wind speed is known. | `fields`, weather.rs:44 |
-
-- **Corpus.** Observed sequences of element letters; how often a letter
-  repeats; where `'s'` appears relative to `t`.
-
-<a id="amb.wx.required"></a>
-### amb.wx.required
-
-- **Open.** The minimum-content note asks for the 8-digit timestamp and
-  the `c`, `s`, `g` and `t` elements (p. 84/64). That list fits only the
-  positionless report; in APRS 1.0.1 the note sat under the positionless
-  section (1.0.1 PDF 74), and 12b retitled that section so that it reads
-  as covering every report. For complete reports the wind field
-  replaces `c` and `s` (p. 85/65), but whether `g` and `t` are still
-  required is not stated. One weather object example has no `t`
-  (p. 86/66; [err.wx.object-baro](#err.wx.object-baro)).
-- **Readings.** (a) The note applies to all forms, with the wind field
-  for `c` and `s`; `g` and `t` are required. (b) The note applies only to
-  positionless reports, where APRS 1.0.1 placed it; in complete reports
-  only the wind is required.
-- **Taken.** **[agreed]** (b). In a positionless report a missing `c`,
-  `s`, `g` or `t` gives `syntax`. In a complete report `g` and `t` are
-  optional elements (section 6.2). An earlier draft took (a), which made
-  a missing `g` or `t` in a complete report a `syntax` finding; it was
-  dropped because the note's list, with its 8-digit timestamp and its
-  `c` and `s`, fits only the positionless form. Where (b) gives `syntax`
-  for a positionless report, (a) does too; the readings differ only in
-  complete reports, where (b) accepts more. Not visible; no `ambiguous`
-  finding.
-- **In the bytes.** Under the test of
-  [README section 3](README.md#3-tokenizer-model), a complete report
-  without `g` or `t` would give `syntax` under (a), so (a) does not
-  count there; where both accept a report they divide it the same way.
-- **Decoders.** Dire Wolf reports a missing gust or temperature and goes
-  on (`weather_data`, decode_aprs.c:3130-3157). pdn-aprs treats a
-  complete report without `g` and `t` as a defect (`fields`,
-  weather.rs:108). Xastir requires `g` and `t` to recognise weather at
-  all (`extract_weather`, db.c:3285-3389). FAP accepts a start with only
-  one of them (FAP.pm:2123-2129). aprslib requires all four only for
-  positionless (weather.py:66).
-- **Corpus.** Share of `'_'` reports with a wind field whose next
-  elements are not `g` then `t`.
-
-<a id="amb.wx.unknown"></a>
-### amb.wx.unknown
-
-- **Open.** A value that is not known can be sent as dots or as spaces
-  in place of the digits (p. 84/64). Not stated: whether one value may
-  mix dots, spaces and digits, and whether an unknown element may be
-  left out instead.
-  The document's own example on p. 85/65 has a gap inside a dotted value
-  ([err.wx.unknown-example](#err.wx.unknown-example)).
-- **Readings.** (a) A value is all digits (with the sign and decimal
-  point allowed for its element), all dots or all spaces. (b) Any mix.
-- **Taken.** (a), as [README section 3](README.md#3-tokenizer-model)
-  requires (Kinds by situation: a mixture inside one value is a field
-  that does not fit). A mix gives `syntax`, since the value then does not start an element
-  and ends the data. That finding alone is given, although (b) would
-  accept the bytes (README section 3, Precedence). At a leading place
-  of a positionless report the mix does not end the data: it stays in
-  the element's token, with its `syntax` finding at the first byte that
-  fails (section 6.2; README section 3, Output). Leaving out an
-  optional element is allowed; leaving out a required one is
-  [amb.wx.required](#amb.wx.required). Where (a) accepts the bytes, (b)
-  divides them the same way; no `ambiguous` finding. An earlier draft
-  took (a) as a decision of this entry, before README section 3 gave
-  the kind of such a mixture.
-- **Decoders.** Dire Wolf accepts a value that is all dots or all spaces,
-  else each byte must be a digit, `'.'` or `'-'` (`getwdata`,
-  decode_aprs.c:3043-3052). Xastir's check counts dots and spaces and
-  rejects a value where they are neither none nor all
-  (`is_weather_data`, db.c:3135). pdn-aprs accepts all dots or all spaces
-  (`exact_value`, weather.rs:188). FAP accepts any mix of digits, spaces
-  and dots in the leading elements (FAP.pm:2119). aprslib accepts any mix
-  of digits, `'-'`, `'.'` and space when finding the run (weather.py:52)
-  and decodes only all-digit forms (weather.py:59).
-- **Corpus.** Count of weather values mixing digits, `'.'` and `SP`.
-
-<a id="amb.wx.width"></a>
-### amb.wx.width
-
-- **Open.** Every element has a fixed width (p. 84/64; `'#'` by
-  [amb.wx.rawrain](#amb.wx.rawrain)), but nothing is
-  said about values written with more or fewer digits (`h082`, UAP 5.31;
-  `b0990`, p. 86/66). The sentence that permits a decimal point in a
-  value that is not a whole number sits after the snowfall entry and may
-  cover only snowfall or every value (p. 84/64).
-- **Readings.** (a) Fixed width; a different width breaks the element.
-  (b) A digit run of any length per element. (c) Decimal point only in
-  snowfall. (d) Decimal point in any value.
-- **Taken.** (a), as [README section 3](README.md#3-tokenizer-model)
-  requires (Kinds by situation: a fixed-width field whose value is
-  written with more or fewer digits than its width gives `syntax`;
-  nothing delimits it, so the excess cannot be counted against it). The
-  extra digit of an over-long value cannot start an element, so the
-  data ends there and the rest fails the tail: `syntax`. An earlier
-  draft carried (a) as **[proposed]**, with that argument as its own.
-  (c), the narrower of the two readings of the decimal point
-  ([README section 3](README.md#3-tokenizer-model), Kinds by
-  situation); the rendered page also puts the decimal-point sentence in
-  the description column of the snowfall entry (p. 84/64). A value
-  of another width, or a decimal point outside snowfall, gives that
-  `syntax` finding alone, although (b) or (d) would accept the bytes
-  (README section 3, Precedence).
-- **In the bytes.** Under the test of
-  [README section 3](README.md#3-tokenizer-model), visible where the
-  weather data is followed by a tail (section 7) and reading (b), which
-  takes the whole digit run after an element letter as its value, would
-  end the data at a different byte:
-  - the tail starts with a digit, and the last element has a value
-    written in digits, after the sign of a temperature where it has
-    one, which (b) would extend with the digits at the start of the
-    tail; or
-  - the tail starts with a letter of section 6.1 followed by fewer
-    digits than its width, which (b) would read as that element.
-
-  Where the report read by (b), with the value or element it forms and
-  whatever bytes remain as a tail, would give no `syntax` or `value`
-  finding of its own, the tail gets an `ambiguous` finding at its first
-  byte, on the rule of its first token (`wx.sw` or `wx.unit`), which
-  this reading gives that byte
-  ([README section 3](README.md#3-tokenizer-model), Placing a finding).
-  This covers `wx.rawrain` as well ([amb.wx.rawrain](#amb.wx.rawrain)).
-  An earlier draft put the finding on the element that (b) would
-  lengthen or form.
-- **Building reading (b).** **[agreed]** As the author decided, reading
-  (b) reads the whole report with digit runs
-  ([README section 3](README.md#3-tokenizer-model): the other reading
-  counts only when it accepts the whole report). Before the element it
-  lengthens or forms it divides the bytes as (a) does, since each value
-  there is followed by an element letter, so it differs from (a) from
-  that element to the end of the field. It takes the whole digit run
-  after each letter, with the sign of a temperature, while a value it
-  would not lengthen (unknown fill, a snowfall with a decimal point)
-  keeps its fixed width. A `t` followed by `'-'` and one digit is a
-  letter followed by fewer digits than its width. The values that (b)
-  forms or lengthens give the `value` findings of the ranges of their
-  elements (section 6.1), as findings of its own (README section 3,
-  Which findings are the other reading's own; Kinds by situation: a
-  value outside a stated range, and a range that the unit implies): a
-  direction above 360, a
-  temperature of minus zero, a luminosity `L` above 999 (stated as 000
-  to 999, p. 84/64), a humidity above 100 and a temperature below -99.
-  Percent is a range that the unit implies: relative humidity exceeds
-  100 only when the air is supersaturated, which station sensors do not
-  measure. The negative temperatures are stated as -01 to -99 (p. 84/64),
-  which is read as their range. Under reading (a) the last three cannot
-  occur, so they change no finding of (a). An earlier draft carried this
-  paragraph as **[proposed]**, applied (b) from the element it lengthens
-  or forms without saying that this is the whole-report test, and gave
-  (b) only the direction and minus-zero findings.
-- **Elsewhere.** Where (a) and (c) accept the bytes, (b) and (d) divide
-  them the same way: each value is followed by an element letter or by
-  the end of the data, and a `'.'` cannot occur in a tail, so the test
-  of README section 3 gives no finding.
-- **Decoders.** FAP takes any run of digits, spaces and dots for `g` and
-  `t` at the start (FAP.pm:2119), 1-3 digits for `r`, `p`, `P`, `h`, `L`,
-  `l` and `s`, and 4-5 for `b` (FAP.pm:2146-2175). Dire Wolf uses fixed
-  widths and accepts `'.'` and `'-'` in any value (`getwdata`,
-  decode_aprs.c:3049-3054). pdn-aprs uses fixed widths and tolerates, as
-  a reported defect, a run from 1 byte up to one more than the width
-  (`value`, weather.rs:136-184); it allows a decimal point only in
-  snowfall (`exact_value`, weather.rs:198). Xastir uses fixed widths
-  (`extract_weather_item`, db.c:3155). aprslib uses fixed widths and
-  decodes a decimal point only in snowfall (weather.py:59).
-- **Corpus.** Length of the digit run after each element letter; `'.'`
-  inside values other than snowfall.
-
-<a id="amb.wx.rawrain"></a>
-### amb.wx.rawrain
-
-- **Open.** The raw rain counter `'#'` has no stated width (p. 84/64),
-  in APRS12c or in APRS 1.0.1 (1.0.1 PDF p. 74).
-- **Readings.** (a) `'#'` takes 3 digits like the others. (b) A digit run
-  of any length. An earlier draft also held the question of `L` and the
-  rain values in this entry, as readings (c) and (d); it is now
-  [amb.wx.lum](#amb.wx.lum).
-- **Taken.** **[agreed]** As the author decided, (a), by analogy with
-  the other elements: the other parameters listed with `'#'` whose
-  width the text states, `L`, `l` and `s`, take 3 digits, as do the
-  rain elements of the diagram, and APRS12c added those three widths,
-  which APRS 1.0.1 did not give (1.0.1 PDF p. 74). The author
-  accepts this analogy as support in the text, so the narrowest reading
-  is taken ([README section 3](README.md#3-tokenizer-model), Kinds by
-  situation). `wx.rawrain` gets no finding of its own: the raw rain
-  counter is a form that the text describes without a full syntax
-  (README section 3, A form that the text describes), as are the wind
-  field whose parts are of different kinds (section 5.1) and
-  [`cmt.alt.neg`](02-fields.md#cmt.alt.neg). A digit run longer than 3
-  after `'#'` ends the data, and where the bytes left do not form a
-  tail, the `syntax` finding that follows is given alone, whether or
-  not (b) would accept the bytes (README section 3, Precedence). An
-  earlier draft carried (a) as **[proposed]**, with an `unstated`
-  finding on every `wx.rawrain`, since its width was this reading's and
-  not the document's, and said that (b) would accept the bytes after an
-  over-long run, which it does not where they fail as a tail under (b)
-  too.
-- **In the bytes.** Under the test of
-  [README section 3](README.md#3-tokenizer-model): where (a) matches, (b)
-  splits the bytes the same way, except where a `wx.rawrain` ends the
-  data and the tail starts with a digit, which (b) would add to the
-  counter. That case is the one of [amb.wx.width](#amb.wx.width) and
-  gives its `ambiguous` finding, at the first byte of the tail on the
-  rule of its first token, under its condition; this entry adds no
-  second finding.
-- **Decoders.** Xastir reads `'#'` with 3 bytes (db.c:3493). aprslib and
-  pdn-aprs give it 3 (weather.py:52; weather.rs:62). FAP takes any digit
-  run (FAP.pm:2180). Dire Wolf's branch meant for `'#'` tests for `'s'`
-  again, so it never reads `'#'` (decode_aprs.c:3250). javAPRSlib does
-  not read it.
-- **Corpus.** In the capture window `aprsis-20261104-03.log` to
-  `aprsis-20261113-07.log` (221 files, 75,037,495 packets), `'#'` at an
-  element place is followed by 3 digits 2,540 times, by 4 digits 985
-  times (one sender, whose bytes after the fourth digit fail as a tail
-  under (b) too), and by no digit 7 times.
-
-<a id="amb.wx.lum"></a>
-### amb.wx.lum
-
-- **Open.** The luminosity entries say that `L` is inserted in place of
-  one of the rain values (p. 84/64; also in APRS 1.0.1, 1.0.1 PDF p. 74),
-  but not which one, nor whether that rain value is then absent. The
-  lower-case `l` is the same parameter for 1000 and above (p. 84/64).
-  The raw rain counter `'#'` is listed after that sentence and is not
-  one of the rain values it refers to.
-- **Readings.** (c) `L` replaces a rain value, so a report with `L` or
-  `l` does not also hold all three rain elements `r`, `p` and `P`.
-  (d) `L` is an ordinary optional element. The letters continue those
-  of the earlier combined entry [amb.wx.rawrain](#amb.wx.rawrain).
-- **Taken.** **[agreed]** As the author decided, (c), by the narrowest
-  reading that the text supports
-  ([README section 3](README.md#3-tokenizer-model), Kinds by situation):
-  the two readings differ only in how much they accept. The text does
-  not say which rain value `L` takes the place of, so (c) is read as
-  the consequence that holds whichever it is: a report that holds `L`
-  or `l` does not also hold all three of `r`, `p` and `P`. An earlier
-  draft took (d), in the combined entry, as **[proposed]**.
-- **In the bytes.** The element that completes the set of `r`, `p`, `P`
-  and `L` or `l`, in byte order, gives `syntax` against its own ID at
-  its letter, keeps its token, and reading continues (section 6.2;
-  README section 3, Kinds by situation: a count that departs from the
-  one stated; Placing a finding: the first byte past a limit). (d)
-  accepts the reports where (c) gives that finding, and that finding
-  alone is given (README section 3, Precedence); where (c) accepts, (d)
-  divides the bytes the same way. No `ambiguous` finding.
-- **Decoders.** None enforces (c). FAP reads `L` and `l` with patterns
-  independent of the rain elements (FAP.pm:2146-2154, 2166-2169). Dire
-  Wolf reads both as optional elements in any order
-  (decode_aprs.c:3217-3235). Xastir reads each with 3 bytes, independent of rain
-  (db.c:3489, 3491). aprslib keeps both under one luminosity key and
-  reads them with rain (weather.py:23-24, 26). pdn-aprs keys `l` as `L`,
-  so a report with both stops at the second as a repeat; rain is
-  unaffected (weather.rs:47-48, 69, 73-75). javAPRSlib reads them with
-  independent patterns and swaps the letters, taking `l` as the value
-  and `L` as the value plus 1000 (WeatherParser.java:54-55, 132-140).
-  ebarkie/aprs, an encoder, writes `L` or `l` together with `r`, `p` and
-  `P` (wx.go:113-143). All read at the commits of
-  [README section 4](README.md#4-decoders-consulted).
-- **Corpus.** In the capture window `aprsis-20261104-03.log` to
-  `aprsis-20261113-07.log` (221 files, 75,037,495 packets), 2,635,840 of
-  the 2,860,850 reports with `L` or `l` also hold all three of `r`, `p`
-  and `P` (1,115 senders); no report holds both `L` and `l`. A
-  luminosity element beside all three rain elements is a candidate for a
-  deviation recogniser (section 11).
-
-<a id="amb.wx.tail"></a>
-### amb.wx.tail
-
-- **Open.** The software code (1 byte) and the unit code (2-4 bytes)
-  follow the data with no separator (p. 83/63), so `wRSW` can be `w` +
-  `RSW` or a 4-byte unit, and `Jim` (p. 84/64) a 3-byte unit or `J` +
-  `im`. Software code `P` is also the rain-since-midnight letter. Whether
-  software bytes outside the list are allowed is not stated.
-- **Readings.** (a) Split by length and by the listed codes, as in
-  section 7. (b) The first byte is always the software code when the tail
-  is 3-5 bytes. (c) The whole tail is the unit when it is 2-4 bytes.
-- **Taken.** **[agreed]** (a). With no 1-byte unit code
-  ([err.wx.unit-length](#err.wx.unit-length)), tails of 1, 2 and 5 bytes
-  split only one way. Visible in the bytes: a tail of 3 or 4 bytes whose
-  first byte is a letter splits two ways, as software code and unit or
-  as one unit, and readings (b) and (c) each take one of them.
-  **[agreed]** Such a tail gives an `ambiguous` finding at its first
-  byte, also where the listed codes decide the split for (a), on the
-  rule of its first token: `wx.sw` where (a) splits the tail, as in
-  `wRSW`, and `wx.unit` where (a) keeps it whole, as in `Jim`
-  ([README section 3](README.md#3-tokenizer-model), Placing a finding).
-  An earlier draft put the finding on `wx.sw` in every case. That
-  sentence predated Placing a finding and stated no exception to it,
-  and where the tail is one unit code it put the finding on a rule that
-  has no token in the packet; [amb.wx.width](#amb.wx.width) and
-  [amb.wx.letters](#amb.wx.letters) already placed their tail findings
-  on the rule of the first token.
-- **In the bytes.** The other split always passes the test of
-  [README section 3](README.md#3-tokenizer-model): a letter is a
-  software code with at most an `unstated` finding, and 2 to 4 letters,
-  digits or `'-'` are a unit code, so neither (b) nor (c) fails on such
-  a tail. A tail of 3 or 4 bytes that starts with a digit or `'-'` gives
-  no finding, since (b) would make that byte a software code, which
-  gives `syntax`. A `P` followed by 3 digits is an element under every
-  reading (section 6.1) and never reaches the tail.
-  The order of the tests in section 7 only chooses the tokens. Where a
-  `syntax` or `value` finding already reports a byte of the tail, that
-  finding alone is given and the tail gets no `ambiguous` finding
-  ([README section 3](README.md#3-tokenizer-model), Precedence). This
-  includes the finding of a missing field placed at the tail's first
-  byte, such as the `syntax` of a missing wind field
-  ([`ext.dirspd`](02-fields.md#ext.dirspd), section 5.1) or of a
-  missing leading element (section 6.2), since a missing-field finding
-  reports the byte where it is placed (README section 3, Precedence). An
-  earlier draft gave no finding where the listed codes decided the
-  split; that was dropped because reading (c) still divides those bytes
-  differently.
-- **Decoders.** FAP keeps a tail of 3-5 letters, digits, `'-'` or `'_'` as
-  one "software" string and anything else as a comment (FAP.pm:2188). Dire
-  Wolf keeps whatever is left as text (decode_aprs.c:3293). pdn-aprs takes
-  3-5 bytes, a letter then 2-4 letters, digits, `'-'` or `'_'` not all
-  digits, as software + unit (`is_software_and_unit`, weather.rs:247).
-  aprslib leaves it in the comment (position.py:69-72). Xastir does not
-  read it; a line for a `w` element is commented out (db.c:3503).
-- **Corpus.** Distribution of tails after the last element, by length
-  and first byte.
-
-<a id="amb.wx.comment"></a>
-### amb.wx.comment
-
-- **Open.** No weather diagram has a comment field (p. 83/63, p. 85/65,
-  p. 86/66), but the general comment rule says any packet may carry one
-  (p. 34/20). Reports with free text after the data are common enough
-  that UAP 2.7.1 and 5.33 discuss them and call the text an error.
-- **Readings.** (a) Bytes after the data that are not a valid tail are
-  not part of the format. (b) They are a comment.
-- **Taken.** **[agreed]** (a), as the diagrams have no comment field. They form a `residue` token named after
-  `wx.unit` and give `syntax`. DAO, base-91 telemetry and altitude are
-  not looked for in weather reports: with no comment field, a weather
-  report has no field that their chapters name for them
-  ([README section 3](README.md#3-tokenizer-model), Where comment items
-  are looked for). An earlier draft carried this sentence as a
-  proposal.
-- **Placement.** The `syntax` finding is at the first byte of the
-  residue, its first failing byte
-  ([README section 3](README.md#3-tokenizer-model), Placing a finding).
-  Where a missing field, such as the wind field or a leading element,
-  has already given its finding at that byte, the residue gives none
-  (README section 3, Missing fields at one byte).
-- **In the bytes.** That finding alone is given, although (b) would
-  accept the bytes as a comment (README section 3, Precedence). Bytes
-  that form a valid tail are a tail under both readings, so no
-  `ambiguous` finding comes from this entry.
-- **Decoders.** FAP, Dire Wolf, aprslib and pdn-aprs keep the bytes as a
-  comment (FAP.pm:2188-2191; decode_aprs.c:3293; position.py:70-71;
-  `weather_tail`, comment.rs:161, which first lifts base-91 telemetry and
-  a DAO out of it and reports the text as a defect).
-- **Corpus.** Length distribution of bytes left after the last element
-  in `'_'` reports.
-
-<a id="amb.wx.cmpwind"></a>
-### amb.wx.cmpwind
-
-- **Open.** In a compressed weather report the `cs` bytes carry the wind
-  (p. 86/66). The compression type byte can also say that `cs` holds an
-  altitude, and the first `cs` byte can mark a radio range (see 02). What
-  a weather report means by that is not stated.
-- **Readings.** (a) Tokenize the block by 02 and accept whatever `cs`
-  holds. (b) Require `cs` to be course and speed.
-- **Taken.** (a), with an `unstated` finding against
-  [`cmp.cs`](02-fields.md#cmp.cs), at its `c` byte, when, by 02, it is
-  not course and speed (`cmp.cs.none`, `cmp.cs.alt` or `cmp.cs.rng`, as
-  the steps of 02 section 6.3 choose them; not for the `cmp.cs` token of
-  the last step, which has no kind and already gives `syntax`). A
-  weather report and a `cs` kind other than course and speed are each
-  allowed, and the document says nothing of the two together
-  ([README section 3](README.md#3-tokenizer-model), Kinds by situation).
-- **Precedence.** The `unstated` finding is derived from the `cs` and
-  `T` bytes, so it is not given where `cmp.cs.none`, `cmp.cs.alt`,
-  `cmp.cs.rng` or `cmp.t` already reports those bytes as `syntax` or
-  `value` ([README section 3](README.md#3-tokenizer-model), Precedence).
-  An earlier draft kept it beside such a finding, as findings from
-  different rules on one byte.
-- **In the bytes.** Not visible as an alternative: both readings
-  divide the block the same way and differ only in whether such a block
-  is accepted. Decided silently; no `ambiguous` finding.
-- **Decoders.** Dire Wolf takes the wind from the decoded course and
-  speed of the block (`weather_data`, decode_aprs.c:3091, 3110). Xastir
-  copies the course and speed decoded from the block once it has found
-  `g` and `t`, at fixed places or anywhere (`extract_weather`,
-  db.c:3285-3323). FAP and aprslib decode the block as for any position;
-  not checked further.
-- **Corpus.** Distribution of `cs` kinds (course/speed, range, altitude)
-  among compressed `'_'` reports.
-
-<a id="amb.wx.letters"></a>
-### amb.wx.letters
-
-- **Open.** Only the letters of section 6.1 are defined (p. 84/64). UAP
-  2.7.1 advises receivers to ignore unknown letter-and-digits pairs.
-- **Readings.** (a) An undefined letter ends the data. (b) An undefined
-  letter followed by digits is an extra element.
-- **Taken.** (a): an undefined letter leaves the extent of what it
-  starts unknown, so reading stops there and the bytes from it are
-  judged as what may stand next
-  ([README section 3](README.md#3-tokenizer-model), Kinds by
-  situation). Extra elements are a matter for a
-  deviation recogniser (README section 3). The bytes from the undefined
-  letter on are read as a tail (section 7) or fail as one
-  ([amb.wx.comment](#amb.wx.comment)); a `syntax` finding there is the
-  only one given, although (b) would accept the bytes
-  ([README section 3](README.md#3-tokenizer-model), precedence).
-- **In the bytes.** Under the test of
-  [README section 3](README.md#3-tokenizer-model), visible where the
-  bytes from the undefined letter form a valid tail (section 7) and the
-  letter is followed by at least one digit. Reading (b) would read the
-  letter and its digits as an extra element and the bytes after them as
-  further elements or a tail. Where the report read that way would give
-  no `syntax` or `value` finding of its own, the tail gets an
-  `ambiguous` finding at its first byte, against the rule of its first
-  token (`wx.sw` or `wx.unit`). A tail of 3 or 4 bytes whose first byte
-  is a letter also gets the finding of [amb.wx.tail](#amb.wx.tail) at
-  that byte, on the same rule: the two are identical findings and are
-  given once ([README section 3](README.md#3-tokenizer-model)). An
-  earlier draft kept them as two findings from different rules, while
-  amb.wx.tail put its finding on `wx.sw` in every case. An undefined
-  letter not followed by a digit ends the data under both readings.
-- **Decoders.** Dire Wolf reads an `X` element (decode_aprs.c:3260).
-  Xastir reads `F` and `f` (db.c:3495-3497). FAP strips a `v` element
-  (FAP.pm:2171). pdn-aprs keeps any undefined letter followed by digits as
-  an extra field (`fields`, weather.rs:91-103).
-- **Corpus.** Letters, other than the defined ones, followed by digits
-  inside weather data.
-
-<a id="amb.storm.placement"></a>
-### amb.storm.placement
-
-- **Open.** Storm data begins with the direction/speed in the extension
-  slot and continues where the comment would be (p. 87/67, p. 33/19). Not
-  stated: whether the `'@'` symbol is required to read it, an overlay on
-  that symbol, the byte set of the storm type, an unknown fill, units of
-  the direction and speed, what may follow, and how a storm's `/TS` is
-  told from other comment data beginning with `'/'`.
-- **Readings.** (a) Read storm data only with symbol code `'@'`, after an
-  uncompressed position and a course/speed extension, and only when the
-  type is one of the three. An earlier draft listed two more readings:
-  the storm pattern after a course/speed extension with any symbol, and
-  a search for `/TS`, `/HC` or `/TD` anywhere. Both were dropped because
-  they contradict the document, which names `\@` and `/@` as the
-  symbols of a storm report and places the storm fields directly after
-  the direction and speed (p. 87/67); they are Xastir's behaviour,
-  recorded under Decoders
-  ([README section 3](README.md#3-tokenizer-model)).
-- **Taken.** (a), the one listed reading
-  ([README section 3](README.md#3-tokenizer-model)), as in section 8.
-  Bytes after the storm fields are the comment.
-- **In the bytes.** No `ambiguous` finding from this entry. An overlay
-  on the storm symbol is decided by the rule on symbols that a format
-  names ([README section 3](README.md#3-tokenizer-model)), whose wider
-  reading gives the `ambiguous` finding of section 8. Storm-shaped
-  bytes after a course/speed extension with another symbol code, or
-  elsewhere in a comment, are comment text under the only listed
-  reading; recognising them is left to a deviation recogniser. An
-  earlier draft gave them an `ambiguous` finding at the `'/'` of the
-  storm type, under the two readings since dropped.
-- **Decoders.**
-
-  | Decoder | What it does | Where |
-  |---|---|---|
-  | FAP | Does not parse this. | - |
-  | Dire Wolf | Does not parse this. | - |
-  | aprslib | Does not parse this. | - |
-  | Xastir | Searches the data for `/TS`, `/TD`, `/HC` and three further types (`/TY`, `/ST`, `/SC`), then reads the 7 bytes before it as course/speed; no symbol check. This covers both dropped readings. | `extract_storm`, db.c:3567, 3606 |
-  | aprsc | Marks `'@'` with any valid table as weather. | `pbuf_fill_pos`, parse_aprs.c:86 |
-  | pdn-aprs | Symbol code `'@'`, any table; storm fields after the extension; the `%` field optional; all dots or spaces accepted as unknown. | `is_storm_symbol`, comment.rs:32; `storm`, comment.rs:479 |
-
-  In javAPRSlib and ebarkie/aprs a search of the files read found no
-  storm-data parser.
-- **Corpus.** Among `'@'` reports, how many match the storm sequence;
-  how many reports with another symbol contain `/TS`, `/HC` or `/TD`
-  after a course/speed extension.
-
-## 10. Errata
-
-<a id="err.wx.object-dti"></a>
-### err.wx.object-dti
-
-The Appendix 1 diagram of the weather object shows `'*'` as the data type
-identifier (p. 134/110); chapter 12 shows `';'` (p. 86/66), as do all
-object diagrams. The reading follows p. 86/66: a weather object starts
-with `';'` and is read by 5.3, and a field starting `'*'` is the Peet
-Bros form [`wx.raw.peet`](#wx.raw.peet), as the dispatch of
-[01-frame.md](01-frame.md#7-data-type-identifier) has it
-([err.dti.star](01-frame.md#err.dti.star) points here).
-
-Origin: already in APRS 1.0.1, which has `';'` in the chapter diagram
-(1.0.1 PDF 76) and `'*'` in the Appendix 1 copy (1.0.1 PDF 109). 12b
-has both unchanged (12b PDF 88, 139).
-
-<a id="err.wx.object-time"></a>
-### err.wx.object-time
-
-The first weather object example on p. 86/66 has no timestamp, although
-the diagram on the same page gives the timestamp column 7 bytes and does
-not shade it as optional. The reading follows the diagram; the example
-gives `syntax`.
-
-Origin: already in APRS 1.0.1, with the same diagram and example
-(1.0.1 PDF 76). 12b has it (12b PDF 88).
-
-<a id="err.wx.object-baro"></a>
-### err.wx.object-baro
-
-The second weather object example on p. 86/66 ends with `b0990`: four
-digits where the pressure takes five. The reading follows the element
-widths; under section 7 the bytes `b0990` become a 5-byte tail, software
-code `b` with an `unstated` finding and unit `0990`. Reading (b) of
-[amb.wx.width](#amb.wx.width) would read `b0990` as a pressure and
-accept the report, so the tail also gets the `ambiguous` finding of that
-entry, on `wx.sw` at the `b`, and the example's verdict is
-`conform-ambiguous`. The example also
-has no `t` element, which a complete report does not require
-([amb.wx.required](#amb.wx.required)).
-
-Origin: already in APRS 1.0.1 (1.0.1 PDF 76). 12b has it (12b PDF 88).
-
-<a id="err.wx.cmp-example"></a>
-### err.wx.cmp-example
-
-The compressed weather example without timestamp on p. 86/66 has 14
-bytes between the DTI and the weather data where the compressed block
-has 13: a `'>'` sits before the `'_'` symbol code. The timestamped
-example on the same page has 13. The reading follows the diagram. Dire
-Wolf's source comment lists the same example without the `'>'`
-(`weather_data` header, decode_aprs.c:3020, read).
-
-Origin: already in APRS 1.0.1, whose example has the same extra `'>'`
-(1.0.1 PDF 76). 12b has it (12b PDF 88).
-
-<a id="err.wx.unknown-example"></a>
-### err.wx.unknown-example
-
-The second example on p. 85/65 shows the pressure as `b` followed by a
-dot, a gap and three dots; the text layer of the PDF has `'.'`, `SP`,
-`'.'`, `'.'`, `'.'`. Read literally it mixes dots and spaces
-([amb.wx.unknown](#amb.wx.unknown)). The reading takes it as five dots, a
-typesetting gap; Dire Wolf's source comment quotes the same example with
-five dots (`weather_data` header, decode_aprs.c:3018, read).
-
-Origin: introduced by the 12b/12c compilation. APRS 1.0.1 has five dots
-with no gap (1.0.1 PDF 75, text layer and Markdown extraction); 12b
-already has the gap (12b PDF 87).
-
-<a id="err.wx.software-case"></a>
-### err.wx.software-case
-
-The list of software codes has upper-case `W` for WinAPRS (p. 83/63),
-but every example uses lower-case `w` (`wRSW`, p. 83/63 to p. 86/66),
-which UAP 2.7.1 also reads as WinAPRS. The reading follows the examples
-and adds `w` to the listed set.
-
-Origin: already in APRS 1.0.1, which lists `W` and writes `wRSW` in its
-examples (1.0.1 PDF 73, 75, 76). 12b has it (12b PDF 85).
-
-<a id="err.wx.unit-length"></a>
-### err.wx.unit-length
-
-The unit code is said to be 2-4 bytes, but the unit list ends with the
-1-byte codes `O` (Otracker), `K` (Kenwood), `B` (Byonics) and `Y`
-(Yaesu) (p. 83/63). The APRS 1.1 weather note
-(`aprs.org/aprs11/spec-wx.txt`, read through a Wayback Machine snapshot
-of 2023, lines 119-121) assigns these four letters as new software type
-identifiers; its sentence announces two but names four. **[agreed]** The
-reading follows the note and the stated length: `O`, `K`, `B` and `Y`
-are software codes (section 7), and a unit code has 2-4 bytes.
-
-Origin: introduced by the 12b/12c compilation, which placed the four
-software codes in the unit list. The APRS 1.0.1 unit list has only codes
-of 2-4 bytes (1.0.1 PDF 73); 12b already appends the four to it (12b
-PDF 85).
-
-<a id="err.wx.wind-units"></a>
-### err.wx.wind-units
-
-The wind field after a weather symbol is the `DIR/SPD` extension, whose
-speed is in knots (p. 45/27). The weather element `s` is in miles per
-hour (p. 84/64), and p. 85/65 says the extension replaces it.
-**[agreed]** The reading takes the speed in knots, by the text. The
-field is the `DIR/SPD` extension, and p. 45/27, the page about that
-field, names its use in a weather report and gives knots; it is
-followed over the general statement that the extension replaces `s`
-([README section 3](README.md#3-tokenizer-model), Pages that disagree).
-Replacing names the role of the field, not its unit, and the section on
-APRS data units says that speeds are in knots in some fields and in
-miles per hour in others (p. 37/23). A complete report thus carries
-its wind speed in knots and its gust in miles per hour. The tokenizer
-computes no values, so the tokens are unaffected. An earlier draft
-left the unit **[open]** for the decoding layer; the text settles it
-for the reading, and no token or finding depends on it.
-
-What senders put in the field is a question for the decoding layer and
-the divergence catalogue (RFC Appendix E), not for this reading: a
-sender that writes miles per hour there departs from the text, and
-whether a deviation recogniser covers it is part of the open item of
-[README section 6](README.md#6-open-items). Decoders differ, as read:
-Dire Wolf and Xastir convert from knots (decode_aprs.c:3087; db.c:3435),
-FAP and pdn-aprs treat it as miles per hour (FAP.pm:2143;
-comment.rs:90), and aprslib reports it as a course and speed in knots
-(common.py:148). UAP 2.7.1 says knots.
-
-Origin: already in APRS 1.0.1, which states all three: knots for the
-extension (1.0.1 PDF 37), miles per hour for `s` (1.0.1 PDF 74) and the
-replacement (1.0.1 PDF 75). 12b has them unchanged (12b PDF 47, 86, 87).
+| <a id="storm.type"></a>`storm.type` | Storm type | `'/'`, then `TS`, `HC` or `TD` (closed list). | Yes | 3 bytes | p. 87/67 |
+| <a id="storm.wind"></a>`storm.wind` | Sustained wind | `'/'`, 3 digits, knots. | Yes | 4 bytes | p. 87/67 |
+| <a id="storm.gust"></a>`storm.gust` | Peak gust | `'^'`, 3 digits, knots. | Yes | 4 bytes | p. 87/67 |
+| <a id="storm.press"></a>`storm.press` | Central pressure | `'/'`, 4 digits, hPa. | Yes | 5 bytes | p. 87/67 |
+| <a id="storm.rhurr"></a>`storm.rhurr` | Radius of hurricane winds | `'>'`, 3 digits, nautical miles. | Yes | 4 bytes | p. 87/67 |
+| <a id="storm.rts"></a>`storm.rts` | Radius of tropical storm winds | `'&'`, 3 digits, nautical miles. | Yes | 4 bytes | p. 87/67 |
+| <a id="storm.rgale"></a>`storm.rgale` | Radius of 50-knot winds | `'%'`, 3 digits, nautical miles. | No | 4 bytes | p. 87/67 |
+
+## 9. Catalogue
+
+| ID | Pages | What the document leaves open | Class | Rule | What the tokenizer does |
+|---|---|---|---|---|---|
+| <a id="amb.wx.rawdti"></a>`amb.wx.rawdti` | p. 31/17, p. 82/62 | `'!'` and `'$'` each start a position or NMEA sentence and an Ultimeter report, whose diagram is the identifier and n undefined bytes; only the examples show `!!` and `$ULTW`. | ambiguous | 4 | **[open]** By the rules every `'!'` or `'$'` field that fails as a position or NMEA sentence would be raw data and conform. Default: `!!` and `$ULTW` select raw weather, as in the examples, and other fields are read by 03; a `$ULTW` field that is also an NMEA sentence is 01's [amb.dti.shared](01-frame.md#amb.dti.shared). |
+| <a id="amb.wx.symbol"></a>`amb.wx.symbol` | p. 76/58, p. 82/62, p. 85/65 | A complete report is identified by the `'_'` symbol, while the position and object formats let any symbol carry an extension and a comment. | ambiguous | 1 | The `'_'` symbol announces weather data: bytes after the block make the report weather, judged as weather data, with `syntax` where they are not; reading them as a plain comment does not make them conform. |
+| <a id="amb.wx.carriers"></a>`amb.wx.carriers` | p. 33/19, p. 75/57, p. 85/65, p. 87/67 | The weather pages name positions and objects; items are handled as objects apart from listed differences (p. 75/57). | ambiguous | 1, 4 | The `'_'` symbol announces weather data on an item as on an object: bytes after the block are a complete report, judged as one, and the identifier token keeps `item.dti`. No `ambiguous`, as every such item carries the question. |
+| <a id="amb.wx.order"></a>`amb.wx.order` | p. 84/64 | Whether an element may repeat; snowfall shares the letter `s` with wind speed. | unstated | 2 | Wind speed's place is the second leading place, so `s` elsewhere is snowfall. A repeat keeps its token and gives `unstated` at its letter. |
+| <a id="amb.wx.required"></a>`amb.wx.required` | p. 84/64, p. 85/65, p. 86/66 | The minimum-content note names an MDHM timestamp, `c`, `s`, `g` and `t`, which fits only the positionless form; one object example has no `t`. | conflict | 3 | Positionless: a missing `c`, `s`, `g` or `t` gives `syntax`. Complete reports: `g` and `t` are optional. |
+| <a id="amb.wx.unknown"></a>`amb.wx.unknown` | p. 84/64 | An unknown value is "a series of dots or spaces": all of one, or any mix. | ambiguous | 1 | Any mix of `'.'` and SP conforms; fill mixed with digits gives `syntax`. |
+| <a id="amb.wx.width"></a>`amb.wx.width` | p. 84/64 | The sentence allowing a decimal point follows the snowfall entry and may cover snowfall or every value. | ambiguous | 1 | Every value may hold one `'.'`. A value of another width than its element's does not start an element. |
+| <a id="amb.wx.rawrain"></a>`amb.wx.rawrain` | p. 84/64 | The raw rain counter has no width. | unstated | 2 | `#` is a 1-byte token with `unstated`; the rest of the field is residue, with no finding. |
+| <a id="amb.wx.lum"></a>`amb.wx.lum` | p. 84/64 | `L` is put "in place of one of the rain values", not saying which, nor whether that value is then absent. | ambiguous | 1 | `L` and `l` are ordinary elements; all three rain elements beside them conform. |
+| <a id="amb.wx.tail"></a>`amb.wx.tail` | p. 83/63, p. 84/64 | With no separator, a tail of 2 to 4 bytes can be one unit code or a software code and a unit. | ambiguous | 4 | Where the first byte is a listed software code, both splits give no finding, and the software code and unit is taken, whose first byte the listed codes constrain; otherwise one unit code. No finding, as every such tail carries the question. |
+| <a id="amb.wx.comment"></a>`amb.wx.comment` | p. 34/20, p. 83/63, p. 85/65, p. 86/66 | No weather diagram has a comment, but p. 34/20 lets any packet carry one after its data. | ambiguous | 1 | The layout puts the tail of section 7 after the data, so the bytes there are judged as the tail; reading them as a comment does not make them conform. Bytes that are no tail or `#` are a residue with `syntax` (6.2); no comment item is looked for. |
+| <a id="amb.wx.cmpwind"></a>`amb.wx.cmpwind` | p. 56/38, p. 57/39, p. 86/66 | The weather diagram makes `cs` the wind; the compression type byte and the first `cs` byte can make it an altitude, a range or nothing. | conflict | 3, 4 | Both sides conform. `cs` keeps the token of 02 (an altitude, which also constrains the type byte, is the more specific), with no finding, as every report with that type byte carries the question. Only a `cmp.cs.wind` token has read `c` and `s`. |
+| <a id="amb.wx.letters"></a>`amb.wx.letters` | p. 84/64 | Other parameters "include" those listed, so other letters may occur, with no width. | unstated | 2 | **[open]** By rule 2 a letter outside 6.1 would be an element of the open list, with `unstated`, and the rest residue. Default: the letter ends the data, and the bytes from it are a tail or the residue of [amb.wx.comment](#amb.wx.comment). |
+| <a id="amb.storm.placement"></a>`amb.storm.placement` | p. 34/20, p. 87/67 | Storm data is optional in a storm report and is not delimited from the comment. | ambiguous | 1, 4 | A storm type of the closed list announces storm data: the bytes are judged as storm data, as section 8 reads them, with `syntax` where they fail; reading them as comment does not make them conform. Without a storm type the bytes are comment text, no finding. |
+| <a id="err.wx.object-dti"></a>`err.wx.object-dti` | p. 86/66, p. 134/110 | The Appendix 1 weather-object diagram has identifier `'*'`; chapter 12 and every other object diagram have `';'`. | conflict | 3 | A slip of the pen in the diagram (`'*'` for `';'`): it allows nothing. A weather object starts with `';'`, and every `'*'` field is the Peet Bros form, as 01's [err.dti.star](01-frame.md#err.dti.star) says. |
+| <a id="err.wx.object-time"></a>`err.wx.object-time` | p. 86/66 | The first weather-object example has no timestamp; the diagram gives 7 bytes. | conflict | 3 | Both: 05 reads a position in place of the timestamp ([amb.obj.time](05-object-item.md#amb.obj.time)). |
+| <a id="err.wx.object-baro"></a>`err.wx.object-baro` | p. 86/66 | The second weather-object example ends `b0990`, four digits for a 5-digit pressure. | conflict | 3 | A slip of the pen (one digit missing); it allows nothing: no 4-digit pressure is read. The bytes are a 5-byte tail: software code `b`, not a listed one, with `unstated`, and unit `0990`. |
+| <a id="err.wx.cmp-example"></a>`err.wx.cmp-example` | p. 86/66 | The compressed example without timestamp has a `'>'` before `'_'`, 14 bytes for the 13-byte block. | conflict | 3 | A slip of the pen (one stray byte); it allows nothing, and the example gives `syntax`. |
+| <a id="err.wx.unknown-example"></a>`err.wx.unknown-example` | p. 85/65 | The second example writes the pressure as `'.'`, SP and three `'.'`. | conflict | 3 | Accepted, as [amb.wx.unknown](#amb.wx.unknown) accepts any mix of the two. |
+| <a id="err.wx.software-case"></a>`err.wx.software-case` | p. 83/63 to p. 86/66 | The list has `W` for WinAPRS; every example writes `w`. | conflict | 3 | `W` and `w` are both listed codes. |
+| <a id="err.wx.unit-length"></a>`err.wx.unit-length` | p. 83/63 | Unit codes have 2-4 bytes, but the unit list ends with `O`, `K`, `B` and `Y`. | conflict | 3, 5 | Both: a unit code has 2-4 bytes or is one of the four. They are no software codes; the APRS 1.1 note that makes them so is not named by APRS12c. |
+| <a id="err.wx.wind-units"></a>`err.wx.wind-units` | p. 37/23, p. 45/27, p. 84/64, p. 85/65 | The wind field's speed is in knots (p. 45/27), but it replaces `s`, in mph. | conflict | 3 | Both; no token or finding depends on the unit. |
+
+## 10. Reviewed exceptions
+
+None.
 
 ## 11. Open items
 
-- The storm types other than `TS`, `HC` and `TD` read by Xastir, and the
-  storm fields' unknown fill, are not in APRS12c: they are decoder
-  behaviour and give no finding
-  ([README section 3](README.md#3-tokenizer-model)). Whether a
-  deviation recogniser covers them is part of the open item of
-  [README section 6](README.md#6-open-items).
-- A report that holds `L` or `l` and all three of `r`, `p` and `P`
-  gives `syntax` on the element that completes the set
-  ([amb.wx.lum](#amb.wx.lum)), whose Corpus bullet counts how common it
-  is. It is a candidate for a deviation recogniser, part of the open
-  item of [README section 6](README.md#6-open-items).
-- The corpus questions of section 9. Those of
-  [amb.wx.carriers](#amb.wx.carriers), [amb.wx.rawrain](#amb.wx.rawrain)
-  and [amb.wx.lum](#amb.wx.lum) are answered there.
+- [amb.wx.rawdti](#amb.wx.rawdti): which `'!'` and `'$'` fields are raw
+  weather data, whose content is not stated.
+- [amb.wx.letters](#amb.wx.letters): whether a letter outside 6.1 is an
+  element of the open list, with the rest residue.

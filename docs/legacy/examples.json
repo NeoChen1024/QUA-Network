@@ -523,17 +523,14 @@
    "page": 59,
    "printed": "41",
    "kind": "packet",
-   "verdict": "conform-ambiguous",
-   "findings": [
-    "ambiguous cmp.cs.alt @11"
-   ],
+   "verdict": "conform",
+   "findings": [],
    "basis": [
     "02-fields.md#cmp.cs.alt",
     "02-fields.md#amb.cmp.cs",
     "02-fields.md#cmp.t"
    ],
-   "note": "T value 50 has GGA bits 10, so cs is altitude; c='S' also lies in the course range, which the literal-order reading would take as course/speed.",
-   "doubt": "Rule id carried by the ambiguous finding assumed to be the token id cmp.cs.alt; 02 section 6.3 names the token, not the finding id explicitly."
+   "note": "Compressed position: block at 1-13 with table '/', code 'O', cs 'S]' and T 'S'. T - 33 = 50 has bits 4-3 '1 0', the GGA source, so step 2 of 02 section 6.3 makes the cs cmp.cs.alt. That c 'S' also lies in the course range is the conflict of amb.cmp.cs: the altitude, which also fixes T, is the more specific reading, and every cmp.cs.alt whose c is not '|' carries the question, so no finding. T is a base-91 digit with bits 7-6 zero. Re-derived after amb.cmp.cs stopped giving an ambiguous finding."
   },
   {
    "id": "p59-15f67e79",
@@ -1082,11 +1079,10 @@
     "02-fields.md#2-timestamps",
     "02-fields.md#62-fields",
     "02-fields.md#63-reading-the-cs-bytes",
-    "README.md#3-tokenizer-model",
+    "README.md#33-counting-findings",
     "02-fields.md#1-scope"
    ],
-   "note": "The extraction lost the script-l symbol code and the line-area descriptor with its 100-mile corridor in braces, which should follow the longitude directly. The example also has no timestamp: the name fills offsets 1-9 and the latitude starts at 11. The timestamp is still the 7 bytes at 11-17 (amb.obj.time): offset 17 holds '0', which selects no form, so time.dhm is taken by default (02 section 2). Its first failing byte is the '.' at 15, a syntax finding; the day '49' at 11-12 is present and out of range, a value finding that is an independent defect. Minute '.5' is not two digits and is not checked. The position is read from 18, where 'N' is a compressed table byte, so a compressed object, with discouraged on obj.pos at 18 (05 section 2). The block is cut short: table 18, latitude 19-22, longitude 23-26, symbol code '5' at 27, c 'W' at 28; s is missing at 29 and T at 30. The cs part without T is cmp.cs (02 section 6.2), and the part cut short gives syntax where its first missing byte was expected, at 29. Re-derived after amb.obj.time took the timestamp as always the 7 bytes the layout fixes; an earlier version read the position from offset 11 after a missing timestamp, with syntax on obj.time at 11 and on sym.code at 29.",
-   "doubt": "The cmp.cs ID for a cs part without T is [proposed] in 02 section 6.2."
+   "note": "The extraction lost the script-l symbol code and the line-area descriptor with its 100-mile corridor in braces, which should follow the longitude directly. The example also has no timestamp: the name fills offsets 1-9 and the latitude starts at 11. Offsets 11-17 are not six digits and an indicator, and a position read from 11 does not reach its symbol code, since the field ends after the longitude, so the 7 bytes at 11-17 are a malformed timestamp (amb.obj.time): offset 17 holds '0', which selects no form, so time.dhm is taken by default (02 section 2). Its first failing byte is the '.' at 15, a syntax finding; the day '49' at 11-12 is present and out of range, a value finding that is an independent defect. Minute '.5' is not two digits and is not checked. The position is read from 18, where 'N' is a compressed table byte, so a compressed object, with discouraged on obj.pos at 18 (05 section 2). The block is cut short: table 18, latitude 19-22, longitude 23-26, symbol code '5' at 27, c 'W' at 28; s is missing at 29 and T at 30. The cs part without T is cmp.cs (02 section 6.2), and the part cut short gives syntax where its first missing byte was expected, at 29 (README section 3.3). Re-derived after amb.obj.time accepted a position in place of the timestamp, which these bytes do not offer."
   },
   {
    "id": "p80-6e46dd10",
@@ -1107,12 +1103,12 @@
    "basis": [
     "05-object-item.md#obj.pos",
     "02-fields.md#sym.code",
-    "README.md#3-tokenizer-model",
+    "README.md#33-counting-findings",
     "05-object-item.md#err.area.gap",
     "05-object-item.md#4-area-objects"
    ],
    "note": "The extraction dropped the script-l symbol code, which is printed outside the Courier font, and the area descriptor that follows it. The original packet ends with the longitude, then the byte 'l', then the 7-byte descriptor (710/310 in the first SEARCH example, 8101310 in the second), with no gap. As extracted, the 19-byte position ends at the longitude, so the symbol code is missing at offset 36, the end of the field.",
-   "doubt": "I put the missing-byte finding on sym.code at the end-of-line offset, as README section 3 says. The code might attach it to obj.pos instead."
+   "doubt": "The missing-byte finding is on sym.code at the end-of-line offset, where README section 3.3 places a missing field's finding."
   },
   {
    "id": "p82-46394ef6",
@@ -1203,7 +1199,7 @@
     "01-frame.md#err.dti.star",
     "01-frame.md#7-data-type-identifier"
    ],
-   "note": "Peet Bros raw form with a '*' identifier. Under the erratum, '*' is the Peet form, not a weather object.",
+   "note": "Peet Bros raw form with a '*' identifier. The '*' of the Appendix 1 weather-object diagram is a slip that allows nothing (err.dti.star, err.wx.object-dti), so every '*' field is the Peet form.",
    "doubt": "Rule ID of the discouraged finding: 'dti' or possibly wx.raw.peet."
   },
   {
@@ -1211,10 +1207,9 @@
    "page": 83,
    "printed": "63",
    "kind": "packet",
-   "verdict": "conform-ambiguous",
+   "verdict": "conform",
    "findings": [
-    "discouraged dti @0",
-    "ambiguous wx.sw @46"
+    "discouraged dti @0"
    ],
    "basis": [
     "06-weather.md#wx.pl",
@@ -1226,71 +1221,65 @@
     "06-weather.md#amb.wx.tail",
     "06-weather.md#err.wx.software-case",
     "06-weather.md#amb.wx.status",
-    "06-weather.md#amb.wx.letters"
+    "01-frame.md#7-data-type-identifier"
    ],
-   "note": "Positionless report: the MDHM stamp at 1-8 is in range, and the leading c, s, g and t elements are at 9, 13, 17 and 21. Next come r, p, P, h and b; the 5-digit pressure is at 40-45. The 4-byte tail at offset 46 begins with a letter. Its last three bytes are the listed unit RSW, so it splits as software code w (added by the erratum) plus that unit. A tail of 3 or 4 bytes that starts with a letter always gets the ambiguous finding of amb.wx.tail, on the rule of its first token, here wx.sw (README section 3, Placing a finding). The 'w' is not followed by a digit, so amb.wx.letters gives nothing.",
-   "doubt": "Rule ID of the discouraged finding: 'dti' or possibly wx.pl."
+   "note": "Positionless report, discouraged at the identifier (01 section 7). The MDHM stamp at 1-8 is in range, and the leading c, s, g and t elements are at 9, 13, 17 and 21. Next come r, p, P, h and b; the 5-digit pressure is at 40-45. The 4-byte tail at offset 46 starts with 'w', a listed software code (err.wx.software-case), so it is software code w and unit RSW (06 section 7). Where both splits give no finding, amb.wx.tail takes the software code and unit with no finding. Re-derived after amb.wx.tail stopped giving an ambiguous finding."
   },
   {
    "id": "p84-9478efcc",
    "page": 84,
    "printed": "64",
    "kind": "packet",
-   "verdict": "conform-ambiguous",
+   "verdict": "conform",
    "findings": [
-    "discouraged dti @0",
-    "ambiguous wx.unit @29"
+    "discouraged dti @0"
    ],
    "basis": [
     "06-weather.md#wx.pl",
     "02-fields.md#time.mdhm",
-    "06-weather.md#6-weather-data-elements",
+    "06-weather.md#61-elements",
     "06-weather.md#amb.wx.unknown",
     "06-weather.md#wx.rainmid",
     "06-weather.md#7-software-and-unit-codes",
-    "06-weather.md#amb.wx.tail",
-    "06-weather.md#amb.wx.status"
+    "06-weather.md#amb.wx.letters",
+    "06-weather.md#amb.wx.status",
+    "01-frame.md#7-data-type-identifier"
    ],
-   "note": "The dots here are unknown fill, not an ellipsis. The c, s, g and t values are each three dots, which is allowed, at offsets 9, 13, 17 and 21, and the rain-since-midnight element is at 25. The 3-byte tail at offset 29 is not a listed unit, nor a listed unit after its first byte, and its first byte is not a listed software code. It is read as a 3-byte wx.unit and gets the two-way-split ambiguous finding of amb.wx.tail on wx.unit, the rule of its first token (README section 3, Placing a finding). Its first letter is undefined but is not followed by a digit, so amb.wx.letters gives nothing. Re-derived after amb.wx.tail placed its finding on the rule of the first token; an earlier version had it on wx.sw.",
-   "doubt": "Rule ID of the discouraged finding: 'dti' or possibly wx.pl."
+   "note": "Positionless report, discouraged at the identifier. The dots are unknown fill, not an ellipsis: the c, s, g and t values are each three dots, allowed by amb.wx.unknown, at offsets 9, 13, 17 and 21, and the rain-since-midnight element P012 is at 25. 'J' at 29 starts no element, so the data ends there (amb.wx.letters). The 3 bytes left are a tail; its first byte is not a listed software code, so it is one unit code, whose list is open (06 section 7): wx.unit, no finding. Re-derived after amb.wx.tail stopped giving an ambiguous finding."
   },
   {
    "id": "p85-2d0ba2c9",
    "page": 85,
    "printed": "65",
    "kind": "packet",
-   "verdict": "conform-ambiguous",
-   "findings": [
-    "ambiguous wx.sw @56"
-   ],
+   "verdict": "conform",
+   "findings": [],
    "basis": [
     "03-position.md#pos.wx",
     "06-weather.md#wx.pos",
-    "02-fields.md#ext.dirspd",
-    "06-weather.md#6-weather-data-elements",
+    "06-weather.md#51-uncompressed-position",
+    "06-weather.md#61-elements",
     "06-weather.md#7-software-and-unit-codes",
     "06-weather.md#amb.wx.tail",
     "06-weather.md#err.wx.software-case"
    ],
-   "note": "Complete weather report (symbol '_' at 19): wind at 20, elements g,t,r,p,P,h,b from 27 to 55, 4-byte tail at 56 split as software 'w' plus listed unit RSW; a 3-4 byte tail starting with a letter always gives the tail ambiguity."
+   "note": "Complete weather report (symbol '_' at 19): wind 220/004 at 20-26, elements g, t, r, p, P, h and b from 27 to 55, and a 4-byte tail at 56 split as listed software code 'w' and unit RSW, with no finding (amb.wx.tail). Re-derived after amb.wx.tail stopped giving an ambiguous finding."
   },
   {
    "id": "p85-765678b8",
    "page": 85,
    "printed": "65",
    "kind": "packet",
-   "verdict": "syntax",
-   "findings": [
-    "syntax wx.unit @50"
-   ],
+   "verdict": "conform",
+   "findings": [],
    "basis": [
     "06-weather.md#err.wx.unknown-example",
     "06-weather.md#amb.wx.unknown",
-    "06-weather.md#amb.wx.comment",
-    "06-weather.md#7-software-and-unit-codes"
+    "06-weather.md#wx.baro",
+    "06-weather.md#7-software-and-unit-codes",
+    "06-weather.md#amb.wx.tail"
    ],
-   "note": "Same report with pressure unknown; the PDF text layer itself has dot, SP, three dots, so the pressure value mixes fill kinds, 'b' starts no element, the data ends at 50 and the 10 remaining bytes are no valid tail: residue named after wx.unit with syntax.",
-   "doubt": "The gap is an erratum of the document (err.wx.unknown-example), not of the extraction; the erratum says the reading takes it as five dots, which would give conform-ambiguous with 'ambiguous wx.sw @56'. Given here on the bytes as printed."
+   "note": "The same report with the pressure unknown; the text layer has '.', SP and three '.', the bytes the page prints (err.wx.unknown-example). Unknown fill is any mix of '.' and SP (amb.wx.unknown), so b at 50 with those five bytes is a pressure element, and the 4-byte tail at 56 is software code 'w' and unit RSW, with no finding. Re-derived after amb.wx.unknown accepted mixed fill."
   },
   {
    "id": "p86-13fbec7a",
@@ -1306,49 +1295,46 @@
     "02-fields.md#cmp.cs",
     "06-weather.md#err.wx.cmp-example"
    ],
-   "note": "Extraction cut the compressed weather example at the escaped underscore; the printed field continues with the '_' symbol, cs, T and the weather data and tail. As extracted the block stops after the symbol code '>' at 10, so cs and T are missing from offset 11. Under 02 section 6.2 (cut-short block) cs (11-12) and T are missing; cs is the first part missing, so the finding is on cmp.cs where its first byte was expected. Table, lat, lon and code are part tokens and fit. Re-derived after the general rules of README section 3 were agreed.",
-   "doubt": "02 section 6.2 now names the rule: the part cut short or first missing carries the finding. The cmp.cs ID for a cs part without T is [proposed] there."
+   "note": "Extraction cut the compressed weather example at the escaped underscore; the printed field continues with the '_' symbol, cs, T and the weather data and tail. As extracted the block stops after the symbol code '>' at 10, so cs and T are missing from offset 11. Under 02 section 6.2 (cut-short block) cs (11-12) and T are missing; cs is the first part missing, so the finding is on cmp.cs where its first byte was expected. Table, lat, lon and code are part tokens and fit."
   },
   {
    "id": "p86-1792492f",
    "page": 86,
    "printed": "66",
    "kind": "packet",
-   "verdict": "conform-ambiguous",
-   "findings": [
-    "ambiguous wx.sw @63"
-   ],
+   "verdict": "conform",
+   "findings": [],
    "basis": [
     "06-weather.md#wx.pos",
     "02-fields.md#time.dhm",
-    "02-fields.md#ext.dirspd",
+    "06-weather.md#51-uncompressed-position",
     "06-weather.md#wx.temp",
+    "06-weather.md#7-software-and-unit-codes",
     "06-weather.md#amb.wx.tail"
    ],
-   "note": "Timestamped complete weather report; negative temperature form at 38 is valid; tail of 4 bytes at 63 gets the tail ambiguity."
+   "note": "Timestamped complete weather report: time.dhm 092345z at 1-7, position to the symbol '_' at 26, wind at 27-33. The temperature t-07 at 38 is the below-zero form; the 4-byte tail at 63 is software code 'w' and unit RSW, with no finding (amb.wx.tail). Re-derived after amb.wx.tail stopped giving an ambiguous finding."
   },
   {
    "id": "p86-23d25634",
    "page": 86,
    "printed": "66",
    "kind": "packet",
-   "verdict": "conform-ambiguous",
+   "verdict": "conform",
    "findings": [
-    "unstated wx.sw @48",
-    "ambiguous wx.sw @48"
+    "unstated wx.sw @48"
    ],
    "basis": [
     "06-weather.md#wx.obj",
     "06-weather.md#53-object",
-    "02-fields.md#ext.dirspd",
+    "06-weather.md#51-uncompressed-position",
     "06-weather.md#wx.gust",
     "06-weather.md#wx.baro",
+    "06-weather.md#62-order-and-end-of-the-data",
     "06-weather.md#7-software-and-unit-codes",
     "06-weather.md#err.wx.object-baro",
-    "06-weather.md#amb.wx.width",
     "06-weather.md#amb.wx.required"
    ],
-   "note": "A weather object (byte 0 carries wx.obj). Wind 220/004 is at 37-43 and gust g005 at 44-47. The pressure element at 48 has only four digits, so it does not start an element, and the data ends there. The 5-byte tail splits into software code 'b' (not in the software list, so unstated) and unit 0990. Reading (b) of amb.wx.width would take the short pressure as the element and leave an empty tail with no finding of its own, so the tail gets an ambiguous finding at its first byte, on wx.sw, the rule this reading gives that byte (amb.wx.width; README section 3, Placing a finding). The missing temperature gives no finding in a complete report. Re-derived after the general rules of README section 3 were agreed."
+   "note": "A weather object (byte 0 carries wx.obj). Wind 220/004 is at 37-43 and gust g005 at 44-47; a complete report needs no temperature (amb.wx.required). The pressure at 48 has only four digits before the end, so no element starts there and the data ends (06 section 6.2). The 5 bytes left are a tail: a software code and a 4-byte unit (06 section 7). 'b' is not a listed software code, and the list names software, so it is open: wx.sw gives unstated at 48; the unit 0990 gives none. err.wx.object-baro calls the missing digit a slip, which allows nothing: no 4-digit pressure is read, and the example conforms only as that tail. Re-derived after the software list was read as open (README section 3.3)."
   },
   {
    "id": "p86-6938eb8a",
@@ -1363,35 +1349,26 @@
     "02-fields.md#cmp.block",
     "02-fields.md#cmp.code"
    ],
-   "note": "Extraction cut the timestamped compressed weather example before its '_' symbol code; the printed field continues with symbol, cs, T, weather data and tail. As extracted the block ends after the longitude, so the symbol code expected at 17 is missing. Under 02 section 6.2 (cut-short block) code, cs and T are missing; the symbol code is the first part missing, so the finding is on cmp.code at 17. Table, lat and lon are part tokens and fit. Re-derived after the general rules of README section 3 were agreed.",
-   "doubt": "02 section 6.2 now names the rule: the part cut short or first missing carries the finding. The cmp.cs ID for a cs part without T is [proposed] there."
+   "note": "Extraction cut the timestamped compressed weather example before its '_' symbol code; the printed field continues with symbol, cs, T, weather data and tail. As extracted the block ends after the longitude, so the symbol code expected at 17 is missing. Under 02 section 6.2 (cut-short block) code, cs and T are missing; the symbol code is the first part missing, so the finding is on cmp.code at 17. Table, lat and lon are part tokens and fit."
   },
   {
    "id": "p86-929283de",
    "page": 86,
    "printed": "66",
    "kind": "packet",
-   "verdict": "syntax",
-   "findings": [
-    "value time.dhm @11",
-    "syntax time.dhm @15",
-    "discouraged obj.pos @18",
-    "ambiguous cmp.cs.alt @28"
-   ],
+   "verdict": "conform",
+   "findings": [],
    "basis": [
     "06-weather.md#err.wx.object-time",
     "05-object-item.md#amb.obj.time",
-    "05-object-item.md#obj.time",
     "05-object-item.md#obj.pos",
-    "05-object-item.md#2-object-report",
-    "02-fields.md#2-timestamps",
-    "02-fields.md#63-reading-the-cs-bytes",
-    "02-fields.md#64-the-t-byte",
-    "02-fields.md#amb.ext.compressed",
-    "README.md#3-tokenizer-model"
+    "06-weather.md#wx.obj",
+    "06-weather.md#53-object",
+    "06-weather.md#61-elements",
+    "06-weather.md#7-software-and-unit-codes",
+    "06-weather.md#amb.wx.tail"
    ],
-   "note": "A weather object printed without the timestamp that the diagram requires. The timestamp is still the 7 bytes at 11-17 (amb.obj.time): offset 17 holds '0', which selects no form, so time.dhm is taken by default (02 section 2), with syntax at its first failing byte, the '.' at 15, and value at 11 for the day '49', an independent defect. The position is read from 18, where 'N' is a compressed table byte: a compressed object, with discouraged on obj.pos at 18 (05 section 2). The block is 18-30: latitude 19-22, longitude 23-26, symbol code '5' at 27, cs 'W_' at 28-29, T '2' at 30. T - 33 = 17 has bits 4-3 '1 0', the GGA source, so step 2 of 02 section 6.3 makes the cs cmp.cs.alt, and c 'W' also lies in the course range, which gives ambiguous at 28. The symbol code is not '_', so the packet is not a weather object. The comment at 31-70 is 40 bytes, within the 43 of a compressed object; its first bytes '20/004g' fit no extension form, and it holds no comment item. Re-derived after amb.obj.time took the timestamp as always the 7 bytes the layout fixes; an earlier version read the position from offset 11 after a missing timestamp, classified the packet as a weather object, and gave syntax on obj.time at 11 and the amb.wx.tail finding at 66.",
-   "doubt": "The restored packet, with a timestamp, would be the weather object the page shows."
+   "note": "A weather object printed without the timestamp that the diagram gives (err.wx.object-time). Offsets 11-17 '4903.50' are not six digits and an indicator, and a position read from offset 11 reaches its symbol code with no syntax finding, so it is the position, with no finding (amb.obj.time): latitude 11-18, table '/', longitude 20-28, symbol '_' at 29. With bytes after the block the object is a weather report and the identifier token carries wx.obj (05 section 7): wind 220/004 at 30-36, g, t, r, p, P, h and b from 37 to 65, and the tail 'wRSW' at 66, software code and unit with no finding. Re-derived after amb.obj.time accepted a position in place of the timestamp."
   },
   {
    "id": "p87-002c2ca5",
@@ -1611,17 +1588,16 @@
    "page": 92,
    "printed": "72",
    "kind": "packet",
-   "verdict": "conform-ambiguous",
-   "findings": [
-    "ambiguous tlm.bits.title @24"
-   ],
+   "verdict": "conform",
+   "findings": [],
    "basis": [
+    "08-message.md#21-kind-of-packet",
     "07-telemetry.md#tlm.bits.sense",
     "07-telemetry.md#tlm.bits.title",
     "07-telemetry.md#amb.tlm.bitsep",
     "07-telemetry.md#err.tlm.bits"
    ],
-   "note": "BITS message: eight bits at 16-23, then a title that starts with a comma, which the reading keeps in the title (20 bytes, within 23) with an ambiguous finding at that comma."
+   "note": "A message to N0QBF-11 whose text starts with BITS., a definition message (08 section 2.1, case 4). The eight bits are at 16-23; the ',' at 24 is the separator of the example, the more specific reading, with no finding (amb.tlm.bitsep, err.tlm.bits), and the title at 25-43 has 19 bytes, within 23. Re-derived after amb.tlm.bitsep stopped giving an ambiguous finding."
   },
   {
    "id": "p92-f4eb34d6",
@@ -1919,10 +1895,10 @@
     "08-message.md#21-kind-of-packet",
     "09-other.md#41-directed-queries",
     "09-other.md#amb.qry.dir",
+    "08-message.md#11-reviewed-exceptions",
     "08-message.md#msg.text"
    ],
-   "note": "Directed-query and typical-response columns joined into one line by the extraction; the bytes should be the query message alone and the reply as a separate packet. As extracted (APRST query; the trace reply follows): the text does not match the directed-query rows, so 08 reads it as a message with no finding; text 57 bytes.",
-   "doubt": "Directed-query fall-through to message gives no finding (amb.qry.dir reading (d))."
+   "note": "Directed-query and typical-response columns joined into one line by the extraction; the bytes should be the query message alone and the reply as a separate packet. As extracted (APRST query; the trace reply follows): the text does not match the directed-query rows, so 08 reads it as a message with no finding (08 section 11); text 57 bytes."
   },
   {
    "id": "p103-0e64d91f",
@@ -1935,10 +1911,10 @@
     "08-message.md#21-kind-of-packet",
     "09-other.md#41-directed-queries",
     "09-other.md#amb.qry.dir",
+    "08-message.md#11-reviewed-exceptions",
     "08-message.md#msg.text"
    ],
-   "note": "Directed-query and typical-response columns joined into one line by the extraction; the bytes should be the query message alone and the reply as a separate packet. As extracted (APRSP query; the position reply follows): the text does not match the directed-query rows, so 08 reads it as a message with no finding; text 49 bytes.",
-   "doubt": "Directed-query fall-through to message gives no finding (amb.qry.dir reading (d))."
+   "note": "Directed-query and typical-response columns joined into one line by the extraction; the bytes should be the query message alone and the reply as a separate packet. As extracted (APRSP query; the position reply follows): the text does not match the directed-query rows, so 08 reads it as a message with no finding (08 section 11); text 49 bytes."
   },
   {
    "id": "p103-25f9e665",
@@ -1951,10 +1927,10 @@
     "08-message.md#21-kind-of-packet",
     "09-other.md#41-directed-queries",
     "09-other.md#amb.qry.dir",
+    "08-message.md#11-reviewed-exceptions",
     "08-message.md#msg.text"
    ],
-   "note": "Directed-query and typical-response columns joined into one line by the extraction; the bytes should be the query message alone and the reply as a separate packet. As extracted (APRSO query; the object reply follows): the text does not match the directed-query rows, so 08 reads it as a message with no finding; text 59 bytes, within 67.",
-   "doubt": "Directed-query fall-through to message gives no finding (amb.qry.dir reading (d))."
+   "note": "Directed-query and typical-response columns joined into one line by the extraction; the bytes should be the query message alone and the reply as a separate packet. As extracted (APRSO query; the object reply follows): the text does not match the directed-query rows, so 08 reads it as a message with no finding (08 section 11); text 59 bytes, within 67."
   },
   {
    "id": "p103-31943b1e",
@@ -1967,11 +1943,11 @@
     "08-message.md#21-kind-of-packet",
     "09-other.md#41-directed-queries",
     "09-other.md#amb.qry.dir",
+    "08-message.md#11-reviewed-exceptions",
     "08-message.md#msg.text",
     "08-message.md#msg.id"
    ],
-   "note": "Directed-query and typical-response columns joined into one line by the extraction; the bytes should be the query message alone and the reply as a separate packet. As extracted (APRSM query; the reply message and its number follow): the text does not match the directed-query rows, so 08 reads it as a message with text up to the brace (40 bytes) and message number 003; no finding.",
-   "doubt": "Directed-query fall-through to message gives no finding (amb.qry.dir reading (d))."
+   "note": "Directed-query and typical-response columns joined into one line by the extraction; the bytes should be the query message alone and the reply as a separate packet. As extracted (APRSM query; the reply message and its number follow): the text does not match the directed-query rows, so 08 reads it as a message with text up to the brace (40 bytes) and message number 003; no finding (08 section 11)."
   },
   {
    "id": "p103-5af73ecc",
@@ -1991,10 +1967,10 @@
     "08-message.md#21-kind-of-packet",
     "09-other.md#41-directed-queries",
     "09-other.md#amb.qry.dir",
+    "08-message.md#11-reviewed-exceptions",
     "08-message.md#msg.text"
    ],
-   "note": "Directed-query and typical-response columns joined into one line by the extraction; the bytes should be the query message alone and the reply as a separate packet. As extracted (PING? query; the trace reply follows): the text does not match the directed-query rows, so 08 reads it as a message with no finding; text 57 bytes.",
-   "doubt": "Directed-query fall-through to message gives no finding (amb.qry.dir reading (d))."
+   "note": "Directed-query and typical-response columns joined into one line by the extraction; the bytes should be the query message alone and the reply as a separate packet. As extracted (PING? query; the trace reply follows): the text does not match the directed-query rows, so 08 reads it as a message with no finding (08 section 11); text 57 bytes."
   },
   {
    "id": "p103-8f83872f",
@@ -2007,10 +1983,10 @@
     "08-message.md#21-kind-of-packet",
     "09-other.md#41-directed-queries",
     "09-other.md#amb.qry.dir",
+    "08-message.md#11-reviewed-exceptions",
     "08-message.md#msg.text"
    ],
-   "note": "Directed-query and typical-response columns joined into one line by the extraction; the bytes should be the query message alone and the reply as a separate packet. As extracted (APRSH query with heard call; the extracted text continues with padding, a colon and the reply): the text does not match the directed-query rows (bytes other than trailing spaces follow the call), so 08 reads it as a message with no finding; the text is 66 bytes, within 67.",
-   "doubt": "Directed-query fall-through to message gives no finding (amb.qry.dir reading (d))."
+   "note": "Directed-query and typical-response columns joined into one line by the extraction; the bytes should be the query message alone and the reply as a separate packet. As extracted (APRSH query with heard call; the extracted text continues with padding, a colon and the reply): the text does not match the directed-query rows (bytes other than trailing spaces follow the call), so 08 reads it as a message with no finding (08 section 11); the text is 66 bytes, within 67."
   },
   {
    "id": "p103-e4563d03",
@@ -2023,10 +1999,10 @@
     "08-message.md#21-kind-of-packet",
     "09-other.md#41-directed-queries",
     "09-other.md#amb.qry.dir",
+    "08-message.md#11-reviewed-exceptions",
     "08-message.md#msg.text"
    ],
-   "note": "Directed-query and typical-response columns joined into one line by the extraction; the bytes should be the query message alone and the reply as a separate packet. As extracted (APRSS query; the status reply follows): the text does not match the directed-query rows, so 08 reads it as a message with no finding; text 48 bytes.",
-   "doubt": "Directed-query fall-through to message gives no finding (amb.qry.dir reading (d))."
+   "note": "Directed-query and typical-response columns joined into one line by the extraction; the bytes should be the query message alone and the reply as a separate packet. As extracted (APRSS query; the status reply follows): the text does not match the directed-query rows, so 08 reads it as a message with no finding (08 section 11); text 48 bytes."
   },
   {
    "id": "p104-4482b984",
@@ -2676,8 +2652,7 @@
     "02-fields.md#cmp.t",
     "02-fields.md#cmp.table"
    ],
-   "note": "Compressed overlay example with only 12 bytes after the identifier (document erratum, rendered page agrees): read by the fixed layout, table 'B', lat and lon shifted by one, symbol '7', cs 'P[' and the T byte missing at offset 13 (end of field). Under 02 section 6.2 (cut-short block) cs 'P[' is a cmp.cs token with no finding ('P' can be taken by a step, '[' is a base-91 digit), and T is missing at 13, the end of the field, so the finding is on cmp.t. Re-derived after the general rules of README section 3 were agreed.",
-   "doubt": "02 section 6.2 now names the rule: the part cut short or first missing carries the finding. The cmp.cs ID for a cs part without T is [proposed] there."
+   "note": "Compressed overlay example with only 12 bytes after the identifier (document erratum, rendered page agrees): read by the fixed layout, table 'B', lat and lon shifted by one, symbol '7', cs 'P[' and the T byte missing at offset 13 (end of field). Under 02 section 6.2 (cut-short block) cs 'P[' is a cmp.cs token with no finding ('P' can be taken by a step, '[' is a base-91 digit), and T is missing at 13, the end of the field, so the finding is on cmp.t."
   },
   {
    "id": "p125-d815d504",

@@ -1,26 +1,25 @@
 # SPDX-License-Identifier: Apache-2.0
 """Position, DF, locator and NMEA reports: docs/legacy/03-position.md."""
 
-import re
-
 from qua_network.legacy.fields import (
     CMP_TABLE,
     DIGITS,
     LOWER,
-    SYM_TABLE,
     UPPER,
-    _altitudes,
-    area_literal,
+    altitudes,
+    area_bad,
+    brgnrq_after,
     brgnrq_shape,
     cmp_block,
     comment,
+    comment_fault,
+    emit_area,
     emit_ext,
     item_overlaps,
     lat,
     lon,
     missing,
     noarchive_in,
-    noarchive_outside,
     step3,
     sym_code,
     sym_table,
@@ -29,9 +28,6 @@ from qua_network.legacy.fields import (
 from qua_network.legacy.model import Scan
 from qua_network.legacy.weather import complete as weather_complete
 from qua_network.legacy.weather import storm as weather_storm
-from qua_network.legacy.weather import storm_overlay as weather_storm_overlay
-
-_STORM = re.compile(rb"/(?:TS|HC|TD)")
 
 
 def _to_weather(scan, start, p, end, depth, block=None):
@@ -59,12 +55,10 @@ def read(scan, start, end, depth):
 def position(scan, start, end, depth):
     line = scan.line
     p = start + 1
-    texts = []
     if line[start] in b"/@":
         if missing(scan, "pos.time", p, end):
             return
-        # Always the 7 bytes the layout fixes: time.mdhm is not recognised
-        # here (README section 3, Obsolete and nested forms).
+        # Always the 7 bytes the layout fixes: time.mdhm is not looked for here.
         p, ok = timestamp7(scan, p, end, depth)
         if not ok:
             return
@@ -72,86 +66,79 @@ def position(scan, start, end, depth):
         return
     c = line[p]
     if c in DIGITS:
-        cmt = _uncompressed(scan, start, p, end, depth)
+        _uncompressed(scan, start, p, end, depth)
     elif c in CMP_TABLE:
-        cmt = _compressed(scan, start, p, end, depth)
+        _compressed(scan, start, p, end, depth)
     else:
         scan.find("pos.form", "syntax", p)
         scan.residue(p, end, depth, "pos.form")
-        cmt = None
-    if cmt is not None:
-        texts.extend(cmt.texts())
-    noarchive_outside(scan, start, end, texts)
 
 
 def _uncompressed(scan, start, p, end, depth):
     line = scan.line
     p, ok, level = lat(scan, p, end, depth)
     if not ok or missing(scan, "sym.table", p, end):
-        return None
+        return
     sym_table(scan, p, depth)
     table = line[p]
     p, ok, _ = lon(scan, p + 1, end, depth, level)
     if not ok or missing(scan, "sym.code", p, end):
-        return None
+        return
     sym_code(scan, p, depth)
     code = line[p]
     p += 1
     if code == 0x5F and p < end:
         _to_weather(scan, start, p, end, depth)
-        return None
+        return
 
-    # The extension slot (02 section 7.1, step 3; amb.pos.ext).
-    slot = p
-    storm_at = None
+    # The extension slot (02 section 7.1).
+    if _area_symbol(table, code) and area_bad(line, p, end) is None:
+        # amb.pos.ext: p. 45/27 lets the area descriptor follow position data.
+        emit_area(scan, p, end, depth)
+        scan.find("ext.area", "ambiguous", p)
+        comment(scan, p + 7, end, depth, 36, "pos.cmt")
+        return
     x = step3(line, p, end)
-    # Runs that this reading takes as comment text carry their finding on
-    # cmt.text (README section 3, Placing a finding).
-    if area_literal(line, p, end):
-        scan.find("cmt.text", "ambiguous", p)  # amb.ext.area
-    if x is not None:
-        emit_ext(scan, x, depth)
-        p += x.n
-        if code == 0x40 and x.rule == "ext.csespd" and _STORM.match(line, p, end):
-            if table in b"/\\":
-                # Storm data (06 section 8), then the comment; no run is looked
-                # for at its start (02 amb.ext.count).
-                p = weather_storm(scan, p, end, depth)
-                return comment(scan, p, end, depth, 36, "pos.cmt", start_cse=False)
-            if table in SYM_TABLE:
-                storm_at = p  # an overlaid '@': no storm report here
+    if x is None:
+        comment(scan, p, end, depth, 43, "pos.cmt")
+        return
+    emit_ext(scan, x, depth)
+    p += x.n
+    limit, limit_rule = 36, "pos.cmt"
+    if code == 0x40 and x.rule == "ext.csespd":
+        # Storm data (06 section 8) under any table byte, overlays included
+        # (p. 125/101); storm() leaves bytes that are not storm data alone.
+        q = weather_storm(scan, p, end, depth)
+        if q > p:
+            comment(scan, q, end, depth, limit, limit_rule)
+            return
 
     # Bearing and NRQ (02 section 7.4, 03 section 3).
-    limit, limit_rule = (36, "pos.cmt") if x else (43, "pos.cmt")
-    if x is not None:
+    df_sym = table == 0x2F and code == 0x5C
+    if df_sym:
         brg = brgnrq_shape(line, p, end)
-        df_sym = table == 0x2F and code == 0x5C
-        df_ext = x.rule == "ext.csespd"
-        if brg is not None and df_sym and df_ext:
+        if brg is not None and (x.rule == "ext.csespd" or brg <= 360):
             scan.tok("ext.brgnrq", p, p + 8, depth)
-            if brg > 360:
+            if x.rule != "ext.csespd":
+                # err.df.ext: one side of the document reads these bytes as
+                # bearing and NRQ, the other as comment text.
+                scan.find("ext.brgnrq", "ambiguous", p)
+            elif brg > 360:
                 scan.find("ext.brgnrq", "value", p + 1)
             p += 8
             limit, limit_rule = 28, "df.cmt"
-        elif brg is not None and df_sym != df_ext and brg <= 360:
-            scan.find("df.notdf", "ambiguous", p)
+    elif x.rule == "ext.csespd":
+        # amb.df.detect: p. 45/27 sets no symbol.
+        q = brgnrq_after(scan, p, end, depth)
+        if q > p:
+            p, limit = q, 28
 
-    # The slot is the only place of an extension: no run after it is looked
-    # for (02 amb.ext.count).
-    cmt = comment(scan, p, end, depth, limit, limit_rule, start_cse=False)
-    if x is not None and x.h_alpha:
-        # amb.ext.phg: reading (b) takes the extension as comment text, within
-        # the limit without an extension (43).
-        # After ext.phgr, (b)'s length finding falls on another byte than
-        # this reading's, so it is (b)'s own (README section 3).
-        rest = cmt.counted if cmt else 0
-        if x.rule != "ext.phgr" or x.n + rest <= 43:
-            scan.find(x.rule, "ambiguous", slot)
-    if storm_at is not None:
-        weather_storm_overlay(
-            scan, storm_at, end, lambda scratch, q: comment(scratch, q, end, depth, 36, "pos.cmt", start_cse=False)
-        )
-    return cmt
+    comment(scan, p, end, depth, limit, limit_rule)
+
+
+def _area_symbol(table, code):
+    """The area object symbol \\l (05 section 4)."""
+    return table == 0x5C and code == 0x6C
 
 
 def _compressed(scan, start, p, end, depth):
@@ -159,13 +146,19 @@ def _compressed(scan, start, p, end, depth):
     wx = end - p > 13 and line[p + 9] == 0x5F
     e = cmp_block(scan, p, end, depth, wx)
     if e is None:
-        return None
+        return
     if wx:
         _to_weather(scan, start, e, end, depth, p)
-        return None
-    # amb.pos.cmpext: a clean extension at the comment start is reported by
-    # the search of comment(), at the same byte and rule.
-    return comment(scan, e, end, depth, 40, "pos.cmpcmt")
+        return
+    if _area_symbol(line[p], line[p + 9]) and area_bad(line, e, end) is None:
+        # amb.ext.compressed with the area symbol: step 1 of 02 section 7.1.
+        emit_area(scan, e, end, depth)
+        scan.find("ext.area", "ambiguous", e)
+        comment(scan, e + 7, end, depth, 36, "pos.cmpcmt")
+        return
+    # An extension at the comment start is read by comment() (amb.ext.compressed);
+    # under the area symbol no form of step 3 is tried (02 section 6.5).
+    comment(scan, e, end, depth, 40, "pos.cmpcmt", start_cse=not _area_symbol(line[p], line[p + 9]))
 
 
 # --- Agrelo DF (03 section 4) -------------------------------------------
@@ -184,21 +177,21 @@ def agrelo(scan, start, end, depth):
         scan.find("df.agrelo", "syntax", s + bad)
     elif e < s + 5:
         scan.find("df.agrelo", "syntax", e)
-    # The range the unit implies: a bearing above 360 is a value finding at
-    # its first digit, an independent defect beside any syntax finding.
+    # A bearing above 360 is checked whenever its digits are present.
     if e - s >= 3 and (bad is None or bad >= 3) and int(line[s : s + 3]) > 360:
         scan.find("df.agrelo", "value", s)
     if end > s + 5:
+        # amb.df.agrelo: the diagram ends after the quality digit.
         scan.residue(s + 5, end, depth, "df.agrelo")
         if bad is None:
             scan.find("df.agrelo", "syntax", s + 5)
-    noarchive_outside(scan, start, end, [])
 
 
 # --- Maidenhead locator beacon (03 section 5) ---------------------------
 
 _AR = frozenset(b"ABCDEFGHIJKLMNOPQRabcdefghijklmnopqr")
-_AX = frozenset(b"ABCDEFGHIJKLMNOPQRSTUVWXabcdefghijklmnopqrstuvwx")
+_AX = frozenset(b"ABCDEFGHIJKLMNOPQRSTUVWX")
+_AX_ANY = _AX | frozenset(b"abcdefghijklmnopqrstuvwx")
 _LETTERS = UPPER | LOWER
 
 
@@ -216,30 +209,24 @@ def grid(scan, start, end, depth):
             break
     if bad is None and e4 < s + 4:
         bad = e4
-    # The subsquare (amb.grid.form, amb.grid.range).
+    # The subsquare (amb.grid.form, amb.grid.range, amb.grid.case). Followed
+    # by ']', two letters close a 6-byte locator, and a letter that fails
+    # gives syntax. Without ']', only two upper-case letters A-X are one;
+    # other letters start the comment after a 4-byte locator.
     n = 4
-    closed = in_range = False
+    amb = False
     if end - s >= 6 and line[s + 4] in _LETTERS and line[s + 5] in _LETTERS:
         a, b = line[s + 4], line[s + 5]
-        closed = end > s + 6 and line[s + 6] == 0x5D
-        in_range = a in _AX and b in _AX
-        if closed or in_range:
+        if end > s + 6 and line[s + 6] == 0x5D:
             n = 6
-        if closed and not in_range and bad is None:
-            bad = s + 4 if a not in _AX else s + 5
+            if bad is None and not (a in _AX_ANY and b in _AX_ANY):
+                bad = s + 4 if a not in _AX_ANY else s + 5
+        elif a in _AX and b in _AX:
+            n = 6
+            amb = True
     e = min(s + n, end)
-    # Without ']', reading (b) of amb.grid.form ends an in-range locator
-    # after 4 bytes. Letters out of range and not closed by ']' are comment
-    # text, with no finding (README section 3). With ']' every reading takes
-    # six bytes. A lower-case subsquare is at fault under this reading, and
-    # its syntax finding alone is given (Precedence); a fault in the first
-    # four bytes, lower case among them, is at fault under both readings and
-    # does not suppress the finding (Which findings are the other reading's
-    # own).
-    amb = not closed and in_range and not (line[s + 4] in LOWER or line[s + 5] in LOWER)
-    # Lower case is recognised and gives syntax, at the first lower-case
-    # letter when no byte before it fails (amb.grid.case; README section 3,
-    # Letter case).
+    # Lower case gives syntax, at the first lower-case letter when no byte
+    # before it fails.
     letters = (s, s + 1, s + 4, s + 5) if n == 6 else (s, s + 1)
     lower = next((i for i in letters if i < e and line[i] in LOWER), None)
     if lower is not None and (bad is None or bad > lower):
@@ -248,24 +235,22 @@ def grid(scan, start, end, depth):
         scan.tok("grid.loc", s, e, depth)
     if bad is not None:
         scan.find("grid.loc", "syntax", bad)
-    if amb:
+    if amb and bad is None:
+        # A reading that ends the locator after 4 bytes also accepts the field.
         scan.find("grid.loc", "ambiguous", s + 4)
     p = e
     if p < end and line[p] == 0x5D:
         scan.tok("grid.close", p, p + 1, depth)
         p += 1
-    texts = []
     if p < end:
-        # The comment holds the altitude and '!x!', not the DAO (03 section
-        # 5). It has no byte set of its own, so it is not read as cmt.text.
+        # A comment: the comment byte set, the altitude and '!x!' (03 section 5).
         scan.tok("grid.cmt", p, end, depth)
-        items, alt_faults = _altitudes(scan, p, end, depth + 1)
+        f = comment_fault(line[p:end])
+        if f is not None:
+            scan.find("grid.cmt", "syntax", p + f)
+        items = altitudes(scan, p, end, depth + 1)
         items += noarchive_in(scan, p, end, depth + 1)
         item_overlaps(scan, items)
-        # 02 cmt.alt: no ambiguous finding where a malformed altitude reports the byte.
-        scan.withdraw("ambiguous", alt_faults)
-        texts.append((p, end))
-    noarchive_outside(scan, start, end, texts)
 
 
 # --- Raw NMEA (03 section 6) --------------------------------------------
@@ -277,12 +262,14 @@ _HEX_LOWER = frozenset(b"abcdef")
 def nmea(scan, start, end, depth):
     line = scan.line
     s = start + 1
-    # nmea.len counts every byte after '$': CR and LF are no terminator.
-    if not 25 <= end - s <= 209:
+    # nmea.end: CR LF, the NMEA 0183 sentence terminator, closes the field.
+    te = end - 2 if end - s >= 2 and line[end - 2 : end] == b"\r\n" else end
+    # nmea.len: 25 to 209 bytes after '$', with or without the terminator.
+    if not (25 <= end - s <= 209 or 25 <= te - s <= 209):
         scan.find("nmea.len", "value", start)
     # Address field: up to the first ',' or '*'.
     p = s
-    while p < end and line[p] not in b",*":
+    while p < te and line[p] not in b",*":
         p += 1
     if p > s:
         scan.tok("nmea.addr", s, p, depth)
@@ -293,9 +280,9 @@ def nmea(scan, start, end, depth):
         scan.find("nmea.addr", "syntax", bad)
     # Data fields.
     nf = 0
-    while p < end and line[p] == 0x2C:
+    while p < te and line[p] == 0x2C:
         q = p + 1
-        while q < end and line[q] not in b",*":
+        while q < te and line[q] not in b",*":
             q += 1
         scan.tok("nmea.field", p, q, depth)
         for i in range(p + 1, q):
@@ -309,8 +296,8 @@ def nmea(scan, start, end, depth):
         scan.find("nmea.field", "syntax", p)
     # Checksum.
     cks_bad = False
-    if p < end and line[p] == 0x2A:
-        ce = min(p + 3, end)
+    if p < te and line[p] == 0x2A:
+        ce = min(p + 3, te)
         scan.tok("nmea.cks", p, ce, depth)
         h = line[p + 1 : ce]
         if len(h) < 2 or not all(c in _HEX or c in _HEX_LOWER for c in h):
@@ -326,12 +313,14 @@ def nmea(scan, start, end, depth):
             if x != int(h, 16):
                 scan.find("nmea.cks", "value", p + 1)
         p = ce
-    if p < end:
-        # Bytes after the checksum; a field gives at most one syntax finding.
-        scan.residue(p, end, depth, "nmea.cks")
+    if p < te:
+        # amb.nmea.end: bytes after the checksum; a field gives at most one
+        # syntax finding.
+        scan.residue(p, te, depth, "nmea.cks")
         if not cks_bad:
             scan.find("nmea.cks", "syntax", p)
-    noarchive_outside(scan, start, end, [])
+    if te < end:
+        scan.tok("nmea.end", te, end, depth)
 
 
 def nmea_accepts(line, start, end):

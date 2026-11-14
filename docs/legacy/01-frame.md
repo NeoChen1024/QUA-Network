@@ -2,248 +2,138 @@
 
 | | |
 |---|---|
-| Status | Draft. Not frozen. Items carry the labels **[agreed]**, **[proposed]** and **[open]** with the meaning given in the RFC. |
+| Status | Draft. Not frozen. A catalogue row that the general rules of the [README](README.md#31-general-rules) do not settle is marked **[open]**. |
 | Reference | `APRS12c.pdf` in submodule `3rdparty/aprsspec`, commit `5830d42f`. See [RFC Appendix D](../rfc/qua-network-rfc-0.md#appendix-d-reference-documents). |
 
 ## 1. Scope
 
-This file reads the parts of a packet that come before any format: the
-TNC2 monitor line as APRS-IS carries it, the source, destination and path
-addresses, the classes a destination address falls into, the meaning of
-the destination and source SSIDs, the data type identifier and the
-dispatch it drives, and third-party payloads.
-
-The input is one line without its record terminator. APRS12c defines the
-binary AX.25 UI frame (p. 22/12) and, for third-party traffic only, the
-TNC-2 text of an address header (p. 107/83, p. 108/84). The text form of
-an ordinary packet is described in UAP §1. Frame fields that the text form
-does not show (flags, control 0x03, PID 0xF0, FCS, the C and H bits) are
-not tokenized. The no-archive marker, which p. 110/86 lets appear
-anywhere in a packet, is read by
-[`cmt.noarchive`](02-fields.md#cmt.noarchive).
-
-Conventions, finding kinds and verdicts are those of the
-[README](README.md). Rule IDs in this file use the prefixes `line`,
-`addr`, `path`, `dest`, `src`, `dti` and `tp`.
+The parts of a packet that come before any format: the TNC2 line, the
+source, destination and path addresses, the destination classes, the
+source SSID, the data type identifier and its dispatch, and third-party
+payloads. The input is one line without its terminator. Frame fields
+that the text form does not show (flags, control, PID, FCS, the C and H
+bits) are not tokenized. The no-archive marker is read by
+[`cmt.noarchive`](02-fields.md#cmt.noarchive). Rule prefixes: `line`,
+`addr`, `path`, `dest`, `src`, `dti`, `tp`.
 
 ## 2. The line
 
-The line is: source address, `>`, destination address, zero or more
-path entries each introduced by `,`, then `:`, then the information
-field.
-
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|
-| <a id="line.header"></a>`line.header` | Address header | The span from the first byte of the line to the byte before `line.sep`. Contains `addr.src`, `line.gt`, `addr.dest` and the path (section 4). Not a token itself; the tokens inside it are. | yes | `line.sep` ([amb.line.split](#amb.line.split)) | p. 107/83; UAP §1 |
-| <a id="line.gt"></a>`line.gt` | Source terminator | `>`, 1 byte. | yes | 1 byte | p. 107/83; UAP §1 |
-| <a id="line.sep"></a>`line.sep` | Header terminator | `:`, 1 byte: the first `:` in the line. A line with no `:` gives `syntax` and verdict `unknown-format`. | yes | 1 byte | p. 107/83; UAP §1 |
-| <a id="line.info"></a>`line.info` | Information field | Any byte values 0x00–0xFF, 1 to 256 bytes. An empty field gives `syntax`. More than 256 bytes gives `value` at byte 257 ([amb.line.length](#amb.line.length)). Its first byte is `dti` (section 7). | yes | end of line | p. 22/12; p. 23/13 |
+| <a id="line.header"></a>`line.header` | Address header | Source address, `line.gt`, destination address, then zero or more path entries each after `,`. Not a token itself. | yes | `line.sep` | p. 107/83 |
+| <a id="line.gt"></a>`line.gt` | Source terminator | `>`, 1 byte. A header without `>` gives `syntax` here, and the header is a `residue`. | yes | 1 byte | p. 107/83 |
+| <a id="line.sep"></a>`line.sep` | Header terminator | `:`, the first in the line ([amb.line.split](#amb.line.split)). A line without `:` gives `syntax` and verdict `unknown-format`. | yes | 1 byte | p. 107/83 |
+| <a id="line.info"></a>`line.info` | Information field | 1 to 256 bytes of any value; its first byte is `dti`. Empty gives `syntax`; more than 256 bytes gives `value` at byte 257. | yes | end of line | p. 22/12; p. 23/13 |
 
 ## 3. Addresses
 
-An address is written in one of two ways. The AX.25 form is what an RF
-frame can carry. Anything else is read as an address that only APRS-IS
-can carry where the text allows one: at the source, in the entries after
-the q-construct, and at the source of a third-party inner header. At
-every other address position it gives `syntax`
-([amb.addr.form](#amb.addr.form)).
+Every address of the header is in the AX.25 form (p. 22/12, p. 107/83).
+A source may also be any short printable name (p. 108/84;
+[amb.addr.form](#amb.addr.form)).
 
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|
-| <a id="addr.src"></a>`addr.src` | Source address | `addr.call` with optional `addr.ssid`, or `addr.is`. A `*` at its end gives `syntax` at the `*`; the token covers the `*`, which is a `residue` one level below it (README section 3, Output). The finding is not given when the address before the `*` already gives `syntax`, since a field gives at most one (README section 3, Placing a finding). An earlier draft left the `*` outside the token, as a residue beside it. | yes | `line.gt` | p. 22/12; p. 107/83; UAP §1.1 |
-| <a id="addr.dest"></a>`addr.dest` | Destination address | `addr.call` with optional `addr.ssid`. Any other address gives `syntax` on this rule at its first byte that does not fit the AX.25 form ([amb.addr.form](#amb.addr.form); README section 3, Placing a finding); an earlier draft read it as `addr.is`. Empty gives `syntax`. A `*` at its end gives `syntax` at the `*`, which the token covers as for `addr.src`. Its class is given by section 5. On a Mic-E destination the AX.25-form finding is not given at a byte that a rule of [04-mic-e section 3](04-mic-e.md#3-destination-address) reports for the same fault (README section 3, One fault, two rules). | yes | `,` or `line.sep` | p. 22/12; p. 25/13; UAP §1.2 |
-| <a id="addr.call"></a>`addr.call` | Callsign, AX.25 form | 1 to 6 bytes, each `A`–`Z` or a digit. | yes, in the AX.25 form | `-`, `*`, `,`, `>` or `:` | p. 22/12; p. 107/83; UAP §1 |
-| <a id="addr.ssid"></a>`addr.ssid` | SSID, AX.25 form | `-` then `1`–`9`, or `1` followed by `0`–`5`. SSID 0 is written by leaving the suffix out. **[agreed]** After an `addr.call`, the suffix `-0`, or `-0` and one more digit (`N0CALL-0`, `N0CALL-01`), is a wrong text form of an address that AX.25 can carry: this rule gives `syntax`, and the address is not `addr.is`. Two digits above 15 give `value` ([amb.addr.form](#amb.addr.form)). | no | `*`, `,`, `>` or `:` | p. 107/83; UAP §1.1 |
-| <a id="addr.is"></a>`addr.is` | Address only APRS-IS can carry | Not in the AX.25 form and not an `addr.call` with a suffix that `addr.ssid` reports, but 1 to 9 bytes, each 0x21–0x7E other than `>`, `,`, `:` and `*`. One token for the whole address; gives `is-only`. Read only at a source: `addr.src`, and the first address of a [`tp.aea`](#tp.aea) header; [`path.is`](#path.is) and [`tp.src`](#tp.src) have rules of their own ([amb.addr.form](#amb.addr.form)). Anything else at the source gives `syntax`, at the first byte outside the set, or at the tenth byte of a longer name (README section 3, Placing a finding). At the other address positions an address not in the AX.25 form gives `syntax` on the rule of the position instead; an earlier draft read it as `addr.is` at any position. | — | the `>` after the source | p. 108/84; UAP ch. 4 |
+| <a id="addr.src"></a>`addr.src` | Source address | `addr.call` with optional `addr.ssid` (as `src.ssid`), or `addr.is`. Empty gives `syntax`. | yes | `line.gt` | p. 22/12; p. 107/83; p. 108/84 |
+| <a id="addr.dest"></a>`addr.dest` | Destination address | `addr.call` with optional `addr.ssid` (as `dest.ssid`); its class is given by section 5. Any other address gives `syntax` on this rule at its first byte that does not fit; empty gives `syntax`; a trailing `*` gives `syntax` at the `*`, a `residue` below the token. On a Mic-E destination that finding is not given at a byte that [04-mic-e section 3](04-mic-e.md#3-destination-address) reports, the more specific rule. | yes | `,` or `line.sep` | p. 22/12; p. 107/83 |
+| <a id="addr.call"></a>`addr.call` | Callsign | 1 to 6 bytes, each `A`–`Z` or a digit. | yes | `-`, `*`, `,`, `>` or `:` | p. 22/12; p. 107/83 |
+| <a id="addr.ssid"></a>`addr.ssid` | SSID | `-` then 1 to 15; SSID 0 is not written. `-0` or `-00` gives `syntax`; `-01` to `-09` gives `unstated` ([amb.addr.form](#amb.addr.form)); two digits above 15 give `value`. At a source an address that gives `syntax` or `value` here is `addr.is` instead. | no | `*`, `,`, `>` or `:` | p. 107/83 |
+| <a id="addr.is"></a>`addr.is` | Name at a source | At `addr.src` and the first address of [`tp.aea`](#tp.aea), an address not read above: 1 to 9 bytes 0x20–0x7E other than `>` (a `:` cannot occur, [amb.line.split](#amb.line.split)). One token, `is-only`. Anything else gives `syntax` at the first byte outside the set or at the tenth byte. | — | `>` | p. 108/84 |
 
 ## 4. The path
 
-The path is the list of entries after the destination. APRS12c allows 0
-to 8 digipeater addresses (p. 22/12, p. 107/83). On APRS-IS the servers
-append a q-construct and the name of the entry point after the RF path
-(UAP ch. 4); APRS12c names the q-construct only once and refers the reader
-to the APRS-IS documentation (p. 155/131). Those entries are classified,
-not rejected.
-
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|
-| <a id="path.sep"></a>`path.sep` | Entry separator | `,`, 1 byte, before each entry. Two adjacent separators, or one directly before `line.sep`, leave an empty entry: `syntax`, at the separator itself, as an exception to the placing rule of [README section 3](README.md#3-tokenizer-model). **[agreed]** An empty entry counts toward the limit of 8 like any other; an earlier draft left it out. | per entry | 1 byte | p. 107/83; UAP §5.6 |
-| <a id="path.digi"></a>`path.digi` | Digipeater entry | `addr.call` with optional `addr.ssid`, then optional `path.used`. Any other address gives `syntax` on this rule at its first byte that does not fit the AX.25 form ([amb.addr.form](#amb.addr.form); README section 3, Placing a finding); an earlier draft read it as `addr.is`. Every entry before `path.q`, or every entry if there is none. **[agreed]** More than 8 is a list with too many fields: `syntax` against `path.digi` at the separator before the ninth ([README section 3](README.md#3-tokenizer-model), Kinds by situation). An earlier draft gave `value` at the ninth entry. | no | `,` or `line.sep` | p. 22/12; p. 107/83 |
-| <a id="path.used"></a>`path.used` | Used marker | `*` directly after the address of a `path.digi`. It marks the entry heard; all entries before it count as used. **[agreed]** Every `*` after the first among the `path.digi` entries gives `syntax` at that `*`, one finding per extra `*` ([amb.path.used](#amb.path.used)). | no | 1 byte | p. 107/83; p. 20/10; UAP §1.3.1 |
-| <a id="path.obsolete"></a>`path.obsolete` | Obsolete alias | A `path.digi` whose callsign is exactly `RELAY`, `TRACE` or `WIDE` (no digit), with any SSID. Gives `obsolete`. | no | — | p. 20/10; p. 155/131; UAP §5.5 |
-| <a id="path.nogate"></a>`path.nogate` | Gating block | A `path.digi` whose callsign is `NOGATE` or `RFONLY`. Classified; no finding, wherever it stands. | no | — | p. 110/86 |
-| <a id="path.q"></a>`path.q` | q-construct | `q`, `A`, then one byte `A`–`Z` or `a`–`z`, as a whole entry, no `*`. The first such entry. **[proposed]** An entry `qA?*` is not `path.q`; before the first q-construct it is read as `path.digi`. Gives `is-only` ([amb.path.q](#amb.path.q)). **[agreed]** The code is checked against the APRS-IS q-construct definition (`APRS-IS q`, `APRS-IS q-alg`): its list of codes is closed, so a code outside it gives `value`; `qAZ`, which a server drops, gives `syntax` on the feed; `qAX`, which the definition deprecates, gives `obsolete`; `qAC` gives `syntax` unless the path before it is exactly `TCPIP*`; every code is followed by a callsign, and every code but `qAI` by one only, so a missing one gives `syntax` at the end of the entry and a second one `syntax` against `path.is` at its separator; a callsign repeated after the construct gives `syntax` against `path.is` at its first byte. | no | `,` or `line.sep` | p. 155/131; UAP ch. 4; APRS-IS q; APRS-IS q-alg |
-| <a id="path.is"></a>`path.is` | Entry after the q-construct | 1 or more bytes, each 0x21–0x7E other than `,` and `:`; a byte outside that set gives `syntax` at that byte (README section 3, Placing a finding). AX.25 form gives no finding; anything else gives `is-only`. **[proposed]** The text-form SSID rules of `addr.ssid` are not applied here: `N0CALL-0` is simply not in the AX.25 form. A trailing `*` gives `unstated`. | no | `,` or `line.sep` | UAP ch. 4 |
+| <a id="path.sep"></a>`path.sep` | Entry separator | `,` before each entry. An empty entry gives `syntax` at its separator and counts toward the 8 of `path.digi`. | per entry | 1 byte | p. 107/83 |
+| <a id="path.digi"></a>`path.digi` | Digipeater entry | `addr.call` with optional `addr.ssid`, then optional `path.used`; every entry before `path.q`. Any other address gives `syntax` on this rule at its first byte that does not fit. More than 8 entries give `syntax` at the separator before the ninth. | no | `,` or `line.sep` | p. 22/12; p. 107/83 |
+| <a id="path.used"></a>`path.used` | Heard marker | `*` directly after a `path.digi` address: the digipeater heard. One per path; each further `*` gives `syntax` at that `*`. | no | 1 byte | p. 107/83 |
+| <a id="path.obsolete"></a>`path.obsolete` | Obsolete alias | A `path.digi` whose callsign is `RELAY`, `TRACE` or `WIDE`, any SSID. Gives `obsolete`. | no | — | p. 20/10; p. 155/131 |
+| <a id="path.nogate"></a>`path.nogate` | Gating block | A `path.digi` whose callsign is `NOGATE` or `RFONLY`. No finding. | no | — | p. 110/86 |
+| <a id="path.q"></a>`path.q` | q-construct | The first entry that is `q`, `A` and one letter, without `*`; a `qA?*` entry is a `path.digi`. Gives `is-only`. Checked against the APRS-IS definition that p. 155/131 names (`APRS-IS q`, `APRS-IS q-alg`): a code outside its list gives `value`; `qAX`, deprecated, gives `obsolete`; `qAZ`, and `qAC` unless the path before it is exactly `TCPIP*`, which the algorithm rejects, give `syntax`; a missing call after the code gives `syntax` at the end of the entry; a second call after any code but `qAI` gives `syntax` on `path.is` at its separator; a call repeated after the construct gives `syntax` on `path.is` at its first byte. | no | `,` or `line.sep` | p. 155/131; APRS-IS q; APRS-IS q-alg |
+| <a id="path.is"></a>`path.is` | Entry after the q-construct | 1 or more bytes 0x21–0x7E other than `,` and `:`; another byte gives `syntax`. The AX.25 form gives no finding, any other entry `is-only`, a trailing `*` `unstated` ([amb.path.q](#amb.path.q)). Not counted toward the 8. | no | `,` or `line.sep` | APRS-IS q |
 
 ## 5. Destination classes
 
-APRS12c lists six uses of the destination address (p. 25/13) and does not
-say how to choose between them when an address fits more than one. The
-reading takes them in this order, the identifier that selects Mic-E
-first and the more specific form before the wildcard that covers it
-([amb.dest.class](#amb.dest.class);
-[README section 3](README.md#3-tokenizer-model), Forms that can stand
-at one place); the first that matches is the class,
-and the class is a depth-1 token inside `addr.dest` **[proposed]** that
-covers the callsign; a [`dest.ssid`](#dest.ssid) token follows it when
-there is an SSID:
-
-1. `dest.mice` when the data type identifier is a Mic-E one (0x1C, 0x1D,
-   `'` or `` ` ``), whatever the address holds.
-2. `dest.aprs`.
-3. `dest.tocall`.
-4. `dest.symnn`.
-5. `dest.sym`.
-6. `dest.generic`.
-7. `dest.grid`.
-8. `dest.altnet`.
-
-**[agreed]** A destination that takes class 3 or 6 and also matches
-`dest.grid`, such as `AP51WX`, is not a locator and gives no finding;
-neither does a destination of locator shape with a letter outside the
-Maidenhead ranges ([amb.grid.range](03-position.md#amb.grid.range)),
-by the rule for forms recognised by shape alone
-([README section 3](README.md#3-tokenizer-model)). Earlier drafts gave
-both an `ambiguous` finding at the first byte of `addr.dest`
-([amb.dest.class](#amb.dest.class)). **[agreed]** A
-locator-shaped destination with lower-case letters is not in the AX.25
-form: it gives `syntax` on `addr.dest`, by reading (c) of
-[amb.addr.form](#amb.addr.form), and is not `dest.grid`; it falls to
-the next class without a finding of its own. An earlier draft said that
-only APRS-IS can carry such a destination. For a third-party packet the
-outer destination is classified with the outer data type identifier and
-the inner one with the inner identifier.
-
-P. 152/128 lets a Maidenhead locator be received in lower case
-([amb.grid.case](03-position.md#amb.grid.case)), but that allowance
-does not reach a destination: the destination is an address first, and
-an address in lower case is already outside the AX.25 form, with its
-finding on `addr.dest`; the class is then chosen by the bytes as
-written (below), and [`dest.grid`](#dest.grid) takes upper case only
-(the paragraph above; [amb.addr.form](#amb.addr.form), reading (c)).
-
-A destination not in the AX.25 form, such as that lower-case one, is
-classified by the bytes as written, and the address gives its `syntax`
-finding on `addr.dest` or `tp.dest` beside the class
-([amb.addr.form](#amb.addr.form)). An earlier draft gave it `is-only`.
-For `dest.mice` that finding is not given at a byte that a rule of
-[04-mic-e section 3](04-mic-e.md#3-destination-address) reports for
-the same fault, as the more specific rule
-([README section 3](README.md#3-tokenizer-model), One fault, two
-rules). **[agreed]** A Mic-E destination is divided at its first `'-'`
-whatever its case, as decided by the author: the bytes before it are
-the `dest.mice` token, and the bytes from it are `dest.ssid`, read as
-on any address, with the findings of [`addr.ssid`](#addr.ssid) for a
-`-0`, a leading zero or a value above 15, and otherwise `syntax` on the
-address field at the first byte of the SSID that does not fit. So
-`s4tpwr-3` is read as `S4TPWR-3` is, apart from the case findings of
-04-mic-e, and `s4tpwr-16` gives `value` on `addr.ssid` as `S4TPWR-16`
-does. An earlier draft took the whole address as the class token when
-it was not in the AX.25 form, so a valid SSID made the callsign part
-too long for 04-mic-e.
+The class is a depth-1 token inside `addr.dest` covering the callsign,
+followed by a `dest.ssid` token when there is an SSID. A destination
+not in the AX.25 form is classified by its bytes as written. The first
+class that matches, in this order, is taken: the identifier first, then
+each form before the wider one that also covers it
+([amb.dest.class](#amb.dest.class)). For a third-party packet the outer
+destination is classified with the outer identifier and the inner one
+with the inner identifier.
 
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|
-| <a id="dest.mice"></a>`dest.mice` | Mic-E destination | Six bytes and the SSID, read by [04-mic-e.md](04-mic-e.md), including what the SSID means there. | when the identifier is Mic-E | end of the callsign | p. 26/12; ch. 10 |
-| <a id="dest.aprs"></a>`dest.aprs` | Obsolete generic | Exactly `APRS`. Gives `obsolete`. | — | end of the callsign | p. 29/19; p. 107/83 |
-| <a id="dest.tocall"></a>`dest.tocall` | Software or device identifier | `AP` then 1 to 4 bytes, each `A`–`Z` or a digit. `APZ` + anything is the experimental block. **[agreed]** The identifier is looked up in the aprs-deviceid register, `3rdparty/aprs-deviceid/tocalls.yaml` at commit `c50d026` (2026-10-19), with that register's documented lookup: an exact entry first, then the wildcard entry with the longest literal match. An identifier the register does not list gives `unstated` at the first byte of `addr.dest`, since the register is open. The register, not the document, is the list, because new devices appear faster than the document is revised ([README section 3](README.md#3-tokenizer-model), Kinds by situation). An earlier draft did not check the register, and left open in section 11 whether a later layer would (UAP §5.3 shows unregistered identifiers). | — | end of the callsign | p. 25/13; UAP §1.2, §5.3; aprs-deviceid `tocalls.yaml` at `c50d026` |
-| <a id="dest.symnn"></a>`dest.symnn` | Numbered symbol | `GPSC` (primary table) or `GPSE` (alternate table), then two digits. The number is the symbol code byte minus 0x20, so `01` to `94`; `00` or `95`–`99` gives `value`. No overlay. | — | end of the callsign | p. 27/17; p. 85/65; p. 126/102; p. 139/115 to p. 141/117 |
-| <a id="dest.sym"></a>`dest.sym` | Lettered symbol | `GPS`, `SPC` or `SYM`, then the two bytes `xy` of the table below, then an optional overlay `z`: a digit or `A`–`Z`. On RF a missing overlay is a space; the text form shows 5 bytes ([amb.dest.symfill](#amb.dest.symfill)). An overlay on a primary-table `xy` gives `value`. Whether an alternate symbol is overlay-capable is not checked ([amb.sym.overlay](02-fields.md#amb.sym.overlay)). | — | end of the callsign | p. 27/17; p. 85/65; p. 126/102; p. 139/115 to p. 141/117 |
-| <a id="dest.generic"></a>`dest.generic` | Generic beacon address | One of the prefixes `ALL`, `AP`, `CQ`, `DF`, `DGPS`, `DRILL`, `DX`, `GPS`, `ID`, `JAVA`, `MAIL`, `MICE`, `QST`, `QTH`, `RTCM`, `SKY`, `SPACE`, `SPC`, `SYM`, `TEL`, `TEST`, `TLM`, `WX`, extended by zero or more bytes `A`–`Z` or digits to at most 6 bytes; or exactly `BEACON`. | — | end of the callsign | p. 29/19 |
-| <a id="dest.grid"></a>`dest.grid` | Locator destination | The 6-byte form of [`grid.loc`](03-position.md#grid.loc), upper case only, every letter in its Maidenhead range ([amb.grid.range](03-position.md#amb.grid.range)). Gives `obsolete`. | — | end of the callsign | p. 28/18; p. 42/26 |
-| <a id="dest.altnet"></a>`dest.altnet` | Alternate net | Any destination not taken above, including callsigns and digipeater aliases. No finding. | — | end of the callsign | p. 29/19; UAP §5.2 |
-| <a id="dest.ssid"></a>`dest.ssid` | Destination SSID | The `addr.ssid` of the destination. Non-zero on any class other than `dest.mice` gives `obsolete` ([amb.dest.ssid](#amb.dest.ssid)). Not given when `addr.ssid` already reports the suffix (`syntax` or `value`) (README section 3, Precedence). | no | — | p. 22/12; p. 25/13; p. 27/17; p. 29/19; UAP §1.2.1 |
+| <a id="dest.mice"></a>`dest.mice` | Mic-E destination | Any destination when the identifier is 0x1C, 0x1D, `'` or `` ` ``; read by [04-mic-e.md](04-mic-e.md). One not in the AX.25 form is divided at its first `-`: the callsign part, then `dest.ssid` with the findings of `addr.ssid`. | with a Mic-E identifier | end of the callsign | p. 26/12 |
+| <a id="dest.aprs"></a>`dest.aprs` | Obsolete generic | Exactly `APRS`. Gives `obsolete`. | — | end of the callsign | p. 29/19 |
+| <a id="dest.tocall"></a>`dest.tocall` | Device identifier | `AP` and 1 to 4 bytes `A`–`Z` or digits, looked up in the register that p. 25/13 names, `3rdparty/aprs-deviceid/tocalls.yaml` at `c50d026`, with its own lookup (exact entry, then the longest wildcard). An identifier it does not list gives `unstated` at the first byte of `addr.dest`. | — | end of the callsign | p. 25/13 |
+| <a id="dest.symnn"></a>`dest.symnn` | Numbered symbol | `GPSC` or `GPSE` and two digits, `01` to `94`; another number gives `value`. | — | end of the callsign | p. 27/17; p. 126/102; p. 139/115–p. 141/117 |
+| <a id="dest.sym"></a>`dest.sym` | Lettered symbol | `GPS`, `SPC` or `SYM`, then a pair `xy` of the table below, then an optional overlay, a digit or `A`–`Z`. The space that fills an address without overlay is not written in the text form, so 5 bytes mean no overlay. An overlay on a primary-table pair gives `value`. | — | end of the callsign | p. 27/17; p. 107/83; p. 126/102; p. 139/115–p. 141/117 |
+| <a id="dest.generic"></a>`dest.generic` | Generic address | `ALL`, `AP`, `CQ`, `DF`, `DGPS`, `DRILL`, `DX`, `GPS`, `ID`, `JAVA`, `MAIL`, `MICE`, `QST`, `QTH`, `RTCM`, `SKY`, `SPACE`, `SPC`, `SYM`, `TEL`, `TEST`, `TLM` or `WX`, extended by `A`–`Z` or digits to at most 6 bytes; or `BEACON`. | — | end of the callsign | p. 29/19 |
+| <a id="dest.grid"></a>`dest.grid` | Locator | The 6-byte [`grid.loc`](03-position.md#grid.loc), upper case, every letter in its Maidenhead range ([amb.grid.range](03-position.md#amb.grid.range)). Gives `obsolete`. | — | end of the callsign | p. 28/18 |
+| <a id="dest.altnet"></a>`dest.altnet` | Alternate net | Any other destination. No finding. | — | end of the callsign | p. 29/19 |
+| <a id="dest.ssid"></a>`dest.ssid` | Destination SSID | The `addr.ssid` of the destination. No finding of its own ([amb.dest.ssid](#amb.dest.ssid)). | no | — | p. 22/12; p. 25/13; p. 27/17; p. 29/19 |
 
-The two bytes `xy` of `dest.sym`, as given by Appendix 2 (p. 139/115 to
-p. 141/117), follow a fixed pattern by symbol code range. The second byte
-steps through the listed range in the same order as the symbol code:
+The pairs `xy` of `dest.sym`, derived from Appendix 2 (p. 139/115 to
+p. 141/117): the second byte steps through the range in the order of
+the symbol code.
 
 | Symbol code | Primary-table `xy` | Alternate-table `xy` |
 |---|---|---|
-| `!` to `/` (0x21–0x2F) | `B` + (`B` to `P`) | `O` + (`B` to `P`) |
-| `0` to `9` | `P` + the same digit | `A` + the same digit |
-| `:` to `@` (0x3A–0x40) | `M` + (`R` to `X`) | `N` + (`R` to `X`) |
-| `A` to `Z` | `P` + the same letter | `A` + the same letter |
-| `[` to `` ` `` (0x5B–0x60) | `H` + (`S` to `X`) | `D` + (`S` to `X`) |
-| `a` to `z` | `L` + the same letter in upper case | `S` + the same letter in upper case |
-| `{` to `~` (0x7B–0x7E) | `J` + (`1` to `4`) | `Q` + (`1` to `4`) |
-
-A `GPS`, `SPC` or `SYM` destination whose bytes 4 and 5 are not a pair
-from this table is `dest.generic`.
+| `!` to `/` | `B` + (`B` to `P`) | `O` + (`B` to `P`) |
+| `0` to `9` | `P` + the digit | `A` + the digit |
+| `:` to `@` | `M` + (`R` to `X`) | `N` + (`R` to `X`) |
+| `A` to `Z` | `P` + the letter | `A` + the letter |
+| `[` to `` ` `` | `H` + (`S` to `X`) | `D` + (`S` to `X`) |
+| `a` to `z` | `L` + the letter in upper case | `S` + the letter in upper case |
+| `{` to `~` | `J` + (`1` to `4`) | `Q` + (`1` to `4`) |
 
 ## 6. Source SSID
 
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|
-| <a id="src.ssid"></a>`src.ssid` | Source SSID | The `addr.ssid` of `addr.src`, 1 to 15. APRS12c gives each value a fixed primary-table icon for stand-alone trackers that have no other way to send a symbol (p. 127/103); the symbol in the information field comes first, then the destination symbol, then this one. P. 85/65 applies the same two fallbacks, a symbol destination and source SSID 11 for a balloon, to raw and positionless weather stations ([06-weather.md](06-weather.md#1-scope)). The tokenizer records the SSID and reports nothing ([amb.src.ssid](#amb.src.ssid)). | no | — | p. 22/12; p. 29/19; p. 85/65; p. 124/100; p. 127/103; p. 128/104 |
+| <a id="src.ssid"></a>`src.ssid` | Source SSID | The `addr.ssid` of `addr.src`. Its meaning, an icon for trackers without another symbol or a station type, is a value; no finding ([amb.src.ssid](#amb.src.ssid)). | no | — | p. 22/12; p. 29/19; p. 127/103; p. 128/104 |
 
 ## 7. Data type identifier
 
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|
-| <a id="dti"></a>`dti` | Data type identifier | Byte 0 of `line.info`, and only byte 0 ([amb.dti.offset](#amb.dti.offset)). Selects the format by the table below. The `dti` rules give the dispatch and the findings of the table; the token of byte 0 carries the identifier rule of the most specific format the packet is classified as, such as [`pos.dti`](03-position.md#pos.dti), [`wx.pos`](06-weather.md#wx.pos) or [`tp.dti`](#tp.dti), listed below the table ([README section 3](README.md#3-tokenizer-model)). | yes | 1 byte | p. 23/13; p. 31/17; p. 154/130 |
-| <a id="dti.unknown"></a>`dti.unknown` | Undispatched field | The whole of `line.info` when the identifier selects no format and neither obsolete form below the table matches. Verdict `unknown-format`; the finding is given in the table below ([amb.dti.undefined](#amb.dti.undefined)). **[agreed]** This holds inside a third-party payload too: the data type of the packet cannot be determined, and the verdict of the whole line is `unknown-format`. A `}` field whose inner header has no `:` has no inner field to read, and gets the same verdict under [`tp.sep`](#tp.sep). | — | end of `line.info` | p. 31/17; p. 123/99 |
-
-The dispatch, by byte value of `dti`. "Class" is the document's own
-category; "Read in" is where the rest of the field is tokenized, and
-where the identifier rule that the byte-0 token carries is defined.
-"Finding at `dti`" is the finding the `dti` rules give at byte 0.
+| <a id="dti"></a>`dti` | Data type identifier | Byte 0 of `line.info`, and only byte 0 (p. 23/13, confirmed by p. 154/130; [err.dti.x1j](#err.dti.x1j)). Selects the format by the table below and gives its findings. The token of byte 0 carries the identifier rule of the format the packet is classified as. | yes | 1 byte | p. 23/13; p. 31/17 |
+| <a id="dti.unknown"></a>`dti.unknown` | Undispatched field | The whole of `line.info` when byte 0 selects no format and no obsolete form below matches. Verdict `unknown-format`, also inside a third-party payload ([amb.dti.undefined](#amb.dti.undefined)). | — | end of `line.info` | p. 31/17; p. 123/99 |
 
 | Byte | Class | Read in | Finding at `dti` |
 |---|---|---|---|
-| 0x00–0x1B | not listed | `dti.unknown` | `unstated` |
-| 0x1C, 0x1D | Mic-E, Rev 0 beta units | [04-mic-e.md](04-mic-e.md) | as 04 decides |
-| 0x1E–0x20 | not listed | `dti.unknown` | `unstated` |
-| `!` | position, no timestamp, no messaging; Ultimeter 2000 when byte 1 is `!` | [03-position.md](03-position.md); [06-weather.md](06-weather.md) for `!!` ([amb.dti.shared](#amb.dti.shared)) | `discouraged` for `!!` (p. 82/62); none otherwise |
-| `"`, `(`, `-`, `\`, `]`, `^` | unused | `dti.unknown` | `unstated` |
-| `#`, `*` | Peet Bros U-II weather station | [06-weather.md](06-weather.md) | `discouraged` (p. 82/62) |
-| `$` | raw GPS (NMEA); Ultimeter 2000 when the field starts `$ULTW` | [03-position.md](03-position.md); [06-weather.md](06-weather.md) for `$ULTW` ([amb.dti.shared](#amb.dti.shared)) | `discouraged` for NMEA (p. 52/34) and for `$ULTW` (p. 82/62) |
-| `%` | Agrelo DFJr / MicroFinder | [03-position.md](03-position.md) | none |
-| `&`, `+`, `.` | reserved (map feature, shelter data, space weather) | `dti.unknown` | `unstated` |
-| `'`, `` ` `` | Mic-E | [04-mic-e.md](04-mic-e.md) | none |
+| 0x1C, 0x1D, `'`, `` ` `` | Mic-E | [04-mic-e.md](04-mic-e.md) | as 04 gives |
+| `!` | position without timestamp; Ultimeter 2000 when byte 1 is `!` | [03-position.md](03-position.md); [06-weather.md](06-weather.md) for `!!` | `discouraged` for `!!` (p. 82/62) |
+| `#`, `*` | Peet Bros U-II ([err.dti.star](#err.dti.star)) | [06-weather.md](06-weather.md) | `discouraged` (p. 82/62) |
+| `$` | raw GPS; Ultimeter 2000 when the field starts `$ULTW` ([amb.dti.shared](#amb.dti.shared)) | [03-position.md](03-position.md); [06-weather.md](06-weather.md) for `$ULTW` | `discouraged` (p. 52/34; p. 82/62) |
+| `%` | Agrelo DF | [03-position.md](03-position.md) | none |
 | `)` | item | [05-object-item.md](05-object-item.md) | `discouraged` (p. 77/59) |
 | `,` | invalid or test data | [09-other.md](09-other.md) | none |
-| `/`, `@` | position with timestamp, without and with messaging | [03-position.md](03-position.md) | none |
-| `0`–`9`, `A`–`S`, `U`–`Z`, `a`–`z`, `\|`, `~` | do not use | `dti.unknown` | `syntax` |
-| `:` | message, bulletin, announcement, directed query, telemetry definition | [08-message.md](08-message.md) | none |
+| `/`, `@`, `=` | position | [03-position.md](03-position.md) | none |
+| `:` | message and its kinds | [08-message.md](08-message.md) | none |
 | `;` | object | [05-object-item.md](05-object-item.md) | none |
-| `<` | station capabilities | [09-other.md](09-other.md) | none |
-| `=` | position, no timestamp, with messaging | [03-position.md](03-position.md) | none |
-| `>` | status | [09-other.md](09-other.md) | none |
-| `?` | query | [09-other.md](09-other.md) | none |
+| `<`, `>`, `?`, `{` | capabilities, status, query, user-defined | [09-other.md](09-other.md) | none |
 | `T` | telemetry | [07-telemetry.md](07-telemetry.md) | none |
 | `[` | Maidenhead locator beacon | [03-position.md](03-position.md) | `obsolete` |
-| `_` | weather report without position | [06-weather.md](06-weather.md) | `discouraged` (p. 83/63) |
-| `{` | user-defined | [09-other.md](09-other.md) | none |
+| `_` | weather without position | [06-weather.md](06-weather.md) | `discouraged` (p. 83/63) |
 | `}` | third-party traffic | section 8 | none |
-| 0x7F–0xFF | not listed | `dti.unknown` | `unstated` |
+| `"`, `(`, `-`, `\`, `]`, `^`, `&`, `+`, `.` | unused or reserved | `dti.unknown` | `unstated` |
+| `0`–`9`, `A`–`S`, `U`–`Z`, `a`–`z`, `\|`, `~` | do not use | `dti.unknown` | `syntax` |
+| 0x00–0x1B, 0x1E–0x20, 0x7F–0xFF | not listed | `dti.unknown` | `value` |
 
-The `discouraged` findings for raw and positionless weather are those of
-[06-weather.md section 2](06-weather.md#2-recognition), given here at
-byte 0. The finding for an item is that of
-[05-object-item section 3](05-object-item.md#3-item-report), on
-[`item.dti`](05-object-item.md#item.dti); an earlier draft of this
-table showed none for `)`. A compressed object gets its finding on
-`obj.pos`, not here (05 section 2). These findings are given whatever
-the q-construct in the path shows (05 section 2).
-
-The rule carried by the byte-0 token is the identifier rule of the most
-specific format the packet is classified as. It is assigned once
-classification is complete, so it can depend on bytes after byte 0: on
-the symbol code for weather, and on the addressee and text for a `:`
-packet ([README section 3](README.md#3-tokenizer-model), Output). The
-identifier rules are:
+The identifier rules that the byte-0 token carries:
 
 | Byte | Identifier rules |
 |---|---|
 | 0x1C, 0x1D, `'`, `` ` `` | [`mice.dti`](04-mic-e.md#mice.dti) |
 | `!`, `=`, `/`, `@` | [`pos.dti`](03-position.md#pos.dti); [`wx.pos`](06-weather.md#wx.pos) for a weather report; [`wx.raw.ultlog.dti`](06-weather.md#wx.raw.ultlog.dti) for `!!` |
 | `#`, `*` | [`wx.raw.peet`](06-weather.md#wx.raw.peet) |
-| `$` | [`nmea.dti`](03-position.md#nmea.dti); [`wx.raw.ultpkt.dti`](06-weather.md#wx.raw.ultpkt.dti) for `$ULTW` |
+| `$` | [`nmea.dti`](03-position.md#nmea.dti), also for a `$ULTW` field read as NMEA ([amb.dti.shared](#amb.dti.shared)); [`wx.raw.ultpkt.dti`](06-weather.md#wx.raw.ultpkt.dti) for any other `$ULTW` |
 | `%` | [`df.agrelo.dti`](03-position.md#df.agrelo.dti) |
 | `)` | [`item.dti`](05-object-item.md#item.dti) |
 | `,` | [`inv.dti`](09-other.md#inv.dti) |
-| `:` | [`msg.dti`](08-message.md#msg.dti) for messages, acknowledgements and rejections; [`bln.dti`](08-message.md#bln.dti); [`nws.dti`](08-message.md#nws.dti); [`tlm.def.dti`](07-telemetry.md#tlm.def.dti); [`qry.dir.dti`](09-other.md#qry.dir.dti) ([08 section 2.1](08-message.md#21-kind-of-packet)) |
+| `:` | [`msg.dti`](08-message.md#msg.dti), [`bln.dti`](08-message.md#bln.dti), [`nws.dti`](08-message.md#nws.dti), [`tlm.def.dti`](07-telemetry.md#tlm.def.dti) or [`qry.dir.dti`](09-other.md#qry.dir.dti) ([08 section 2.1](08-message.md#21-kind-of-packet)) |
 | `;` | [`obj.dti`](05-object-item.md#obj.dti); [`wx.obj`](06-weather.md#wx.obj) for a weather report |
 | `<` | [`cap.dti`](09-other.md#cap.dti) |
 | `>` | [`stat.dti`](09-other.md#stat.dti) |
@@ -254,916 +144,72 @@ identifier rules are:
 | `{` | [`udf.dti`](09-other.md#udf.dti) |
 | `}` | [`tp.dti`](#tp.dti) |
 
-A field read as `dti.unknown` has no identifier rule.
-
-Packets that fit no format are, per p. 123/99, non-APRS beacons that a
-program can show as status. The tokenizer does not: they stay
-`dti.unknown`, since the data type cannot be determined
-([README section 3](README.md#3-tokenizer-model), Output;
-[amb.dti.undefined](#amb.dti.undefined)).
-
-An assigned identifier is a byte whose row in the dispatch table names
-a file to read it. Every other byte, whether not listed, unused,
-reserved or "do not use", is not assigned. **[agreed]** Before a field
-whose byte 0 is not assigned becomes `dti.unknown`, two obsolete forms
-without an identifier are tried, in this order: the object of
-[`obj.obsolete`](05-object-item.md#obj.obsolete), then the bulletin of
-[`bln.obsolete`](08-message.md#bln.obsolete). When one matches, the
-field is read by that rule, which gives `obsolete`; that finding
-replaces the finding of the table above, and the verdict is not
-`unknown-format`.
-
-Token structure. For an obsolete object there is no identifier byte:
-the `obj.obsolete` token covers the whole field at depth 0, and the
-object field tokens of
-[05-object-item section 2](05-object-item.md#2-object-report) lie one
-level deeper. For an obsolete bulletin there is no identifier byte
-either: the `bln.obsolete` token covers the whole field at depth 0, with
-nothing tokenized inside it, since the document gives no layout for it
-([amb.bln.obsolete](08-message.md#amb.bln.obsolete)). The inside of each
-is read as far as the document describes it
-([README section 3](README.md#3-tokenizer-model), Output; Obsolete and
-nested forms). An earlier draft said only that byte 0 is part of the
-first token of the rule that matched.
+Before a field whose byte 0 selects no format becomes `dti.unknown`,
+two obsolete forms without an identifier are tried, in this order: the
+object of [`obj.obsolete`](05-object-item.md#obj.obsolete), then the
+bulletin of [`bln.obsolete`](08-message.md#bln.obsolete). A match is
+read by that rule, whose token covers the whole field at depth 0 and
+whose `obsolete` finding replaces the finding at `dti`. Where byte 0
+selects a format other than the item and the object (`)` and `;`), the
+obsolete object is taken instead only when it matches and that format
+also reads the field with no `syntax` or `value` finding, with
+`ambiguous` on `obj.obsolete` at offset 0
+([amb.obj.obsolete](05-object-item.md#amb.obj.obsolete)).
 
 ## 8. Third-party payloads
 
-A `}` field carries a whole packet from another network: an inner address
-header in TNC-2 text, then the original information field unchanged
-(p. 107/83 to p. 110/86). The inner header has its own source and
-destination, optionally the original path, then the third-party network
-identifier and the receiving gateway marked used. The inner information
-field is tokenized from `dti` again, one depth level down.
+A `}` field carries an inner TNC-2 header and the original information
+field unchanged (p. 107/83 to p. 110/86). The inner field is read from
+`dti` again, one depth level down.
 
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|
-| <a id="tp.dti"></a>`tp.dti` | Identifier | `}`, 1 byte: the byte-0 token of this field carries `tp.dti`. | yes | 1 byte | p. 31/17; p. 108/84 |
-| <a id="tp.src"></a>`tp.src` | Original source | `addr.call` with optional `addr.ssid`; or 1 to 9 bytes, each 0x21–0x7E other than `>`, `:` and `*`, which gives `is-only`. A `*` gives `syntax` ([amb.tp.header](#amb.tp.header)). Anything else gives `syntax` at the first byte outside the set, or at the tenth byte of a longer name (README section 3, Placing a finding). | yes | `>` | p. 108/84; p. 109/85 |
-| <a id="tp.gt"></a>`tp.gt` | Source terminator | `>`, 1 byte. | yes | 1 byte | p. 108/84 |
-| <a id="tp.dest"></a>`tp.dest` | Original destination | As `addr.dest`, classified by section 5 with the inner identifier, including a `*` at its end. An address not in the AX.25 form gives `syntax` on this rule ([amb.addr.form](#amb.addr.form)). | yes | `,` | p. 108/84 |
-| <a id="tp.path"></a>`tp.path` | Retained original path | Zero or more entries, each `,` then an address as `path.digi`, `path.q` or `path.is`, without `*`. A `*` in an entry and the bytes after it are a `residue` below the token, and the finding that the `*` gives is placed at the `*`, unless the address before it already gives `syntax` (README section 3, Output; Placing a finding). **[proposed]** The token includes the `,`; the entry is read one level below it under the rules of section 4, including the limit of 8 and the obsolete and gating classes. A `*` here gives `syntax` ([amb.tp.header](#amb.tp.header)), so `path.used` does not apply. | no | the `,` before `tp.net` | p. 108/84; p. 138/114 |
-| <a id="tp.net"></a>`tp.net` | Network identifier | `,` then an address in the AX.25 form (`TCPIP` in the examples), without `*`. **[agreed]** Any other address gives `syntax` on this rule at its first byte that does not fit that form ([amb.addr.form](#amb.addr.form)); an earlier draft also took `addr.is` here. A `*` gives `syntax` at the `*`, unless the address before it already gives `syntax`; the `*` and the bytes after it are a `residue` below the token (README section 3, Output; Placing a finding). An empty one is a missing field and gives `syntax` where its first byte was expected ([README section 3](README.md#3-tokenizer-model), Kinds by situation). | yes | `,` | p. 108/84 |
-| <a id="tp.gate"></a>`tp.gate` | Receiving gateway | `,` then `addr.call` with optional `addr.ssid`, then `*`. A missing `*`, or an address not in the AX.25 form, gives `syntax` ([amb.tp.header](#amb.tp.header)): one finding, at the first byte that does not fit the AX.25 form, or where the `*` was expected (README section 3, Placing a finding). An earlier draft gave both defects a finding, the address one at its first byte. It is the last entry of the inner header. | yes | `tp.sep` | p. 108/84; p. 109/85 |
-| <a id="tp.sep"></a>`tp.sep` | Inner header end | `:`, the first `:` after `tp.dti`. **[agreed]** A `}` field with no `:` after `tp.dti` gives `syntax` on this rule at the end of the field, where the `:` was expected, and the bytes after `tp.dti` are a `residue`. Its verdict is `unknown-format`, as for a line with no [`line.sep`](#line.sep): without the end of the inner header no carried information field is found, so the data type of the carried packet cannot be determined ([README section 3](README.md#3-tokenizer-model), Output). An earlier draft gave the `syntax` finding only and left the verdict open. | yes | 1 byte | p. 108/84 ([amb.tp.header](#amb.tp.header)) |
-| <a id="tp.info"></a>`tp.info` | Original information field | Tokenized from `dti` at depth + 1, under every rule of this directory. An empty field gives `syntax` under this rule. A further `}` is followed ([amb.tp.nest](#amb.tp.nest)). | yes | end of the enclosing field | p. 108/84; p. 110/86 |
-| <a id="tp.aea"></a>`tp.aea` | AEA-form inner header | Every address separated by `>` instead of `,`: source, any retained digipeaters, the network identifier, the gateway with `*`, then the original destination, then `:`. Gives `obsolete` ([amb.tp.aea](#amb.tp.aea)). **[agreed]** Recognised when there is no `,`, at least four non-empty addresses, and exactly one `*`, at the end of the second-to-last address. Each address is read one level below; the last is classified as a destination by section 5. **[agreed]** The first, the source, may be `addr.is`; any other address not in the AX.25 form gives `syntax` on `tp.aea`, one finding for the field, at the first such byte ([amb.addr.form](#amb.addr.form); README section 3, Placing a finding). On a Mic-E destination that finding is not given at a byte that a rule of [04-mic-e section 3](04-mic-e.md#3-destination-address) reports for the same fault (README section 3, One fault, two rules). | no | `tp.sep` | p. 137/113; p. 138/114 |
-
-## 9. Ambiguities
-
-<a id="amb.line.split"></a>
-### amb.line.split
-
-**Open in the document.** APRS12c shows the TNC-2 header only as a
-diagram ending in `:` (p. 107/83). It does not say whether a `:` can
-occur inside an address, nor what ends the header if it does.
-
-**Readings.** (a) The header ends at the first `:` of the line. (b) It
-ends at the first `:` after a well-formed address list.
-
-**Reading taken.** (a): a delimiter ends a field at its first
-occurrence when the field's content may not hold it
-([README section 3](README.md#3-tokenizer-model), Forms that can stand
-at one place), and no address admits `:`.
-
-**In the bytes.** No address byte set in this file admits `:`, so on a
-line whose header (a) accepts, the first `:` is also the first one after
-a well-formed address list, and (b) ends the header at the same byte.
-The two differ only on lines where (a) already gives `syntax` in the
-header, and that finding alone is given
-([README section 3](README.md#3-tokenizer-model), Precedence). No
-`ambiguous` finding.
-
-**Decoders (read).**
-
-| Decoder | What it does | Where |
-|---|---|---|
-| FAP | Splits at the first `:`. | `parseaprs`, FAP.pm:2460 |
-| Dire Wolf | Splits at the first `:`, then the source at `>`. | `ax25_from_text`, ax25_pad.c:445, 465 |
-| aprslib | Splits at the first `:`. | `parse`, parsing/\_\_init\_\_.py:108 |
-| Xastir | Takes the source up to the first `>`, then the path up to the next `:`. | `decode_ax25_line`, db.c:16505–16510 |
-| aprsc | Header ends at the first `:`; the `>` is looked for in the first 10 bytes only. | `incoming_parse`, incoming.c:905, 914; `CALLSIGNLEN_MAX`, worker.h:48 |
-| javAPRSlib | Source up to the first `>`, header up to the first `:`. | `Parser.parse`, Parser.java:80–90 |
-| aprs-parser-rs | Splits at the first `:`, then at `>`. | `decode_textual`, packet.rs:26–37 |
-| pdn-aprs | Splits at the first `:`. | `decode_tnc2_line`, packet.rs:231 |
-
-**Corpus question.** How many lines have a `:` before their first `>`?
-
-<a id="amb.line.length"></a>
-### amb.line.length
-
-**Open in the document.** The information field is 1 to 256 bytes in the
-frame diagram (p. 22/12). Nothing says what a receiver does with a longer
-one.
-
-**Readings.** (a) Over 256 bytes is malformed. (b) It is a value beyond a
-stated limit. (c) No limit applies on APRS-IS.
-
-**Reading taken.** (b), not (c): the two differ only in how much they
-accept, and the narrowest reading the text supports is taken
-([README section 3](README.md#3-tokenizer-model), Kinds by situation,
-narrowest reading). The kind and place then
-follow: `value` at byte 257, the first byte past the limit, as for every
-stated length limit in this directory
-([README section 3](README.md#3-tokenizer-model), Kinds by situation;
-Length limits).
-
-**In the bytes.** Visible, since (c) would accept them; the `value`
-finding alone is given
-([README section 3](README.md#3-tokenizer-model), Precedence).
-
-**Decoders (read).** Xastir drops a field over 256 bytes
-(`decode_ax25_line`, db.c:16712). Dire Wolf copies at most 2048 bytes
-(`ax25_from_text`, ax25_pad.c:578; `AX25_MAX_INFO_LEN`, ax25_pad.h:36).
-FAP and aprslib apply no limit in the functions read (FAP.pm:2445–2776;
-parsing/\_\_init\_\_.py:86–155). aprsc's `incoming_parse` checks no
-length of the information field (incoming.c:858 on); a limit of 512
-bytes on the whole line is defined (`PACKETLEN_MAX`, worker.h:52), but
-where it applies to client input was not checked.
-
-**Corpus question.** How many information fields exceed 256 bytes, and
-from which sources?
-
-<a id="amb.addr.form"></a>
-### amb.addr.form
-
-**Open in the document.** On RF an address is a callsign of one to six
-characters, each a capital letter or a digit, and its SSID, 0 to 15, is
-shown only when it is not zero (p. 107/83; UAP §1.1). A third-party
-source is 1 to 9 printable bytes other than `>` (p. 108/84). UAP ch. 4
-says APRS-IS sources and server names need not follow the AX.25 form.
-Nothing says which other address positions can hold such names, what
-byte set they have, or how `-0`, `-01` or a letter SSID are read.
-
-**Readings.** (a) Every address in the AX.25 form, else `syntax`. (b) The
-AX.25 form gives no finding; other names of 1 to 9 visible bytes give
-`is-only` in any address position. (c) Relaxed rules only for the source
-and after the q-construct; the destination and the digipeater entries
-before the q-construct strict.
-
-**Reading taken.** **[agreed]** (c), not (b): the relaxed address, 1
-to 9 bytes from 0x21–0x7E less the four separators `>` `,` `:` `*`,
-which gives `is-only`, is accepted only where the text allows it: at
-the source (p. 108/84 for a third-party source; UAP ch. 4 for APRS-IS
-sources and server names), in the entries after the q-construct
-([`path.is`](#path.is), which has its own rules), and in the
-third-party inner header at [`tp.src`](#tp.src), which this file
-already reads relaxed. The destination and the digipeater entries
-before the q-construct must be in the AX.25 form, and any other
-address there gives `syntax`, on the address's own rule, at its first
-byte that does not fit
-([README section 3](README.md#3-tokenizer-model), Placing a finding).
-An earlier draft took (b), which accepted the relaxed address with
-`is-only` in any address position. **[agreed]** An explicit `-0` and
-an SSID with a leading zero, such as `N0CALL-0` and `N0CALL-01`, are a
-wrong text form of an address that AX.25 can carry, not an address only
-APRS-IS can carry: [`addr.ssid`](#addr.ssid) gives `syntax`, and there
-is no `is-only` finding. A numeric SSID over 15 gives `value`, also
-from `addr.ssid`, as a value outside the stated range 0 to 15
-([README section 3](README.md#3-tokenizer-model), Kinds by situation).
-
-**[agreed]** In a third-party inner header the text allows the relaxed
-form only at the source, so [`tp.dest`](#tp.dest), the entries of
-[`tp.path`](#tp.path) before a q-construct, [`tp.net`](#tp.net) and
-the addresses of a [`tp.aea`](#tp.aea) header after its source are read
-in the AX.25 form, as the outer destination and digipeater entries
-are. This applies the reading above; the gateway was already read in
-that form ([amb.tp.header](#amb.tp.header)).
-
-**In the bytes.** Where another reading would accept an SSID that
-`addr.ssid` reports, the `syntax` or `value` finding alone is given
-([README section 3](README.md#3-tokenizer-model), Precedence).
-The choice of (c) gives no `ambiguous` finding. On an address in the
-AX.25 form the three readings agree. At the source and in the entries
-after the q-construct, (a) gives `syntax` on any other address, and a
-reading that fails does not count (README section 3); (b) takes the
-same bytes as one address that the AX.25 form cannot hold, as (c)
-does. At the destination and at a digipeater entry before the
-q-construct, (c) gives `syntax` on such an address, as (a) does, and
-(b) would accept it with `is-only`; that `syntax` finding alone is
-given (README section 3, Precedence). An earlier draft derived this
-paragraph for reading (b).
-
-**Decoders (read).**
-
-| Decoder | What it does | Where |
-|---|---|---|
-| FAP | Source: 1–9 of letters, digits, `-`, any case. Destination: AX.25 form, upper case only, `-0` and a leading zero accepted, SSID under 16. Path from APRS-IS: 1–9 of letters, digits, `-`, any case; a 32-digit upper-case hex entry allowed after a q-construct. | `parseaprs`, FAP.pm:2475, 2515, 2551–2562; `check_ax25_call`, FAP.pm:2048 |
-| Dire Wolf | Third-party payloads are parsed non-strict: up to 11 letters or digits, any case, and an SSID of up to 2 letters or digits, rejected only when its leading digits read above 15; `-0` accepted. In strict mode, used elsewhere, 6 bytes, upper case and a digit SSID. | `ax25_parse_addr`, ax25_pad.c:782–894; called non-strict at decode_aprs.c:259 |
-| aprslib | Source: 1–9 bytes, letters or digits with an optional `-` suffix of letters or digits, any case. Destination: AX.25 form, upper case only, `-0` and a leading zero accepted. Path: 1–9 of letters, digits, `-`, any case, optional `*`. | `parse_header`, parsing/common.py:33–60; `validate_callsign`, common.py:19–30 |
-| Xastir | Source: any 1–9 printable bytes (internet names), after a trailing `*` is dropped. Path entries: letters, digits, `-`, at most 9 bytes, at most one `*` each, at most 9 addresses with the destination; a `-0` or `-0n` SSID near the end of the path is rewritten. | `valid_inet_name`, util.c:3520; `valid_path`, util.c:3050–3236; call at db.c:16732 |
-| aprsc | Source and destination: at most 9 bytes in all, letters or digits, then optionally `-` and one or more letters or digits. Path: the same, with a trailing `*` allowed and an SSID of 1–2 bytes not starting `0`; a 32-byte entry allowed after the q-construct. | `check_invalid_src_dst`, incoming.c:502; `check_invalid_path_callsign`, incoming.c:606 |
-| aprs-parser-rs | No length or byte check on textual addresses beyond valid UTF-8 and a non-empty callsign and SSID; `-0` becomes no SSID. | `Callsign::new`, callsign.rs:21–50; `Callsign::decode_textual`, callsign.rs:70–80 |
-| pdn-aprs | 1–9 letters, digits or `-` in every header position. | `Address::is_valid`, packet.rs:28 |
-| ebarkie/aprs | AX.25 form only, any case, SSID 0–15 with `-0` accepted; IS-only names fail the frame pattern. | `reFrame`, frame_tnc2.go:16–19 |
-
-**Corpus question.** By position (source, destination, path before and
-after the q-construct): how many addresses are not in the AX.25 form, and
-of those, how many use bytes other than letters, digits and `-`? How many
-SSIDs are written `-0` or with a leading zero?
-
-<a id="amb.path.used"></a>
-### amb.path.used
-
-**Open in the document.** APRS12c shows one `*` after the digipeater
-heard (p. 107/83). UAP §1.3.1 says there is at most one and that all
-earlier entries are implied used; UAP §5.30 shows IGates that mark two
-entries and treats it as a fault. APRS12c does not say how to read more
-than one.
-
-**Readings.** (a) One `*` at most; a second is malformed. (b) Any number;
-the last one marks the station heard.
-
-**Reading taken.** (a), the narrowest of the two in the count it
-accepts ([README section 3](README.md#3-tokenizer-model), Kinds by
-situation): the second `*` among `path.digi` entries gives `syntax`.
-**[agreed]** So does every later `*`: each `*` after the first gives
-its own `syntax` finding on `path.used`, at that `*`, one finding per
-extra `*`. Each is the `path.used` token of its own entry. An earlier
-draft named only the second `*` and left open whether a third or later
-one gets a finding, or whether a path gets one finding however many
-`*` it carries.
-
-**In the bytes.** Visible, since (b) would accept them; the `syntax`
-finding alone is given
-([README section 3](README.md#3-tokenizer-model), Precedence).
-
-**Decoders (read).** FAP keeps a flag per entry and accepts any number
-(FAP.pm:2551–2553). Dire Wolf marks all earlier entries used on each `*`
-(ax25_pad.c:552–556). aprslib accepts any number (common.py:59).
-Xastir rejects two `*` in one entry but not one in each of several
-(util.c:3163, 3189–3192). aprs-parser-rs propagates the last `*`
-backwards (packet.rs:55–66). pdn-aprs reports more than one as an error
-unless tolerated (packet.rs:282–284).
-
-**Corpus question.** How many RF paths carry more than one `*`, and are
-the extra ones adjacent?
-
-<a id="amb.path.q"></a>
-### amb.path.q
-
-**Open in the document.** The q-construct and server names are not
-defined in APRS12c; p. 155/131 only names the q-construct. UAP ch. 4
-shows `qAR`, `qAO`, `qAC` followed by an IGate or server name.
-
-**Readings.** (a) Treat `q`-entries as ordinary path entries. (b)
-Recognise `q` + `A` + letter as a q-construct, and everything after it
-as APRS-IS entries.
-
-**Reading taken.** **[proposed]** (b). Entries after the q-construct are
-not counted against the limit of 8. **[agreed]** The q-construct is
-checked against the APRS-IS definition, now a reference used as a
-register ([README section 3](README.md#3-tokenizer-model), Kinds by
-situation), with the checks of the [`path.q`](#path.q) row: those that
-one line can show. The rules of the definition that depend on the
-connection a packet arrived on (a verified login, the port, when a
-server rewrites `qAR` to `qAo`) are not checked
-([README section 3](README.md#3-tokenizer-model), the paragraph that
-begins "The tokenizer finds boundaries": a rule that depends on what
-the line does not show). Earlier
-drafts checked the shape only, first because the list was in a
-document outside the references and then until the definition was
-brought in.
-
-**In the bytes.** Every q-construct carries the question,
-whichever entries follow it, and the bytes of one packet cannot narrow
-it, so it is decided by the reading
-([README section 3](README.md#3-tokenizer-model)): `is-only` is the
-only finding, with no `ambiguous` beside it.
-
-**Decoders (read).** FAP notes any 3-byte `q..` entry and then allows a
-32-digit hex entry (FAP.pm:2554–2557). aprslib takes the entry after a
-`q..` that is second to last as the receiving station (common.py:68–70).
-Dire Wolf upper-cases a `qA` entry so that its AX.25 parser accepts it
-(ax25_pad.c:533–536). Xastir has no q-construct handling in `valid_path`
-and counts it as a hop (util.c:3155–3236). aprsc treats any 3-byte entry
-starting `q` as the q-construct (`check_path_calls`, incoming.c:674).
-aprs-parser-rs accepts exactly ten q-constructs by name; any other
-`q`-entry is read as a callsign (via.rs:12–22, 69–83). pdn-aprs takes
-the first entry that is `q`, an upper-case letter, then a letter of
-either case, in the outer header only (packet.rs:375–380, 426–429).
-
-**Corpus question.** Which `q`-entries occur, how many paths have more
-than one, and how long are the entries that follow them?
-
-<a id="amb.dest.class"></a>
-### amb.dest.class
-
-**Open in the document.** The destination uses of p. 25/13 overlap: `AP*`
-is a generic address and also covers every software identifier and the
-obsolete `APRS`; `GPS*`, `SPC*`, `SYM*` are generic and also the symbol
-forms; a six-byte locator can fit other classes; ALTNET is everything
-else. No precedence is given.
-
-**Readings.** (a) Choose by data type identifier first (Mic-E), then by a
-fixed order of the address forms. (b) Report every class of the address
-forms that matches; a destination that the identifier makes Mic-E is
-`dest.mice` only.
-
-An earlier draft listed a further reading, choosing by the address
-alone, as (b), and let the old (c), now (b), report other classes
-beside `dest.mice`. With a Mic-E identifier the destination carries
-Mic-E data (p. 26/12, p. 60/42), so classifying it by its shape alone
-ignores the selector and contradicts that statement. It is decoder
-behaviour, not a reading
-([README section 3](README.md#3-tokenizer-model)), and gives no
-finding. Which of the decoders read do this was not checked beyond the
-statements below.
-
-**Reading taken.** (a), in the order of section 5: the identifier
-that selects Mic-E first, then the more specific form before the
-wildcard that also covers it, current forms before the obsolete
-locator, ALTNET last. Every overlap is decided by the order without a
-finding. This applies the rule for forms that can stand at one place
-([README section 3](README.md#3-tokenizer-model)): a fixed order, the
-first match taken, and no finding for an overlap that every instance
-carries; reading (b), which reports every class that matches, departs
-from it. **[agreed]** That includes a destination
-taken as `dest.tocall` or `dest.generic` that also fits `dest.grid`,
-which an earlier draft gave `ambiguous`: a locator is recognised by
-shape alone, and gives way to the classes before it
-([README section 3](README.md#3-tokenizer-model)).
-
-**In the bytes.** By the tests of
-[README section 3](README.md#3-tokenizer-model):
-
-- With a Mic-E identifier both readings take the destination as
-  `dest.mice`. A Mic-E destination that also fits another class gives
-  no finding, since only a classification by shape, which is decoder
-  behaviour, would read it otherwise.
-- Every `APRS`, every `dest.tocall` and every `dest.symnn` or `dest.sym`
-  also fits `dest.generic`. Reading (b) would report both classes, but
-  every instance of those forms carries the overlap, and the bytes of
-  one packet cannot narrow it: decided by the order, no finding.
-- A destination taken as `dest.tocall` or `dest.generic` whose six
-  bytes also fit the 6-byte form of [`grid.loc`](03-position.md#grid.loc)
-  gives no finding (**[agreed]**, reading taken above). An earlier draft
-  gave it `ambiguous` at the first byte of `addr.dest`, since (b) reads
-  it as `dest.grid`.
-
-**Decoders (read).** Dire Wolf looks up the device identifier for every
-identifier other than `'` and `` ` `` (decode_aprs.c:325–334), and takes
-a destination symbol only when the information field has none
-(decode_aprs.c:514–524; `symbols_from_dest_or_src`, symbols.c:572).
-aprslib accepts a packet with no known format as a beacon only when the
-destination matches its list of generic prefixes, which adds `AIR`,
-`ZIP` and `UIDIGI` to the document's list (parsing/\_\_init\_\_.py:141–152).
-FAP reads a destination symbol only for NMEA packets and only from
-`GPS` and `SPC` addresses (FAP.pm:820–886, 923). Xastir reads a
-destination symbol only for NMEA records, from `GPS`, `SPC` and `SYM`
-without the numbered forms (`id_callsign`, db.c:2262–2470; calls at
-db.c:8458, 8677, 8892).
-
-**Corpus question.** For each destination, which classes of section 5
-match? How many destinations of packets with a non-Mic-E identifier fit
-the Mic-E or locator patterns?
-
-<a id="amb.dest.ssid"></a>
-### amb.dest.ssid
-
-**Open in the document.** A non-zero destination SSID is a generic
-digipeater path on p. 22/12 and p. 25/13, reserved for generic
-digipeating on p. 29/19, and obsolete with no known implementation on
-p. 27/17 (see [err.dest.ssid](#err.dest.ssid)). No receiver action is
-given.
-
-**Readings.** (a) Ignore it. (b) Report it as the obsolete path form.
-(c) Treat it as malformed.
-
-**Reading taken.** **[agreed]** (b): `obsolete` for any class other
-than `dest.mice`, following p. 27/17. The pages that call the SSID a
-live path or reserved do not outrank it under the rule for pages that
-disagree ([README section 3](README.md#3-tokenizer-model)), so the
-author chose this side.
-
-**In the bytes.** Every non-zero destination SSID carries the question,
-and the bytes of one packet cannot narrow it, so it is decided by the
-reading ([README section 3](README.md#3-tokenizer-model)); `obsolete`
-is the only finding, with no `ambiguous` beside it.
-
-**Decoders (read).** FAP accepts any SSID 0–15 on the destination and
-gives it no meaning (FAP.pm:2515; `check_ax25_call`, FAP.pm:2048).
-Dire Wolf reads the destination for a warning about `NOGATE` or `RFONLY`
-there, for the device identifier, the symbol and Mic-E
-(decode_aprs.c:216–223, 287, 332, 1438); no use of the destination SSID
-as a path was found in decode_aprs.c, and a comment in digipeater.c
-records that the conversion was removed (digipeater.c:885). aprslib
-accepts SSID 0–15 and gives it no meaning (common.py:19–30, 56). Xastir:
-no use found in `valid_path` or `id_callsign`.
-
-**Corpus question.** How often is the destination SSID non-zero, by
-destination class, Mic-E excluded?
-
-<a id="amb.dest.symfill"></a>
-### amb.dest.symfill
-
-**Open in the document.** On RF the overlay byte `z` of `GPSxyz` is a
-space when there is no overlay, since an AX.25 address has six bytes
-(p. 126/102). The text form shows an address without its padding (UAP
-§5.29), and the precedence example writes `GPSMV` (p. 127/103).
-
-**Readings.** (a) Five bytes in the text form mean no overlay. (b) Six
-bytes are needed.
-
-**Reading taken.** **[proposed]** (a). Under (b) a five-byte `GPSxy`,
-`SPCxy` or `SYMxy` would be `dest.generic`, which accepts it, instead of
-`dest.sym`.
-
-**In the bytes.** Every five-byte symbol destination carries
-the question, and the bytes of one packet cannot narrow it, so it is
-decided by the reading
-([README section 3](README.md#3-tokenizer-model)): no `ambiguous`
-finding.
-
-**Decoders (read).** FAP accepts 2 or 3 bytes after the prefix
-(FAP.pm:826–876). Dire Wolf reads bytes 4 and 5 and takes byte 6 as an
-overlay only if it is a digit or upper-case letter (symbols.c:620–668).
-Xastir reads up to three bytes after the prefix (db.c:2280–2470).
-aprslib does not read destination symbols (no use in parsing/).
-
-**Corpus question.** Length distribution of `GPS`, `SPC` and `SYM`
-destinations, and how many of them have bytes 4–5 in the table of
-section 5.
-
-<a id="amb.src.ssid"></a>
-### amb.src.ssid
-
-**Open in the document.** P. 29/19 says APRS reads a non-zero source
-SSID as a display icon, but only for stand-alone trackers (p. 29/19,
-p. 124/100). The SSID recommendations on p. 128/104 give the same
-numbers unrelated roles (see [err.src.ssid](#err.src.ssid)). A receiver
-cannot tell from the bytes which applies.
-
-**Readings.** (a) Apply the icon when the packet has no other symbol.
-(b) Apply it only to formats without a symbol field. (c) Never.
-
-**Reading taken.** The tokenizer reports nothing: what the SSID means
-is a value for the decoding layer
-([README section 3](README.md#3-tokenizer-model): the tokenizer finds
-boundaries and does not compute values). Whether the decoding layer
-applies the precedence of p. 127/103 is left to that layer, which is
-not yet written: it is part of the cross-cutting open item on SSID
-meanings in [section 11](#11-open-items). An earlier draft proposed
-that the decoding layer apply that precedence, which prescribed
-behaviour for a layer that does not exist yet.
-
-**In the bytes.** The three readings tokenize the SSID alike
-and differ only in what the decoding layer makes of it, so none divides
-or classifies the bytes differently: not visible in the bytes
-([README section 3](README.md#3-tokenizer-model)), no finding.
-
-**Decoders (read).** Dire Wolf uses the source SSID only when the
-identifier is `$` (symbols.c:693–703). Xastir uses it for NMEA records,
-then lets a `GPS`, `SPC` or `SYM` destination override it
-(`id_callsign`, db.c:2262–2280). FAP and aprslib do not use it (no use in
-FAP.pm or parsing/).
-
-**Corpus question.** How many packets with a non-zero source SSID carry
-no symbol in the information field and no symbol destination?
-
-<a id="amb.dti.offset"></a>
-### amb.dti.offset
-
-**Open in the document.** The identifier is the first byte of the
-information field (p. 23/13). Appendix 7 says a "page 18 X1J exception"
-was abandoned in 2012 and the `!` identifier is now only at the start
-(p. 154/130), but this edition does not describe the old rule (see
-[err.dti.x1j](#err.dti.x1j)). UAP §5.28 shows an IGate that puts bytes
-in front of the identifier.
-
-**Readings.** (a) Byte 0 only. This is the one reading of the text.
-
-An earlier draft listed two more, which are decoder behaviour, not
-readings ([README section 3](README.md#3-tokenizer-model)): (b) a `!`
-found later, within the first 40 bytes, contradicts p. 154/130, which
-puts the `!` identifier only at the start; (c) stripping known prefixes
-before reading byte 0 contradicts p. 23/13, which makes the first byte
-of the field the identifier. In the table below, FAP, aprslib, aprsc
-and pdn-aprs search for a later `!`, and Xastir strips a prefix.
-
-**Reading taken.** (a), the one listed reading
-([README section 3](README.md#3-tokenizer-model)): no later `!` is
-looked for and no prefix is stripped. Such packets are left to a
-deviation recogniser.
-
-**In the bytes.** No finding is given beyond the one that byte 0
-already gives in the table of section 7; the decoder behaviour above
-gives no `ambiguous` finding
-([README section 3](README.md#3-tokenizer-model)).
-
-**Decoders (read).**
-
-| Decoder | What it does | Where |
-|---|---|---|
-| FAP | When byte 0 selects nothing, looks for a `!` at offsets 0–39 of the information field and parses a position after it. | `parseaprs`, FAP.pm:2737–2767 |
-| Dire Wolf | Byte 0 only; reports an unknown identifier. | `decode_aprs`, decode_aprs.c:178–183, 336–502 |
-| aprslib | When byte 0 is not otherwise handled, parses a position after a `!` at offsets 1–40 of the information field. | `_try_toparse_body`, parsing/\_\_init\_\_.py:206–209; `parse_position`, position.py:18–20 |
-| Xastir | Byte 0 only, after stripping a `thenet ... ) ` prefix, in any case, left by TNC X-1J4. | `extract_TNC_text`, db.c:15723–15745, called at db.c:16711 |
-| aprsc | Looks for a `!` in the first 40 bytes, but then tests the `!` byte itself as the start of the position, so as read this branch yields no position. | `parse_aprs_body`, parse_aprs.c:1308–1326 |
-| pdn-aprs | Looks for a `!` in the first 40 bytes, as a tolerated warning. | `not_aprs`, decode.rs:63–79 |
-
-**Corpus question.** Among fields whose byte 0 is not a listed
-identifier, how many hold a `!` followed by a valid position within the
-first 40 bytes, and at what offsets?
-
-<a id="amb.dti.undefined"></a>
-### amb.dti.undefined
-
-**Open in the document.** The table of p. 31/17 marks values unused,
-reserved or "do not use", and lists no control byte other than 0x1C and
-0x1D, nor space, DEL or bytes from 0x80. It does not say what a receiver
-does with any of them. P. 123/99 lets programs treat anything that fits
-no format as a status report.
-
-**Readings.** (a) Reject. (b) Unknown format, kept as opaque bytes. (c)
-Read as status text.
-
-**Reading taken.** (b): one `dti.unknown` token, verdict
-`unknown-format`, which is given when the data type cannot be
-determined ([README section 3](README.md#3-tokenizer-model), Output).
-The finding at `dti` is `syntax` for "do not use"
-values, which a stated prohibition covers, and `unstated` for the
-unused, reserved and unlisted values of a table the document does not
-close ([README section 3](README.md#3-tokenizer-model), Kinds by
-situation). **[agreed]** Before that
-verdict, the two obsolete forms without an identifier are tried, the
-object of `obj.obsolete` first and then the bulletin of `bln.obsolete`
-(section 7), since p. 80/62 and p. 98/76 describe them. A match gives
-`obsolete` in place of the finding at `dti`.
-
-**In the bytes.** Where (c) would accept a
-"do not use" field, the `syntax` finding alone is given
-([README section 3](README.md#3-tokenizer-model), Precedence).
-Otherwise no `ambiguous` finding: (a) fails on every
-such field and does not count, and (c) would read as status text every
-field that reaches `dti.unknown` or an obsolete form. Every such field
-carries that question, and the bytes of one packet cannot narrow it, so
-it is decided by the reading (README section 3).
-
-**Decoders (read).** FAP returns no result unless the fallback of
-[amb.dti.offset](#amb.dti.offset) finds a position; it also accepts a
-body starting `DX de` as a DX spot (FAP.pm:2727–2731). Dire Wolf reports
-the identifier as unknown (decode_aprs.c:178–183) and decodes the
-non-standard `t` and `m` (decode_aprs.c:471–488). aprslib raises
-`UnknownFormat` for the unused and reserved values in its table and
-accepts other fields as beacons only for generic destinations
-(parsing/\_\_init\_\_.py:47–65, 141–152). Xastir stores the field as
-status text unless the identifier is `~`, `,`, `&` or `?`
-(db.c:15233–15239, 15396–15438). javAPRSlib returns digits, `A`–`S` and
-`U`–`Z` with no information decoded (Parser.java:141–145).
-
-**Corpus question.** Histogram of byte 0 over the corpus, split into
-defined, unused, reserved, "do not use" and not listed.
-
-<a id="amb.dti.shared"></a>
-### amb.dti.shared
-
-**Open in the document.** `!` is both a position report and the
-Ultimeter 2000 logging form; `$` is both raw NMEA and the Ultimeter 2000
-packet form (p. 31/17). Chapter 5 gives no selector; chapter 12 shows
-`!!` and `$ULTW` (p. 82/62).
-
-**Readings.** (a) Select by the bytes that follow: `!!`, `$ULTW`. (b)
-Read a position or NMEA sentence unless it fails.
-
-**Reading taken.** (a): the form that marker bytes select is tried
-first ([README section 3](README.md#3-tokenizer-model), Forms that can
-stand at one place). A position cannot start with `!`
-(neither a digit nor a symbol table identifier), so `!!` is never also
-a position.
-
-**In the bytes.** A field that starts `$ULTW` is also an NMEA
-sentence in one case: when byte 5 is a letter `A`–`Z` and byte 6 is
-`,`, the five bytes after `$` are a valid
-[`nmea.addr`](03-position.md#nmea.addr). A hex digit `A`–`F` after
-`ULTW` can therefore start either. So can any other
-letter there: [`wx.raw.data`](06-weather.md#wx.raw.data) checks no
-byte, so the Ultimeter reading accepts every such field, and the
-condition below does not depend on byte 5 beyond its being a letter.
-Where (b), reading the whole field as NMEA by 03-position, would itself
-give no `syntax` or `value` finding, the field gets `ambiguous` at
-offset 1, the finding that
-[amb.wx.rawdti](06-weather.md#amb.wx.rawdti) gives against
-`wx.raw.ultpkt`: the rule (a) gives those bytes, at the first byte
-where the readings divide them
-([README section 3](README.md#3-tokenizer-model), Placing a finding).
-Every other field divides the same way under both
-readings: where (a) reads a position or an NMEA sentence, (b) reads the
-same. A `!` or `$` field that fails as a position or as NMEA would be
-raw weather under (b), but (a) already reports it as `syntax`, which
-alone is given ([README section 3](README.md#3-tokenizer-model),
-Precedence).
-
-**Decoders (read).** FAP: `!` then `!` is Ultimeter; `$GP` is NMEA,
-`$ULTW` weather, other `$` fields not parsed (FAP.pm:2648–2651,
-2679–2689). Dire Wolf: `!!` and `$ULTW` are Ultimeter, other `$` NMEA
-(decode_aprs.c:343–371). aprslib: `$` unsupported; `!!` fails as a
-position (parsing/\_\_init\_\_.py:47–49; position.py:47–59, 89, 140–141).
-Xastir: `!` then `!` and 40 hex digits or dashes, `ULTW` then 44
-(db.c:14999, 15173). aprsc: `!!` is weather (parse_aprs.c:1205–1208).
-pdn-aprs: `!!` and `$ULTW` first (decode.rs:28, 44).
-
-**Corpus question.** How many `!` fields have `!` at byte 1, and how many
-`$` fields start `$ULTW` against each NMEA address field?
-
-<a id="amb.tp.header"></a>
-### amb.tp.header
-
-**Open in the document.** The inner header diagram gives "original source
-and destination" 3–99 bytes, then network identifier and gateway with
-`*` (p. 108/84). The prose lets the original path be kept for
-diagnostics. Appendix 1 relabels the first column "source path header
-without unused digipeaters, `*` or `:`" (p. 138/114). The inner source
-can hold any printable byte but `>`, so the end of the header and the
-place of the network identifier are not fixed by the diagram alone. The
-form of the gateway address is not stated; the examples use the RF
-callsign of the gateway, which is also the outer source (p. 109/85).
-
-**Readings.** (a) The header ends at the first `:` after `}`; its last
-two entries are network identifier and gateway; earlier entries are the
-retained path. (b) The inner path is exactly network identifier and
-gateway (UAP §2.6). (c) The header ends at the `:` after the `*`.
-
-**Reading taken.** **[proposed]** (a), with the inner source excluding
-`:`. A `*` anywhere but on the gateway gives `syntax`.
-
-The gateway is read in the AX.25 form: in an inner header the text
-allows the relaxed form only at the source
-([amb.addr.form](#amb.addr.form), reading (c)), and the gateway is the
-station that sent the packet on RF. Where (b) or (c) would divide an
-inner header that gives one of the `syntax` findings above
-differently, that finding alone is given
-([README section 3](README.md#3-tokenizer-model), Precedence).
-
-**In the bytes.** On an inner header that (a) reads with no `syntax`
-finding, the only `*` is on the last entry before the first `:`, so (c)
-ends the header at the same byte. (b), which admits exactly the
-network identifier and the gateway, reads the same entries when no
-original path is kept, and fails when one is, since it would then take
-a path entry as the network identifier and find a `*` past the
-gateway. A reading that fails does not count. No `ambiguous` finding.
-
-**Decoders (read).**
-
-| Decoder | What it does | Where |
-|---|---|---|
-| FAP | Does not decode third-party traffic; the field falls to the `!` search of [amb.dti.offset](#amb.dti.offset). | FAP.pm:47; FAP.pm:2737–2767 |
-| Dire Wolf | Parses the payload as a whole TNC-2 line in non-strict mode: first `:`, then `>`, path split at `,`; entries after the eighth are dropped without an error. | decode_aprs.c:247–276; `ax25_from_text`, ax25_pad.c:445–557 |
-| aprslib | Parses the payload with the full line parser. | `parse_thirdparty`, thirdparty.py:10–21 |
-| Xastir | Source up to `>`, path up to the next `:`, path under 100 bytes and checked by `valid_path`. | `extract_third_party`, db.c:15615–15700 |
-| aprsc | First `:` after `}`; `>` within 10 bytes; checks source and destination; needs at least two path entries. Drops a packet whose inner path holds `,TCPIP` or `,TCPXX`. | `parse_aprs_3rdparty`, parse_aprs.c:1016–1073; incoming.c:974–983 |
-| pdn-aprs | Same line parser, source allowed any 1–9 bytes 0x20–0x7E other than `>` and `:`. | `decode_tnc2_line`, packet.rs:229–297; `is_third_party_source`, packet.rs:40 |
-
-**Corpus question.** In `}` fields: how many inner headers have entries
-besides network identifier and gateway, none or several `*`, a `:`
-before the `>`, or a gateway not in the AX.25 form?
-
-<a id="amb.tp.nest"></a>
-### amb.tp.nest
-
-**Open in the document.** Nothing says whether the original information
-field can itself start with `}`.
-
-**Readings.** (a) Follow it, one level deeper each time. (b) Stop after
-one level and keep the rest opaque.
-
-**Reading taken.** (a), as for any structure the document describes one
-level deep and that recurs deeper: each further level gives `unstated`
-at its `tp.dti`
-([README section 3](README.md#3-tokenizer-model), Obsolete and nested
-forms). The 256-byte field bounds the depth.
-
-**In the bytes.** Every nested `}` carries the question, and the bytes
-of one packet cannot narrow it, so it is decided by the reading
-([README section 3](README.md#3-tokenizer-model)): `unstated` is the
-only finding, with no `ambiguous` beside it.
-
-**Decoders (read).** Dire Wolf calls `decode_aprs` on the payload, which
-handles a further `}` the same way (decode_aprs.c:247–270). aprslib
-calls `parse` again (thirdparty.py:15). aprsc calls `parse_aprs_body`
-on the inner field, which dispatches `}` again (parse_aprs.c:1072,
-1300–1302). Xastir unwraps once; an inner `}` reaches the status
-fallback (db.c:16773–16776, 15431–15433). FAP and javAPRSlib do not
-decode `}` (FAP.pm:47; Parser.java:274–276). pdn-aprs decodes the inner
-packet with the same entry point (other.rs:381–389); no depth limit was
-seen in the functions read.
-
-**Corpus question.** How many `}` payloads start with `}` again, and to
-what depth?
-
-<a id="amb.tp.aea"></a>
-### amb.tp.aea
-
-**Open in the document.** Appendix 1 shows an AEA form of the source path
-header and of the third-party header, "obsolete, shown for historical
-reference only" (p. 137/113, p. 138/114), while p. 108/84 requires the
-TNC-2 form. The AEA third-party diagram has no separator between its
-first column and the network identifier (see [err.tp.aea](#err.tp.aea)).
-
-**Readings.** (a) Recognise the AEA form inside `}` with `obsolete`. (b)
-Do not recognise it.
-
-**Reading taken.** **[agreed]** (a), with `>` as the missing separator,
-as in the example that APRS 1.0.1 gave with the same diagram (1.0.1 PDF
-p. 95): an example of the earlier edition fills the gap
-([README section 3](README.md#3-tokenizer-model), Pages that disagree).
-**[agreed]** An inner header with no `,`, at least four `>`-separated
-addresses, all of them non-empty, and exactly one `*`, at the end of
-the second-to-last address (the gateway), is `tp.aea`, as the
-[`tp.aea`](#tp.aea) row states: those are the form's own defining
-bytes ([README section 3](README.md#3-tokenizer-model), Obsolete and
-nested forms). A near-miss, such as a header with a second `*`, a `*`
-elsewhere, an empty address or only three addresses, is not `tp.aea`:
-it falls to the TNC-2 reading of section 8 and gets that reading's
-findings. An earlier draft of this sentence asked only that one of the
-addresses be followed by `*`, which did not match the row.
-
-**[proposed]** At line level
-APRS-IS carries TNC-2 text (UAP §1, ch. 4), so an AEA line header gives
-`syntax`, and that finding alone is given
-([README section 3](README.md#3-tokenizer-model), Precedence).
-
-An inner header with no `,` cannot be read in the TNC-2 form, which
-puts a `,` before [`tp.net`](#tp.net) and [`tp.gate`](#tp.gate), and
-one with a `,` is never `tp.aea` (the [`tp.aea`](#tp.aea) row).
-
-**In the bytes.** So (b) fails on every inner header that (a) reads as
-`tp.aea`, and a reading that fails does not count: no `ambiguous`
-finding.
-
-**Decoders (read).** Xastir converts an AEA path to TNC-2 order
-(`valid_path`, util.c:3238–3283). FAP states it supports TNC-2 only
-(FAP.pm:2495). Dire Wolf, aprslib and aprsc split the inner path at `,`
-only (ax25_pad.c:525; common.py:48; `check_path_calls`, incoming.c:670,
-called from parse_aprs.c:1059).
-
-**Corpus question.** How many `}` payloads have an inner header without
-`,` and with several `>`?
-
-## 10. Errata
-
-Each entry ends with an "Origin" line: where the defect first appears.
-APRS 1.0.1 pages are PDF pages of the 2000 edition; 12b pages are PDF
-pages of `APRS12b.pdf` in the same submodule.
-
-<a id="err.line.flag"></a>
-### err.line.flag
-
-The frame diagram gives the closing flag 1 byte (p. 22/12), the Appendix 1
-copy 2 bytes (p. 129/105); Appendix 7 records the correction to 1
-(p. 154/130). Not visible in the text form. The reading follows
-p. 22/12.
-
-Origin: already in APRS 1.0.1, where the chapter diagram gives 1 (1.0.1
-PDF p. 22) and the Appendix 1 copy 2 (1.0.1 PDF p. 104). The APRS 1.1
-addendum lists the correction, which Appendix 7 marks as merged, but the
-Appendix 1 copy was never changed. 12b has the same split (12b PDF p. 23
-and p. 134).
-
-<a id="err.dest.ssid"></a>
-### err.dest.ssid
-
-A non-zero destination SSID "specifies a generic APRS digipeater path"
-(p. 22/12, p. 25/13), is "reserved for generic APRS digipeating"
-(p. 29/19), and is obsolete with no known implementation (p. 27/17). The
-reading follows p. 27/17 ([amb.dest.ssid](#amb.dest.ssid)).
-
-Origin: introduced by the 12b/12c compilation. APRS 1.0.1 treats the
-mechanism as current throughout (1.0.1 PDF p. 22, p. 23, p. 25–26). The
-note declaring it obsolete is new in 12b (12b PDF p. 28/18), and the
-older sentences on the other pages were left as they were; 12b already
-has the contradiction.
-
-<a id="err.dest.sym"></a>
-### err.dest.sym
-
-`SYM` addresses are "reserved for future use" on p. 27/17, a generic
-destination on p. 29/19, and interchangeable with `GPS` and `SPC` on
-p. 126/102. P. 29/19 also names `SPCL` where the list has `SPC*`. The
-reading follows p. 126/102 and the list of p. 29/19.
-
-Origin: already in APRS 1.0.1: the list and the `SPCL` sentence (1.0.1
-PDF p. 23), the reservation (1.0.1 PDF p. 24) and the interchangeable
-forms (1.0.1 PDF p. 102). 12b carries all of them (12b PDF p. 28, p. 30,
-p. 131).
-
-<a id="err.dest.example"></a>
-### err.dest.example
-
-P. 126/102 gives `GPS30` for the car symbol; by the `GPSCnn` rule and
-Appendix 2 it is `GPSC30`. The precedence example of p. 127/103 writes
-`GPSMV` in five bytes while p. 126/102 says the address is six. The
-reading follows the rules; [amb.dest.symfill](#amb.dest.symfill) covers
-the second point.
-
-Origin: both are already in APRS 1.0.1 (`GPS30` on 1.0.1 PDF p. 102,
-`GPSMV` on 1.0.1 PDF p. 103), and 12b has both (12b PDF p. 131, p. 132).
-
-<a id="err.dest.chapref"></a>
-### err.dest.chapref
-
-P. 27/17, p. 29/19, p. 40/24 and p. 85/65 refer to "Chapter 20: APRS
-Symbols"; in this edition symbols are chapter 21 (p. 124/100) and
-chapter 20 is "Other Packets" (p. 123/99). Citations in this directory
-use the page.
-
-Origin: introduced by the 12b/12c compilation. In APRS 1.0.1 symbols are
-chapter 20 and the references are right (1.0.1 PDF p. 24, p. 26, p. 34,
-p. 75). 12b inserted a new chapter 18, the frequency specification,
-which moved user-defined data, other packets and symbols down by one,
-without the references being renumbered; 12b already has the error
-(12b PDF p. 28, p. 30, p. 42, p. 87). The chapter headings of 1.0.1 and
-12b were checked in their Markdown extractions. The same defect was
-also entered as [err.sym.chapter](02-fields.md#err.sym.chapter), which
-now points here.
-
-<a id="err.src.ssid"></a>
-### err.src.ssid
-
-The SSID icon table (p. 127/103) and the SSID recommendations
-(p. 128/104) give the same numbers different meanings, for example `-5`
-yacht against other networks, `-12` jeep against one-way trackers. The
-reading takes neither in the tokenizer ([amb.src.ssid](#amb.src.ssid)).
-
-Origin: a merge of APRS 1.0.1 text with the APRS 1.1 addendum. The icon
-rule and table are from 1.0.1 (1.0.1 PDF p. 26, p. 103), which has no
-recommendations table. The recommendations come from the 1.1 item "SSID
-Conventions in user calls" (listed on p. 154/130), and were printed next
-to the icon table without a note on which applies. 12b has both (12b
-PDF p. 132, p. 133).
-
-<a id="err.dti.star"></a>
-### err.dti.star
-
-The same defect as
-[err.wx.object-dti](06-weather.md#err.wx.object-dti), which records it
-with its origin: the weather object uses `;` in chapter 12 (p. 86/66)
-and `*` in Appendix 1 (p. 134/110). For the dispatch of section 7 the
-chapter is followed: `*` is the Peet Bros identifier
-([`wx.raw.peet`](06-weather.md#wx.raw.peet)) and `;` the object.
-
-<a id="err.dti.x1j"></a>
-### err.dti.x1j
-
-Appendix 7 corrects a "page 18 X1J exception" (p. 154/130) that this
-edition does not contain. The reading follows the correction: the
-identifier is byte 0 ([amb.dti.offset](#amb.dti.offset)).
-
-Origin: introduced by the 12b/12c compilation. The exception is in APRS
-1.0.1 on its printed page 18 (1.0.1 PDF p. 28), with an example on 1.0.1
-PDF p. 42; the page number in the correction is that of 1.0.1. 12b
-removed the rule and the example but kept the correction that refers to
-them; 12b already has the dangling reference.
-
-<a id="err.tp.header"></a>
-### err.tp.header
-
-The inner header's first column is "original source and destination",
-3–99 bytes (p. 108/84), longer than a source and destination can be; the
-Appendix 1 copy calls it a source path header without unused
-digipeaters, `*` or `:`, n bytes (p. 138/114). The source path header
-digipeater part is 0–81 bytes on p. 107/83 and 0–80 on p. 137/113. The
-reading applies the address limits only and no total
-([amb.tp.header](#amb.tp.header)).
-
-Origin: two sources. The 0–81 against 0–80 split is already in APRS
-1.0.1 (1.0.1 PDF p. 94 against p. 112). The column label is new in 12c:
-in 1.0.1 (1.0.1 PDF p. 95) and in 12b (12b PDF p. 111) the chapter
-diagram has the Appendix 1 label, with which 3–99 bytes agrees. 12b does
-not have the mismatch of label and length.
-
-<a id="err.tp.aea"></a>
-### err.tp.aea
-
-The AEA third-party diagram (p. 138/114) has no separator column between
-the source path header and the network identifier, so the byte between
-them is not given. The reading takes `>` ([amb.tp.aea](#amb.tp.aea)).
-
-Origin: already in APRS 1.0.1, whose chapter and Appendix 1 diagrams
-have the same gap (1.0.1 PDF p. 95, p. 113). There the chapter example
-showed `>` in that place. 12b dropped the AEA form from the chapter as
-deprecated (12b PDF p. 109) and with it the example, keeping only the
-Appendix 1 diagram (12b PDF p. 143).
-
-<a id="err.tp.example"></a>
-### err.tp.example
-
-The four copies of the message in the third-party walkthrough
-(p. 109/85) show the gap in `Hi Ian` at different widths, although the
-information field is not to change. The byte content cannot be
-determined from the PDF; the reading keeps the rule that the inner field
-is the original unchanged.
-
-Origin: introduced when chapter 17 was rewritten for 12b (Appendix 7
-lists the overhaul among the 1.2 changes, p. 157/133). The APRS 1.0.1
-walkthrough shows one space in every copy (1.0.1 PDF p. 96, rendered);
-12b already has the differing widths (12b PDF p. 112, rendered).
+| <a id="tp.dti"></a>`tp.dti` | Identifier | `}`; the byte-0 token carries `tp.dti`. | yes | 1 byte | p. 31/17; p. 108/84 |
+| <a id="tp.src"></a>`tp.src` | Original source | `addr.call` with optional `addr.ssid` without a suffix that `addr.ssid` reports as `syntax` or `value`; or 1 to 9 bytes 0x20–0x7E other than `>`, which gives `is-only` ([amb.tp.header](#amb.tp.header)). Anything else gives `syntax` at the first byte outside the set or at the tenth byte. | yes | `>` | p. 108/84; p. 109/85 |
+| <a id="tp.gt"></a>`tp.gt` | Source terminator | `>`. Without it the header gives `syntax` here and is a `residue`. | yes | 1 byte | p. 108/84 |
+| <a id="tp.dest"></a>`tp.dest` | Original destination | As `addr.dest`, classified with the inner identifier; any other address gives `syntax` on this rule. | yes | `,` | p. 108/84 |
+| <a id="tp.path"></a>`tp.path` | Retained original path | Zero or more entries, each a token that includes its `,`, read one level below by the rules of section 4, `path.used` included. An empty entry gives `syntax` at its `,`. | no | the `,` before `tp.net` | p. 108/84; p. 138/114 |
+| <a id="tp.net"></a>`tp.net` | Network identifier | `,` and an address in the AX.25 form, without `*`. Any other address gives `syntax` on this rule at its first byte that does not fit; a `*` gives `syntax` at the `*`; empty gives `syntax`. | yes | `,` | p. 108/84 |
+| <a id="tp.gate"></a>`tp.gate` | Receiving gateway | `,`, `addr.call` with optional `addr.ssid`, then `*`; the last entry. One `syntax` finding for an address not in the AX.25 form or a missing `*`, at the first byte at fault. When the header has fewer than two entries after the destination, `syntax` at `tp.sep`. | yes | `tp.sep` | p. 108/84 |
+| <a id="tp.sep"></a>`tp.sep` | Inner header end | The first `:` after `tp.dti` ([amb.line.split](#amb.line.split)). Without it, `syntax` at the end of the field, the rest a `residue`, and verdict `unknown-format`. | yes | 1 byte | p. 108/84 |
+| <a id="tp.info"></a>`tp.info` | Original information field | Read from `dti` at depth + 1. Empty gives `syntax`. | yes | end of the enclosing field | p. 108/84 |
+| <a id="tp.aea"></a>`tp.aea` | AEA inner header | Recognised when the header has no `,`, at least four non-empty `>`-separated addresses and one `*`, at the end of the second-to-last: source, retained digipeaters, network identifier, gateway with `*`, original destination. Gives `obsolete`. Each address is read one level below, the last as a destination by section 5; the source may be `addr.is`; any other address not in the AX.25 form gives one `syntax` on `tp.aea`, at the first such byte. The `>` before the network identifier gives `unstated` ([err.tp.aea](#err.tp.aea)). | no | `tp.sep` | p. 138/114 |
+
+## 9. Catalogue
+
+| ID | Pages | What the document leaves open | Class | Rule | What the tokenizer does |
+|---|---|---|---|---|---|
+| <a id="amb.line.split"></a>amb.line.split | p. 107/83; p. 108/84 | The header ends at `:`, but p. 108/84 lets a source hold any printable byte but `>`, `:` included. | ambiguous | 1 | **[open]** By rule 1 a source holding `:` conforms. Default: the header ends at the first `:` of the line, so such a line gives `syntax` at `line.gt`; the same for `tp.src` and `tp.sep`. |
+| <a id="amb.line.aea"></a>amb.line.aea | p. 107/83; p. 137/113 | The AEA source path header is shown as an obsolete form beside the TNC-2 one; whether it describes the line that the tokenizer receives is not said. | unstated | 2 | **[open]** Default: not recognised at line level; an AEA line header gets the findings of the TNC-2 reading. |
+| <a id="amb.addr.form"></a>amb.addr.form | p. 22/12; p. 107/83; p. 108/84; p. 109/85 | P. 107/83 puts every header address in the AX.25 form; p. 108/84 lets a source be any 1 to 9 printable bytes but `>`. The digit form of an SSID with a leading zero is not given. | conflict | 3; 2 | At a source, an address either side accepts conforms: `addr.is`, `is-only`, for `-0`, an SSID above 15 or a trailing `*` too. Elsewhere the AX.25 form, else `syntax`. `-01` to `-09`: `unstated`, read as the AX.25 form, the more specific. |
+| <a id="amb.path.q"></a>amb.path.q | p. 155/131 | APRS12c names the q-construct and defers to the APRS-IS pages, which give the codes and that a call follows, but no byte form for the entries after it. | unstated | 2; 5 | `path.q` checked by those pages; `path.is` takes printable entries, `is-only` when not in the AX.25 form, `unstated` for a trailing `*`. |
+| <a id="amb.dest.class"></a>amb.dest.class | p. 25/13; p. 26/12; p. 27/17; p. 28/18; p. 29/19 | The destination uses overlap and no precedence is given. | ambiguous | 4 | The more specific class is taken (section 5). `APRS`, every tocall and every symbol destination are also generic: no finding. A tocall or generic address that is also a locator, such as `AP51WX`, gives `ambiguous` on its class at the first byte of `addr.dest`. |
+| <a id="amb.dest.ssid"></a>amb.dest.ssid | p. 22/12; p. 25/13; p. 27/17; p. 29/19 | A non-zero destination SSID is a live path, reserved, or obsolete, depending on the page ([err.dest.ssid](#err.dest.ssid)). | conflict | 3 | `dest.ssid`, no finding. |
+| <a id="amb.src.ssid"></a>amb.src.ssid | p. 29/19; p. 127/103; p. 128/104 | Which meaning of a non-zero source SSID applies ([err.src.ssid](#err.src.ssid)). | conflict | 3 | `src.ssid`, no finding; the meaning is a value. |
+| <a id="amb.dti.undefined"></a>amb.dti.undefined | p. 31/17; p. 123/99 | No receiver action for unused, reserved, "do not use" and unlisted identifiers; p. 123/99 lets programs show such packets as status. | unstated | 2; 1 | `dti.unknown`, verdict `unknown-format`. At `dti`: "do not use" `syntax`; unused or reserved `unstated`; a byte the closed table does not list `value` (README section 3.3). |
+| <a id="amb.dti.shared"></a>amb.dti.shared | p. 31/17; p. 82/62 | `!` and `$` each name two formats with no selector. | ambiguous | 4 | `!!` cannot be a position: Ultimeter. A `$ULTW` field that is also an NMEA sentence without `syntax` or `value` is read as NMEA, the more specific shape, with `ambiguous` on `dti` at offset 1; any other `$ULTW` field is Ultimeter. |
+| <a id="amb.tp.header"></a>amb.tp.header | p. 108/84; p. 138/114 | P. 108/84 lets the original source hold any printable byte but `>` and keep the original path; p. 138/114 gives the header without unused digipeaters, `*` or `:`. | conflict | 3 | Bytes that either side accepts conform: a `*` in `tp.src` or a retained entry gives no finding. The last two entries are network identifier and gateway; earlier ones are `tp.path`. |
+| <a id="amb.tp.nest"></a>amb.tp.nest | p. 108/84 | Whether the carried field may itself start with `}`. | unstated | 2 | Read one level deeper each time, `unstated` at each nested `tp.dti`. |
+| <a id="amb.tp.aea"></a>amb.tp.aea | p. 108/84; p. 138/114 | P. 108/84 requires the TNC-2 header; p. 138/114 still shows an AEA form, obsolete. | conflict | 3; 1 | `tp.aea`, `obsolete`, as its row recognises it; a near-miss is read as TNC-2. |
+| <a id="err.line.flag"></a>err.line.flag | p. 22/12; p. 129/105; p. 154/130 | The closing flag is 1 byte on p. 22/12 and 2 on p. 129/105; p. 154/130 corrects to 1. | conflict | 3 | Not in the text form; nothing. |
+| <a id="err.dest.ssid"></a>err.dest.ssid | p. 22/12; p. 25/13; p. 27/17; p. 29/19 | A non-zero destination SSID is a live generic path on p. 22/12 and p. 25/13, reserved on p. 29/19, obsolete on p. 27/17. | conflict | 3 | No finding ([amb.dest.ssid](#amb.dest.ssid)). |
+| <a id="err.dest.sym"></a>err.dest.sym | p. 27/17; p. 29/19; p. 126/102 | `SYM` addresses are reserved on p. 27/17, generic on p. 29/19, a symbol form on p. 126/102; p. 29/19 names `SPCL` where its list has `SPC*`. | conflict | 3 | `SYMxy` is `dest.sym`, otherwise `dest.generic`; no finding. |
+| <a id="err.dest.example"></a>err.dest.example | p. 126/102 | The car symbol is given as `GPS30`, where the rule and Appendix 2 give `GPSC30`. | conflict | 3 | A slip of the pen (a missing `C`): it allows nothing; `GPS30` is `dest.generic`. |
+| <a id="err.dest.chapref"></a>err.dest.chapref | p. 27/17; p. 29/19; p. 40/24; p. 85/65; p. 123/99; p. 124/100 | References to "Chapter 20: APRS Symbols", which is chapter 21 in this edition. | conflict | 3 | No effect on bytes. |
+| <a id="err.src.ssid"></a>err.src.ssid | p. 127/103; p. 128/104 | The SSID icon table and the SSID recommendations give the same numbers other meanings. | conflict | 3 | No effect on bytes. |
+| <a id="err.dti.star"></a>err.dti.star | p. 31/17; p. 86/66; p. 134/110 | The weather object starts with `;` on p. 86/66 and with `*`, the Peet Bros identifier, in the format diagram of p. 134/110 ([err.wx.object-dti](06-weather.md#err.wx.object-dti)). | conflict | 3 | A slip of the pen in the diagram (`*` for `;`): it allows nothing. Every `*` field is Peet Bros. |
+| <a id="err.dti.x1j"></a>err.dti.x1j | p. 154/130 | A correction refers to a "page 18 X1J exception" that this edition does not contain. | conflict | 3 | No effect on bytes; the identifier is byte 0. |
+| <a id="err.tp.header"></a>err.tp.header | p. 107/83; p. 108/84; p. 137/113; p. 138/114 | The inner header's first column is 3–99 bytes on p. 108/84 and n on p. 138/114; the path part of the source path header is 0–81 bytes on p. 107/83 and 0–80 on p. 137/113. | conflict | 3 | No total length is checked, since one side accepts any; the per-address limits apply. |
+| <a id="err.tp.aea"></a>err.tp.aea | p. 138/114 | The AEA third-party diagram has no column between the source path header and the network identifier, so the byte there is not given. | unstated | 2 | `unstated` on `tp.aea` at the `>` before the network identifier. |
+| <a id="err.tp.example"></a>err.tp.example | p. 109/85 | The copies of `Hi Ian` show the gap at different widths, though the field must not change. | conflict | 3 | No rule on packet bytes; only the examples differ. |
+
+## 10. Reviewed exceptions
+
+None.
 
 ## 11. Open items
 
-- Whether the `is-only` byte set of `addr.is` admits space, which
-  "printable ASCII" on p. 108/84 can be read to include.
-- Cross-cutting: the reading treats a destination SSID and a source SSID
-  as values only; their meanings belong to a decoding layer not yet
-  written. So does the precedence of p. 127/103 among the symbol in
-  the information field, the destination symbol and the source SSID
-  ([amb.src.ssid](#amb.src.ssid)).
+- [amb.line.split](#amb.line.split) and [amb.line.aea](#amb.line.aea)
+  are open.
+- The meanings of the destination and source SSIDs, and the symbol
+  precedence of p. 127/103, belong to a decoding layer not yet written.

@@ -7,7 +7,7 @@ import re
 from qua_network.deviceid import pinned_index
 from qua_network.legacy.message import obsolete as obsolete_bulletin
 from qua_network.legacy.message import obsolete_accepts as obsolete_bulletin_accepts
-from qua_network.legacy.model import UNREAD
+from qua_network.legacy.model import UNREAD, Scan
 from qua_network.legacy.objects import obsolete as obsolete_object
 from qua_network.legacy.objects import obsolete_accepts as obsolete_object_accepts
 from qua_network.legacy.position import nmea_accepts
@@ -18,11 +18,15 @@ OBSOLETE_FORMS = "obsolete object or bulletin (05, 08)"
 # --- Addresses (01 section 3) -------------------------------------------
 
 _AX25 = re.compile(rb"([A-Z0-9]{1,6})(?:-([1-9]|1[0-5]))?\Z")
-# A callsign whose suffix addr.ssid reports: '-0', '-0d' (syntax) or a
-# two-digit value above 15 (value). Such an address is not addr.is.
-_SSID_ZERO = re.compile(rb"[A-Z0-9]{1,6}-0[0-9]?\Z")
+# Callsigns whose suffix addr.ssid reports: SSID 0 written out ('-0', '-00',
+# syntax), a leading zero ('-01' to '-09', unstated) and two digits above 15
+# (value).
+_SSID_ZERO = re.compile(rb"[A-Z0-9]{1,6}-00?\Z")
+_SSID_LEAD = re.compile(rb"[A-Z0-9]{1,6}-0[1-9]\Z")
 _SSID_HIGH = re.compile(rb"[A-Z0-9]{1,6}-(?:1[6-9]|[2-9][0-9])\Z")
-_IS_ADDR = re.compile(rb"[\x21-\x29\x2b\x2d-\x39\x3b-\x3d\x3f-\x7e]{1,9}\Z")  # not > , : *
+# A source of 1 to 9 printable bytes other than '>' (p. 108/84); ':' cannot
+# occur, since the header ends at the first ':' (amb.line.split).
+_IS_ADDR = re.compile(rb"[\x20-\x39\x3b-\x3d\x3f-\x7e]{1,9}\Z")
 _CALL = frozenset(b"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 
 AX25, IS_ONLY, BAD = 0, 1, 2
@@ -31,14 +35,14 @@ AX25, IS_ONLY, BAD = 0, 1, 2
 def first_bad(a, allowed, limit):
     """Offset in a of the first byte at fault for a name of 1 to limit bytes
     from allowed: the first byte outside allowed, the first byte past the
-    limit, or 0 when a is empty (README section 3, Placing a finding)."""
+    limit, or 0 when a is empty."""
     for i, c in enumerate(a[: limit + 1]):
         if i == limit or c not in allowed:
             return i
     return 0
 
 
-_IS_SET = frozenset(range(0x21, 0x7F)) - frozenset(b">,:*")
+_IS_SET = frozenset(range(0x20, 0x7F)) - frozenset(b">:")
 
 
 def ax25_faults(a):
@@ -76,11 +80,11 @@ def ax25_bad(a):
 def address(scan, start, end, depth, call_rule="addr.call", ssid_rule="addr.ssid", rule=None):
     """Tokenize one address at [start, end) one level below its own token.
 
-    rule is None at a position where an address only APRS-IS can carry may
-    stand (addr.is): the source. Elsewhere rule names the field of the
-    position, and an address that is not in the AX.25 form, and whose suffix
-    addr.ssid does not report, gives syntax on it at its first byte that does
-    not fit, with no token below (amb.addr.form).
+    rule is None at a source, where p. 108/84 also allows any 1 to 9
+    printable bytes other than '>' (addr.is). Elsewhere rule names the field
+    of the position, and an address that is not in the AX.25 form, and whose
+    suffix addr.ssid does not report, gives syntax on it at its first byte
+    that does not fit, with no token below (amb.addr.form).
 
     Returns (form, call_end) where form is AX25, IS_ONLY or BAD and call_end
     is where the callsign part ends (end for any other address).
@@ -93,11 +97,13 @@ def address(scan, start, end, depth, call_rule="addr.call", ssid_rule="addr.ssid
         if ce < end:
             scan.tok(ssid_rule, ce, end, depth)
         return AX25, ce
-    if _SSID_ZERO.match(a) or _SSID_HIGH.match(a):
+    lead = _SSID_LEAD.match(a)
+    if lead or rule is not None and (_SSID_ZERO.match(a) or _SSID_HIGH.match(a)):
         dash = start + a.index(b"-")
         scan.tok(call_rule, start, dash, depth)
         scan.tok(ssid_rule, dash, end, depth)
-        scan.find("addr.ssid", "syntax" if a[dash - start + 1] == 0x30 else "value", dash)
+        kind = "unstated" if lead else "syntax" if a[dash - start + 1] == 0x30 else "value"
+        scan.find("addr.ssid", kind, dash)
         return AX25, dash
     if rule is not None:
         scan.find(rule, "syntax", start + ax25_bad(a))
@@ -122,7 +128,7 @@ _GENERIC = re.compile(
 )
 _GRID = re.compile(rb"[A-R]{2}[0-9]{2}[A-X]{2}\Z")
 # dest.tocall: the identifiers of the aprs-deviceid register at the commit
-# the repository pins, with the register's own lookup (README section 3).
+# the repository pins, with the register's own lookup.
 _TOCALLS = pinned_index()
 
 
@@ -172,11 +178,13 @@ def dest_class(scan, call, start, dti):
         cls = "dest.generic"
     elif _GRID.match(call):
         scan.find("dest.grid", "obsolete", start)
-        cls = "dest.grid"
+        return "dest.grid"
     else:
-        cls = "dest.altnet"
-    # A locator shape that another class takes, or whose letters are out of
-    # range, is not a locator and gives no finding (README section 3).
+        return "dest.altnet"
+    # amb.dest.class: a software identifier or generic address that is also a
+    # locator is read as the more specific class, with an ambiguous finding.
+    if (cls == "dest.tocall" or cls == "dest.generic") and _GRID.match(call):
+        scan.find(cls, "ambiguous", start)
     return cls
 
 
@@ -197,8 +205,8 @@ def _strip_star(line, s, e):
 
 def _syntax_since(scan, n):
     """Whether a syntax finding was given after the first n findings: a field
-    gives at most one, at its first failing byte (README section 3, Placing a
-    finding), so a '*' after an address that already failed adds none."""
+    gives at most one, so a '*' after an address that already failed adds
+    none."""
     return any(f.kind == "syntax" for f in scan.findings[n:])
 
 
@@ -212,20 +220,12 @@ def header(scan, end, dti, depth=0):
         return
     (ss, se), (ds, de), entries = spans
 
-    # Source. A field whose extent its delimiter fixes keeps its token when
-    # its bytes are wrong; a trailing '*', which no rule reads there, is a
-    # residue one level below (README section 3, Output).
-    ae, star = _strip_star(line, ss, se)
+    # Source. A '*' is one of the printable bytes that p. 108/84 allows there.
     scan.tok("addr.src", ss, se, depth)
-    n = len(scan.findings)
-    if ae == ss:
+    if se == ss:
         scan.find("addr.src", "syntax", ss)
     else:
-        address(scan, ss, ae, depth + 1, ssid_rule="src.ssid")
-    if star:
-        scan.residue(ae, se, depth + 1, "addr.src")
-        if not _syntax_since(scan, n):
-            scan.find("addr.src", "syntax", ae)
+        address(scan, ss, se, depth + 1, ssid_rule="src.ssid")
     scan.tok("line.gt", se, se + 1, depth)
 
     # Destination.
@@ -248,8 +248,8 @@ def _path(scan, entries, depth, inner=False):
     """Path entries: path.digi before the first q-construct, path.q, then path.is.
 
     In an inner header (inner=True) each entry is a tp.path token that
-    includes its ',', and the entry is classified one level below it; a '*'
-    there gives syntax (amb.tp.header).
+    includes its ',', and the entry is read one level below it by the same
+    rules.
     """
     line = scan.line
     q_seen = False
@@ -257,20 +257,18 @@ def _path(scan, entries, depth, inner=False):
     n_digi = 0
     used_seen = False
     for k, (es, ee) in enumerate(entries):
-        star_at = -1
         if inner:
             scan.tok("tp.path", es - 1, ee, depth)
             d = depth + 1
             if ee == es:
                 scan.find("tp.path", "syntax", es - 1)
-            star_at = line.find(b"*", es, ee)
         else:
             scan.tok("path.sep", es - 1, es, depth)
             d = depth
             if ee == es:
                 scan.find("path.sep", "syntax", es - 1)
         if ee == es:
-            # An empty entry counts toward the limit of 8 (01 path.sep).
+            # An empty entry counts toward the limit of 8.
             if not q_seen:
                 n_digi += 1
                 if n_digi == 9:
@@ -284,43 +282,25 @@ def _path(scan, entries, depth, inner=False):
             scan.find("path.q", "is-only", es)
             continue
         if q_seen:
-            # In an inner header the entry ends at its first '*', as above.
-            pe = star_at if star_at >= 0 else ee
-            entry = line[es:pe]
-            if pe > es:
-                scan.tok("path.is", es, pe, d)
-            bad = next((es + i for i, c in enumerate(entry) if not 0x21 <= c <= 0x7E), pe)
-            if bad < pe:
+            scan.tok("path.is", es, ee, d)
+            bad = next((es + i for i, c in enumerate(entry) if not 0x21 <= c <= 0x7E), ee)
+            if bad < ee:
                 scan.find("path.is", "syntax", bad)
-            elif pe > es:
+            else:
                 body = entry[:-1] if entry.endswith(b"*") else entry
                 if entry.endswith(b"*"):
                     scan.find("path.is", "unstated", ee - 1)
                 # The SSID text-form rules of addr.ssid are not applied here.
                 if not _AX25.match(body):
                     scan.find("path.is", "is-only", es)
-            if star_at >= 0:
-                scan.residue(star_at, ee, d, "tp.path")
-                if bad == pe:
-                    scan.find("tp.path", "syntax", star_at)
             continue
         n_digi += 1
-        n = len(scan.findings)
-        if star_at >= 0:
-            # In an inner header the '*' and what follows it are a residue
-            # below the tp.path token, with one syntax finding at the '*'
-            # unless the address before it already gave one.
-            ae, star = star_at, True
-            if ae > es:
-                scan.tok("path.digi", es, ae, d)
-        else:
-            ae, star = _strip_star(line, es, ee)
-            scan.tok("path.digi", es, ae, d)
+        ae, star = _strip_star(line, es, ee)
+        scan.tok("path.digi", es, ae, d)
         if n_digi == 9:
             scan.find("path.digi", "syntax", es - 1)
         if ae == es:
-            if not inner:
-                scan.find("path.digi", "syntax", es)
+            scan.find("path.digi", "syntax", es)
         else:
             # The callsign part of an alias or a gating block carries its class.
             call = line[es:ae].partition(b"-")[0]
@@ -333,15 +313,11 @@ def _path(scan, entries, depth, inner=False):
             form, _ = address(scan, es, ae, d + 1, call_rule=call_rule, rule="path.digi")
             if form == AX25 and call_rule == "path.obsolete":
                 scan.find("path.obsolete", "obsolete", es)
-        if star and not inner:
+        if star:
             scan.tok("path.used", ae, ee, d)
             if used_seen:
                 scan.find("path.used", "syntax", ae)
             used_seen = True
-        elif star:
-            scan.residue(ae, ee, d, "tp.path")
-            if not _syntax_since(scan, n):
-                scan.find("tp.path", "syntax", ae)
     if q_at is not None:
         _q_construct(scan, entries, q_at)
 
@@ -382,19 +358,15 @@ def _dest(scan, ds, de, depth, dti, rule):
     rule is the field of the destination, on which an address not in the
     AX.25 form gives syntax (amb.addr.form)."""
     a = scan.line[ds:de]
-    if _AX25.match(a) or _SSID_ZERO.match(a) or _SSID_HIGH.match(a):
-        call, _, ssid = a.partition(b"-")
-        cls = dest_class(scan, call, ds, dti)
-        form, ce = address(scan, ds, de, depth, call_rule=cls, ssid_rule="dest.ssid")
-        if ssid and _AX25.match(a) and dti not in _MICE_DTI:
-            scan.find("dest.ssid", "obsolete", ce)
-        return form, ce
+    if _AX25.match(a) or _SSID_LEAD.match(a) or _SSID_ZERO.match(a) or _SSID_HIGH.match(a):
+        cls = dest_class(scan, a.partition(b"-")[0], ds, dti)
+        return address(scan, ds, de, depth, call_rule=cls, ssid_rule="dest.ssid", rule=rule)
     dash = a.find(b"-")
     if dti in _MICE_DTI:
         return _mice_dest(scan, ds, de, depth, rule, dash)
     form, ce = address(scan, ds, de, depth, ssid_rule="dest.ssid", rule=rule)
-    # The class applies to the bytes as written ([agreed]: a lower-case
-    # locator shape is not dest.grid and falls through to the next class).
+    # The class applies to the bytes as written: a lower-case locator shape
+    # is not dest.grid.
     scan.tok(dest_class(scan, a, ds, dti), ds, de, depth)
     return form, ce
 
@@ -402,10 +374,10 @@ def _dest(scan, ds, de, depth, dti, rule):
 def _mice_dest(scan, ds, de, depth, rule, dash):
     """A Mic-E destination that is not in the AX.25 form. The callsign part,
     up to the first '-', is dest.mice: 04-mic-e section 3 reports each of its
-    faults, so the address field gives none there (README section 3, One
-    fault, two rules). The SSID is read as on any address: dest.ssid, with
-    addr.ssid's findings for '-0', '-0d' and values above 15, and otherwise
-    syntax on the field at its first byte that does not fit."""
+    faults, so the address field gives none there, the more specific rule
+    giving the finding. The SSID is read as on any address: dest.ssid, with
+    addr.ssid's findings, and otherwise syntax on the field at its first byte
+    that does not fit."""
     a = scan.line[ds:de]
     ce = de if dash < 0 else ds + dash
     scan.tok("dest.mice", ds, ce, depth)
@@ -414,8 +386,12 @@ def _mice_dest(scan, ds, de, depth, rule, dash):
     scan.tok("dest.ssid", ce, de, depth)
     # The SSID judged on a stand-in callsign, so that only its own bytes count.
     probe = b"A" + a[dash:]
-    if _SSID_ZERO.match(probe) or _SSID_HIGH.match(probe):
-        scan.find("addr.ssid", "syntax" if probe[2] == 0x30 else "value", ce)
+    if _SSID_ZERO.match(probe):
+        scan.find("addr.ssid", "syntax", ce)
+    elif _SSID_LEAD.match(probe):
+        scan.find("addr.ssid", "unstated", ce)
+    elif _SSID_HIGH.match(probe):
+        scan.find("addr.ssid", "value", ce)
     elif not _AX25.match(probe):
         scan.find(rule, "syntax", ce - 1 + ax25_bad(probe))
     return BAD, ce
@@ -453,11 +429,14 @@ _set(b"{", "udf.dti", "09-other")
 _set(b"}", "tp.dti", "01-frame")
 
 _DO_NOT_USE = frozenset(b"0123456789ABCDEFGHIJKLMNOPQRSUVWXYZabcdefghijklmnopqrstuvwxyz|~")
+# Listed as unused or reserved: in the list, but no format to read.
+_NO_FORMAT = frozenset(b'"(-\\]^&+.')
 
 
 def dispatch(info):
     """(identifier rule, reading file, finding at dti) for an information field,
-    or (None, None, kind) when the field is dti.unknown."""
+    or (None, None, kind) when the field is dti.unknown. A byte the closed
+    table of p. 31/17 does not list gives value."""
     b = info[0]
     if b == 0x21 and info[1:2] == b"!":
         return "wx.raw.ultlog.dti", "06-weather", "discouraged"
@@ -465,14 +444,19 @@ def dispatch(info):
         return "wx.raw.ultpkt.dti", "06-weather", "discouraged"
     if b in _DISPATCH:
         return _DISPATCH[b]
-    return None, None, "syntax" if b in _DO_NOT_USE else "unstated"
+    if b in _DO_NOT_USE:
+        return None, None, "syntax"
+    return None, None, "unstated" if b in _NO_FORMAT else "value"
 
 
 # --- Information field and third-party payloads (01 sections 2, 7, 8) ---
 
 
-def info_field(scan, start, end, depth, readers, tp_level=0):
-    """Tokenize line[start:end] as an information field from its dti."""
+def info_field(scan, start, end, depth, readers, tp_level=0, obsolete=True):
+    """Tokenize line[start:end] as an information field from its dti.
+    obsolete=False skips the obsolete object of an assigned identifier, for
+    the scratch reading that tests whether the identifier's format accepts
+    the field (05 amb.obj.obsolete)."""
     line = scan.line
     if end == start:
         scan.find("tp.info" if tp_level else "line.info", "syntax", start)
@@ -498,11 +482,26 @@ def info_field(scan, start, end, depth, readers, tp_level=0):
         else:
             scan.unread.append(OBSOLETE_FORMS)
         return
+    if obsolete and line[start] not in b");" and "05-object-item" in readers and obsolete_object_accepts(line, start, end):
+        # 05 amb.obj.obsolete: where the identifier's format also accepts the
+        # field, the object layout from offset 0 is the more specific of the
+        # two readings; otherwise the identifier decides. An item or object
+        # identifier always decides: its own layout constrains at least as
+        # many bytes.
+        scratch = Scan(line)
+        scratch.tokens = list(scan.tokens)
+        info_field(scratch, start, end, depth, readers, tp_level, False)
+        if not scratch.unknown_format and not scratch.unread and not any(f.kind in ("syntax", "value") for f in scratch.findings):
+            scan.find("obj.obsolete", "ambiguous", start)
+            obsolete_object(scan, start, end, depth)
+            return
+    if rule == "wx.raw.ultpkt.dti" and nmea_accepts(line, start, end):
+        # amb.dti.shared: the field is also a raw NMEA sentence, the more
+        # specific of the two shapes.
+        rule, where = "nmea.dti", "03-position"
+        scan.find("dti", "ambiguous", start + 1)
     if finding:
         scan.find("dti", finding, start)
-    if rule == "wx.raw.ultpkt.dti" and nmea_accepts(line, start, end):
-        # amb.dti.shared: the field is also a raw NMEA sentence.
-        scan.find("wx.raw.ultpkt", "ambiguous", start + 1)
     if rule == "tp.dti":
         third_party(scan, start, end, depth, readers, tp_level)
         return
@@ -524,7 +523,7 @@ def third_party(scan, start, end, depth, readers, level):
     sep = line.find(b":", start + 1, end)
     if sep < 0:
         # No inner field is found, so the carried packet's data type cannot be
-        # determined: unknown-format, as for a line with no line.sep (01 tp.sep).
+        # determined: unknown-format, as for a line with no line.sep.
         scan.residue(start + 1, end, depth, "tp.sep")
         scan.find("tp.sep", "syntax", end)
         scan.unknown_format = True
@@ -535,10 +534,6 @@ def third_party(scan, start, end, depth, readers, level):
     scan.tok("tp.sep", sep, sep + 1, depth)
     scan.tok("tp.info", sep + 1, end, depth)
     info_field(scan, sep + 1, end, depth + 1, readers, level + 1)
-
-
-_TP_SRC_IS = re.compile(rb"[\x21-\x29\x2b-\x39\x3b-\x3d\x3f-\x7e]{1,9}\Z")  # not > : *
-_TP_SRC_SET = frozenset(range(0x21, 0x7F)) - frozenset(b">:*")
 
 
 def _inner_dti(scan, sep):
@@ -558,6 +553,9 @@ def _tp_aea(scan, h0, sep, depth):
         return False
     scan.tok("tp.aea", h0, sep, depth)
     scan.find("tp.aea", "obsolete", h0)
+    # err.tp.aea: the diagram gives no byte between the source path header
+    # and the network identifier.
+    scan.find("tp.aea", "unstated", sep - len(pieces[-1]) - len(pieces[-2]) - len(pieces[-3]) - 3)
     pos = h0
     n = len(scan.findings)
     for i, p in enumerate(pieces):
@@ -568,8 +566,7 @@ def _tp_aea(scan, h0, sep, depth):
             # Only the source may be an address only APRS-IS can carry.
             address(scan, ps, pe - (i == len(pieces) - 2), depth + 1, rule=None if i == 0 else "tp.aea")
         pos = pe + 1
-    # The field gives one syntax finding, at its first byte at fault
-    # (README section 3, Placing a finding).
+    # The field gives one syntax finding, at its first byte at fault.
     bad = [f for f in scan.findings[n:] if f.rule == "tp.aea" and f.kind == "syntax"]
     for f in bad[1:]:
         scan.findings.remove(f)
@@ -586,12 +583,12 @@ def _tp_header(scan, h0, sep, depth):
     (ss, se), (ds, de), entries = spans
     scan.tok("tp.src", ss, se, depth)
     a = line[ss:se]
-    if _AX25.match(a) or _SSID_ZERO.match(a) or _SSID_HIGH.match(a):
+    if _AX25.match(a) or _SSID_LEAD.match(a):
         address(scan, ss, se, depth + 1)
-    elif _TP_SRC_IS.match(a):
+    elif _IS_ADDR.match(a):
         scan.find("tp.src", "is-only", ss)
     else:
-        scan.find("tp.src", "syntax", ss + first_bad(a, _TP_SRC_SET, 9))
+        scan.find("tp.src", "syntax", ss + first_bad(a, _IS_SET, 9))
     scan.tok("tp.gt", se, se + 1, depth)
     ae, star = _strip_star(line, ds, de)
     scan.tok("tp.dest", ds, de, depth)
@@ -625,14 +622,13 @@ def _tp_header(scan, h0, sep, depth):
             scan.find("tp.net", "syntax", star_at)
     else:
         address(scan, ns, ne, depth + 1, rule="tp.net")
-    # One syntax finding for the gateway, at its first byte at fault
-    # (README section 3, Placing a finding).
+    # One syntax finding for the gateway, at its first byte at fault.
     scan.tok("tp.gate", gs - 1, ge, depth)
     ae, star = _strip_star(line, gs, ge)
     g = line[gs:ae]
-    if _AX25.match(g) or _SSID_ZERO.match(g) or _SSID_HIGH.match(g):
+    if _AX25.match(g) or _SSID_LEAD.match(g) or _SSID_ZERO.match(g) or _SSID_HIGH.match(g):
         n = len(scan.findings)
-        address(scan, gs, ae, depth + 1)
+        address(scan, gs, ae, depth + 1, rule="tp.gate")
         if not star and not _syntax_since(scan, n):
             scan.find("tp.gate", "syntax", ge)
     else:

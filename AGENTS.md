@@ -22,8 +22,10 @@ not put "APRS" into a name of anything in this project.
   that has a file there is specified there and nowhere else.
 - `docs/legacy/`: this project's reading of the legacy APRS documents. The
   legacy tokenizer follows it; when the code and the reading disagree, fix
-  the reading first. Decoder behaviour cited there was read in source, at
-  the commits its README lists.
+  the reading first. Its README holds the general rules that are the whole
+  of the reading; a numbered file applies them and does not decide anything
+  on its own. Only a "Reviewed exceptions" entry, written after the author
+  has reviewed the passage, departs from them.
 - `vectors/`: machine-readable conformance vectors. Tables in the documents
   are copies; when they disagree, the vector file is authoritative.
 - `3rdparty/`: pinned upstream references.

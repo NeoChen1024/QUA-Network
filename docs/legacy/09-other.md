@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Draft. Not frozen. Catalogue rows that the general rules do not settle are marked **[open]**. |
+| Status | Draft. Not frozen. A catalogue row that waits for the author is marked **[open]**. |
 | Reference | `APRS12c.pdf` chapters 15, 16, 18, 19 and 20, in submodule `3rdparty/aprsspec`, commit `5830d42f`. Conventions, reading rules and tokenizer model: [README](README.md). |
 
 ## 1. Scope

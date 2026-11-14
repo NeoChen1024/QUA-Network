@@ -89,8 +89,14 @@ words joined by `.` or `-`; the row carries an anchor of the same name,
 3.1 that the class falls under. The last column says, in one phrase, what
 follows from that rule for these bytes and which finding, if any, is
 given. A row is an application of a general rule, not a decision, and
-carries no label. A row that the general rules do not settle is marked
-**[open]** and says which default the tokenizer applies meanwhile.
+carries no label.
+
+**[agreed]** A row that the general rules do not settle has `none` in its
+rule column, and its last column gives a working choice: the simplest
+behaviour, which sets no precedent (section 1). Such a row goes to the
+author only when a run of the field inventory or of a probe shows that it
+touches more than 0.01% of the packets of the capture. It is marked
+**[open]** while it waits for the author.
 
 A catalogue row does not argue for a reading, and does not record what
 deployed decoders do: how decoders differ is found by differential
@@ -189,12 +195,12 @@ in the numbered files applies them, except the reviewed exceptions
 
 ### 3.2 Output
 
-**[proposed]** The tokenizer is strict. It reports where a packet departs
+**[agreed]** The tokenizer is strict. It reports where a packet departs
 from the rules of section 3.1 and does not repair it. Deviations seen on
 air are the subject of the divergence catalogue (RFC Appendix E), not of
 the tokenizer.
 
-**[proposed]** For each packet the tokenizer produces:
+**[agreed]** For each packet the tokenizer produces:
 
 - **Tokens.** `(rule ID, start, end, depth)`, as byte offsets into the
   raw TNC2 line. The depth-0 tokens cover the line exactly, in order,
@@ -226,7 +232,7 @@ data type identifier byte, so that the format can be read from the
 tokens. The list is in
 [01-frame.md section 7](01-frame.md#7-data-type-identifier).
 
-**[proposed]** The tokenizer finds boundaries and checks bytes and stated
+**[agreed]** The tokenizer finds boundaries and checks bytes and stated
 ranges. It does not compute values (degrees, knots, decoded telemetry).
 **[agreed]** As the author decided, the one exception is a checksum that
 a form carries, such as the NMEA `*hh`: the tokenizer verifies it,
@@ -247,7 +253,7 @@ where APRS12c only recommends printable ASCII give no finding: many
 senders put UTF-8 there, and a finding would bury everything else. The
 field inventory counts such bytes per field as a statistic of its own.
 
-**[proposed]** A field gives at most one `syntax` finding, at its first
+**[agreed]** A field gives at most one `syntax` finding, at its first
 failing byte. A missing field gives its finding at the byte where it was
 expected, which may be the end of the line; consecutive missing fields at
 one byte give one finding, on the first. Identical findings (the same
@@ -257,7 +263,7 @@ that is not a UTF-8 continuation byte starting one, since by rule 1 one
 accepting reading is enough. When two rules would each give a finding at one byte
 for one fault, only the more specific rule gives it.
 
-**[proposed]** Kinds. A byte outside a stated byte set, a fixed-width
+**[agreed]** Kinds. A byte outside a stated byte set, a fixed-width
 field whose bytes do not fit, a missing required field and a list with a
 number of fields other than the one stated give `syntax`. A delimited or
 variable-length field longer or shorter than a stated length, a value
@@ -266,7 +272,7 @@ list is closed unless the document says it is not, as "such as", "etc."
 or "include" do; a code outside an open list gives `unstated`.
 **[agreed]** As the author decided, a list that names software, devices
 or other implementations is open, whatever its wording: the document
-cannot limit which implementations exist. **[proposed]** Bytes
+cannot limit which implementations exist. **[agreed]** Bytes
 that no rule accounts for stay in the free-text field that holds them;
 where there is none, they are residue.
 

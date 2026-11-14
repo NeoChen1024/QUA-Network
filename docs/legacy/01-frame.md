@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Draft. Not frozen. A catalogue row that the general rules of the [README](README.md#31-general-rules) do not settle is marked **[open]**. |
+| Status | Draft. Not frozen. A catalogue row that waits for the author is marked **[open]** ([README section 2](README.md#2-conventions)). |
 | Reference | `APRS12c.pdf` in submodule `3rdparty/aprsspec`, commit `5830d42f`. See [RFC Appendix D](../rfc/qua-network-rfc-0.md#appendix-d-reference-documents). |
 
 ## 1. Scope
@@ -179,8 +179,8 @@ field unchanged (p. 107/83 to p. 110/86). The inner field is read from
 
 | ID | Pages | What the document leaves open | Class | Rule | What the tokenizer does |
 |---|---|---|---|---|---|
-| <a id="amb.line.split"></a>amb.line.split | p. 107/83; p. 108/84 | The header ends at `:`, but p. 108/84 lets a source hold any printable byte but `>`, `:` included. | ambiguous | 1 | **[open]** By rule 1 a source holding `:` conforms. Default: the header ends at the first `:` of the line, so such a line gives `syntax` at `line.gt`; the same for `tp.src` and `tp.sep`. |
-| <a id="amb.line.aea"></a>amb.line.aea | p. 107/83; p. 137/113 | The AEA source path header is shown as an obsolete form beside the TNC-2 one; whether it describes the line that the tokenizer receives is not said. | unstated | 2 | **[open]** Default: not recognised at line level; an AEA line header gets the findings of the TNC-2 reading. |
+| <a id="amb.line.split"></a>amb.line.split | p. 107/83; p. 108/84 | The header ends at `:`, but p. 108/84 lets a source hold any printable byte but `>`, `:` included. | ambiguous | none | Working choice: the header ends at the first `:` of the line, so a source holding `:` gives `syntax` at `line.gt`; the same for `tp.src` and `tp.sep`. |
+| <a id="amb.line.aea"></a>amb.line.aea | p. 107/83; p. 137/113 | The AEA source path header is shown as an obsolete form beside the TNC-2 one; whether it describes the line that the tokenizer receives is not said. | unstated | none | Working choice: not recognised at line level; an AEA line header gets the findings of the TNC-2 reading. |
 | <a id="amb.addr.form"></a>amb.addr.form | p. 22/12; p. 107/83; p. 108/84; p. 109/85 | P. 107/83 puts every header address in the AX.25 form; p. 108/84 lets a source be any 1 to 9 printable bytes but `>`. The digit form of an SSID with a leading zero is not given. | conflict | 3; 2 | At a source, an address either side accepts conforms: `addr.is`, `is-only`, for `-0`, an SSID above 15 or a trailing `*` too. Elsewhere the AX.25 form, else `syntax`. `-01` to `-09`: `unstated`, read as the AX.25 form, the more specific. |
 | <a id="amb.path.q"></a>amb.path.q | p. 155/131 | APRS12c names the q-construct and defers to the APRS-IS pages, which give the codes and that a call follows, but no byte form for the entries after it. | unstated | 2; 5 | `path.q` checked by those pages; `path.is` takes printable entries, `is-only` when not in the AX.25 form, `unstated` for a trailing `*`. |
 | <a id="amb.dest.class"></a>amb.dest.class | p. 25/13; p. 26/12; p. 27/17; p. 28/18; p. 29/19 | The destination uses overlap and no precedence is given. | ambiguous | 4 | The more specific class is taken (section 5). `APRS`, every tocall and every symbol destination are also generic: no finding. A tocall or generic address that is also a locator, such as `AP51WX`, gives `ambiguous` on its class at the first byte of `addr.dest`. |
@@ -209,7 +209,5 @@ None.
 
 ## 11. Open items
 
-- [amb.line.split](#amb.line.split) and [amb.line.aea](#amb.line.aea)
-  are open.
 - The meanings of the destination and source SSIDs, and the symbol
   precedence of p. 127/103, belong to a decoding layer not yet written.

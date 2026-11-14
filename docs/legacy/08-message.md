@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Draft. Not frozen. A catalogue row that the general rules of the [README](README.md#31-general-rules) do not settle is marked **[open]**; a reviewed exception is marked **[agreed]**. |
+| Status | Draft. Not frozen. A catalogue row that waits for the author is marked **[open]** ([README section 2](README.md#2-conventions)); a reviewed exception is marked **[agreed]**. |
 | Reference | `APRS12c.pdf` in submodule `3rdparty/aprsspec`, commit `5830d42f`. Conventions and tokenizer model: [README](README.md). |
 
 ## 1. Scope
@@ -145,7 +145,7 @@ fewer fields give `syntax` on `nts.field` at the end of `msg.text`.
 | ID | Pages | What the document leaves open | Class | Rule | What the tokenizer does |
 |---|---|---|---|---|---|
 | <a id="amb.msg.addressee"></a>amb.msg.addressee | p. 93/71; p. 109/85 | The addressee has a width and padding but no byte set; p. 109/85 says a message sender, whom the acknowledgement addresses, may be longer than a callsign, in lower case, or with a non-numeric SSID. | unstated | 2 | Letters, digits and `-`, either case: no finding. The first other byte of the name, an inner `SP` or `:` included, gives `unstated`. `bln` or `nws-` in another case is a message addressee, no finding. |
-| <a id="amb.msg.text"></a>amb.msg.text | p. 93/71; p. 96/74; p. 97/75 | The limit is 67 bytes in the diagram and 67 characters, UTF-8 allowed, in the text. "Printable ASCII or UTF-8 characters" can also be read as any UTF-8 character, control bytes included. | ambiguous | 1 | `value` only past 67 characters, which every reading rejects. **[open]** By rule 1 a control byte would conform under the second reading; default: CR, LF, other C0 bytes and DEL give `syntax`, C1 characters no finding. |
+| <a id="amb.msg.text"></a>amb.msg.text | p. 93/71; p. 96/74; p. 97/75 | The limit is 67 bytes in the diagram and 67 characters, UTF-8 allowed, in the text. "Printable ASCII or UTF-8 characters" can also be read as any UTF-8 character, control bytes included. | ambiguous | 1; none | `value` only past 67 characters, which every reading rejects (rule 1). Working choice: CR, LF, other C0 bytes and DEL give `syntax`; C1 characters give no finding. |
 | <a id="amb.msg.replyack"></a>amb.msg.replyack | p. 95/73 | `{MM}AA` sits within the 5-byte number, but the lengths of `MM` and `AA` are not given. | unstated | 2 | More than 5 bytes gives `value`; an empty `MM` `syntax`; `MM` other than 2 or `AA` other than 0 or 2 `unstated`. |
 | <a id="amb.msg.ack"></a>amb.msg.ack | p. 93/71; p. 94/72 | Every acknowledgement or rejection is also message text. | ambiguous | 4 | Carried by every instance: the acknowledgement or rejection, no finding. A text that starts with `ack` or `rej` and does not match section 4 as a whole is message text, no finding ([section 11](#11-reviewed-exceptions)). Upper-case `ACK` is not the keyword: message text, no finding. |
 | <a id="amb.bln.forms"></a>amb.bln.forms | p. 96/74; p. 97/75 | A `BLN` addressee of none of the three forms, such as `BLNAWX` or `BLN!`, may be a bulletin of a form not given or a message. | ambiguous | 1 | `BLN` at offsets 1 to 3 announces a bulletin addressee: a bulletin, with `syntax` on `bln.addr` at the first byte at which every form fails; reading the addressee as a message's does not make it conform. `bln` in another case is a message addressee ([amb.msg.addressee](#amb.msg.addressee)). |
@@ -174,4 +174,4 @@ these strings mix too easily with ordinary text messages.
 
 ## 12. Open items
 
-- [amb.msg.text](#amb.msg.text) is open.
+None.

@@ -1124,10 +1124,11 @@
     "06-weather.md#wx.raw.ultpkt",
     "06-weather.md#wx.raw.data",
     "06-weather.md#amb.wx.rawdti",
+    "06-weather.md#10-reviewed-exceptions",
     "01-frame.md#7-data-type-identifier",
     "01-frame.md#amb.dti.shared"
    ],
-   "note": "Ultimeter packet form: the ULTW marker is at offsets 1-4 and the data starts at offset 5. Byte 5 is a digit, not a letter followed by a comma, so the NMEA reading cannot apply and amb.wx.rawdti gives no ambiguous finding.",
+   "note": "Ultimeter packet form: a field that starts with $ULTW is a raw Ultimeter report (06 section 10). The ULTW marker is at offsets 1-4 and the data starts at offset 5. Byte 5 is a digit, not a letter followed by a comma, so the NMEA reading of amb.dti.shared cannot apply and there is no ambiguous finding. Re-derived after amb.wx.rawdti became a reviewed exception.",
    "doubt": "Rule ID of the discouraged finding: 'dti' or possibly wx.raw.ultpkt.dti."
   },
   {
@@ -1158,11 +1159,12 @@
     "06-weather.md#wx.raw.ultlog",
     "06-weather.md#wx.raw.data",
     "06-weather.md#amb.wx.rawdti",
+    "06-weather.md#10-reviewed-exceptions",
     "06-weather.md#amb.wx.status",
     "01-frame.md#7-data-type-identifier",
     "01-frame.md#amb.dti.shared"
    ],
-   "note": "Ultimeter logging form: two exclamation marks, then station output that the reading does not inspect. The second '!' cannot start a position, so no ambiguous finding. The byte-0 token carries wx.raw.ultlog.dti.",
+   "note": "Ultimeter logging form: a field that starts with two exclamation marks is a raw Ultimeter report (06 section 10), and the reading does not inspect the station output after them. The second '!' cannot start a position, so no ambiguous finding. The byte-0 token carries wx.raw.ultlog.dti. Re-derived after amb.wx.rawdti became a reviewed exception.",
    "doubt": "The discouraged finding is given by the dti rules of 01-frame section 7; I name its rule ID 'dti'. An implementation could report it under the identifier rule wx.raw.ultlog.dti instead."
   },
   {
@@ -1242,10 +1244,11 @@
     "06-weather.md#wx.rainmid",
     "06-weather.md#7-software-and-unit-codes",
     "06-weather.md#amb.wx.letters",
+    "06-weather.md#amb.wx.tail",
     "06-weather.md#amb.wx.status",
     "01-frame.md#7-data-type-identifier"
    ],
-   "note": "Positionless report, discouraged at the identifier. The dots are unknown fill, not an ellipsis: the c, s, g and t values are each three dots, allowed by amb.wx.unknown, at offsets 9, 13, 17 and 21, and the rain-since-midnight element P012 is at 25. 'J' at 29 starts no element, so the data ends there (amb.wx.letters). The 3 bytes left are a tail; its first byte is not a listed software code, so it is one unit code, whose list is open (06 section 7): wx.unit, no finding. Re-derived after amb.wx.tail stopped giving an ambiguous finding."
+   "note": "Positionless report, discouraged at the identifier. The dots are unknown fill, not an ellipsis: the c, s, g and t values are each three dots, allowed by amb.wx.unknown, at offsets 9, 13, 17 and 21, and the rain-since-midnight element P012 is at 25. 'J' at 29 is a letter outside the element list and starts no element, so the data ends there, with no finding (amb.wx.letters). The 3 bytes left are a tail, the more specific reading, not a comment (amb.wx.tail); its first byte is not a listed software code, so it is one unit code, whose list is open (06 section 7): wx.unit, no finding. Re-derived after a comment was allowed after weather data (amb.wx.comment)."
   },
   {
    "id": "p85-2d0ba2c9",
@@ -1332,9 +1335,10 @@
     "06-weather.md#62-order-and-end-of-the-data",
     "06-weather.md#7-software-and-unit-codes",
     "06-weather.md#err.wx.object-baro",
-    "06-weather.md#amb.wx.required"
+    "06-weather.md#amb.wx.required",
+    "06-weather.md#amb.wx.tail"
    ],
-   "note": "A weather object (byte 0 carries wx.obj). Wind 220/004 is at 37-43 and gust g005 at 44-47; a complete report needs no temperature (amb.wx.required). The pressure at 48 has only four digits before the end, so no element starts there and the data ends (06 section 6.2). The 5 bytes left are a tail: a software code and a 4-byte unit (06 section 7). 'b' is not a listed software code, and the list names software, so it is open: wx.sw gives unstated at 48; the unit 0990 gives none. err.wx.object-baro calls the missing digit a slip, which allows nothing: no 4-digit pressure is read, and the example conforms only as that tail. Re-derived after the software list was read as open (README section 3.3)."
+   "note": "A weather object (byte 0 carries wx.obj). Wind 220/004 is at 37-43 and gust g005 at 44-47; a complete report needs no temperature (amb.wx.required). The pressure at 48 has only four digits before the end, so no element starts there and the data ends (06 section 6.2). The 5 bytes left are a tail, the more specific reading, not a comment (amb.wx.tail): a software code and a 4-byte unit (06 section 7). 'b' is not a listed software code, and the list names software, so it is open: wx.sw gives unstated at 48; the unit 0990 gives none. err.wx.object-baro calls the missing digit a slip, which allows nothing: no 4-digit pressure is read, and the example conforms only as that tail. Re-derived after a comment was allowed after weather data (amb.wx.comment)."
   },
   {
    "id": "p86-6938eb8a",

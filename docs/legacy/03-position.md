@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Draft. Not frozen. A catalogue row that the general rules do not settle is marked **[open]**. |
+| Status | Draft. Not frozen. A catalogue row that waits for the author is marked **[open]**. |
 | Reference | `APRS12c.pdf` in submodule `3rdparty/aprsspec`, commit `5830d42f`. Conventions, the general rules and the tokenizer model are in [README.md](README.md). |
 
 ## 1. Scope
@@ -94,17 +94,17 @@ The `[` identifier is obsolete; 01 gives the finding.
 |---|---|---|---|---|---|
 | <a id="amb.pos.ext"></a>`amb.pos.ext` | p. 45/27, p. 49/31, p. 51/33, p. 78/60 | The area descriptor is among the extensions that may follow position data (p. 45/27); the position diagrams list four other kinds. | conflict | 3, 4 | With symbol `\l`, a slot that fits `ext.area` is that descriptor, the more specific form, with `ambiguous` at its first byte. Under other symbols the descriptor is not looked for. |
 | <a id="amb.pos.cmpext"></a>`amb.pos.cmpext` | p. 45/27, p. 54/36, p. 59/41 | An extension after a compressed position. | conflict | 3, 4 | As [amb.ext.compressed](02-fields.md#amb.ext.compressed): under `\l` the area descriptor, otherwise a form of step 3. |
-| <a id="amb.pos.wxsym"></a>`amb.pos.wxsym` | p. 51/33, p. 82/62, p. 85/65 | Symbol `_` identifies a weather report; a `_` position with an ordinary comment, or with nothing after it, is not addressed. | ambiguous | 1 | Nothing after the block: a position report, no finding. With bytes after it, the symbol announces weather data: they go to 06, which judges them as weather data ([amb.wx.symbol](06-weather.md#amb.wx.symbol)); reading them as a comment does not make them conform. |
+| <a id="amb.pos.wxsym"></a>`amb.pos.wxsym` | p. 51/33, p. 82/62, p. 85/65 | Symbol `_` identifies a weather report; a `_` position with an ordinary comment, or with nothing after it, is not addressed. | ambiguous | 1 | Nothing after the block: a position report, no finding. With bytes after it, the symbol announces weather data: they go to 06, which reads them as a weather report, its data and then a tail or a comment ([amb.wx.symbol](06-weather.md#amb.wx.symbol)). Reading all of them as a comment does not make a report without its wind field conform. |
 | <a id="amb.pos.cmtlen"></a>`amb.pos.cmtlen` | p. 46/28, p. 50/32, p. 51/33 | At most 43 bytes after the symbol "in all cases", and 36 after a 7-byte extension; PHGR has 9. | conflict | 3 | 36 characters after `ext.phgr`. |
 | <a id="err.df.ext"></a><a id="amb.df.ext"></a>`err.df.ext` (also `amb.df.ext`) | p. 45/27, p. 48/30, p. 52/34, p. 53/35 | The text puts bearing and NRQ after a course and speed; the DF diagrams after any of four extensions. | conflict | 3, 4 | DF symbol after another extension, bearing at most 360: `ext.brgnrq`, `ambiguous` at its first byte, `df.cmt` after it. A larger bearing there: comment text, no finding. |
 | <a id="amb.df.detect"></a>`amb.df.detect` | p. 45/27, p. 52/34 | Bearing and NRQ after a course and speed are "only meaningful" with the DF symbol; p. 45/27 sets no symbol. | ambiguous | 4 | Another symbol after `ext.csespd`, bearing at most 360: `ext.brgnrq`, `ambiguous` at its first byte, comment limit 28. |
-| <a id="amb.df.agrelo"></a>`amb.df.agrelo` | p. 34/20, p. 138/114 | The format is only a diagram; whether anything follows is not said, while p. 34/20 lets any packet carry a comment after its data. | conflict | 3 | **[open]** Rule 3 would make any trailing bytes a comment, letting every Agrelo field with extra bytes conform; kept: bytes after the fifth are residue with `syntax`. |
+| <a id="amb.df.agrelo"></a>`amb.df.agrelo` | p. 34/20, p. 138/114 | The format is only a diagram; whether anything follows is not said, while p. 34/20 lets any packet carry a comment after its data. | conflict | none | Working choice: bytes after the fifth field are residue with `syntax`. |
 | <a id="amb.grid.form"></a>`amb.grid.form` | p. 42/26, p. 51/33 | `[IO91SX` without `]`: a 6-byte locator, or 4 bytes and a comment. | ambiguous | 4 | Upper-case letters in range: 6-byte `grid.loc`, the more specific, `ambiguous` at byte 5 when the first four bytes fit. Other letters: the 4-byte reading, the one that accepts, no finding. |
 | <a id="amb.grid.range"></a>`amb.grid.range` | p. 51/33, p. 150/126 | The letter ranges come only from the Maidenhead system the document names. | ambiguous | 5, 1 | First pair outside `A`–`R`: `syntax`. A subsquare letter outside `A`–`X` without `]`: 4-byte locator, comment, no finding. With `]` after six bytes, the bracket closes a 6-byte locator, which is judged as such: `syntax` at the letter; reading the letters and the `]` as comment does not make them conform. |
 | <a id="amb.grid.case"></a>`amb.grid.case` | p. 105/81, p. 152/128 | Letters are transmitted in upper case and may be received in either. | ambiguous | 1 | The sending rule fixes the bytes: lower case gives `syntax`. In a subsquare without `]`, see amb.grid.form. |
-| <a id="amb.nmea.sentence"></a>`amb.nmea.sentence` | p. 42/26, p. 52/34 | The sentence is given by reference to NMEA 0183 and by four examples; five types are recommended to receivers. | unstated | 5, 2 | **[open]** No NMEA 0183 text is pinned: the shape only, and no finding for any talker or type. |
+| <a id="amb.nmea.sentence"></a>`amb.nmea.sentence` | p. 42/26, p. 52/34 | The sentence is given by reference to NMEA 0183 and by four examples; five types are recommended to receivers. | unstated | none | Working choice: the shape only, and no finding for any talker or type. |
 | <a id="amb.nmea.checksum"></a>`amb.nmea.checksum` | p. 52/34 | Three examples carry a checksum, one none; the case of the hex digits is not given. | ambiguous | 3, 2 | Missing: no finding. Present: compared, a mismatch gives `value` (README section 3.2). Lower-case digits: `unstated`, still compared. |
-| <a id="amb.nmea.end"></a>`amb.nmea.end` | p. 42/26, p. 52/34 | NMEA 0183 ends a sentence with CR LF; the examples show none; bytes after the checksum are not addressed. | conflict | 5, 3 | CR LF at the end: `nmea.end`, no finding. **[open]** Other bytes after the checksum: kept as residue with `syntax`, as for [amb.df.agrelo](#amb.df.agrelo). |
+| <a id="amb.nmea.end"></a>`amb.nmea.end` | p. 42/26, p. 52/34 | NMEA 0183 ends a sentence with CR LF; the examples show none; bytes after the checksum are not addressed. | conflict | 5, 3; none | CR LF at the end: `nmea.end`, no finding (rules 5, 3). Working choice: other bytes after the checksum are residue with `syntax`, as for [amb.df.agrelo](#amb.df.agrelo). |
 
 ## 8. Reviewed exceptions
 
@@ -115,6 +115,3 @@ None.
 - A pinned text of NMEA 0183 and of the Maidenhead letter ranges (README
   rule 5). Until then the NMEA framing and the letter ranges are the
   general ones, recalled, not read.
-- The rows kept against the rules: [amb.df.agrelo](#amb.df.agrelo) and
-  [amb.nmea.end](#amb.nmea.end), where nothing announces a field after
-  the last one of the format.

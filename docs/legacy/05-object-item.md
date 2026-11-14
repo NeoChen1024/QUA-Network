@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Draft. Not frozen. Catalogue rows that the general rules do not settle are marked **[open]**. |
+| Status | Draft. Not frozen. A catalogue row that waits for the author is marked **[open]**. |
 | Reference | `APRS12c.pdf` chapter 11, p. 75/57 to p. 80/62, with p. 49/31 and the appendices, in submodule `3rdparty/aprsspec`, commit `5830d42f`. Conventions, reading rules and tokenizer model: [README](README.md). |
 
 ## 1. Scope
@@ -96,7 +96,9 @@ the item or object format decides.
 An object whose symbol code is `'_'` and which has at least one byte
 after its position is a weather report read by
 [06-weather.md](06-weather.md#wx.obj): the identifier token carries
-`wx.obj`, and `obj.ext` and `obj.cmt` do not apply. An item whose symbol
+`wx.obj`, and `obj.ext` and `obj.cmt` do not apply: a comment after the
+weather data is read as
+[06 section 7](06-weather.md#7-software-and-unit-codes) says. An item whose symbol
 code is `'_'` and which has at least one byte after its position is read
 the same way, and its identifier token keeps `item.dti`
 ([amb.wx.carriers](06-weather.md#amb.wx.carriers)). An object or
@@ -112,7 +114,7 @@ and a course and speed may carry storm data before its comment, as
 | <a id="amb.obj.name"></a>`amb.obj.name` | p. 76/58 | A name of nine SP leaves no name once the padding is removed. | unstated | 2 | `unstated` on `obj.name` at offset 1. |
 | <a id="amb.obj.cmtlen"></a>`amb.obj.cmtlen` | p. 34/20, p. 76/58, p. 77/59 | The limits are in "chars", and the comment may hold UTF-8 characters of several bytes. | ambiguous | 1 | Counted in characters, the reading that accepts more bytes: `value` only where the characters exceed the limit. The limit is applied by the comment reader of 02-fields. |
 | <a id="amb.area.symbol"></a>`amb.area.symbol` | p. 76/58, p. 78/60 | The descriptor follows the `\l` symbol code at once, while the object diagram makes the extension optional and lists course and speed and others at the same slot. | ambiguous | 1 | The `\l` symbol announces the descriptor: the seven bytes are `ext.area`, judged as it, and bytes that do not fit give `syntax`; no other extension is tried, and reading the bytes as comment does not make them conform. A report that ends at the symbol code has no descriptor and no finding. Under another symbol no descriptor is looked for. |
-| <a id="amb.area.overlay"></a>`amb.area.overlay` | p. 78/60, p. 80/62, p. 126/102, p. 141/117 | The area and signpost symbols are named `\l` and `\m`; only marked symbols take an overlay (p. 126/102), yet every alternate symbol may (p. 141/117). | ambiguous | 1 | **[open]** Default: the symbols are matched on their bytes; an overlay character with `'l'` or `'m'` is another symbol, with no descriptor, corridor or signpost and no finding. |
+| <a id="amb.area.overlay"></a>`amb.area.overlay` | p. 78/60, p. 80/62, p. 126/102, p. 141/117 | The area and signpost symbols are named `\l` and `\m`; only marked symbols take an overlay (p. 126/102), yet every alternate symbol may (p. 141/117). | ambiguous | none | Working choice: the symbols are matched on their bytes; an overlay character with `'l'` or `'m'` is another symbol, with no descriptor, corridor or signpost and no finding. |
 | <a id="amb.area.braces"></a>`amb.area.braces` | p. 80/62 | Corridor and signpost braces are "in the comment", with no spot; the corridor's digit count is not given. | ambiguous | 2 | The whole comment is the place: the first braces of the item's shape are the item, with no finding; later braces are text. Braces in other reports, or in an area of another type, are text. |
 | <a id="amb.obj.obsolete"></a>`amb.obj.obsolete` | p. 80/62 | Objects without `';'` are obsolete and "should now be interpreted" as status reports; no layout is given. | ambiguous | 1, 4 | The object layout from offset 0, with `obsolete`; every instance carries the status-report reading, so no `ambiguous`. Where byte 0 is `)` or `;`, the item or object format decides, its layout constraining at least as many bytes. Where byte 0 is another assigned identifier whose format also accepts the field, `ambiguous` on `obj.obsolete` at offset 0 and the object layout, the more specific, is taken; where that format does not accept it, the identifier decides. |
 | <a id="err.obj.time"></a>`err.obj.time` | p. 75/57, p. 76/58, p. 78/60, p. 80/62, p. 153/129 | Optional timestamp against "always has a timestamp"; the template and FLIGHTPTH example omit it. | conflict | 3 | Both accepted ([amb.obj.time](#amb.obj.time)). |
@@ -127,5 +129,4 @@ None.
 
 ## 10. Open items
 
-- [amb.area.overlay](#amb.area.overlay): whether an overlaid `'l'` or
-  `'m'` is the area or signpost symbol.
+None.

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Draft. Not frozen. A catalogue row that the general rules do not settle is marked **[open]**. |
+| Status | Draft. Not frozen. A catalogue row that waits for the author is marked **[open]**. |
 | Reference | `APRS12c.pdf` in submodule `3rdparty/aprsspec`, commit `5830d42f`. Conventions, the general rules and the tokenizer model are in [README.md](README.md). |
 
 ## 1. Scope
@@ -227,8 +227,8 @@ occurrences overlap: [amb.cmt.overlap](#amb.cmt.overlap).
 
 | Item | Fields | Source |
 |---|---|---|
-| `cmt.alt`, `cmt.alt.neg` | Every comment: [`pos.cmt`](03-position.md#pos.cmt), [`pos.cmpcmt`](03-position.md#pos.cmpcmt), [`df.cmt`](03-position.md#df.cmt), the Mic-E free text, [`obj.cmt`](05-object-item.md#obj.cmt), [`item.cmt`](05-object-item.md#item.cmt), [`tlm.cmt`](07-telemetry.md#tlm.cmt), [`grid.cmt`](03-position.md#grid.cmt). | p. 34/20, p. 43/27 |
-| `cmt.dao` | The position comments of the row above, not `tlm.cmt` or `grid.cmt`; p. 76/58 names it for objects. | p. 35/21, p. 76/58 |
+| `cmt.alt`, `cmt.alt.neg` | Every comment: [`pos.cmt`](03-position.md#pos.cmt), [`pos.cmpcmt`](03-position.md#pos.cmpcmt), [`df.cmt`](03-position.md#df.cmt), the Mic-E free text, [`obj.cmt`](05-object-item.md#obj.cmt), [`item.cmt`](05-object-item.md#item.cmt), [`tlm.cmt`](07-telemetry.md#tlm.cmt), [`grid.cmt`](03-position.md#grid.cmt), the comment after weather data ([06 section 7](06-weather.md#7-software-and-unit-codes)). | p. 34/20, p. 43/27 |
+| `cmt.dao` | The position comments of the row above, not `tlm.cmt`, `grid.cmt` or the comment after weather data; p. 76/58 names it for objects. | p. 35/21, p. 76/58 |
 | `cmt.noarchive` | Every free-text field, and [`udf.data`](09-other.md#udf.data) and [`inv.data`](09-other.md#inv.data) ([amb.cmt.noarchive](#amb.cmt.noarchive)). | p. 110/86 |
 | Data extensions | The slot (7.1); after a compressed block (6.5); the Mic-E status text, at the start of its free text or, with none there, the first later run ([04 amb.mice.extension](04-mic-e.md#amb.mice.extension)). | p. 45/27 |
 | `tlm.b91`, `freq.*`, `area.corridor`, `obj.signpost` | As [07](07-telemetry.md), [09](09-other.md#7-frequency-specification) and [05](05-object-item.md) say. | — |
@@ -287,8 +287,8 @@ are left for later use (p. 36/22).
 | <a id="amb.cmt.alt.malformed"></a>`amb.cmt.alt.malformed` | p. 43/27 | What `'/A='` not followed by exactly six digits (or `'-'` and five) is. | ambiguous | 1 | `'/A='` announces the altitude, so the run is judged as `cmt.alt`: a token up to the last fitting byte and `syntax` at the first byte that does not fit, past the field when it is cut short. |
 | <a id="amb.cmt.dao"></a>`amb.cmt.dao` | p. 35/21, p. 36/22 | Several candidates; DAO or text of the same shape; the precision of digit and other datums. | ambiguous | 4, 2 | Several: `ambiguous` on each. One: no finding, every DAO carries it. Datums: 8.3. |
 | <a id="err.cmt.daoexample"></a>`err.cmt.daoexample` | p. 36/22, p. 37/23 | `':'` decoded to 27; it is 25. | conflict | 3 | No effect on tokens. |
-| <a id="amb.cmt.noarchive"></a>`amb.cmt.noarchive` | p. 110/86, p. 155/131 | "Any packet containing" `'!x!'`: in text only or anywhere. | ambiguous | 1 | Anywhere, repeats included, no finding. A `cmt.noarchive` token in free text. **[open]** A match outside free text has no token. |
-| <a id="amb.cmt.overlap"></a>`amb.cmt.overlap` | p. 35/21, p. 43/27 | Two items that may stand anywhere can overlap. | ambiguous | 4 | `ambiguous` on each; `'!x!'` claims no bytes and takes no part. **[open]** Both tokens are kept, where rule 4 keeps the more specific. |
+| <a id="amb.cmt.noarchive"></a>`amb.cmt.noarchive` | p. 110/86, p. 155/131 | "Any packet containing" `'!x!'`: in text only or anywhere. | ambiguous | 1; none | Anywhere, repeats included, no finding (rule 1). A `cmt.noarchive` token in free text. Working choice: a match outside free text has no token. |
+| <a id="amb.cmt.overlap"></a>`amb.cmt.overlap` | p. 35/21, p. 43/27 | Two items that may stand anywhere can overlap. | ambiguous | 4; none | `ambiguous` on each (rule 4); `'!x!'` claims no bytes and takes no part. Working choice: both tokens are kept. |
 
 ## 10. Reviewed exceptions
 
@@ -296,6 +296,4 @@ None.
 
 ## 11. Open items
 
-- No token records a `'!x!'` outside free text
-  ([amb.cmt.noarchive](#amb.cmt.noarchive)), nor do overlapping items
-  keep one token ([amb.cmt.overlap](#amb.cmt.overlap)).
+None.

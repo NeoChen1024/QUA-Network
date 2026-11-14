@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Draft. Not frozen. A catalogue row that the general rules do not settle is marked **[open]**. |
+| Status | Draft. Not frozen. A catalogue row that waits for the author is marked **[open]**; a reviewed exception is marked **[agreed]**. |
 | Reference | `APRS12c.pdf` in submodule `3rdparty/aprsspec`, commit `5830d42f`. Conventions, general rules and tokenizer model: [README](README.md). |
 
 ## 1. Scope
@@ -10,7 +10,8 @@
 Raw weather station output (`!!`, `#`, `$ULTW`, `*`), the positionless
 report (`_`), complete reports carried by a position report or an object
 (and an item, [amb.wx.carriers](#amb.wx.carriers)), the weather data
-elements, the software and unit codes, and storm data. Shared fields
+elements, the software and unit codes, the comment after the data, and
+storm data. Shared fields
 (timestamps, positions, symbols, the compressed block, data extensions)
 are read by [02-fields.md](02-fields.md); NWS bulletins by
 [08-message.md](08-message.md). No weather is looked for in Mic-E or
@@ -52,7 +53,8 @@ from the `dti` rules of 01. A position report or object that ends at its
 | [`wx.pl`](#wx.pl) | DTI | `'_'`. | Yes | 1 byte | p. 83/63 |
 | [`time.mdhm`](02-fields.md#time.mdhm) | Timestamp | 8 digits, MDHM. | Yes | 8 bytes | p. 83/63 |
 | [`wx.wdir`](#wx.wdir) ... | Weather data | Section 6; `c`, `s`, `g`, `t` lead, in that order. | Yes | Section 6.2 | p. 83/63, p. 84/64 |
-| [`wx.sw`](#wx.sw), [`wx.unit`](#wx.unit) | Tail | Section 7. | No | End of field | p. 83/63 |
+| [`wx.sw`](#wx.sw), [`wx.unit`](#wx.unit) | Tail | Section 7: 1 to 5 bytes after the data. | No | End of field | p. 83/63 |
+| [`cmt.text`](02-fields.md#cmt.text) | Comment | Section 7: 6 bytes or more after the data. | No | End of field | p. 34/20 |
 
 ## 5. Complete weather reports
 
@@ -70,7 +72,8 @@ element after it may come in any order, and none is required
 | [`lat`](02-fields.md#lat), [`sym.table`](02-fields.md#sym.table), [`lon`](02-fields.md#lon), [`sym.code`](02-fields.md#sym.code) | Position | As in 02; symbol code `'_'`. | Yes | 19 bytes | p. 85/65 |
 | [`ext.dirspd`](02-fields.md#ext.dirspd) | Wind | Direction, `'/'`, speed, 3 bytes each. Each part is three digits, a number with one `'.'`, or unknown fill ([amb.wx.unknown](#amb.wx.unknown)), on its own. A direction above 360 gives `value`; other bytes give `syntax` at the first that fails. | Yes | 7 bytes | p. 45/27, p. 84/64, p. 85/65 |
 | [`wx.gust`](#wx.gust) ... | Weather data | Section 6. | No | Section 6.2 | p. 85/65 |
-| [`wx.sw`](#wx.sw), [`wx.unit`](#wx.unit) | Tail | Section 7. | No | End of field | p. 85/65 |
+| [`wx.sw`](#wx.sw), [`wx.unit`](#wx.unit) | Tail | Section 7: 1 to 5 bytes after the data. | No | End of field | p. 85/65 |
+| [`cmt.text`](02-fields.md#cmt.text) | Comment | Section 7: 6 bytes or more after the data. | No | End of field | p. 34/20 |
 
 The wind field is present when the fourth of its seven bytes is `'/'`;
 it then keeps its 7-byte token, cut short by the end of the field, with
@@ -87,7 +90,11 @@ is read from that byte. A wind field whose direction part fits has read
 | [`time.dhm`](02-fields.md#time.dhm), [`time.hms`](02-fields.md#time.hms) | Timestamp | 7 bytes, after `'/'` or `'@'` only. | With `'/'`, `'@'` | 7 bytes | p. 86/66 |
 | [`cmp.block`](02-fields.md#cmp.block) | Compressed block | As in 02, symbol code `'_'`; the `cs` bytes carry the wind ([amb.wx.cmpwind](#amb.wx.cmpwind)). | Yes | 13 bytes | p. 86/66 |
 | [`wx.gust`](#wx.gust) ... | Weather data | Section 6, directly after the block; no 7-byte wind field. | No | Section 6.2 | p. 86/66 |
-| [`wx.sw`](#wx.sw), [`wx.unit`](#wx.unit) | Tail | Section 7. | No | End of field | p. 86/66 |
+| [`wx.sw`](#wx.sw), [`wx.unit`](#wx.unit) | Tail | Section 7: 1 to 5 bytes after the data. | No | End of field | p. 86/66 |
+| [`cmt.text`](02-fields.md#cmt.text) | Comment | Section 7: 6 bytes or more after the data. | No | End of field | p. 34/20 |
+
+Nothing after the block is required. Bytes there that start no element
+are the tail or the comment (6.2).
 
 ### 5.3 Object
 
@@ -96,7 +103,7 @@ is read from that byte. A wind field whose direction part fits has read
 | [`wx.obj`](#wx.obj) | DTI | `';'` ([err.wx.object-dti](#err.wx.object-dti)). | Yes | 1 byte | p. 86/66 |
 | [`obj.name`](05-object-item.md#obj.name), [`obj.state`](05-object-item.md#obj.state), [`obj.time`](05-object-item.md#obj.time) | Object header | As in 05. | Yes | As in 05 | p. 86/66 |
 | [`obj.pos`](05-object-item.md#obj.pos) | Position | Uncompressed as 5.1, or compressed as 5.2, which may stand wherever the lat/long form does (p. 55/37). | Yes | As 5.1 or 5.2 | p. 55/37, p. 86/66 |
-| [`ext.dirspd`](02-fields.md#ext.dirspd), [`wx.gust`](#wx.gust) ..., [`wx.sw`](#wx.sw), [`wx.unit`](#wx.unit) | Wind, data, tail | As 5.1 or 5.2. | As 5.1 | As 5.1 | p. 86/66 |
+| [`ext.dirspd`](02-fields.md#ext.dirspd), [`wx.gust`](#wx.gust) ..., [`wx.sw`](#wx.sw), [`wx.unit`](#wx.unit), [`cmt.text`](02-fields.md#cmt.text) | Wind, data, tail, comment | As 5.1 or 5.2. | As 5.1 | As 5.1 | p. 34/20, p. 86/66 |
 
 ## 6. Weather data elements
 
@@ -122,7 +129,7 @@ is at the first byte of the value.
 | <a id="wx.lum"></a>`wx.lum` | Luminosity | `L`, 3 bytes, 000 to 999 W/m² ([amb.wx.lum](#amb.wx.lum)). | No | 4 bytes | p. 84/64 |
 | <a id="wx.lumk"></a>`wx.lumk` | Luminosity, 1000 up | `l`, 3 bytes, 1000 more than the digits. | No | 4 bytes | p. 84/64 |
 | <a id="wx.snow"></a>`wx.snow` | Snowfall, 24 hours | `s` outside the leading places, 3 bytes, inches ([amb.wx.order](#amb.wx.order)). | No | 4 bytes | p. 84/64 |
-| <a id="wx.rawrain"></a>`wx.rawrain` | Raw rain counter | `#`; no width is stated ([amb.wx.rawrain](#amb.wx.rawrain)). | No | 1 byte | p. 84/64 |
+| <a id="wx.rawrain"></a>`wx.rawrain` | Raw rain counter | `#`; no width is stated, so a `#` never completes an element and ends the data ([amb.wx.rawrain](#amb.wx.rawrain)). | No | - | p. 84/64 |
 
 ### 6.2 Order and end of the data
 
@@ -136,37 +143,47 @@ expected, no byte used, and only the first of several missing places at
 one byte gives it. A complete report has no leading places.
 
 After that, an element is read wherever its letter is followed by a
-value that fits its width. An element whose field this report has
+value that fits its whole width. An element whose field this report has
 already read keeps its token and gives `unstated` at its letter. A wind
 field that has read `c` and `s` has read those fields; `wx.wspd` and
 `wx.snow` are different fields ([amb.wx.order](#amb.wx.order)).
 
-The data ends at the first byte that starts no such element. What
-follows is, in this order:
+The data ends at the first byte that starts no such element, with no
+finding there. That byte may be a letter outside 6.1
+([amb.wx.letters](#amb.wx.letters)), a `#`
+([amb.wx.rawrain](#amb.wx.rawrain)), a letter of 6.1 whose value does
+not fit, as the `h` of `home`, or any other byte. What follows is:
 
-1. the tail of section 7, when it is 1 to 5 bytes and either does not
-   start with `#` or gives no finding as a tail;
-2. `wx.rawrain` at a `#`, with `unstated`, and the rest a residue with no
-   finding ([amb.wx.rawrain](#amb.wx.rawrain));
-3. otherwise a residue named `wx.unit`, with `syntax` at its first byte
-   ([amb.wx.comment](#amb.wx.comment), [amb.wx.letters](#amb.wx.letters)).
+1. the tail of section 7, when it is 1 to 5 bytes
+   ([amb.wx.tail](#amb.wx.tail));
+2. otherwise a comment, as section 7 says
+   ([amb.wx.comment](#amb.wx.comment)).
 
 ## 7. Software and unit codes
 
-After the data a report may carry a 1-byte software code and a 2-4 byte
-unit code, with no separator, and nothing after them (p. 83/63, p. 85/65,
-p. 86/66). Neither byte set is stated.
+The diagrams show after the data a 1-byte software code and a 2-4 byte
+unit code, with no separator, and nothing after them (p. 83/63,
+p. 85/65, p. 86/66). Neither byte set is stated. A comment may stand
+there instead ([amb.wx.comment](#amb.wx.comment)).
 
 | ID | Field | Layout | Required | Ends at | Source |
 |---|---|---|---|---|---|
 | <a id="wx.sw"></a>`wx.sw` | Software code | 1 byte. The codes `d`, `M`, `P`, `S`, `W`, `X`, and `w` ([err.wx.software-case](#err.wx.software-case)), an open list, as it names software (README section 3.3): another byte gives `unstated`. | No | 1 byte | p. 83/63 |
 | <a id="wx.unit"></a>`wx.unit` | Unit code | 2-4 bytes, any code (the list is open), or one of `O`, `K`, `B`, `Y` ([err.wx.unit-length](#err.wx.unit-length)). | No | End of field | p. 83/63 |
+| [`cmt.text`](02-fields.md#cmt.text) | Comment | 6 bytes or more after the data, read as in 02 section 8.1; no length limit. | No | End of field | p. 34/20 |
 
 A tail of 1 byte is a unit code when it is `O`, `K`, `B` or `Y`, and a
 software code otherwise. A tail of 5 bytes is a software code and a
 4-byte unit. A tail of 2 to 4 bytes is a software code and a unit when
 its first byte is a listed software code and the rest is a unit code,
 and one unit code otherwise ([amb.wx.tail](#amb.wx.tail)).
+
+Six bytes or more after the data are a comment, which p. 34/20 allows
+after the data of any packet ([amb.wx.comment](#amb.wx.comment)). It is
+read as [`cmt.text`](02-fields.md#cmt.text), with the byte set of 02
+section 8.1. No length limit is stated for it, so none is checked. Of
+the items of 02 section 8.2, `cmt.alt` and `cmt.noarchive` are looked
+for in it, and no other.
 
 ## 8. Storm data
 
@@ -199,19 +216,19 @@ a data extension.
 
 | ID | Pages | What the document leaves open | Class | Rule | What the tokenizer does |
 |---|---|---|---|---|---|
-| <a id="amb.wx.rawdti"></a>`amb.wx.rawdti` | p. 31/17, p. 82/62 | `'!'` and `'$'` each start a position or NMEA sentence and an Ultimeter report, whose diagram is the identifier and n undefined bytes; only the examples show `!!` and `$ULTW`. | ambiguous | 4 | **[open]** By the rules every `'!'` or `'$'` field that fails as a position or NMEA sentence would be raw data and conform. Default: `!!` and `$ULTW` select raw weather, as in the examples, and other fields are read by 03; a `$ULTW` field that is also an NMEA sentence is 01's [amb.dti.shared](01-frame.md#amb.dti.shared). |
-| <a id="amb.wx.symbol"></a>`amb.wx.symbol` | p. 76/58, p. 82/62, p. 85/65 | A complete report is identified by the `'_'` symbol, while the position and object formats let any symbol carry an extension and a comment. | ambiguous | 1 | The `'_'` symbol announces weather data: bytes after the block make the report weather, judged as weather data, with `syntax` where they are not; reading them as a plain comment does not make them conform. |
+| <a id="amb.wx.rawdti"></a>`amb.wx.rawdti` | p. 31/17, p. 82/62 | `'!'` and `'$'` each start a position or NMEA sentence and an Ultimeter report, whose diagram is the identifier and n undefined bytes; only the examples show `!!` and `$ULTW`. | ambiguous | 7 | As the reviewed exception of [section 10](#10-reviewed-exceptions) says: only `!!` and `$ULTW` select raw weather, and every other `'!'` or `'$'` field is read by 03. A `$ULTW` field that is also an NMEA sentence is 01's [amb.dti.shared](01-frame.md#amb.dti.shared). |
+| <a id="amb.wx.symbol"></a>`amb.wx.symbol` | p. 76/58, p. 82/62, p. 85/65 | A complete report is identified by the `'_'` symbol, while the position and object formats let any symbol carry an extension and a comment. | ambiguous | 1 | The `'_'` symbol announces weather data: bytes after the block make the report weather, read as section 5 says. In an uncompressed report a missing wind field gives `syntax` at the byte after the symbol code (5.1), also when the bytes there are text; reading all of them as a plain comment does not make them conform. A comment may follow the data ([amb.wx.comment](#amb.wx.comment)). |
 | <a id="amb.wx.carriers"></a>`amb.wx.carriers` | p. 33/19, p. 75/57, p. 85/65, p. 87/67 | The weather pages name positions and objects; items are handled as objects apart from listed differences (p. 75/57). | ambiguous | 1, 4 | The `'_'` symbol announces weather data on an item as on an object: bytes after the block are a complete report, judged as one, and the identifier token keeps `item.dti`. No `ambiguous`, as every such item carries the question. |
 | <a id="amb.wx.order"></a>`amb.wx.order` | p. 84/64 | Whether an element may repeat; snowfall shares the letter `s` with wind speed. | unstated | 2 | Wind speed's place is the second leading place, so `s` elsewhere is snowfall. A repeat keeps its token and gives `unstated` at its letter. |
 | <a id="amb.wx.required"></a>`amb.wx.required` | p. 84/64, p. 85/65, p. 86/66 | The minimum-content note names an MDHM timestamp, `c`, `s`, `g` and `t`, which fits only the positionless form; one object example has no `t`. | conflict | 3 | Positionless: a missing `c`, `s`, `g` or `t` gives `syntax`. Complete reports: `g` and `t` are optional. |
 | <a id="amb.wx.unknown"></a>`amb.wx.unknown` | p. 84/64 | An unknown value is "a series of dots or spaces": all of one, or any mix. | ambiguous | 1 | Any mix of `'.'` and SP conforms; fill mixed with digits gives `syntax`. |
 | <a id="amb.wx.width"></a>`amb.wx.width` | p. 84/64 | The sentence allowing a decimal point follows the snowfall entry and may cover snowfall or every value. | ambiguous | 1 | Every value may hold one `'.'`. A value of another width than its element's does not start an element. |
-| <a id="amb.wx.rawrain"></a>`amb.wx.rawrain` | p. 84/64 | The raw rain counter has no width. | unstated | 2 | `#` is a 1-byte token with `unstated`; the rest of the field is residue, with no finding. |
+| <a id="amb.wx.rawrain"></a>`amb.wx.rawrain` | p. 84/64 | The raw rain counter has no width. | unstated | 3, 4 | A `#` never completes an element, as its whole shape is not stated: the data ends at it, and the bytes from it are the tail or the comment, with no finding, as for [amb.wx.letters](#amb.wx.letters). |
 | <a id="amb.wx.lum"></a>`amb.wx.lum` | p. 84/64 | `L` is put "in place of one of the rain values", not saying which, nor whether that value is then absent. | ambiguous | 1 | `L` and `l` are ordinary elements; all three rain elements beside them conform. |
-| <a id="amb.wx.tail"></a>`amb.wx.tail` | p. 83/63, p. 84/64 | With no separator, a tail of 2 to 4 bytes can be one unit code or a software code and a unit. | ambiguous | 4 | Where the first byte is a listed software code, both splits give no finding, and the software code and unit is taken, whose first byte the listed codes constrain; otherwise one unit code. No finding, as every such tail carries the question. |
-| <a id="amb.wx.comment"></a>`amb.wx.comment` | p. 34/20, p. 83/63, p. 85/65, p. 86/66 | No weather diagram has a comment, but p. 34/20 lets any packet carry one after its data. | ambiguous | 1 | The layout puts the tail of section 7 after the data, so the bytes there are judged as the tail; reading them as a comment does not make them conform. Bytes that are no tail or `#` are a residue with `syntax` (6.2); no comment item is looked for. |
+| <a id="amb.wx.tail"></a>`amb.wx.tail` | p. 34/20, p. 83/63, p. 84/64 | With no separator, a tail of 2 to 4 bytes can be one unit code or a software code and a unit. Any bytes after the data can also be a comment. | ambiguous | 4 | 1 to 5 bytes after the data are the tail, the more specific reading, not a comment. Where the first byte of 2 to 4 is a listed software code, both splits give no finding, and the software code and unit is taken, whose first byte the listed codes constrain; otherwise one unit code. No finding, as every tail carries both questions. |
+| <a id="amb.wx.comment"></a>`amb.wx.comment` | p. 34/20, p. 83/63, p. 85/65, p. 86/66 | The weather diagrams show only a software code and a unit code after the data; p. 34/20 lets any packet carry a plain comment right after its data. | conflict | 3, 4 | Both are accepted: bytes after the data that are not a tail ([amb.wx.tail](#amb.wx.tail)) are a comment, read as section 7 says. |
 | <a id="amb.wx.cmpwind"></a>`amb.wx.cmpwind` | p. 56/38, p. 57/39, p. 86/66 | The weather diagram makes `cs` the wind; the compression type byte and the first `cs` byte can make it an altitude, a range or nothing. | conflict | 3, 4 | Both sides conform. `cs` keeps the token of 02 (an altitude, which also constrains the type byte, is the more specific), with no finding, as every report with that type byte carries the question. Only a `cmp.cs.wind` token has read `c` and `s`. |
-| <a id="amb.wx.letters"></a>`amb.wx.letters` | p. 84/64 | Other parameters "include" those listed, so other letters may occur, with no width. | unstated | 2 | **[open]** By rule 2 a letter outside 6.1 would be an element of the open list, with `unstated`, and the rest residue. Default: the letter ends the data, and the bytes from it are a tail or the residue of [amb.wx.comment](#amb.wx.comment). |
+| <a id="amb.wx.letters"></a>`amb.wx.letters` | p. 84/64 | Other parameters "include" those listed, so other letters may occur, with no width. | unstated | 3, 4 | A letter outside 6.1 starts no complete element: the data ends at it, and the bytes from it are the tail or the comment ([amb.wx.comment](#amb.wx.comment)), with no finding. |
 | <a id="amb.storm.placement"></a>`amb.storm.placement` | p. 34/20, p. 87/67 | Storm data is optional in a storm report and is not delimited from the comment. | ambiguous | 1, 4 | A storm type of the closed list announces storm data: the bytes are judged as storm data, as section 8 reads them, with `syntax` where they fail; reading them as comment does not make them conform. Without a storm type the bytes are comment text, no finding. |
 | <a id="err.wx.object-dti"></a>`err.wx.object-dti` | p. 86/66, p. 134/110 | The Appendix 1 weather-object diagram has identifier `'*'`; chapter 12 and every other object diagram have `';'`. | conflict | 3 | A slip of the pen in the diagram (`'*'` for `';'`): it allows nothing. A weather object starts with `';'`, and every `'*'` field is the Peet Bros form, as 01's [err.dti.star](01-frame.md#err.dti.star) says. |
 | <a id="err.wx.object-time"></a>`err.wx.object-time` | p. 86/66 | The first weather-object example has no timestamp; the diagram gives 7 bytes. | conflict | 3 | Both: 05 reads a position in place of the timestamp ([amb.obj.time](05-object-item.md#amb.obj.time)). |
@@ -224,11 +241,17 @@ a data extension.
 
 ## 10. Reviewed exceptions
 
-None.
+**[agreed]** Raw weather under `'!'` and `'$'` (p. 31/17, p. 82/62).
+The diagram of the two Ultimeter forms gives the identifier and n bytes
+of station output, and does not say what the bytes are. Only a field
+that starts with `!!` or `$ULTW`, as the examples show, is a raw
+Ultimeter report ([`wx.raw.ultlog.dti`](#wx.raw.ultlog.dti),
+[`wx.raw.ultpkt.dti`](#wx.raw.ultpkt.dti)). Every other `'!'` field is
+read as a position, and every other `'$'` field as an NMEA sentence
+([03](03-position.md)). As the author decided, the reason is that the
+n bytes of raw data cannot mean any content at all: if they did, a
+`'!'` position could never fail.
 
 ## 11. Open items
 
-- [amb.wx.rawdti](#amb.wx.rawdti): which `'!'` and `'$'` fields are raw
-  weather data, whose content is not stated.
-- [amb.wx.letters](#amb.wx.letters): whether a letter outside 6.1 is an
-  element of the open list, with the rest residue.
+None.

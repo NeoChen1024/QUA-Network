@@ -6,7 +6,7 @@ reports). The position and object readers hand over the bytes after a '_'
 position block (complete()) and storm data after an '@' symbol (storm()).
 """
 
-from qua_network.legacy.fields import DIGITS, missing, timestamp8
+from qua_network.legacy.fields import DIGITS, comment, missing, timestamp8
 
 _FILL = frozenset(b". ")
 
@@ -15,10 +15,12 @@ _FILL = frozenset(b". ")
 _SOFTWARE = frozenset(b"dMPSWXw")
 # The 1-byte unit codes of the unit list (err.wx.unit-length).
 _UNIT1 = frozenset(b"OKBY")
+# The weather comment has no stated length limit (section 7).
+_NO_LIMIT = float("inf")
 
 # Elements of section 6.1 with a stated width, by letter, as read outside the
 # leading places: an 's' there is snowfall (amb.wx.order). '#' has no stated
-# width and ends this loop (amb.wx.rawrain).
+# width, so it never completes an element and ends the data (amb.wx.rawrain).
 _ELEMENTS = {
     ord("c"): ("wx.wdir", 3),
     ord("s"): ("wx.snow", 3),
@@ -155,25 +157,16 @@ def _data(scan, p, end, depth, positionless, wind=True):
 
 
 def _after(scan, q, end, depth):
-    """The bytes after the weather data, line[q:end] (sections 6.2 and 7)."""
+    """The bytes after the weather data, line[q:end] (sections 6.2 and 7):
+    1 to 5 bytes are the tail, the more specific reading (amb.wx.tail), and
+    more are a comment (amb.wx.comment). The comment has no length limit, and
+    only the altitude and '!x!' are looked for in it (section 7)."""
     if q >= end:
         return
-    line = scan.line
-    c = line[q]
-    n = end - q
-    if n <= 5 and (c != 0x23 or _tail_accepts(line, q, n)):
-        # A tail that the reading of a counter of unknown extent would also
-        # take is the tail, the field of stated shape (amb.wx.rawrain).
+    if end - q <= 5:
         _tail(scan, q, end, depth)
-    elif c == 0x23:
-        # amb.wx.rawrain: the counter's width is not stated, so the extent of
-        # what follows is unknown.
-        scan.tok("wx.rawrain", q, q + 1, depth)
-        scan.find("wx.rawrain", "unstated", q)
-        scan.residue(q + 1, end, depth, "wx.rawrain")
     else:
-        # amb.wx.comment and amb.wx.letters: not a tail and no comment field.
-        scan.residue(q, end, depth, "wx.unit", fault=True)
+        comment(scan, q, end, depth, _NO_LIMIT, "cmt.text", b91=False, freq=False, dao=False)
 
 
 # --- Software and unit codes (06 section 7) -----------------------------
@@ -183,14 +176,6 @@ def _sw(scan, q, depth):
     scan.tok("wx.sw", q, q + 1, depth)
     if scan.line[q] not in _SOFTWARE:
         scan.find("wx.sw", "unstated", q)
-
-
-def _tail_accepts(line, q, n):
-    """Whether a tail of n bytes at q gives no finding."""
-    c = line[q]
-    if n == 1:
-        return c in _UNIT1 or c in _SOFTWARE
-    return n < 5 or c in _SOFTWARE
 
 
 def _tail(scan, q, end, depth):

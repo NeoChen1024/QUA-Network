@@ -6,7 +6,7 @@ repos:
     hooks:
       - id: isort
         name: isort (python)
-        args: ["--profile", "black"]
+        args: ["--profile", "black", "--line-length", "132"]
 
   - repo: https://github.com/psf/black
     rev: 25.1.0

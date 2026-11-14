@@ -40,5 +40,6 @@ extend-exclude = '/3rdparty/'
 
 [tool.isort]
 profile = "black"
+line_length = 132
 extend_skip = ["3rdparty"]
 known_first_party = ["qua_network"]

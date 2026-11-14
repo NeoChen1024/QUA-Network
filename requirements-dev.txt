@@ -1,0 +1,6 @@
+# Development tools. They are not runtime dependencies, so they are not in
+# requirements.txt. The versions of black and isort are those of
+# .pre-commit-config.yaml; change both files together.
+black==25.1.0
+isort==6.0.1
+pre-commit>=4.0.0

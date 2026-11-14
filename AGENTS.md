@@ -7,8 +7,11 @@ written; code in this repository exists to measure, verify and exercise it.
 "QUA Network" is a working name and may change again. Do not build it into
 anything that would be costly to rename: wire-format constants, text-form
 markers, hash context strings or registry names. The package and command
-names are provisional too. The project was first drafted as "APRS-next". Do
-not put "APRS" into a name of anything in this project.
+names are provisional too. The project was first drafted as "APRS-next".
+
+Do not put "APRS" into the name of a tool, a component or a similar part of
+this project. Documents can refer to APRS by name. The reason is the APRS
+trademark.
 
 ## Sources of truth
 
@@ -26,13 +29,13 @@ not put "APRS" into a name of anything in this project.
   of the reading; a numbered file applies them and does not decide anything
   on its own. Only a "Reviewed exceptions" entry, written after the author
   has reviewed the passage, departs from them.
-- `vectors/`: machine-readable conformance vectors. Tables in the documents
-  are copies; when they disagree, the vector file is authoritative.
-- `3rdparty/`: pinned upstream references.
 - `docs/interop/`: the record that a decoder gives for a legacy packet,
   and later the gateway translation and the encoder. The record is not a
   QUA Network wire format. Its values come from the value files of
   `docs/legacy/`.
+- `vectors/`: machine-readable conformance vectors. Tables in the documents
+  are copies; when they disagree, the vector file is authoritative.
+- `3rdparty/`: pinned upstream references.
   The [documentation index](docs/README.md#external-references) lists these
   and the references that are linked instead of stored.
 - Tool `--help` owns usage and options.
@@ -173,8 +176,8 @@ changes; link to it instead of restating formats, constants or figures here.
 - Project files are in English, including documentation and comments.
   Preserve quoted packets and external identifiers as they are. User
   communication need not be English.
-- Python targets 3.11+. Black (132 columns) and isort (Black profile), as
-  configured in `pyproject.toml` and the pre-commit hooks.
+- Python targets 3.11+. Black and isort (Black profile), both at 132
+  columns, as configured in `pyproject.toml` and the pre-commit hooks.
 - Comments explain intent, invariants or non-obvious control flow, not
   individual statements.
 
@@ -209,6 +212,9 @@ them when they are next revised.
 - Use the repository-root `./.venv`, managed by uv. Do not fall back to
   system Python. Create it with `uv venv .venv` only if absent, and install
   with `uv pip install --python .venv/bin/python -e .`.
+- Install the development tools with `uv pip install --python
+  .venv/bin/python -r requirements-dev.txt`. The file pins Black and isort
+  to the versions of `.pre-commit-config.yaml`. Change both together.
 - Run the legacy tokenizer tools (`qua-legacy-*`) under PyPy, from
   `./.venv-pypy`: they are pure Python and spend their time in the
   interpreter. Create it with `uv venv --python pypy-3.11 .venv-pypy` only if
@@ -217,5 +223,7 @@ them when they are next revised.
   are installed there (pyarrow has no PyPy build), so every other tool runs
   from `./.venv`. Code they import stays valid on Python 3.11.
 - Test a corpus tool on a single hourly file before a full run.
+- Run a job that uses much CPU time at the lowest priority: start it with
+  `nice -n 19`. A full corpus run is such a job.
 - Do not add automated tests unless asked. Validate with representative
   input and direct inspection of the output, and report what was checked.

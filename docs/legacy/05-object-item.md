@@ -258,8 +258,9 @@ do not prevent the match.
 The `obsolete` finding is on `obj.obsolete` at offset 0, the first byte
 of the form ([README section 3](README.md#3-tokenizer-model), Obsolete
 and nested forms). An obsolete object with symbol code `'_'` is read as
-in section 7, but there is no identifier byte to carry `wx.obj`
-(README section 3, Output).
+in section 7 ([06-weather section 2](06-weather.md#2-recognition)), but
+there is no identifier byte to carry `wx.obj` (README section 3,
+Output).
 
 ## 7. Weather and storm data on objects
 
@@ -268,14 +269,18 @@ weather report in place of the data extension and comment. When at least
 one byte follows the position block, everything after it is read by
 [06-weather.md](06-weather.md#53-object) as
 [`wx.obj`](06-weather.md#wx.obj), and neither `obj.ext` nor `obj.cmt`
-applies; an object that ends at the symbol code is an ordinary object.
+applies; an object that ends at the symbol code is an ordinary object
+([06-weather section 2](06-weather.md#2-recognition),
+[amb.wx.symbol](06-weather.md#amb.wx.symbol),
+[amb.wx.carriers](06-weather.md#amb.wx.carriers)).
 An object read as weather is classified as a weather report: the token
 of byte 0 carries `wx.obj` in place of `obj.dti`, as
 [06-weather.md section 2](06-weather.md#2-recognition) and
 [README section 3](README.md#3-tokenizer-model) (Output) state, and the
-object header and position keep their own IDs. **[proposed]** Items
-with symbol code `'_'` are not read as weather
-([amb.wx.carriers](06-weather.md#amb.wx.carriers)). The Appendix 1
+object header and position keep their own IDs. Items with symbol code
+`'_'` are not read as weather, as
+[amb.wx.carriers](06-weather.md#amb.wx.carriers) decides; an earlier
+draft carried this sentence as **[proposed]**. The Appendix 1
 weather object diagram with `'*'` as identifier is an erratum
 ([err.wx.object-dti](06-weather.md#err.wx.object-dti)).
 

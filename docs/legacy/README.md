@@ -211,9 +211,9 @@ the first byte of its token. An `unstated` finding goes on the rule
 whose form or value the document leaves unstated for what was found,
 at the first byte of what was found:
 
-- a form the document does not state, such as an unlisted code, a
-  combination it does not list or an element of unstated width: the
-  first byte of the form, with its letter or opening delimiter;
+- a form the document does not state, such as an unlisted code or a
+  combination it does not list: the first byte of the form, with its
+  letter or opening delimiter;
 - a value written in a way the document does not state, such as a
   checksum in lower-case hexadecimal: the first byte of the value;
 - a byte outside a set the rule states: that byte;
@@ -224,7 +224,10 @@ at the first byte of what was found:
 
 An `SP` or other separator between the form and what comes before it
 is not part of what was found. An entry may state an exception, and
-then says so.
+then says so. An earlier draft also gave an element of unstated width
+as an example of the first case. As the author decided, its only
+instance, the raw rain counter, gets no such finding
+([06-weather amb.wx.rawrain](06-weather.md#amb.wx.rawrain)).
 
 **[agreed]** A field defined as another rule. As the author decided, a
 field that a format defines as an instance of a rule of another entry,

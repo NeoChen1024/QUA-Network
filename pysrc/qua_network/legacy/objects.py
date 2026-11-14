@@ -152,7 +152,7 @@ def _to_weather(scan, dti, p, end, depth, block=None):
     """05 section 7: the bytes after the position block are 06's (wx.obj)."""
     if dti is not None:
         scan.retag(dti, depth, "wx.obj")
-    weather_complete(scan, p, end, depth, block, obj_cmt=block is not None)
+    weather_complete(scan, p, end, depth, block)
 
 
 def _uncompressed(scan, dti, p, end, depth, kind, freq_name):

@@ -4,15 +4,13 @@
 read() takes the fields that 01-frame dispatches to 06 (raw and positionless
 reports). The position and object readers hand over the bytes after a '_'
 position block (complete()) and storm data after an '@' symbol (storm()); the
-item and Mic-E readers ask carriers() for the ambiguous finding of
-amb.wx.carriers.
+item reader asks carriers() for the ambiguous finding of amb.wx.carriers.
 """
 
 from qua_network.legacy.fields import (
     DIGITS,
     LOWER,
     UPPER,
-    comment,
     dirspd,
     missing,
     noarchive_outside,
@@ -45,6 +43,9 @@ _ELEMENTS = {
     ord("l"): ("wx.lumk", 3),
     ord("#"): ("wx.rawrain", 3),
 }
+# amb.wx.lum: a report with L or l does not also hold all three of r, p, P.
+# L and l are one parameter, so they count once.
+_RAIN_LUM = {"wx.rain1h": "r", "wx.rain24h": "p", "wx.rainmid": "P", "wx.lum": "L", "wx.lumk": "L"}
 # The leading elements of a positionless report, at fixed places (6.2).
 _LEADING = ((ord("c"), "wx.wdir"), (ord("s"), "wx.wspd"), (ord("g"), "wx.gust"), (ord("t"), "wx.temp"))
 
@@ -109,24 +110,39 @@ def _first_bad(b, rule):
 
 def _value_findings(scan, rule, s, b):
     """Findings on the value b of the element at s. A value finding is at the
-    first byte of the value, the first byte at fault (README section 3)."""
-    if rule == "wx.wdir" and _digits(b) and int(b) > 360:
+    first byte of the value, the first byte at fault (README section 3).
+    Values of more digits than the fixed width (L above 999, h above 100, t
+    below -99) occur only under reading (b) of amb.wx.width."""
+    if rule == "wx.temp" and b[:1] == b"-" and _digits(b[1:]):
+        bad = int(b[1:]) == 0 or int(b[1:]) > 99
+    elif not _digits(b):
+        bad = False
+    else:
+        limit = {"wx.wdir": 360, "wx.lum": 999, "wx.hum": 100}.get(rule)
+        bad = limit is not None and int(b) > limit
+    if bad:
         scan.find(rule, "value", s + 1)
-    elif rule == "wx.temp" and b[:1] == b"-" and _digits(b[1:]) and int(b[1:]) == 0:
-        scan.find(rule, "value", s + 1)
-    elif rule == "wx.rawrain":
-        # amb.wx.rawrain: the width is this reading's, not the document's.
-        scan.find(rule, "unstated", s)
+
+
+def _rain_lum(seen):
+    return {_RAIN_LUM[r] for r in seen if r in _RAIN_LUM}
 
 
 def _element(scan, p, end, depth, rule, n, seen):
+    """seen maps each rule read in this report to the start of its first
+    element."""
     e = p + 1 + n
     scan.tok(rule, p, e, depth)
     _value_findings(scan, rule, p, scan.line[p + 1 : e])
     if rule in seen:
         # 6.2: a field already read in this report.
         scan.find(rule, "unstated", p)
-    seen.add(rule)
+    before = len(_rain_lum(seen))
+    seen.setdefault(rule, p)
+    if before == 3 and len(_rain_lum(seen)) == 4:
+        # amb.wx.lum (6.2): the element that completes r, p, P and L or l,
+        # in byte order, departs from the count stated; at its letter.
+        scan.find(rule, "syntax", p)
     return e
 
 
@@ -163,7 +179,7 @@ def _data(scan, p, end, depth, positionless, wind=True):
     line = scan.line
     last = None
     if positionless:
-        seen = set()
+        seen = {}
         for letter, rule in _LEADING:
             if p >= end or line[p] != letter:
                 # A place without its letter is a missing element (6.2): the
@@ -178,7 +194,7 @@ def _data(scan, p, end, depth, positionless, wind=True):
                 e = min(p + 4, end)
                 scan.tok(rule, p, e, depth)
                 scan.find(rule, "syntax", p + 1 + _first_bad(line[p + 1 : e], rule))
-                seen.add(rule)
+                seen.setdefault(rule, p)
                 if e < p + 4:
                     return
                 p = e
@@ -188,12 +204,12 @@ def _data(scan, p, end, depth, positionless, wind=True):
     else:
         # No leading elements; a wind field that matched stands for c and s
         # (section 5), so a 'c' element repeats it (6.2).
-        seen = {"wx.wdir", "wx.wspd"} if wind else set()
+        seen = {"wx.wdir": -1, "wx.wspd": -1} if wind else {}
     q, more = _elements(scan, p, end, depth, seen)
     last = more or last
     first = _tail(scan, q, end, depth)
     if first is not None and first != "residue":
-        _tail_ambiguities(scan, q, end, last, first)
+        _tail_ambiguities(scan, q, end, last, first, seen)
 
 
 # --- Software and unit codes (06 section 7) -----------------------------
@@ -246,11 +262,13 @@ def _tail(scan, q, end, depth):
     return first
 
 
-def _alt_accepts(scan, s, end, runs=False, extra=False):
+def _alt_accepts(scan, s, end, seen, runs=False, extra=False):
     """Whether the bytes from s, read as elements under another reading and
-    then as a tail, give no syntax or value finding of their own."""
+    then as a tail, give no syntax or value finding of their own. The other
+    reading divides the bytes before s as this one does, so the elements
+    read there (seen) count for it too (README section 3: the whole report)."""
     scratch = Scan(scan.line)
-    q, _ = _elements(scratch, s, end, 0, set(), runs, extra)
+    q, _ = _elements(scratch, s, end, 0, {r: x for r, x in seen.items() if x < s}, runs, extra)
     _tail(scratch, q, end, 0)
     # A finding of the same kind at the same offset is shared; the rule ID is
     # not compared (README section 3).
@@ -258,7 +276,7 @@ def _alt_accepts(scan, s, end, runs=False, extra=False):
     return not any(f.kind in _BAD and (f.kind, f.offset) not in mine for f in scratch.findings)
 
 
-def _tail_ambiguities(scan, q, end, last, first):
+def _tail_ambiguities(scan, q, end, last, first, seen):
     """amb.wx.width and amb.wx.letters: another reading would end the data
     at a different byte. The finding is at the first byte of the tail, on
     the rule of its first token, which this reading gives that byte."""
@@ -274,17 +292,17 @@ def _tail_ambiguities(scan, q, end, last, first):
         if last is not None:
             _, s = last
             v = line[s + 1 : q]
-            if (_digits(v) or v[:1] == b"-" and _digits(v[1:])) and _alt_accepts(scan, s, end, runs=True):
+            if (_digits(v) or v[:1] == b"-" and _digits(v[1:])) and _alt_accepts(scan, s, end, seen, runs=True):
                 scan.find(first, "ambiguous", q)
     elif c in _ELEMENTS and (digit_next or signed):
         # (b) of amb.wx.width would read a letter with fewer digits than its
         # width as that element.
-        if _alt_accepts(scan, q, end, runs=True):
+        if _alt_accepts(scan, q, end, seen, runs=True):
             scan.find(first, "ambiguous", q)
     elif c in _LETTERS and digit_next:
         # (b) of amb.wx.letters would read an undefined letter and its digits
         # as an extra element.
-        if _alt_accepts(scan, q, end, extra=True):
+        if _alt_accepts(scan, q, end, seen, extra=True):
             scan.find(first, "ambiguous", q)
 
 
@@ -327,14 +345,12 @@ def _positionless(scan, start, end, depth):
 # --- Complete weather reports (06 section 5) ----------------------------
 
 
-def complete(scan, p, end, depth, block=None, obj_cmt=False):
+def complete(scan, p, end, depth, block=None):
     """The bytes after the position block of a '_' report, from p.
 
     block is the offset of a compressed block, or None after an uncompressed
-    position, where the wind field comes first. obj_cmt marks a compressed
-    object, for amb.wx.carriers."""
+    position, where the wind field comes first."""
     line = scan.line
-    s = p
     if block is None:
         if p + 3 < end and line[p + 3] == 0x2F:
             wind = _wind(scan, p, end, depth)
@@ -347,8 +363,6 @@ def complete(scan, p, end, depth, block=None, obj_cmt=False):
     else:
         wind = _cmpwind(scan, block)
     _data(scan, p, end, depth, False, wind)
-    if obj_cmt:
-        _object_comment(scan, s, end, depth)
 
 
 def _wind(scan, p, end, depth):
@@ -401,31 +415,15 @@ def _rule_at(scan, p, depth):
     return next((t.rule for t in scan.tokens if t.depth == depth and t.start <= p < t.end), None)
 
 
-def _object_comment(scan, s, end, depth):
-    """amb.wx.carriers, compressed object: reading (c) takes the bytes after
-    the block as obj.cmt (05 section 2, compressed: limit 43)."""
-    if any(f.kind in _BAD and s <= f.offset <= end for f in scan.findings):
-        return
-    scratch = Scan(scan.line)
-    comment(scratch, s, end, depth, 43, "obj.cmt", b91=False)
-    rule = _rule_at(scan, s, depth)
-    if rule is not None and not any(f.kind in _BAD for f in scratch.findings):
-        scan.find(rule, "ambiguous", s)
-
-
-def carriers(scan, p, end, depth, block=None, wind=True):
-    """amb.wx.carriers for an item or a Mic-E report with symbol code '_':
-    reading (a) reads the bytes from p as weather (sections 5 to 7; for
-    Mic-E, wind=False, sections 6 and 7 only). Call it once the report's own
+def carriers(scan, p, end, depth, block=None):
+    """amb.wx.carriers for an item with symbol code '_': reading (a) reads the
+    bytes from p as weather (sections 5 to 7). Call it once the item's own
     reading of those bytes is complete: the finding is on the rule of its
     token at depth that holds p (README section 3, Placing a finding)."""
     if any(f.kind in _BAD and p <= f.offset <= end for f in scan.findings):
         return  # Precedence
     scratch = Scan(scan.line)
-    if wind:
-        complete(scratch, p, end, 0, block)
-    else:
-        _data(scratch, p, end, 0, False)
+    complete(scratch, p, end, 0, block)
     rule = _rule_at(scan, p, depth)
     if rule is not None and not any(f.kind in _BAD for f in scratch.findings):
         scan.find(rule, "ambiguous", p)

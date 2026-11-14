@@ -31,7 +31,6 @@ from qua_network.legacy.fields import (
 from qua_network.legacy.model import Scan
 from qua_network.legacy.other import frequency
 from qua_network.legacy.telemetry import b91_block, b91_span
-from qua_network.legacy.weather import carriers as weather_carriers
 
 _BAD = ("syntax", "value")
 
@@ -462,7 +461,4 @@ def read(scan, start, end, depth):
     destination(scan, start)
     fixed(scan, start, end, depth)
     texts = status(scan, start, end, depth)
-    if start + 9 < end and line[start + 7] == 0x5F:
-        # amb.wx.carriers: reading (a) would read the status text as weather.
-        weather_carriers(scan, start + 9, end, depth, wind=False)
     noarchive_outside(scan, start, end, texts)

@@ -13,7 +13,7 @@ and storm data:
 - raw weather station output (`!!`, `#`, `$ULTW`, `*`);
 - the positionless weather report (`_`);
 - complete weather reports carried by a position report, with or without
-  a timestamp, uncompressed or compressed, and by an object;
+  a timestamp, or by an object, each uncompressed or compressed;
 - the weather data elements, the software code and the unit code;
 - storm data in position, object and item reports.
 
@@ -41,8 +41,10 @@ The tokenizer decides that a packet is a weather report from the data
 type identifier ([01-frame section 7](01-frame.md#7-data-type-identifier))
 and, for the position form, from the symbol code as well
 ([amb.pos.wxsym](03-position.md#amb.pos.wxsym)). Each row names a form
-that the rest of this file then applies. **[proposed]** The object form
-is decided from the symbol code in the same way.
+that the rest of this file then applies. **[agreed]** As the author
+decided, the object form is decided from the symbol code in the same
+way ([amb.wx.symbol](#amb.wx.symbol)). An earlier draft carried this
+sentence as **[proposed]**.
 
 The ID of each row is the identifier rule of that form: the token of
 the data type identifier byte at offset 0 carries it
@@ -55,7 +57,7 @@ the data type identifier byte at offset 0 carries it
 | <a id="wx.raw.peet"></a>`wx.raw.peet` | Peet Bros form | DTI `'#'` or `'*'`. No marker bytes follow the DTI. | - | Fixed 1 byte | p. 31/17, p. 82/62 |
 | <a id="wx.pl"></a>`wx.pl` | Positionless report | DTI `'_'`. | - | Fixed 1 byte | p. 31/17, p. 83/63 |
 | <a id="wx.pos"></a>`wx.pos` | Weather with position | DTI `'!'`, `'='`, `'/'` or `'@'`, a position whose [`sym.code`](02-fields.md#sym.code) or [`cmp.code`](02-fields.md#cmp.code) is `'_'`, and at least one byte after the position block. Handed over by [`pos.wx`](03-position.md#pos.wx). Reading: [amb.wx.symbol](#amb.wx.symbol). | - | Fixed 1 byte | p. 82/62, p. 85/65 to p. 86/66 |
-| <a id="wx.obj"></a>`wx.obj` | Weather on an object | DTI `';'`, an object (see [05-object-item.md](05-object-item.md#7-weather-and-storm-data-on-objects)) whose symbol code is `'_'`, and at least one byte after the position block. Reading: [amb.wx.carriers](#amb.wx.carriers). | - | Fixed 1 byte | p. 85/65, p. 86/66 |
+| <a id="wx.obj"></a>`wx.obj` | Weather on an object | DTI `';'`, an object (see [05-object-item.md](05-object-item.md#7-weather-and-storm-data-on-objects)) whose symbol code is `'_'`, and at least one byte after the position block, in either position form. Reading: [amb.wx.symbol](#amb.wx.symbol), [amb.wx.carriers](#amb.wx.carriers). | - | Fixed 1 byte | p. 55/37, p. 85/65, p. 86/66 |
 
 **[agreed]** The raw and positionless forms are marked "not
 recommended" (p. 82/62, p. 83/63). Each gives a `discouraged` finding at
@@ -76,15 +78,35 @@ complete weather formats name only the symbol code and leave the table
 byte open (p. 85/65, p. 86/66;
 [README section 3](README.md#3-tokenizer-model), Symbols that a format
 names). An earlier draft carried this as **[proposed]**.
-**[proposed]** The symbol decides: a report with another symbol code is
-never read as weather and gets no finding here, whatever follows its
-symbol. See [amb.wx.symbol](#amb.wx.symbol).
+
+The symbol decides: a report with another symbol code is never read as
+weather and gets no finding here, whatever follows its symbol. No page
+describes weather elements after the symbol of a report with another
+symbol code, so reading them there adds something the document never
+mentions, a form at a place the document does not describe for it,
+which is decoder behaviour
+([README section 3](README.md#3-tokenizer-model), A listed reading, its
+second paragraph; Obsolete and nested forms). The text supports this:
+p. 82/62 identifies the complete report by the weather symbol, and
+p. 85/65 gives `'_'` as its symbol code in every case. See
+[amb.wx.symbol](#amb.wx.symbol). An earlier draft carried this
+paragraph as **[proposed]**.
 
 Storm data (section 8) is read in items as well as in positions and
-objects (p. 87/67). **[proposed]** The weather rules are not applied to
-items, to Mic-E reports or to any other format. Where such a report,
-read as weather, would give no `syntax` or `value` finding of its own,
-it gets an `ambiguous` finding; see [amb.wx.carriers](#amb.wx.carriers).
+objects (p. 87/67). **[agreed]** As the author decided, the weather
+rules are applied to position reports and to objects, in either
+position form, and not to items
+([amb.wx.carriers](#amb.wx.carriers)). Where an item with symbol code
+`'_'`, read as weather, would give no `syntax` or `value` finding of its
+own, it gets an `ambiguous` finding. An earlier draft carried this as
+**[proposed]**, and gave that finding to Mic-E reports and to any other
+format as well.
+
+Mic-E reports and status reports are not weather by any listed
+reading, whatever their symbol, and get no finding from this file: no page mentions weather in either, so reading it there adds
+something the document never mentions
+([README section 3](README.md#3-tokenizer-model), A listed reading;
+[amb.wx.carriers](#amb.wx.carriers)).
 
 A finding "of its own" is one of the other reading for which this
 reading gives no finding of the same kind at the same offset; the rule
@@ -99,9 +121,16 @@ gave the identical finding, rule ID included.
 **[agreed]** A position report whose information field ends at the
 `'_'` symbol code does not match `wx.pos`. It is an ordinary position
 report, read by [03-position.md](03-position.md#pos.wx) with no finding
-([amb.pos.wxsym](03-position.md#amb.pos.wxsym)). **[proposed]** The same
-holds for an object, which then does not match `wx.obj` and is read by
-[05-object-item.md](05-object-item.md#7-weather-and-storm-data-on-objects).
+([amb.pos.wxsym](03-position.md#amb.pos.wxsym)). **[agreed]** As the
+author decided, the same holds for an object: one that ends at the
+symbol code does not match `wx.obj` and is an ordinary object, read by
+[05-object-item.md](05-object-item.md#7-weather-and-storm-data-on-objects)
+with no finding, since an object that ends at its symbol is a form the
+text describes (p. 76/58; [README section 3](README.md#3-tokenizer-model),
+A form that the text describes). An object with any bytes after the
+position block is weather, with `syntax` where those bytes are not
+weather data, as amb.pos.wxsym decides for positions. An earlier draft
+carried the object sentence as **[proposed]**.
 Every other `'_'` report of those kinds is handed to this file at the
 byte after the position block.
 
@@ -150,7 +179,8 @@ gives the data a length of `n` and every example has content.
 ## 5. Complete weather reports
 
 A complete report is a position report or an object whose symbol code is
-`'_'`. The position part is read as for any other report of its kind. In
+`'_'`, with at least one byte after the position block (section 2). The
+position part is read as for any other report of its kind. In
 place of the course and speed that would follow the symbol, the report
 carries the wind. Wind direction `c` and wind speed `s` elements do not
 occur in the weather data, because the wind field replaces them
@@ -244,15 +274,20 @@ there, giving `syntax` (UAP 5.33 describes such a packet).
 |---|---|---|---|---|---|
 | [`wx.obj`](#wx.obj) | DTI | `';'`. | Required | Fixed 1 byte | p. 86/66 |
 | [`obj.name`](05-object-item.md#obj.name), [`obj.state`](05-object-item.md#obj.state), [`obj.time`](05-object-item.md#obj.time) | Object header | As in [05-object-item.md](05-object-item.md#2-object-report). The weather diagram shows the live state `'*'` and a 7-byte timestamp. | Required | Fixed 9 + 1 + 7 bytes | p. 86/66 |
-| [`obj.pos`](05-object-item.md#obj.pos) | Position and symbol | As 5.1 (uncompressed) or 5.2 (compressed); symbol code `'_'`. | Required | As 5.1 or 5.2 | p. 85/65, p. 86/66 |
+| [`obj.pos`](05-object-item.md#obj.pos) | Position and symbol | As 5.1 (uncompressed) or 5.2 (compressed); symbol code `'_'`. Reading: [amb.wx.carriers](#amb.wx.carriers). | Required | As 5.1 or 5.2 | p. 55/37, p. 85/65, p. 86/66 |
 | [`ext.dirspd`](02-fields.md#ext.dirspd) | Wind | Uncompressed only, as 5.1. | Required | Fixed 7 bytes | p. 86/66 |
 | [`wx.gust`](#wx.gust) ... | Weather data | As 5.1 or 5.2. | Optional | First byte that does not start an element | p. 86/66 |
 | [`wx.sw`](#wx.sw), [`wx.unit`](#wx.unit) | Tail | Section 7. | Optional | End of information field | p. 86/66 |
 
-**[proposed]** An object with a compressed position and symbol code `'_'`
-is read as 5.2 after the object header. APRS12c diagrams only the
-uncompressed weather object (p. 86/66), but says a complete report may use
-"any" position format and that an object may carry weather (p. 85/65).
+An object with a compressed position and symbol code `'_'` is read as
+5.2 after the object header ([amb.wx.carriers](#amb.wx.carriers)).
+APRS12c diagrams only the uncompressed weather object (p. 86/66), but
+lets the compressed format stand in place of the lat/long format
+anywhere that shape occurs (p. 55/37), and says that a complete report
+may use the lat/long and compressed lat/long position formats and that
+an object may carry weather (p. 85/65). An earlier draft carried this
+paragraph as **[proposed]**, citing p. 85/65 as allowing "any" position
+format, a paraphrase of a page that names those two formats.
 
 ## 6. Weather data elements
 
@@ -278,10 +313,10 @@ as `SP` bytes (p. 84/64). Reading:
 | <a id="wx.rainmid"></a>`wx.rainmid` | Rain since midnight | `'P'`, then 3 digits, hundredths of an inch. Unknown allowed. | Optional | Fixed 4 bytes | p. 84/64 |
 | <a id="wx.hum"></a>`wx.hum` | Humidity | `'h'`, then 2 digits, percent; `00` stands for 100. Unknown allowed. | Optional | Fixed 3 bytes | p. 84/64 |
 | <a id="wx.baro"></a>`wx.baro` | Pressure | `'b'`, then 5 digits, tenths of a hectopascal. Unknown allowed. | Optional | Fixed 6 bytes | p. 84/64 |
-| <a id="wx.lum"></a>`wx.lum` | Luminosity | `'L'`, then 3 digits, 000 to 999 W/m². Unknown allowed. | Optional. Reading: [amb.wx.rawrain](#amb.wx.rawrain). | Fixed 4 bytes | p. 84/64 |
-| <a id="wx.lumk"></a>`wx.lumk` | Luminosity, 1000 and up | `'l'` (lower case), then 3 digits; the value is 1000 more than the digits. Unknown allowed. | Optional | Fixed 4 bytes | p. 84/64 |
+| <a id="wx.lum"></a>`wx.lum` | Luminosity | `'L'`, then 3 digits, 000 to 999 W/m². Unknown allowed. | Optional; not in a report that holds all three of `r`, `p` and `P` (section 6.2). Reading: [amb.wx.lum](#amb.wx.lum). | Fixed 4 bytes | p. 84/64 |
+| <a id="wx.lumk"></a>`wx.lumk` | Luminosity, 1000 and up | `'l'` (lower case), then 3 digits; the value is 1000 more than the digits. Unknown allowed. | Optional; as `wx.lum`. Reading: [amb.wx.lum](#amb.wx.lum). | Fixed 4 bytes | p. 84/64 |
 | <a id="wx.snow"></a>`wx.snow` | Snowfall, last 24 hours | `'s'`, then 3 bytes: digits with at most one `'.'`, inches. Unknown allowed. Which `'s'` this is: [amb.wx.order](#amb.wx.order). Decimal point: [amb.wx.width](#amb.wx.width). | Optional | Fixed 4 bytes | p. 84/64 |
-| <a id="wx.rawrain"></a>`wx.rawrain` | Raw rain counter | `'#'`, then 3 digits. Width not stated; the tokenizer reports `unstated` on every occurrence. Reading: [amb.wx.rawrain](#amb.wx.rawrain). | Optional | Fixed 4 bytes | p. 84/64 |
+| <a id="wx.rawrain"></a>`wx.rawrain` | Raw rain counter | `'#'`, then 3 digits. Width not stated in the text; 3 by [amb.wx.rawrain](#amb.wx.rawrain). | Optional | Fixed 4 bytes | p. 84/64 |
 
 A letter is an element only when its full value follows and matches the
 layout in its row. A defined letter whose value does not match does not
@@ -294,8 +329,10 @@ The `value` findings of this table are at the first byte of the value,
 the byte after the letter, which is the first byte at fault
 ([README section 3](README.md#3-tokenizer-model), Placing a finding).
 An earlier draft put them on the letter. **[agreed]** The `unstated`
-finding of `wx.rawrain` and that of a repeated element (6.2) are at the
-first byte of the element, its letter.
+finding of a repeated element (6.2) is at the first byte of the
+element, its letter. An earlier draft placed an `unstated` finding of
+`wx.rawrain` there too; as the author decided,
+[amb.wx.rawrain](#amb.wx.rawrain) gives `wx.rawrain` no such finding.
 
 ### 6.2 Order and end of the data
 
@@ -376,6 +413,15 @@ direction read. An earlier draft, as **[proposed]**, made an
 it with the `cmp.cs` token of the last step on the grounds that both
 give `syntax`; a `cs` token of a kind whose `s` byte fails still
 matches, so the comparison held only for the direction.
+
+A report that holds `L` or `l` does not also hold all three rain
+elements `r`, `p` and `P` ([amb.wx.lum](#amb.wx.lum)). The element that
+completes the set of `r`, `p`, `P` and `L` or `l`, in byte order, gives
+`syntax` against its own ID at its letter
+([README section 3](README.md#3-tokenizer-model), Kinds by situation: a
+count that departs from the one stated; Placing a finding: the first
+byte past a limit). It keeps its token, and reading continues. `L` and
+`l` are one parameter and count once.
 
 The weather data ends at the first byte, after the leading elements,
 that does not start an element of section 6.1. A letter that APRS12c
@@ -637,23 +683,34 @@ extension.
   format names). An earlier draft based the drop on p. 140/116 alone.
   An earlier draft also listed a third reading, deciding by content (a `g`
   and a `t` at fixed places) rather than by symbol. It was dropped
-  because the document makes the weather symbol select the complete
-  report (p. 82/62); it is Xastir's behaviour, recorded under Decoders
-  ([README section 3](README.md#3-tokenizer-model)).
+  because it reads weather elements after the symbol of a report with
+  another symbol code, a place no page describes for them, so it adds
+  something the document never mentions
+  ([README section 3](README.md#3-tokenizer-model), A listed reading, its
+  second paragraph; Obsolete and nested forms); p. 82/62, which
+  identifies the complete report by the weather symbol, and p. 85/65,
+  which gives `'_'` as its symbol code in every case, support this. It
+  is Xastir's behaviour, recorded under Decoders. An earlier draft based
+  the drop on p. 82/62 alone.
 - **Taken.** (a) over (b)
   ([README section 3](README.md#3-tokenizer-model), Symbols that a
-  format names). The drop of the content-based reading rests on the
-  statement of section 2 that the symbol decides, which is still
-  **[proposed]**. A position report whose information field ends at the
+  format names). The content-based reading is decoder behaviour by the
+  rules of README section 3 cited under Readings, as section 2 states.
+  An earlier draft rested its drop on the statement of section 2 that
+  the symbol decides, while that statement was **[proposed]**. A
+  position report whose information field ends at the
   symbol code is a plain position and gives no finding (section 2). A
   position report with any bytes after the position block is weather.
   If those bytes are not weather data (for example a PHG extension and a
   comment), the tokenizer reports `syntax`
-  ([amb.pos.wxsym](03-position.md#amb.pos.wxsym)). **[proposed]** The
-  same holds for an object: one that ends at the symbol code is a plain
-  object and gives no finding, and one with any bytes after the
-  position block is weather, with `syntax` where those bytes are not
-  weather data.
+  ([amb.pos.wxsym](03-position.md#amb.pos.wxsym)). **[agreed]** As the
+  author decided, the same holds for an object: one that ends at the
+  symbol code is a plain object and gives no finding, a form the text
+  describes (p. 76/58; README section 3, A form that the text
+  describes), and one with any bytes after the position block is
+  weather, with `syntax` where those bytes are not weather data
+  (section 2). An earlier draft carried the object sentence as
+  **[proposed]**.
 - **In the bytes.** Not visible: with (b) dropped, every `'_'` report
   is read one way. A report with another symbol code is not weather and
   gets no finding from this file, whatever follows its symbol.
@@ -664,7 +721,7 @@ extension.
   | FAP | Symbol code `'_'`, any table, sends the rest to the weather parser instead of the comment parser. | `parseaprs`, FAP.pm:2624, 2641; `_object_to_decimal`, FAP.pm:1281 |
   | Dire Wolf | Symbol code `'_'`, any table, selects weather; it notes that a `'_'` report carrying PHG and text breaks the format. | `aprs_ll_pos`, decode_aprs.c:930, 974; `aprs_ll_pos_time`:1064, 1084; `aprs_object`:2175, 2193 |
   | aprslib | Symbol code `'_'`, any table. | `parse_position`, position.py:62 |
-  | Xastir | Decides by content, the dropped third reading: for `/` and `@`, a `'/'`, `g` and `t` at fixed offsets; in general, `g` and `t` (and `h`) found in the data. Symbol not checked. | `decode_info_field`, db.c:15029, 15080; `extract_weather`, db.c:3335-3387 |
+  | Xastir | Decides by content, the dropped third reading: for `/` and `@`, a `'/'`, `g` and `t` at fixed offsets after an uncompressed position, and `g` and `t` at fixed offsets after a compressed one; in general, for `!`, `=`, Mic-E reports, objects and items, `g` and `t` (and `h`) found in the data. Symbol not checked. | `decode_info_field`, db.c:15029, 15080, 15100-15104; `extract_weather`, db.c:3335-3387, called for objects at db.c:9872 and for items at db.c:9993 |
   | aprsc | Code `'_'` with any valid table byte, overlays included. | `pbuf_fill_pos`, parse_aprs.c:84 |
   | javAPRSlib | Code `'_'`, any table. | `Parser.java`:160, 191 |
   | pdn-aprs | Code `'_'`, any table. | `is_weather_symbol`, comment.rs:19 |
@@ -677,61 +734,103 @@ extension.
 ### amb.wx.carriers
 
 - **Open.** Weather is diagrammed for position reports and uncompressed
-  objects (p. 85/65, p. 86/66). Compressed objects, items and Mic-E
-  reports with a `'_'` symbol are not mentioned, though the data table
-  lists raw weather data under objects and items (p. 33/19).
-- **Readings.** (a) Apply the weather rules to every format with a `'_'`
-  symbol. (b) Only to the diagrammed carriers, plus compressed objects.
-  (c) Only to the diagrammed carriers.
-- **Taken.** **[proposed]** (b). Compressed objects follow from the "any
-  position format" statement (p. 85/65). Items and Mic-E are read by
-  their own rules, with no weather tokens.
+  objects (p. 85/65, p. 86/66); p. 82/62 names the four position data
+  type identifiers. A complete report may give its location in the
+  lat/long and compressed lat/long position formats, and an object may
+  carry weather (p. 85/65); the compressed format may be used in place
+  of the lat/long format anywhere that shape occurs (p. 55/37). The
+  weather pages do not mention items: they name only objects
+  (p. 85/65), while the storm data page names items where it means them
+  (p. 87/67). The data table lists raw weather data under objects and
+  items (p. 33/19), and items are handled the same way as objects apart
+  from their differences (p. 75/57). Mic-E reports and status reports
+  with a `'_'` symbol are not mentioned; the data table lists Mic-E data
+  apart from the lat/long and compressed formats (p. 33/19).
+- **Readings.** (a) Apply the weather rules to items as to objects
+  (p. 75/57). (b) Apply them to position reports and objects only, in
+  either position form. An earlier draft also listed (c), only the
+  diagrammed carriers, under which a compressed object with `'_'` was
+  not weather and its bytes after the block were an object comment. It
+  was dropped because it contradicts p. 55/37, which lets the compressed
+  format stand wherever the lat/long shape occurs, the weather object
+  layout of p. 86/66 included; it is decoder behaviour, and no finding
+  comes from it ([README section 3](README.md#3-tokenizer-model), A
+  listed reading). An earlier draft also applied (a) to Mic-E reports
+  and to any other format with a `'_'` symbol, and built it for Mic-E by
+  reading the status text as the weather data of a complete report. For
+  Mic-E reports and status reports it was dropped because no page
+  mentions weather in either, so it adds something the document never
+  mentions (README section 3, A listed reading; Obsolete and nested
+  forms); javAPRSlib and Xastir do it, recorded under Decoders.
+- **Taken.** **[agreed]** As the author decided, (b): position reports
+  and objects, in either position form. A compressed object carries
+  weather because the compressed format may stand in place of the
+  lat/long format anywhere that shape occurs (p. 55/37), an object may
+  carry weather (p. 85/65), and the object weather layout has that shape
+  (p. 86/66): the compressed weather object is a form the text describes
+  ([README section 3](README.md#3-tokenizer-model), A form that the text
+  describes). (b) is taken over (a) for items by the format pages, which
+  name only objects for weather (p. 85/65) and name items only for storm
+  data (p. 87/67), followed over the general page p. 75/57 (README
+  section 3, Pages that disagree), and by the Output paragraph of README
+  section 3, which gives identifier rules for position and object
+  reports that carry weather only (`wx.pos`, `wx.obj`). Items are read
+  by their own rules, with no weather tokens. Mic-E reports and status
+  reports are not weather under either reading (Readings). An earlier
+  draft carried (b) as **[proposed]**, and based compressed objects on
+  "any position format", a paraphrase of p. 85/65, which names the
+  lat/long and compressed lat/long position formats.
 - **In the bytes.** Visible, under the test of
-  [README section 3](README.md#3-tokenizer-model), in three cases, each
-  given an `ambiguous` finding at the first byte after the position
-  block:
-  - a compressed object with symbol code `'_'` and bytes after the
-    block, which this reading reads as weather and reading (c) as an
-    object comment, when the object, read with those bytes as
-    [`obj.cmt`](05-object-item.md#obj.cmt), would give no `syntax` or
-    `value` finding of its own;
-  - an item with symbol code `'_'`, which this reading reads as an item
-    with a comment and reading (a) as weather, when the item, read with
-    the bytes after its position as weather data and tail by sections 5
-    to 7, would give no `syntax` or `value` finding of its own;
-  - a Mic-E report with symbol code `'_'`, likewise, when the report,
-    read with its status text as weather data and tail by sections 6
-    and 7, would give no `syntax` or `value` finding of its own; the
-    finding is then at offset 9, where the status text starts.
-
-  Where this reading itself gives a `syntax` or `value` finding on those
-  bytes, that finding alone is given (Precedence). An earlier draft
-  called the question not visible. The finding is on the rule that
-  this reading gives the byte, at the level where the readings divide
-  the bytes (README section 3, Placing a finding): for a compressed
-  object, the weather element or tail token there; for an item, the
-  data extension at its slot or [`cmt.text`](02-fields.md#cmt.text);
-  for a Mic-E report, [`mice.status`](04-mic-e.md#mice.status). An
-  earlier draft put it on [`wx.obj`](#wx.obj) for an object or an item
-  and on [`wx.pos`](#wx.pos) for a Mic-E report, the identifier rule of
-  the weather form that one of the two readings takes the report for.
-- **Building reading (a) for Mic-E.** **[proposed]** The Mic-E status
-  text is read as the weather data of a complete report (section 6.2):
-  it has no leading elements, the course and speed of the Mic-E
-  information field stand for a wind field that matched, and every `s`
-  is snowfall.
-- **Decoders.** FAP reads weather in objects of both kinds
-  (`_object_to_decimal`, FAP.pm:1281) but not in items (FAP.pm:1484
-  skips the comment and calls no weather parser). Dire Wolf reads weather
-  in both object kinds (`aprs_object`, decode_aprs.c:2175, 2193) and not
-  in items (`aprs_item`, decode_aprs.c:2235, has no call to
-  `weather_data`). aprslib reads objects through `parse_position`
-  (position.py:62) and does not parse items (`)` is in its unsupported
-  list, parsing/\_\_init\_\_.py:53). Xastir runs its weather extraction
-  on `!` and `=` positions and Mic-E reports (db.c:9526-9552), objects
-  (db.c:9872) and items (db.c:9993) alike.
-- **Corpus.** Counts of `'_'` symbol use by format (object compressed,
-  item, Mic-E).
+  [README section 3](README.md#3-tokenizer-model), in one case: an item
+  with symbol code `'_'` and bytes after its position, which this
+  reading reads as an item with a data extension or comment and reading
+  (a) as weather. Where the item, read with the bytes after its position
+  as weather data and tail by sections 5 to 7, would give no `syntax` or
+  `value` finding of its own, it gets an `ambiguous` finding at the
+  first byte after the position block. An item that ends at its symbol
+  code is an ordinary item under both readings, as an object is
+  (section 2). Where this reading itself gives a `syntax` or `value`
+  finding on those bytes, that finding alone is given (Precedence). An
+  earlier draft called the question not visible. The finding is on the
+  rule that this reading gives the byte, at the level where the readings
+  divide the bytes (README section 3, Placing a finding): the data
+  extension at its slot or [`cmt.text`](02-fields.md#cmt.text). An
+  earlier draft put it on [`wx.obj`](#wx.obj), the identifier rule of
+  the weather form that reading (a) takes the item for. Earlier drafts
+  also gave the finding to a compressed object under reading (c) and to
+  a Mic-E report, on [`mice.status`](04-mic-e.md#mice.status) at
+  offset 9, under (a); both went with those readings.
+- **Decoders.** FAP reads weather in positions and in objects of both
+  kinds (`_object_to_decimal`, FAP.pm:1281), but not in items
+  (FAP.pm:1484 skips the comment and calls no weather parser) or Mic-E
+  reports (FAP.pm:1826-1873 reads a comment only). Dire Wolf reads
+  weather in both object kinds (`aprs_object`, decode_aprs.c:2175,
+  2193), with a source comment that the document does not explicitly
+  mention a compressed weather object, and not in items (`aprs_item`,
+  decode_aprs.c:2235, has no call to `weather_data`) or Mic-E reports
+  (`aprs_mic_e`, decode_aprs.c:1403-1780). aprslib reads objects through
+  `parse_position` (position.py:62), does not parse items (`)` is in its
+  unsupported list, parsing/\_\_init\_\_.py:53), and reads only a
+  comment in Mic-E reports (parsing/mice.py:180-218). javAPRSlib reads
+  weather in positions and in Mic-E reports, by symbol `'_'` and a
+  length above 20 bytes (Parser.java:160-165, 174-196), and not in
+  objects or items. pdn-aprs reads positions, objects of both kinds and
+  items through one body reader (decode.rs:128-135; object.rs:60, 87;
+  comment.rs:19, 44), and not Mic-E reports; its Mic-E encoder refuses
+  weather (mic_e.rs:354-357). aprs-parser-rs has no weather parser (a
+  search of src/). Xastir ignores the symbol: it runs its content test
+  (`extract_weather`, db.c:3262-3400) on `!` and `=` positions and
+  Mic-E reports (db.c:9526-9552), objects (db.c:9872) and items
+  (db.c:9993) alike. None reads a status report as weather. All read at
+  the commits of [README section 4](README.md#4-decoders-consulted).
+- **Corpus.** In the capture window `aprsis-20261104-03.log` to
+  `aprsis-20261113-07.log` (221 files, 75,037,495 packets): no
+  compressed object or item with symbol code `'_'`; 2,627 items with
+  `'_'` that end at the symbol (1 sender) and 2 with bytes after it
+  (1 sender), neither given the `ambiguous` finding, since the item's own
+  reading reports their bytes; 18,408 Mic-E reports with `'_'`
+  (42 senders), none of whose status texts the weather rules accept;
+  and 2 status reports with a locator and symbol `'_'` (1 sender).
 
 <a id="amb.wx.order"></a>
 ### amb.wx.order
@@ -856,7 +955,8 @@ extension.
 <a id="amb.wx.width"></a>
 ### amb.wx.width
 
-- **Open.** Every element has a fixed width (p. 84/64), but nothing is
+- **Open.** Every element has a fixed width (p. 84/64; `'#'` by
+  [amb.wx.rawrain](#amb.wx.rawrain)), but nothing is
   said about values written with more or fewer digits (`h082`, UAP 5.31;
   `b0990`, p. 86/66). The sentence that permits a decimal point in a
   value that is not a whole number sits after the snowfall entry and may
@@ -884,8 +984,9 @@ extension.
   takes the whole digit run after an element letter as its value, would
   end the data at a different byte:
   - the tail starts with a digit, and the last element has a value
-    written in digits, which (b) would extend with the digits at the
-    start of the tail; or
+    written in digits, after the sign of a temperature where it has
+    one, which (b) would extend with the digits at the start of the
+    tail; or
   - the tail starts with a letter of section 6.1 followed by fewer
     digits than its width, which (b) would read as that element.
 
@@ -898,14 +999,32 @@ extension.
   This covers `wx.rawrain` as well ([amb.wx.rawrain](#amb.wx.rawrain)).
   An earlier draft put the finding on the element that (b) would
   lengthen or form.
-- **Building reading (b).** **[proposed]** Reading (b) is applied from
-  the element it lengthens or forms to the end of the field: it takes
-  the whole digit run after each letter, with the sign of a temperature, while a value it would
-  not lengthen (unknown fill, a snowfall with a decimal point) keeps
-  its fixed width. A direction above 360 or a temperature of minus
-  zero that (b) forms is a `value` finding of its own. A `t` followed
-  by `'-'` and one digit is a letter followed by fewer digits than its
-  width.
+- **Building reading (b).** **[agreed]** As the author decided, reading
+  (b) reads the whole report with digit runs
+  ([README section 3](README.md#3-tokenizer-model): the other reading
+  counts only when it accepts the whole report). Before the element it
+  lengthens or forms it divides the bytes as (a) does, since each value
+  there is followed by an element letter, so it differs from (a) from
+  that element to the end of the field. It takes the whole digit run
+  after each letter, with the sign of a temperature, while a value it
+  would not lengthen (unknown fill, a snowfall with a decimal point)
+  keeps its fixed width. A `t` followed by `'-'` and one digit is a
+  letter followed by fewer digits than its width. The values that (b)
+  forms or lengthens give the `value` findings of the ranges of their
+  elements (section 6.1), as findings of its own (README section 3,
+  Which findings are the other reading's own; Kinds by situation: a
+  value outside a stated range, and a range that the unit implies): a
+  direction above 360, a
+  temperature of minus zero, a luminosity `L` above 999 (stated as 000
+  to 999, p. 84/64), a humidity above 100 and a temperature below -99.
+  Percent is a range that the unit implies: relative humidity exceeds
+  100 only when the air is supersaturated, which station sensors do not
+  measure. The negative temperatures are stated as -01 to -99 (p. 84/64),
+  which is read as their range. Under reading (a) the last three cannot
+  occur, so they change no finding of (a). An earlier draft carried this
+  paragraph as **[proposed]**, applied (b) from the element it lengthens
+  or forms without saying that this is the whole-report test, and gave
+  (b) only the direction and minus-zero findings.
 - **Elsewhere.** Where (a) and (c) accept the bytes, (b) and (d) divide
   them the same way: each value is followed by an element letter or by
   the end of the data, and a `'.'` cannot occur in a tail, so the test
@@ -926,35 +1045,99 @@ extension.
 <a id="amb.wx.rawrain"></a>
 ### amb.wx.rawrain
 
-- **Open.** The raw rain counter `'#'` has no stated width (p. 84/64). The
-  luminosity entry says that `L` takes the place of a rain element, but
-  not which one, nor whether that rain element is then absent
-  (p. 84/64).
+- **Open.** The raw rain counter `'#'` has no stated width (p. 84/64),
+  in APRS12c or in APRS 1.0.1 (1.0.1 PDF p. 74).
 - **Readings.** (a) `'#'` takes 3 digits like the others. (b) A digit run
-  of any length. (c) `L` replaces a rain element, so the two do not
-  occur together. (d) `L` is an ordinary optional element.
-- **Taken.** **[proposed]** (a), with an `unstated` finding on every
-  `wx.rawrain`, since its width is this reading's and not the
-  document's; and (d). A digit run longer than 3 after `'#'` ends the
-  data, and where the bytes left do not form a tail, the `syntax`
-  finding that follows is the only one, although (b) would accept the
-  bytes ([README section 3](README.md#3-tokenizer-model), precedence).
+  of any length. An earlier draft also held the question of `L` and the
+  rain values in this entry, as readings (c) and (d); it is now
+  [amb.wx.lum](#amb.wx.lum).
+- **Taken.** **[agreed]** As the author decided, (a), by analogy with
+  the other elements: the other parameters listed with `'#'` whose
+  width the text states, `L`, `l` and `s`, take 3 digits, as do the
+  rain elements of the diagram, and APRS12c added those three widths,
+  which APRS 1.0.1 did not give (1.0.1 PDF p. 74). The author
+  accepts this analogy as support in the text, so the narrowest reading
+  is taken ([README section 3](README.md#3-tokenizer-model), Kinds by
+  situation). `wx.rawrain` gets no finding of its own: the raw rain
+  counter is a form that the text describes without a full syntax
+  (README section 3, A form that the text describes), as are the wind
+  field whose parts are of different kinds (section 5.1) and
+  [`cmt.alt.neg`](02-fields.md#cmt.alt.neg). A digit run longer than 3
+  after `'#'` ends the data, and where the bytes left do not form a
+  tail, the `syntax` finding that follows is given alone, whether or
+  not (b) would accept the bytes (README section 3, Precedence). An
+  earlier draft carried (a) as **[proposed]**, with an `unstated`
+  finding on every `wx.rawrain`, since its width was this reading's and
+  not the document's, and said that (b) would accept the bytes after an
+  over-long run, which it does not where they fail as a tail under (b)
+  too.
 - **In the bytes.** Under the test of
-  [README section 3](README.md#3-tokenizer-model): (c) only rejects
-  packets that (d) accepts, so it does not count, and no finding comes
-  from `L`. Where (a) matches, (b) splits the bytes the same way,
-  except where a `wx.rawrain` ends the data and the tail starts with a
-  digit, which (b) would add to the counter. That case is the one of
-  [amb.wx.width](#amb.wx.width) and gives its `ambiguous` finding, at
-  the first byte of the tail on the rule of its first token, under its
-  condition; this entry adds no second finding.
+  [README section 3](README.md#3-tokenizer-model): where (a) matches, (b)
+  splits the bytes the same way, except where a `wx.rawrain` ends the
+  data and the tail starts with a digit, which (b) would add to the
+  counter. That case is the one of [amb.wx.width](#amb.wx.width) and
+  gives its `ambiguous` finding, at the first byte of the tail on the
+  rule of its first token, under its condition; this entry adds no
+  second finding.
 - **Decoders.** Xastir reads `'#'` with 3 bytes (db.c:3493). aprslib and
   pdn-aprs give it 3 (weather.py:52; weather.rs:62). FAP takes any digit
   run (FAP.pm:2180). Dire Wolf's branch meant for `'#'` tests for `'s'`
-  again, so it never reads `'#'` (decode_aprs.c:3250). All of them read
-  `L` alongside rain elements.
-- **Corpus.** Digit-run lengths after `'#'`; co-occurrence of `L` or `l`
-  with `r`, `p` and `P`.
+  again, so it never reads `'#'` (decode_aprs.c:3250). javAPRSlib does
+  not read it.
+- **Corpus.** In the capture window `aprsis-20261104-03.log` to
+  `aprsis-20261113-07.log` (221 files, 75,037,495 packets), `'#'` at an
+  element place is followed by 3 digits 2,540 times, by 4 digits 985
+  times (one sender, whose bytes after the fourth digit fail as a tail
+  under (b) too), and by no digit 7 times.
+
+<a id="amb.wx.lum"></a>
+### amb.wx.lum
+
+- **Open.** The luminosity entries say that `L` is inserted in place of
+  one of the rain values (p. 84/64; also in APRS 1.0.1, 1.0.1 PDF p. 74),
+  but not which one, nor whether that rain value is then absent. The
+  lower-case `l` is the same parameter for 1000 and above (p. 84/64).
+  The raw rain counter `'#'` is listed after that sentence and is not
+  one of the rain values it refers to.
+- **Readings.** (c) `L` replaces a rain value, so a report with `L` or
+  `l` does not also hold all three rain elements `r`, `p` and `P`.
+  (d) `L` is an ordinary optional element. The letters continue those
+  of the earlier combined entry [amb.wx.rawrain](#amb.wx.rawrain).
+- **Taken.** **[agreed]** As the author decided, (c), by the narrowest
+  reading that the text supports
+  ([README section 3](README.md#3-tokenizer-model), Kinds by situation):
+  the two readings differ only in how much they accept. The text does
+  not say which rain value `L` takes the place of, so (c) is read as
+  the consequence that holds whichever it is: a report that holds `L`
+  or `l` does not also hold all three of `r`, `p` and `P`. An earlier
+  draft took (d), in the combined entry, as **[proposed]**.
+- **In the bytes.** The element that completes the set of `r`, `p`, `P`
+  and `L` or `l`, in byte order, gives `syntax` against its own ID at
+  its letter, keeps its token, and reading continues (section 6.2;
+  README section 3, Kinds by situation: a count that departs from the
+  one stated; Placing a finding: the first byte past a limit). (d)
+  accepts the reports where (c) gives that finding, and that finding
+  alone is given (README section 3, Precedence); where (c) accepts, (d)
+  divides the bytes the same way. No `ambiguous` finding.
+- **Decoders.** None enforces (c). FAP reads `L` and `l` with patterns
+  independent of the rain elements (FAP.pm:2146-2154, 2166-2169). Dire
+  Wolf reads both as optional elements in any order
+  (decode_aprs.c:3217-3235). Xastir reads each with 3 bytes, independent of rain
+  (db.c:3489, 3491). aprslib keeps both under one luminosity key and
+  reads them with rain (weather.py:23-24, 26). pdn-aprs keys `l` as `L`,
+  so a report with both stops at the second as a repeat; rain is
+  unaffected (weather.rs:47-48, 69, 73-75). javAPRSlib reads them with
+  independent patterns and swaps the letters, taking `l` as the value
+  and `L` as the value plus 1000 (WeatherParser.java:54-55, 132-140).
+  ebarkie/aprs, an encoder, writes `L` or `l` together with `r`, `p` and
+  `P` (wx.go:113-143). All read at the commits of
+  [README section 4](README.md#4-decoders-consulted).
+- **Corpus.** In the capture window `aprsis-20261104-03.log` to
+  `aprsis-20261113-07.log` (221 files, 75,037,495 packets), 2,635,840 of
+  the 2,860,850 reports with `L` or `l` also hold all three of `r`, `p`
+  and `P` (1,115 senders); no report holds both `L` and `l`. A
+  luminosity element beside all three rain elements is a candidate for a
+  deviation recogniser (section 11).
 
 <a id="amb.wx.tail"></a>
 ### amb.wx.tail
@@ -1202,7 +1385,11 @@ Origin: already in APRS 1.0.1, with the same diagram and example
 The second weather object example on p. 86/66 ends with `b0990`: four
 digits where the pressure takes five. The reading follows the element
 widths; under section 7 the bytes `b0990` become a 5-byte tail, software
-code `b` with an `unstated` finding and unit `0990`. The example also
+code `b` with an `unstated` finding and unit `0990`. Reading (b) of
+[amb.wx.width](#amb.wx.width) would read `b0990` as a pressure and
+accept the report, so the tail also gets the `ambiguous` finding of that
+entry, on `wx.sw` at the `b`, and the example's verdict is
+`conform-ambiguous`. The example also
 has no `t` element, which a complete report does not require
 ([amb.wx.required](#amb.wx.required)).
 
@@ -1304,4 +1491,11 @@ replacement (1.0.1 PDF 75). 12b has them unchanged (12b PDF 47, 86, 87).
   ([README section 3](README.md#3-tokenizer-model)). Whether a
   deviation recogniser covers them is part of the open item of
   [README section 6](README.md#6-open-items).
-- The corpus questions of section 9.
+- A report that holds `L` or `l` and all three of `r`, `p` and `P`
+  gives `syntax` on the element that completes the set
+  ([amb.wx.lum](#amb.wx.lum)), whose Corpus bullet counts how common it
+  is. It is a candidate for a deviation recogniser, part of the open
+  item of [README section 6](README.md#6-open-items).
+- The corpus questions of section 9. Those of
+  [amb.wx.carriers](#amb.wx.carriers), [amb.wx.rawrain](#amb.wx.rawrain)
+  and [amb.wx.lum](#amb.wx.lum) are answered there.

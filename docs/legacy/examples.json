@@ -1348,8 +1348,7 @@
     "06-weather.md#amb.wx.width",
     "06-weather.md#amb.wx.required"
    ],
-   "note": "A weather object (byte 0 carries wx.obj). Wind 220/004 is at 37-43 and gust g005 at 44-47. The pressure element at 48 has only four digits, so it does not start an element, and the data ends there. The 5-byte tail splits into software code 'b' (not in the software list, so unstated) and unit 0990. Reading (b) of amb.wx.width would take the short pressure as the element and leave an empty tail with no finding of its own, so the tail gets an ambiguous finding at its first byte, on wx.sw, the rule this reading gives that byte (amb.wx.width; README section 3, Placing a finding). The missing temperature gives no finding in a complete report. Re-derived after the general rules of README section 3 were agreed.",
-   "doubt": "err.wx.object-baro describes only the tail split and does not mention the ambiguous finding. I took that finding from the second condition of amb.wx.width."
+   "note": "A weather object (byte 0 carries wx.obj). Wind 220/004 is at 37-43 and gust g005 at 44-47. The pressure element at 48 has only four digits, so it does not start an element, and the data ends there. The 5-byte tail splits into software code 'b' (not in the software list, so unstated) and unit 0990. Reading (b) of amb.wx.width would take the short pressure as the element and leave an empty tail with no finding of its own, so the tail gets an ambiguous finding at its first byte, on wx.sw, the rule this reading gives that byte (amb.wx.width; README section 3, Placing a finding). The missing temperature gives no finding in a complete report. Re-derived after the general rules of README section 3 were agreed."
   },
   {
    "id": "p86-6938eb8a",

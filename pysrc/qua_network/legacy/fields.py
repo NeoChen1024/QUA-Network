@@ -565,7 +565,8 @@ def altitudes(scan, s, e, d, skip=None):
         while q < k + (5 if neg else 6) and q < e and line[q] in DIGITS:
             q += 1
         scan.tok(rule, i, q, d)
-        if q == i + 9 and (q == e or line[q] not in DIGITS):
+        if q == i + 9:
+            # The width is fixed: a digit after it is text (amb.cmt.alt.width).
             occ.append((rule, i))
         else:
             scan.find(rule, "syntax", q)

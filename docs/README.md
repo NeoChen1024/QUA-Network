@@ -6,6 +6,7 @@
 | What exactly goes on the wire? | `spec/`, one numbered file per topic. A topic moves there from the RFC when it is ready to be worked on as specification text; until then the RFC is the only description. So far: [station identifier](spec/01-station-identifier.md), [icon](spec/02-icon.md), [TLV container](spec/03-tlv.md). |
 | Where does a figure come from? | Regenerate it from the corpus with the tools; RFC section 13 gives the method and caveats. The RFC quotes no corpus statistics. `research/` is for a report that fixes a result at a stated capture window. Not started. |
 | What are legacy APRS packets meant to contain, field by field? | [`legacy/`](legacy/README.md): this project's reading of APRS12c, with page citations, the ambiguities it resolves and the errata it found. The legacy tokenizer implements it. |
+| What does a decoder give for one legacy packet? How does a gateway translate it, and how is a legacy packet encoded? | [`interop/`](interop/README.md): the record of a legacy packet, its strict and permissive modes, and later the gateway translation and the encoder. Not a QUA Network wire format. So far: [the record, position slice](interop/01-record.md). |
 | How does deployed APRS software actually behave? | `divergence/`, one file per catalogue entry (RFC Appendix E). Not started. |
 | What are the conformance values? | [`../vectors/`](../vectors/), checked by `qua-check-vectors`. |
 

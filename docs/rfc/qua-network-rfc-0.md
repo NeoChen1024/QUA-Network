@@ -1578,6 +1578,7 @@ anything is decided on them.
     gateway translate? What does it do with a legacy packet that has no QUA
     Network form? How is a translated packet marked? Who is the source of a
     translated PDU, and who issues its sequence number (6.5)?
+    `docs/interop/` holds the work on the translation.
 11. Message reliability: acknowledgement, retry policy and segment
     retransmission.
 12. Regional variation in traffic mix, and whether the MTU decision should
@@ -1642,6 +1643,10 @@ anything is decided on them.
    position on the raw bytes, and a field inventory counts presence, sizes
    and co-occurrence as input to the TLV tag table (5.2). Record the true
    parse-failure rate and the distribution of comment length.
+
+   A decoder on the tokens then gives the values of the fields.
+   `docs/legacy/10-values.md` states the values, and `docs/interop/`
+   specifies the record that the decoder gives.
 5. Train a zstd dictionary on the corpus and record per-packet compressed
    size as an approximate lower bound for any candidate encoding.
 6. Draft the header and TLV tag table. Re-encode the corpus. Report, per
@@ -1808,7 +1813,7 @@ for explaining a difference once it has been found.
    the Dire Wolf decoder, aprsc, javAPRSlib, Xastir, YAAC.
 2. Normalise each parser's output into one common record, so that the
    outputs can be compared. This record exists only for the comparison. It
-   is not a QUA Network format.
+   is not a QUA Network format. A draft of it is in `docs/interop/`.
 3. Compare. Every packet on which parsers disagree, or which some accept and
    others reject, becomes a catalogue entry.
 4. Read the relevant code to find the cause, and record it.

@@ -4,7 +4,7 @@
 |---|---|
 | Status | Draft. Not frozen. Paragraphs and rows are marked **[agreed]**, **[proposed]** or **[open]**, with the meaning that the RFC gives them. |
 | Reference | `APRS12c.pdf` in submodule `3rdparty/aprsspec`, commit `5830d42f`. See [RFC Appendix D](../rfc/qua-network-rfc-0.md#appendix-d-reference-documents). |
-| Used by | `qua-legacy-tokenize` and `qua-legacy-fields` (package `qua_network.legacy`), for RFC section 15, step 4. These tools apply 01-frame, 02-fields, 03-position, 04-mic-e, 05-object-item, 06-weather, 07-telemetry, 08-message and 09-other. |
+| Used by | `qua-legacy-tokenize` and `qua-legacy-fields` (package `qua_network.legacy`), for RFC section 15, step 4. These tools apply 01-frame, 02-fields, 03-position, 04-mic-e, 05-object-item, 06-weather, 07-telemetry, 08-message and 09-other. The decoder of [docs/interop](../interop/README.md) applies 10-values: `qua-legacy-decode` (package `qua_network.interop`). |
 
 ## 1. Purpose and premise
 
@@ -30,6 +30,13 @@ not repair it.
 - A choice at one place is a working choice for that place only. It is
   not a precedent. Two working choices do not have to agree with each
   other.
+
+**[proposed]** A value file has a third purpose. It states the value that
+the bytes of a token give: the unit, the scale and the range that APRS12c
+specifies, with the page. The decoder of
+[docs/interop](../interop/README.md) applies it. A value file makes no
+claim about what the sender meant. [10-values.md](10-values.md) is the
+first value file.
 
 Thus, in this project, "conform" means only this: the bytes break no
 statement of APRS12c that the rules of section 3 treat as specified.
@@ -155,6 +162,18 @@ A catalogue row does not argue for an interpretation. It does not record
 what deployed decoders do. Differential testing (RFC Appendix E) finds
 how decoders are different. The field inventory counts findings by rule
 ID, and it shows how often a row matters.
+
+**[proposed]** **Value files.** A value file has value tables in place of
+rule tables. A value table has these columns:
+
+| ID | Value | Tokens | Arithmetic | Unit, step and range | Source |
+|---|---|---|---|---|---|
+
+Its IDs follow the rules for rule IDs. The catalogue of a value file has
+the last column "What the decoder does". "The decoder" is the tool that
+applies a value file. A value file defines its other terms in its section
+2. The rows of a value file have no label of their own. The header of the
+file states their status.
 
 **Errata.** At some places, two parts of APRS12c disagree. For example,
 an example does not match its diagram, a calculation has an error, or two
@@ -287,6 +306,28 @@ exception departs from these rules only if the author has reviewed it.
 The file records it as a reviewed exception (section 2), with the reason
 of the author.
 
+**[proposed]** **The general rules and values.** The seven rules tell what
+the tokenizer does. A value file (section 2) applies them to the value of
+a token as follows:
+
+- Rule 1: A value has the unit, the scale and the range that APRS12c
+  specifies. The arithmetic follows the formula or the example of APRS12c.
+- Rule 2: If APRS12c gives the bytes no value, the decoder gives no value.
+  If APRS12c leaves a property of a value open, for example its reference,
+  the decoder gives the value with a note. The catalogue lists the place.
+- Rule 3: If two parts of APRS12c give the same bytes different values,
+  the decoder gives no value. If the two parts give the same value, the
+  decoder gives that value.
+- Rule 4: **[agreed]** If APRS12c permits more than one interpretation,
+  the decoder gives the value of the narrowest interpretation. An
+  interpretation is narrower than another if it accepts
+  fewer byte strings. Thus a field is narrower than text, and the decoder
+  gives the value of the field that the tokenizer chose. If no
+  interpretation is the narrowest, the decoder gives no value. If the
+  tokenizer gives several tokens for one field, the decoder gives the
+  value of each token.
+- Rules 5, 6 and 7 apply without change.
+
 ### 3.2 Output
 
 **[agreed]** The tokenizer is strict. It reports where a packet departs
@@ -336,6 +377,10 @@ degrees, knots or decoded telemetry. **[agreed]** The author decided one
 exception: a checksum in a format, for example the NMEA `*hh`. The
 tokenizer verifies the checksum, because a mismatch shows that the bytes
 are not the bytes that the sender sent.
+
+**[proposed]** Values are a separate layer on the tokens and the
+findings. A value file states them, and the decoder computes them. The
+tokenizer does not change for them.
 
 ### 3.3 Counting findings
 
@@ -427,6 +472,7 @@ not copy the code, because several of these projects are GPL.
 | [07-telemetry.md](07-telemetry.md) | Telemetry reports, base-91 comment telemetry, telemetry definition messages. | `tlm` |
 | [08-message.md](08-message.md) | Messages, acknowledgements, bulletins, announcements, NWS bulletins, NTS. | `msg`, `bln`, `nws`, `nts` |
 | [09-other.md](09-other.md) | Status reports, capabilities, general and directed queries, user-defined data, test packets, frequency specifications in comments. | `stat`, `cap`, `qry`, `udf`, `inv`, `freq` |
+| [10-values.md](10-values.md) | Values of the fields of position reports and Mic-E: coordinates, position ambiguity, DAO, course, speed, altitude, symbol, timestamp, data extensions. | `val` |
 | [examples.json](examples.json) | The expected verdict and findings of each example packet of APRS12c, by page and digest. | — |
 
 ## 6. Open items

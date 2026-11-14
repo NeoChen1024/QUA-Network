@@ -21,6 +21,7 @@ qua-spec-extract = "qua_network.spec_extract:cli"
 qua-legacy-tokenize = "qua_network.legacy_tokenize:cli"
 qua-legacy-fields = "qua_network.legacy_fields:cli"
 qua-legacy-examples = "qua_network.legacy_examples:cli"
+qua-legacy-decode = "qua_network.legacy_decode:cli"
 
 [build-system]
 requires = ["setuptools>=77.0.3"]

@@ -29,6 +29,10 @@ not put "APRS" into a name of anything in this project.
 - `vectors/`: machine-readable conformance vectors. Tables in the documents
   are copies; when they disagree, the vector file is authoritative.
 - `3rdparty/`: pinned upstream references.
+- `docs/interop/`: the record that a decoder gives for a legacy packet,
+  and later the gateway translation and the encoder. The record is not a
+  QUA Network wire format. Its values come from the value files of
+  `docs/legacy/`.
   The [documentation index](docs/README.md#external-references) lists these
   and the references that are linked instead of stored.
 - Tool `--help` owns usage and options.

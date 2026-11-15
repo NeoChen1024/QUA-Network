@@ -1270,51 +1270,17 @@ Computed with the `blake3` Python package (1.0.11).
 
 ### 5.10 Versions
 
-- **[agreed]** The protocol has a major version and a minor version. Two
-  implementations have the same version when both numbers are the same.
-- **[agreed]** The protocol guarantees backward compatibility only inside
-  one major version.
-- **[agreed]** Therefore a major version does not get a new compressed
-  field format.
-- **[agreed]** A change that adds no compressed field format and breaks no
-  compatibility needs only a new minor version.
-- **[agreed]** A new compressed field format is one of these, and each
-  needs a new major version:
-  - a new compressed form, such as a new codec or a new preset;
-  - a new TLV that holds a compressed field.
-- **[agreed]** Inside one major version, a receiver can decode every PDU.
-  It skips a TLV that it does not know (5.2), and it builds the same
-  uncompressed form as every other receiver (5.4).
-- **[agreed]** A change breaks compatibility if it has one of these
-  effects. As a result, existing stations, relays and gateways can no
-  longer reasonably interoperate with the changed ones:
-  - it changes how an existing station, relay or gateway reads the value
-    of a field;
-  - it clearly changes what a station, a relay or a gateway does with
-    data that it receives.
-- **[agreed]** The test is a receiver of an earlier minor version that
-  gets a PDU that is valid after the change. The change breaks
-  compatibility if that receiver does one of these:
-  - it rejects the PDU or one of its fields;
-  - it reads a different value from a field that it knows;
-  - it acts differently on the PDU: relay, deduplication, authentication
-    or acknowledgement;
-  - it builds a different uncompressed form (5.4).
-- **[agreed]** The same test applies in the other direction: a receiver
-  of the later minor version that gets a PDU of the earlier one.
-- **[agreed]** These changes do not break compatibility:
-  - a new TLV that holds no compressed field and that an earlier receiver
-    can skip, if the other fields keep their meaning without it;
-  - a new value in a list that the specification leaves open, if it is not
-    a new compressed field format.
-- **[agreed]** The header carries the major version and the minor version.
-  The version marker of the text form follows the header (5.4).
-- **[agreed]** The two numbers share the version byte, which is the first
-  byte of the PDU (5.1). From the most significant bit down, the byte has
-  the major version in 3 bits, the minor version in 4 bits, and one bit
-  that is always 1.
-- A comparison of two version bytes as numbers gives the order of the
-  versions.
+The version rules are specified in
+[`docs/spec/07-versions.md`](../spec/07-versions.md). This section keeps
+a summary, the reasons and the dropped alternatives.
+
+Summary: the protocol has a major version and a minor version, and both
+are in the version byte, the first byte of the PDU (5.1). The protocol
+guarantees backward compatibility only inside one major version. A change
+that breaks compatibility, or that adds a compressed field format, needs a
+new major version. Every other change needs only a new minor version.
+The first version is 1.0. These rules on changes apply from the first
+freeze of the specification.
 
 An earlier proposal gave each number 4 bits. It was in conflict with the
 first-byte rule of 5.1: with the version in the first byte, the minor
@@ -2093,7 +2059,7 @@ anything is decided on them.
     in section 3 of `docs/spec/06-numbers-units-text.md`. This goes with
     the tag table of step 6.
 17. Move the topics of section 5 to `docs/spec/`, when most of the items
-    of a topic are not open. Done: 5.3, in two files. Next: 5.10, then
+    of a topic are not open. Done: 5.3, in two files, and 5.10. Next:
     5.1 when its layout is decided. 5.4 and 5.5 stay in the RFC for now.
 
 ## Appendix A. Transceiver packet limits

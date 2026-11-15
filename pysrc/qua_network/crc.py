@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""CRC-32C (Castagnoli), with the parameters of RFC 5.1. It is the checksum
+"""CRC-32C (Castagnoli), with the parameters of docs/spec/08-pdu.md. It is the checksum
 of a PDU and the function of the hop trace entries (RFC 5.9)."""
 
 

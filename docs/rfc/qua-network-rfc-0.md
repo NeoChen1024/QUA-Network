@@ -215,124 +215,56 @@ substantial share of the mean frame (section 13).
 
 ### 5.1 Header
 
-**[agreed]** The parts of a PDU have these names:
+The parts of a PDU, the header, the length of a PDU and the checksum are
+specified in [`docs/spec/08-pdu.md`](../spec/08-pdu.md). This section
+keeps a summary, the reasons and the dropped alternatives.
 
-| Term | Meaning |
-|---|---|
-| PDU | The whole unit: the source part, the authentication tag if there is one, the trailer and the checksum. The PDU limit of section 6 applies to it. |
-| Source part | The header and the TLV area. |
-| Source length | The length of the source part in bytes. It is a field of the header. |
-| Trailer | The hop trace of 5.9. |
-
-```
-| header | TLVs | auth tag | control | entry, entry, ... | CRC-32C |
-|< source part >|          |<------ trailer ------>|
-```
+Summary: a PDU is the source part, an authentication tag if the flag
+Authenticated is set, the trailer of 5.9 and a CRC-32C checksum. The
+source part is the header of 14 bytes and the TLV area. The header has
+the version byte, the hop limit, three flags, the type, the source
+length, the source identifier and the sequence number. Everything else is
+a TLV. The source length counts the source part only. In transit, only
+the trailer and the checksum change. A PDU gives its own length, and a
+receiver ignores the bytes that a link gives after it. Every integer of
+more than one byte is in little-endian order.
 
 Some sections of this RFC still call the PDU a frame. A later revision
 removes that word for the PDU.
 
-- **[agreed]** The header is minimal. No application data may be placed in
-  link-layer address fields.
-- **[agreed]** Header contents: protocol version (5.10), flags, source
-  callsign and SSID (encoded as in 5.8), a per-source sequence number, hop
-  limit, and source length. Everything else is a TLV.
-- **[agreed]** The header also has the type of the PDU. One PDU has one
-  type (5.11).
-- **[agreed]** The header is 14 bytes, in this layout:
+The header is minimal. The flags hold only what a relay or a gateway
+needs before it reads a TLV. In APRS, the path entries `NOGATE` and
+`RFONLY` have the function of the flag No Internet. The flag Translated
+is for the translation of section 14, question 10.
 
-  | Offset | Bytes | Field |
-  |---|---|---|
-  | 0 | 1 | Version byte (5.10). |
-  | 1 | 1 | Hop limit, 3 bits. Flags, 5 bits. |
-  | 2 | 1 | Type (5.11). |
-  | 3 | 1 | Source length. |
-  | 4 | 8 | Source identifier (5.8), in little-endian order. |
-  | 12 | 2 | Sequence number, in little-endian order. |
+The least significant bit of the first byte of a PDU is 1. In AX.25 the
+first byte of a frame is an address byte whose low bit, the extension
+bit, is always 0. An AX.25 parser therefore sees an address field of
+length 1, which is not a multiple of 7, and rejects the frame, and a QUA
+Network receiver can tell the two kinds of frame apart from that one bit.
+Both can share a channel and a single HDLC decoder (7.1). The version
+byte gives this bit (5.10).
 
-- **[agreed]** The version byte is the first byte of the PDU. A receiver
-  reads it before every other field, so it knows how to read them.
-- **[agreed]** The sequence number has 16 bits. A station starts at a
-  random value each time that it starts. It adds 1 for each PDU that it
-  sends. After 65535, the next number is 0.
-- **[agreed]** A sequence number can therefore occur again. A relay or a
-  receiver keeps a deduplication entry for a limited time only (6.2).
-- **[agreed]** The header has these three flags:
+The header carries the hop limit chosen by the source, not a count that
+relays decrement. The number of hops used is read from the trailer; 5.9
+gives the reasons.
 
-  | Flag | Meaning |
-  |---|---|
-  | No Internet | A gateway does not carry the PDU from radio to the Internet. |
-  | Translated | A gateway made the PDU from a legacy packet (section 14, question 10). |
-  | Authenticated | The PDU has an authentication tag (section 10). |
+The checksum:
 
-- **[agreed]** In the second byte, from the most significant bit down:
-  the hop limit in 3 bits, then the flags No Internet, Translated and
-  Authenticated, then 2 reserved bits. A source writes 0 in a reserved
-  bit. A receiver ignores a reserved bit.
-- **[agreed]** The source length counts the header and the TLV area. It
-  does not count the authentication tag, the trailer or the checksum. The
-  TLV area ends where the source length ends.
-- **[agreed]** If the flag Authenticated is set, an authentication tag
-  follows the TLV area. The algorithm of the tag is fixed, so the length
-  of the tag is fixed. **[open]** The algorithm and the length (section
-  10).
-- **[agreed]** No field holds an algorithm identifier. The protocol has
-  one kind of signature and one kind of key (10.6). A change of an
-  algorithm changes what a receiver does with a PDU, so by the rules of
-  5.10 it needs a new major version.
-- **[agreed]** In transit, only the trailer changes, and the checksum
-  with it. A relay does not change the source part or the authentication
-  tag.
-- **[agreed]** The length of a PDU follows from its content: the source
-  length, the length of the authentication tag if the flag is set, the
-  trailer of 1 byte and 3 bytes for each entry (5.9), and the checksum of
-  4 bytes. A receiver reads and checks only these bytes.
-- **[agreed]** A receiver ignores the bytes that a link gives after the
-  PDU. A link can therefore add padding after a PDU.
-- **[agreed]** If a link gives fewer bytes than the length of the PDU,
-  the PDU is invalid.
-- **[agreed]** Padding is not part of the PDU. The checksum does not
-  cover it, and a relay does not send the padding that it received.
-- **[agreed]** The header carries the hop limit chosen by the source,
-  not a count that relays decrement; the number of hops used is read from
-  the trailer (5.9).
-- **[agreed]** The PDU carries its own frame checksum, CRC-32C (Castagnoli),
-  independent of any link-level check. There is one checksum, at the very
-  end of the frame.
-  - Parameters: polynomial `0x1EDC6F41` (reflected `0x82F63B78`), initial
-    value `0xFFFFFFFF`, input and output reflected, final XOR `0xFFFFFFFF`.
-    The check value for the ASCII string `123456789` is `0xE3069283`.
-  - It covers everything before it: what the source wrote and the trailer
-    of 5.9. A relay, which changes the trailer, recomputes it. An earlier
-    version covered only what the source wrote and was never recomputed;
-    5.9 records why that was dropped.
-  - A CRC is kept, in preference to a truncated hash, because it detects
-    every error burst of 32 bits or less with certainty and every small
-    number of scattered bit errors at these frame lengths. A truncated hash
-    gives only a probability. CRC-32C is chosen over the older IEEE 802.3
-    CRC-32 for its better error-detection properties at short lengths; the
-    exact Hamming distance figures are to be confirmed against Koopman's
-    tables.
-- **[agreed]** The checksum is always present, including in authenticated
-  PDUs. A TESLA MAC cannot be verified until its key is disclosed later
-  (10.4), so relays and receivers need a check they can evaluate at once.
-- **[agreed]** Every integer of more than one byte in a PDU is in
-  little-endian order
-  ([`docs/spec/06-numbers-units-text.md`](../spec/06-numbers-units-text.md)
-  section 2). This includes the source identifier, the sequence number
-  and the checksum. A text or a screen still shows a number with its most
-  significant digit first.
-- **[agreed]** The least significant bit of the first byte of a PDU is 1.
-  In AX.25 the first byte of a frame is an address byte whose low bit, the
-  extension bit, is always 0. An AX.25 parser therefore sees an address
-  field of length 1, which is not a multiple of 7, and rejects the frame,
-  and a QUA Network receiver can tell the two kinds of frame apart from that
-  one bit. Both can share a channel and a single HDLC decoder (7.1).
-  The version byte gives this bit (5.10).
-
-The flags hold only what a relay or a gateway needs before it reads a
-TLV. In APRS, the path entries `NOGATE` and `RFONLY` have the function of
-the flag No Internet.
+- The PDU carries its own checksum, independent of any link-level check.
+  It covers what the source wrote and the trailer of 5.9. An earlier
+  version covered only what the source wrote and was never recomputed;
+  5.9 records why that was dropped.
+- A CRC is kept, in preference to a truncated hash, because it detects
+  every error burst of 32 bits or less with certainty and every small
+  number of scattered bit errors at these frame lengths. A truncated hash
+  gives only a probability. CRC-32C is chosen over the older IEEE 802.3
+  CRC-32 for its better error-detection properties at short lengths; the
+  exact Hamming distance figures are to be confirmed against Koopman's
+  tables.
+- The checksum is always present, including in authenticated PDUs. A
+  TESLA MAC cannot be verified until its key is disclosed later (10.4), so
+  relays and receivers need a check they can evaluate at once.
 
 An earlier proposal had the integers of the header in big-endian order,
 and the order of the checksum was open. The author replaced it.
@@ -355,13 +287,14 @@ number alone does not prevent a replay (section 14, question 7).
 An earlier proposal let the source length count the authentication tag.
 A receiver then had no way to find the end of the TLV area. The author
 also considered a tag that is a TLV. It was dropped: it makes the form
-that the signature covers harder to build (5.5).
+that the signature covers harder to build (5.5). The tag has one fixed
+algorithm, so its length is fixed and no field has to give it (10.6).
 
 The source length makes a PDU delimit itself. The syntax of the TLVs does
 not show where the TLV area ends, and the control byte is at the start of
 the trailer. With the source length and the entry count, a receiver takes
 a PDU apart without a length from the link (5.9). The link usually gives a
-length too. The rules above state what happens if the two differ
+length too. The specification file states what happens if the two differ
 (pitfall 35).
 
 A first decision of this revision made a PDU invalid if the link gave a
@@ -2070,7 +2003,7 @@ anything is decided on them.
       temperature in kelvin and pressure in pascals. The record is not a
       wire format, so the units can differ. Does the record change to the
       units of 5.3?
-25. Header (5.1):
+25. Header (5.1). The specification file lists these too:
     - The use of the two reserved bits of the second byte.
     - The algorithm and the length of the authentication tag (section
       10).
@@ -2156,8 +2089,8 @@ anything is decided on them.
     in section 3 of `docs/spec/06-numbers-units-text.md`. This goes with
     the tag table of step 6.
 17. Move the topics of section 5 to `docs/spec/`, when most of the items
-    of a topic are not open. Done: 5.3, in two files, and 5.10. Next:
-    5.1; its layout is decided. 5.4 and 5.5 stay in the RFC for now.
+    of a topic are not open. Done: 5.1, 5.3 in two files, and 5.10. Not
+    moved yet: 5.9 and 5.11. 5.4 and 5.5 stay in the RFC for now.
 
 ## Appendix A. Transceiver packet limits
 

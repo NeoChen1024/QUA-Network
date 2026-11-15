@@ -17,7 +17,7 @@ that a change of the specification needs.
 
 It does not specify these:
 
-- The other fields of the header (RFC 5.1).
+- The other fields of the header ([08-pdu](08-pdu.md)).
 - The version marker of the text form (RFC 5.4).
 
 ## 2. Version numbers

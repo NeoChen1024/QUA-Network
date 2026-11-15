@@ -18,8 +18,9 @@ does not assign tags or define the content of any TLV.
 **[agreed]** Each PDU type has its own tag space (RFC 5.11). A tag has a
 meaning only together with the type of the PDU.
 
-The TLV area follows the header (RFC 5.1). Its length follows from the
-header. The hop trace (RFC 5.9) is not part of it.
+The TLV area follows the header ([08-pdu](08-pdu.md)). Its length
+follows from the source length. The hop trace (RFC 5.9) is not part of
+it.
 
 ## 2. A TLV
 

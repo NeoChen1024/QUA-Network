@@ -1566,7 +1566,7 @@ by speed. It recommends a bitrate and lets the airtime budget do the rest.
 - **[agreed]** The binding of a link decides the format in which the link
   packs several PDUs in one unit. This RFC does not define one packed
   format for all links. The PDU limit does not limit the unit (6.1).
-- **[proposed]** A packed format MUST unpack to the original PDUs bit for
+- **[agreed]** A packed format MUST unpack to the original PDUs bit for
   bit. Sequence numbers and authentication then stay as the source made
   them.
 - An earlier draft had one packed format for high-speed links as an open,

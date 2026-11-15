@@ -2170,6 +2170,13 @@ commands.
   distribution and bytes outside 7-bit ASCII; verdicts and findings with
   example packets. Every file of `docs/legacy/` has a reader, so every
   packet gets a verdict.
+- `qua-legacy-decode`: gives the record of `docs/interop/` for each packet,
+  or counts of the fields over the corpus.
+- `qua-legacy-compare`: compares the records with the results of other
+  parsers, for the divergence catalogue (Appendix E).
+- `qua-legacy-text`: measures the free text of the corpus: how often a
+  station sends the same text again, and the size of each text under each
+  preset of Unishox2 (section 15, step 11).
 - `qua-legacy-examples`: collects the example packets of APRS12c from
   the working copy under `work/` and checks the verdict of each against
   a project-owned expectation list, which names the examples by page and

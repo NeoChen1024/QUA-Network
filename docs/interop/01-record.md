@@ -13,8 +13,13 @@ RFC 2119.
 
 This file specifies the record that the decoder gives for one legacy
 packet. It specifies the envelope and the position body. The position body
-covers position reports (uncompressed and compressed), DF reports and
-Mic-E. The other uses get their bodies later ([README section 5](README.md#5-open-items)).
+covers position reports (uncompressed and compressed), DF reports, Mic-E,
+Objects, Items and complete weather reports. [02-object.md](02-object.md)
+specifies the object body. [03-weather.md](03-weather.md) specifies the
+weather body. [04-telemetry.md](04-telemetry.md) specifies the telemetry
+body and the telemetry definition body. [05-status.md](05-status.md)
+specifies the status body.
+The other uses get their bodies later ([README section 5](README.md#5-open-items)).
 
 ## 2. Input
 
@@ -25,8 +30,12 @@ corpus record, the received time is the logged time. Its resolution is
 the time.
 
 **[proposed]** The decoder runs the tokenizer on the line. Then it applies
-the value rules of [10-values](../legacy/10-values.md) to the tokens. It
-MUST NOT read a value from bytes outside the tokens that the value rule
+the value rules of the value files of docs/legacy to the tokens
+([10-values](../legacy/10-values.md),
+[11-values-object](../legacy/11-values-object.md),
+[12-values-weather](../legacy/12-values-weather.md),
+[13-values-telemetry](../legacy/13-values-telemetry.md),
+[14-values-status](../legacy/14-values-status.md)). It MUST NOT read a value from bytes outside the tokens that the value rule
 names.
 
 **[proposed]** If the line is a third-party packet, the record describes
@@ -88,15 +97,23 @@ kinds:
 |---|---|---|
 | Quantity | `v`, `res`, `from` | `v` is the value in the record unit of the field (4.3). `res` is the resolution, in the same unit. Both are numbers (4.6). |
 | Flag | `flag`, `from` | `true` or `false`. |
+| Flags | `flags`, `from` | A list of `true` and `false`, in the order that the field states. |
 | Code | `code`, `from` | A string or an integer, as the value rule states. |
 | Bytes | `bytes`, `from` | A byte string (4.1). |
 | No value | `why`, `from` | The value is absent for a reason. |
 
 `from` is the provenance (4.4). Each kind can also have `mark` (section 3).
+`mark` is a list. Each item is a finding, as `[rule, kind, offset]`, or
+the ID of a catalogue row whose effect is `computable`, for example
+`"amb.val.calm"`.
 
 A quantity has no member that names its record unit. Section 4.3 fixes the
 record unit of each field. A quantity also has no integer count. The count of
 10-values stays in the bytes of `line`.
+
+A field can be a list of value objects, for example `analog` of the
+telemetry body. Each item is then a value object of its own, with its own
+`from`.
 
 Three parts of a record are not plain value objects:
 
@@ -130,7 +147,7 @@ with no value is a no-value object without `ref`.
 ### 4.3 Units
 
 **[agreed]** The record gives each quantity in the record unit that the
-table below fixes. The record unit is an SI unit, with the two exceptions
+table below fixes. The record unit is an SI unit, with the exceptions
 below. QUA Network does not use the units of APRS, and in particular not
 its non-linear codes. The record states the value of a quantity, not the
 form of its bytes. Round-trip accuracy with APRS is not a goal.
@@ -140,6 +157,7 @@ form of its bytes. Round-trip accuracy with APRS is not a goal.
 - Angles are in degrees, not in radians.
 - Gain, signal strength and beacon rate keep the units of 10-values: dBi
   or dB, S-points and beacons per hour.
+- Humidity is in percent ([03-weather section 3.1](03-weather.md#31-units)).
 
 **[agreed]** A quantity keeps its resolution. The resolution is
 information of the packet, not a form of its bytes.
@@ -229,7 +247,12 @@ or of another file of docs/legacy can be a note, for example
 
 **[proposed]** A note applies only to a value that the record gives. A
 no-value object gives its catalogue rows in `why`. The notes follow the
-order of the fields of section 7, then `report_time`. Each pair occurs
+order of the fields of the object body, then of section 7, then of the
+weather body, then of the telemetry body, then of the status body, then
+`report_time`.
+[03-weather section 3.2](03-weather.md#32-notes) lists the notes of the
+weather body. [04-telemetry section 3.2](04-telemetry.md#32-notes) lists
+the note of the telemetry body. Each pair occurs
 once. The decoder gives these notes:
 
 | Row | Field | Condition |
@@ -248,6 +271,8 @@ once. The decoder gives these notes:
 | `amb.val.phgcodes` | `height`, `rate` | A height code after `';'`, or a rate code after `'A'`. |
 | `amb.val.timewindow` | `report_time` | A `utc` from a timestamp. |
 | `amb.val.localtime` | `report_time` | The zone is local. |
+| `amb.obj.name` | `name` of the object body | An Object name of nine `SP` bytes, in permissive mode. |
+| `amb.val.objtime` | `report_time` | The form `"received"` in a record of an Object or an Item. |
 
 The rows `err.val.cmpspeed` and `err.val.daostep` have no effect on
 values. Thus they are not notes. `amb.val.micefix` is an item of `why`.
@@ -295,20 +320,29 @@ codes, flags, byte strings and the fields of a timestamp.
 | `destination` | Byte string | The bytes of `addr.dest`, or of `tp.dest`. |
 | `path` | List of byte strings | One item for each path entry, in order: the bytes between the separators, with the `'*'` if the entry has one. For a third-party packet, the entries of `tp.net` and `tp.gate`. |
 | `outer` | Object | Only for a third-party packet: `source`, `destination` and `path` of the outer header. |
-| `uses` | List of strings | The names of the uses of the packet. Each name is the key of a body. In this slice the only name is `"position"`. The list is empty if the record has no body. |
+| `uses` | List of strings | The names of the uses of the packet. Each name is the key of a body. The names are `"object"`, `"position"`, `"weather"`, `"telemetry"`, `"telemetry_definition"` and `"status"`, in this order. The list is empty if the record has no body. |
 | `format` | String | The rule ID of the identifier token, for example `pos.dti`, `mice.dti` or `wx.pos`. |
 | `verdict` | String or `null` | The verdict of the tokenizer. `null` if the tokenizer has no reader for the format. |
 | `findings` | List | Every finding of the tokenizer, as `[rule, kind, offset]`. |
 | `report_time` | Object | Section 6. |
-| `position` | Object | The position body (section 7). Present if the identifier is `pos.dti` or `mice.dti`. |
+| `object` | Object | The object body ([02-object](02-object.md)). Present if the identifier is `obj.dti`, `item.dti` or `wx.obj`. |
+| `position` | Object | The position body (section 7). Present if the identifier is `pos.dti`, `mice.dti`, `obj.dti`, `item.dti`, `wx.pos` or `wx.obj`. |
+| `weather` | Object | The weather body ([03-weather](03-weather.md)). Present for a weather report. |
+| `telemetry` | Object | The telemetry body ([04-telemetry](04-telemetry.md)). Present for a telemetry report and for a packet with a base-91 block. |
+| `telemetry_definition` | Object | The telemetry definition body ([04-telemetry](04-telemetry.md#4-telemetry-definition-body)). Present if the identifier is `tlm.def.dti`. |
+| `status` | Object | The status body ([05-status](05-status.md)). Present if the identifier is `stat.dti`. |
 | `notes` | List | Section 4.5. |
-| `undecoded` | List | Each token of the information field that no value rule of this slice reads, as `[rule, start, end]`. The bytes are in `line`. The list includes such tokens inside `cmt.text`. `cmt.text` itself is in the body. Residue is listed. |
+| `undecoded` | List | Each token of the information field that no value rule reads, as `[rule, start, end]`. The bytes are in `line`. The list includes such tokens inside `cmt.text`. `cmt.text` itself is in the body. Residue is listed. |
 
 **[agreed]** The record names its uses, in `uses`.
 
 **[proposed]** A record has one body for each use of the packet. One
-packet can have more than one use, so `uses` is a list. In this slice the
-only body is `position`.
+packet can have more than one use, so `uses` is a list.
+
+**[agreed]** A body does not contain another body. An Object has the uses
+`object` and `position`. A weather report with a position has the uses
+`position` and `weather`. Thus the position body is the same for every
+format that has a position.
 
 An earlier draft had no field for the use. The presence of a body stated
 the use. The author prefers a name.
@@ -325,7 +359,8 @@ is empty. If a header has no `'>'`, `source` and `destination` are
 
 **[proposed]** `undecoded` lists the outermost tokens that the body does
 not read. A token is read if a value rule reads it, or if it is the
-comment of the body. A token that contains a read token is also read. A
+comment of the body. The identifier token of a record with a body is also
+read: `format` gives it. A token that contains a read token is also read. A
 record with no body reads no token. If `c` of a compressed block is
 `SP`, no value rule reads `cmp.cs.none` and `cmp.t` (10-values section 6).
 
@@ -335,11 +370,11 @@ record with no body reads no token. If `c` of a compressed block is
 
 | Member | Content |
 |---|---|
-| `form` | `"dhm"`, `"hms"` or `"received"`. |
-| `day`, `hour`, `minute`, `second` | The fields of the timestamp, as integers ([val.time.dhm](../legacy/10-values.md#val.time.dhm), [val.time.hms](../legacy/10-values.md#val.time.hms)). |
+| `form` | `"dhm"`, `"hms"`, `"mdhm"` or `"received"`. |
+| `month`, `day`, `hour`, `minute`, `second` | The fields of the timestamp, as integers ([val.time.dhm](../legacy/10-values.md#val.time.dhm), [val.time.hms](../legacy/10-values.md#val.time.hms), [val.time.mdhm](../legacy/12-values-weather.md#val.time.mdhm)). |
 | `zone` | `"utc"` or `"local"`. |
 | `utc` | Seconds since the Unix epoch, or absent. The number can have a fraction (4.6). It counts days of 86400 seconds and no leap seconds, as POSIX time does. |
-| `res` | The resolution of `utc`, in seconds: 60 for DHM, 1 for HMS, the resolution of the received time for `"received"`. Absent if `utc` is absent. |
+| `res` | The resolution of `utc`, in seconds: 60 for DHM and MDHM, 1 for HMS, the resolution of the received time for `"received"`. Absent if `utc` is absent. |
 | `from` | Provenance (4.4). |
 | `mark` | Permissive mode only (section 3). |
 
@@ -350,9 +385,12 @@ record with no body reads no token. If `c` of a compressed block is
 **[proposed]** If a timestamp has no value (section 3), `report_time` is a
 no-value object (4.2).
 
-**[proposed]** If the format is outside this slice and has a timestamp
-token, `report_time` is absent. No value rule applies to that timestamp
-yet.
+**[proposed]** If the format has no body yet and has a timestamp token,
+`report_time` is absent. No value rule applies to that timestamp yet.
+
+**[agreed]** An Object without a timestamp and an Item have the form
+`"received"`, with the note `amb.val.objtime`
+([02-object section 4](02-object.md#4-position-body-and-report-time)).
 
 **[agreed]** APRS12c gives no date for a timestamp
 ([amb.val.timewindow](../legacy/10-values.md#amb.val.timewindow)). The
@@ -388,7 +426,7 @@ record unit.
 | `course` | Quantity | Course in degrees. | `val.ext.csespd`, `val.cmp.crs`, `val.mice.crs` |
 | `speed` | Quantity | Speed in metres per second. | `val.ext.csespd`, `val.cmp.spd`, `val.mice.spd` |
 | `symbol` | Object | `chars`: the table byte and the code byte, in that order, as a byte string. `classic`: the number of RFC 5.6 as an integer, if the symbol has one. `from`. | `val.sym` |
-| `messaging` | Flag | Messaging flag. | `val.pos.dti`, `val.mice.msgcap` |
+| `messaging` | Flag | Messaging flag. Absent for an Object or an Item. | `val.pos.dti`, `val.mice.msgcap` |
 | `fix` | Code | Fix age: `"current"` or `"old"`. | `val.mice.dti`, `val.cmp.t` |
 | `comment` | Bytes | The bytes of the `cmt.text` token. In Mic-E, the `cmt.text` inside `mice.status`. | — |
 | `extensions` | List | Values that have no field of their own (below). | — |
@@ -404,6 +442,10 @@ overlay, 1 to 10 for `'0'`–`'9'`, 11 to 36 for `'A'`–`'Z'`. The number is:
 
 - primary table: `c` − 33;
 - alternate table: 94 + (`c` − 33) · 37 + `d`.
+
+**[proposed]** In a weather report, the wind field takes the place of the
+course and the speed. The position body then has no `course` and no
+`speed` ([03-weather section 3](03-weather.md#3-fields)).
 
 **[proposed]** The course and the speed come from the fixed part of the
 format: `ext.csespd` in the slot, `cmp.cs.crs`, or the Mic-E bytes. An
@@ -664,10 +706,11 @@ differ between the modes:
 
 - **[open]** The other uses, the encoder, the gateway mapping and the
   differential tests ([README section 5](README.md#5-open-items)).
+- **[proposed]** The order of the names in `uses`: `object`, `position`,
+  `weather`, `telemetry`, `telemetry_definition`, `status`, then each
+  later use.
 - **[open]** Whether `source` also gives a QUA Network identifier
   ([spec 01 section 8](../spec/01-station-identifier.md#8-mapping-to-an-ax25-address)).
-- **[open]** Whether a record of a weather report (`wx.pos`) has the
-  position body before the weather body exists.
 - **[open]** `fix` exists only for the compressed format and Mic-E. A
   report with a timestamp can also be old (p. 39/23). The record does not
   give this as a fix age.
@@ -683,5 +726,5 @@ differ between the modes:
   others as `path`.
 - **[open]** The headers between the line and the innermost packet of a
   nested third-party packet. The record does not give them.
-- **[open]** The report time of a format outside this slice that has a
+- **[open]** The report time of a format that has no body yet and has a
   timestamp (section 6).

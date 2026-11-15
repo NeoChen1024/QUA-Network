@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Value rules of docs/legacy/10-values.md, as integer arithmetic on token bytes.
+"""Value rules of the value files of docs/legacy (10-values.md,
+11-values-object.md, 12-values-weather.md, 13-values-telemetry.md and
+14-values-status.md), as integer arithmetic on token bytes.
 
 Each function named ``val_*`` is the value rule with the same ID (dots
 become underscores). It takes the bytes of the tokens that the column
@@ -8,10 +10,12 @@ codes and flags. It does not judge findings: the ``effect_*`` functions
 give the effect of section 10 for one finding, and record.py combines
 them (10-values section 2.4).
 
-A quantity is returned as ``Q(unit, n, w)``. For a linear unit ``n`` is the
-count and ``w`` the step; for a non-linear unit ``n`` is the code ``k`` of
-the formula (01-record section 4.3). The unit keys are those of
-record.UNITS.
+A quantity is returned as ``Q(unit, n, w, d)``. For a linear unit ``n`` is
+the count and ``w`` the step; for a non-linear unit ``n`` is the code ``k``
+of the formula (01-record section 4.3). ``d`` is 10^f for a weather value
+with f digits after its '.', and 1 for every other value: the count and
+the step are at the scale 1/d of the unit (12-values-weather section 2.1).
+The unit keys are those of record.UNITS.
 """
 
 from typing import NamedTuple
@@ -26,6 +30,7 @@ class Q(NamedTuple):
     unit: str
     n: int
     w: int = 1
+    d: int = 1
 
 
 def _d(c):
@@ -554,3 +559,231 @@ def effect_dao(f, datum):
     if f.kind == "unstated":
         return KEPT if datum else NONE
     return KEPT
+
+
+# --- 11-values-object section 3: name and state ---------------------------
+
+
+def val_obj_name(b):
+    """The 9 bytes without the SP bytes at the end."""
+    return b.rstrip(b" ")
+
+
+def val_obj_state(c):
+    """True for live, False for killed, None for another byte."""
+    return True if c == 0x2A else False if c == 0x5F else None
+
+
+def val_item_state(c):
+    return True if c == 0x21 else False if c == 0x5F else None
+
+
+# --- 11-values-object section 6: effect of one finding --------------------
+
+
+def effect_obj_name(f):
+    """obj.name on val.obj.name, item.name on val.item.name."""
+    if f.kind == "syntax":
+        return NONE
+    if f.kind in ("unstated", "value"):
+        # Nine SP bytes; an Item name of fewer than 3 or more than 9 bytes.
+        return COMPUTABLE
+    return KEPT
+
+
+def effect_obj_state(f):
+    return NONE if f.kind == "syntax" else KEPT
+
+
+# --- 12-values-weather sections 2 to 5 -------------------------------------
+
+_FILL = frozenset(b". ")
+WX_UNITS = {
+    "wx.wdir": "deg",
+    "wx.wspd": "mph",
+    "wx.gust": "mph",
+    "wx.temp": "degF",
+    "wx.rain1h": "inch/100",
+    "wx.rain24h": "inch/100",
+    "wx.rainmid": "inch/100",
+    "wx.hum": "percent",
+    "wx.baro": "hPa/10",
+    "wx.lum": "W/m2",
+    "wx.lumk": "W/m2",
+    "wx.snow": "inch",
+}
+
+
+def _is_fill(b):
+    return bool(b) and all(c in _FILL for c in b)
+
+
+def wx_number(b, signed=False):
+    """Section 2.1: (n, d) of the digits of b, with at most one '.' and,
+    where signed, a leading '-'. None if b is not such a number."""
+    neg = signed and b[:1] == b"-"
+    whole, _, frac = (b[1:] if neg else b).partition(b".")
+    digits = whole + frac
+    if not digits.isdigit():
+        return None
+    n = int(digits)
+    return (-n if neg else n), 10 ** len(frac)
+
+
+def val_wx(rule, b):
+    """The value of one weather field from its value bytes b (without the
+    letter): a Q, UNKNOWN for the unknown fill, or None where the bytes are
+    no number (the tokenizer has then given syntax)."""
+    if _is_fill(b):
+        return UNKNOWN
+    num = wx_number(b, rule == "wx.temp")
+    if num is None:
+        return None
+    n, d = num
+    if rule == "wx.hum" and b == b"00":
+        n = 100
+    elif rule == "wx.lumk":
+        n += 1000 * d
+    return Q(WX_UNITS[rule], n, 1, d)
+
+
+WDIR0 = "amb.val.wdir0"
+CALM = "amb.val.calm"
+
+
+def val_wx_wind(b):
+    """val.wx.wind: (direction, speed) of an ext.dirspd token. Each is a Q,
+    UNKNOWN (fill), CALM (the direction of the pair 000/000), WDIR0
+    (direction 0 with a speed), or None where the bytes are no number."""
+    direction, speed = b[0:3], b[4:7]
+    if direction == b"000" and speed == b"000":
+        # 12-values-weather section 4: no direction; the speed is 0, with
+        # the effect computable.
+        return CALM, Q("knot", 0)
+    out = []
+    for part, unit in ((direction, "deg"), (speed, "knot")):
+        if len(part) == 3 and _is_fill(part):
+            out.append(UNKNOWN)
+            continue
+        num = wx_number(part) if len(part) == 3 else None
+        out.append(Q(unit, num[0], 1, num[1]) if num is not None else None)
+    if isinstance(out[0], Q) and out[0].n == 0:
+        out[0] = WDIR0
+    return out[0], out[1]
+
+
+def val_time_mdhm(b):
+    return 10 * _d(b[0]) + _d(b[1]), 10 * _d(b[2]) + _d(b[3]), 10 * _d(b[4]) + _d(b[5]), 10 * _d(b[6]) + _d(b[7])
+
+
+# --- 12-values-weather section 6: effect of one finding --------------------
+
+
+def effect_time_mdhm(f):
+    return NONE if f.kind in ("syntax", "value") else KEPT
+
+
+def effect_wind(f, s, speed):
+    """ext.dirspd at offset s, on the direction or (speed True) the speed."""
+    if f.kind == "syntax":
+        return NONE if speed or f.offset - s < 4 else KEPT
+    if f.kind == "value":
+        return KEPT if speed else NONE
+    return KEPT
+
+
+def effect_wx(f, rule):
+    """A weather field of 06 section 6.1, wx.sw or wx.unit."""
+    if f.kind == "syntax":
+        return NONE
+    if f.kind == "value":
+        return COMPUTABLE if rule == "wx.temp" else NONE
+    if f.kind == "unstated":
+        return KEPT if rule == "wx.sw" else COMPUTABLE
+    return KEPT
+
+
+# --- 13-values-telemetry sections 2 to 5 -----------------------------------
+
+MIC = "val.tlm.seq"
+_BITS = frozenset(b"01")
+
+
+def tlm_field(b):
+    """The bytes of a comma-delimited token without the ',' at its end."""
+    return b[:-1] if b.endswith(b",") else b
+
+
+def val_tlm_number(b):
+    """Section 2.1: the raw value of a number, or None where b is none."""
+    num = wx_number(b, True)
+    return Q("raw", num[0], 1, num[1]) if num is not None else None
+
+
+def _seq_digits(b):
+    """The digits between '#' and ',' of a tlm.seq token, or None."""
+    if b[:1] != b"#" or not b.endswith(b","):
+        return None
+    body = b[1:-1]
+    return body if body.isdigit() and len(body) <= 9 else None
+
+
+def val_tlm_seq(b):
+    """val.tlm.seq: an integer, MIC for the sequence MIC, or None."""
+    if b[:4] == b"#MIC":
+        return MIC
+    body = _seq_digits(b)
+    return int(body) if body is not None else None
+
+
+def val_tlm_bits(b):
+    """val.tlm.digital and val.tlm.bits.sense: B1 first."""
+    if len(b) != 8 or any(c not in _BITS for c in b):
+        return None
+    return [c == 0x31 for c in b]
+
+
+def val_b91_bits(b):
+    """val.tlm.b91.bits: bit i of the number is B(i + 1)."""
+    n = b91(b)
+    return [bool(n >> i & 1) for i in range(8)]
+
+
+# --- 13-values-telemetry section 6: effect of one finding -------------------
+
+
+def effect_tlm_seq(f, b):
+    if f.kind == "syntax":
+        return COMPUTABLE if _seq_digits(b) is not None else NONE
+    return NONE if f.kind == "unstated" else KEPT
+
+
+def effect_tlm_analog(f):
+    return NONE if f.kind == "syntax" else KEPT
+
+
+def effect_tlm_station(f):
+    if f.kind == "syntax":
+        return NONE
+    return COMPUTABLE if f.kind == "unstated" else KEPT
+
+
+def effect_tlm_text(f, long_kept=False):
+    """A name, unit, label or title. A value finding is computable; on a
+    name, unit or label that is too long it is kept (long_kept)."""
+    if f.kind == "syntax":
+        return NONE
+    return COMPUTABLE if f.kind == "value" and not long_kept else KEPT
+
+
+def effect_tlm_coef(f):
+    return NONE if f.kind in ("syntax", "unstated") else KEPT
+
+
+# --- 14-values-status section 3 --------------------------------------------
+
+
+def val_stat_beam(b):
+    """val.stat.beam: (heading, power) of the three bytes of stat.beam."""
+    h = b[1] - 0x30 if _is_digit(b[1]) else b[1] - 0x37
+    return Q("deg", 10 * h, 10), Q("watt.erp", b[2] - 0x30)

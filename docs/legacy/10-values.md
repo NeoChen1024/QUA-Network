@@ -21,9 +21,15 @@ The tokens come from [02](02-fields.md), [03](03-position.md) and
 [04](04-mic-e.md). This file adds no token and changes no finding. The rule
 prefix is `val`.
 
-Objects, Items, weather, telemetry, status reports and messages are outside
-this file. The area descriptor, locators, frequencies, base-91 telemetry
-and the symbols in the address fields are also outside this file.
+[11-values-object](11-values-object.md) gives the values of Objects and
+Items. It uses the value rules of this file for their position.
+[12-values-weather](12-values-weather.md) gives the values of weather
+reports. [13-values-telemetry](13-values-telemetry.md) gives the values
+of telemetry, the base-91 block in a comment included.
+[14-values-status](14-values-status.md) gives the values of status
+reports. Messages are outside this file. The area descriptor, locators,
+frequencies and the symbols in the address fields are also outside this
+file.
 
 [README section 3.1](README.md#31-general-rules) states how the general
 rules apply to values. This file applies them and decides nothing more.
@@ -418,9 +424,9 @@ None.
 
 ## 13. Open items
 
-- Values of the other formats: Objects, Items, weather, telemetry, status
-  reports and messages. Also the area descriptor, locators, frequencies
-  and the symbols in the address fields
+- Values of the other formats: messages.
+  Also the area descriptor, locators, frequencies and the
+  symbols in the address fields
   ([01 section 11](01-frame.md#11-open-items)).
 - A list of the expected values of the worked examples of APRS12c, by page
   and digest, as [examples.json](examples.json) does for verdicts. The

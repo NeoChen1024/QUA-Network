@@ -1,10 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
 """The record of one legacy packet: docs/interop/01-record.md.
 
-The decoder runs the tokenizer, applies the value rules of
-docs/legacy/10-values.md (values.py) and converts each value to its record
-unit (section 4.3). It reads no byte outside the tokens that a value rule
-names (section 2).
+The decoder runs the tokenizer, applies the value rules of the value files
+of docs/legacy (values.py) and converts each value to its record unit
+(section 4.3). It reads no byte outside the tokens that a value rule names
+(section 2). The object body is that of docs/interop/02-object.md, and the
+weather body that of docs/interop/03-weather.md. The telemetry body and
+the telemetry definition body are those of docs/interop/04-telemetry.md.
+The status body is that of docs/interop/05-status.md.
 """
 
 import calendar
@@ -12,12 +15,16 @@ import datetime
 from functools import lru_cache
 
 from qua_network.interop.values import (
+    CALM,
     COMPUTABLE,
     KEPT,
+    MIC,
     NAMED_DATUMS,
     NONE,
     UNKNOWN,
+    WDIR0,
     Q,
+    b91,
     df_station,
     effect_cmp,
     effect_cmp_t,
@@ -31,11 +38,23 @@ from qua_network.interop.values import (
     effect_mice_dc,
     effect_mice_dest,
     effect_mice_lon,
+    effect_obj_name,
+    effect_obj_state,
     effect_sym,
     effect_time,
+    effect_time_mdhm,
+    effect_tlm_analog,
+    effect_tlm_coef,
+    effect_tlm_seq,
+    effect_tlm_station,
+    effect_tlm_text,
+    effect_wind,
+    effect_wx,
     hemisphere,
     mice_lat_sign,
     mice_lon_sign,
+    tlm_field,
+    val_b91_bits,
     val_cmp_alt,
     val_cmp_crs,
     val_cmp_lat,
@@ -53,6 +72,7 @@ from qua_network.interop.values import (
     val_ext_phg,
     val_ext_phgr,
     val_ext_rng,
+    val_item_state,
     val_lat,
     val_lat_amb,
     val_lon,
@@ -64,10 +84,19 @@ from qua_network.interop.values import (
     val_mice_msg,
     val_mice_msgcap,
     val_mice_spd,
+    val_obj_name,
+    val_obj_state,
     val_pos_dti,
+    val_stat_beam,
     val_sym,
     val_time_dhm,
     val_time_hms,
+    val_time_mdhm,
+    val_tlm_bits,
+    val_tlm_number,
+    val_tlm_seq,
+    val_wx,
+    val_wx_wind,
 )
 from qua_network.legacy.tokenizer import tokenize
 from qua_network.tnc2 import header_spans
@@ -123,6 +152,18 @@ UNITS = {
     "dB": lambda n, w: (n, w),
     "S": lambda n, w: (n, w),
     "per-hour": lambda n, w: (n, w),
+    # 03-weather section 3.1.
+    "mph": lambda n, w: (n * 1609344 / 3600000, w * 1609344 / 3600000),
+    "degF": lambda n, w: ((n * 100 + 45967) / 180, w * 5 / 9),
+    "inch/100": lambda n, w: (n * 254 / 1000000, w * 254 / 1000000),
+    "inch": lambda n, w: (n * 254 / 10000, w * 254 / 10000),
+    "percent": lambda n, w: (n, w),
+    "hPa/10": lambda n, w: (n * 10, w * 10),
+    "W/m2": lambda n, w: (n, w),
+    # 04-telemetry section 3.1: a raw value has no record unit.
+    "raw": lambda n, w: (n, w),
+    # 05-status section 3.1.
+    "watt.erp": lambda k, w: (10 * k * k, 10 * (2 * k + 1)),
 }
 
 
@@ -135,7 +176,8 @@ def number(x):
 
 
 def quantity(q):
-    v, res = UNITS[q.unit](q.n, q.w)
+    n, w = (q.n, q.w) if q.d == 1 else (q.n / q.d, q.w / q.d)
+    v, res = UNITS[q.unit](n, w)
     return {"v": number(v), "res": number(res)}
 
 
@@ -144,12 +186,63 @@ def text(b):
     return b.decode("latin-1")
 
 
-# Tokens that a value rule of this slice reads (the column "Tokens" of
-# 10-values, and cmp.cs of its section 10). cmt.text is in the body.
+# Tokens that a value rule reads (the column "Tokens" of the value files,
+# and cmp.cs of 10-values section 10). The identifier of an Object or an
+# Item is read: `format` gives it. cmt.text is in the body.
 READ = frozenset(
     (
         "pos.dti",
         "mice.dti",
+        "obj.dti",
+        "item.dti",
+        "obj.name",
+        "obj.state",
+        "item.name",
+        "item.state",
+        "wx.pos",
+        "wx.obj",
+        "wx.pl",
+        "time.mdhm",
+        "ext.dirspd",
+        "cmp.cs.wind",
+        "wx.wdir",
+        "wx.wspd",
+        "wx.gust",
+        "wx.temp",
+        "wx.rain1h",
+        "wx.rain24h",
+        "wx.rainmid",
+        "wx.hum",
+        "wx.baro",
+        "wx.lum",
+        "wx.lumk",
+        "wx.snow",
+        "wx.sw",
+        "wx.unit",
+        "tlm.dti",
+        "tlm.seq",
+        "tlm.analog",
+        "tlm.digital",
+        "tlm.b91",
+        "tlm.b91.seq",
+        "tlm.b91.analog",
+        "tlm.b91.bits",
+        "tlm.def.dti",
+        "msg.addr.name",
+        "msg.addr.pad",
+        "msg.sep",
+        "tlm.parm",
+        "tlm.parm.name",
+        "tlm.unit",
+        "tlm.unit.label",
+        "tlm.eqns",
+        "tlm.eqns.coef",
+        "tlm.bits",
+        "tlm.bits.sense",
+        "tlm.bits.title",
+        "stat.dti",
+        "grid.loc",
+        "stat.beam",
         "time.dhm",
         "time.hms",
         "lat",
@@ -190,8 +283,48 @@ READ = frozenset(
 EXT_RULES = ("ext.csespd", "ext.phg", "ext.phgr", "ext.rng", "ext.dfs", "ext.brgnrq")
 ALT_RULES = ("cmt.alt", "cmt.alt.neg")
 TIME_RULES = ("time.dhm", "time.hms", "time.mdhm")
-# Field order of section 7; notes follow it, then report_time.
+# Formats that have a position body, and those that also have an object body.
+POSITION_FORMATS = ("pos.dti", "mice.dti", "obj.dti", "item.dti", "wx.pos", "wx.obj")
+OBJECT_FORMATS = ("obj.dti", "item.dti", "wx.obj")
+# Formats whose identifier is that of a position report (val.pos.dti), and
+# Object formats, which can have a timestamp.
+REPORT_FORMATS = ("pos.dti", "wx.pos")
+OBJ_TIME_FORMATS = ("obj.dti", "wx.obj")
+WEATHER_FORMATS = ("wx.pos", "wx.obj", "wx.pl")
+# 03-weather section 3: field, token rules. The first two are also the wind.
+WX_FIELDS = (
+    ("wind_direction", ("wx.wdir",)),
+    ("wind_speed", ("wx.wspd",)),
+    ("gust", ("wx.gust",)),
+    ("temperature", ("wx.temp",)),
+    ("rain_1h", ("wx.rain1h",)),
+    ("rain_24h", ("wx.rain24h",)),
+    ("rain_midnight", ("wx.rainmid",)),
+    ("snow_24h", ("wx.snow",)),
+    ("humidity", ("wx.hum",)),
+    ("pressure", ("wx.baro",)),
+    ("luminosity", ("wx.lum", "wx.lumk")),
+)
+WX_ORDER = tuple(name for name, _ in WX_FIELDS) + ("software", "unit", "comment")
+WX_NOTES = {"rain_midnight": "amb.val.midnight", "pressure": "amb.val.baroref"}
+# The leading fields of a positionless report (06 section 6.2).
+WX_LEADING = ("wx.wdir", "wx.wspd", "wx.gust", "wx.temp")
+# 04-telemetry sections 3 and 4.
+TLM_ORDER = ("sequence", "analog", "digital", "comment")
+TLM_DEF_ORDER = ("station", "kind", "names", "units", "coefficients", "sense", "title")
+# 05-status section 3.
+STATUS_ORDER = ("locator", "symbol", "text", "beam_heading", "beam_power", "noarchive")
+# Keyword token -> (kind, field of the body, item token, most fields).
+TLM_LISTS = {
+    "tlm.parm": ("parm", "names", "tlm.parm.name", 13),
+    "tlm.unit": ("unit", "units", "tlm.unit.label", 13),
+    "tlm.eqns": ("eqns", "coefficients", "tlm.eqns.coef", 15),
+}
+# Field order of 02-object section 3, then of section 7; notes follow it,
+# then report_time.
 FIELD_ORDER = (
+    "object.name",
+    "object.live",
     "position.lat",
     "position.lon",
     "position.ambiguity",
@@ -204,8 +337,11 @@ FIELD_ORDER = (
     "position.fix",
     "position.comment",
     "position.extensions",
-    "report_time",
 )
+FIELD_ORDER += tuple("weather." + name for name in WX_ORDER)
+FIELD_ORDER += tuple("telemetry." + name for name in TLM_ORDER)
+FIELD_ORDER += tuple("telemetry_definition." + name for name in TLM_DEF_ORDER)
+FIELD_ORDER += tuple("status." + name for name in STATUS_ORDER) + ("report_time",)
 _DEST_CHILDREN = ("mice.dest.a", "mice.dest.b", "mice.dest.c", "mice.dest.ns", "mice.dest.lonoff", "mice.dest.we")
 _DEST_RULES = frozenset(("dest.mice", "mice.dest") + _DEST_CHILDREN)
 _LON_DEST_RULES = frozenset(("dest.mice", "mice.dest", "mice.dest.lonoff", "mice.dest.we"))
@@ -246,6 +382,8 @@ class Decoder:
         self.findings = self.scan.findings
         self.notes = []
         self.read = set()  # tokens that the body reads, beyond READ (cmt.text)
+        self.weather = False  # the record has a weather body
+        self.cmp_wind = None  # (direction, speed) of a compressed block in a weather report
         self.unread = set()  # tokens of READ that no value rule reads in this packet
 
     # --- Helpers ---------------------------------------------------------
@@ -283,8 +421,10 @@ class Decoder:
             worst = NONE
         bad = []
         for f, e in pre.judged:
-            if e != KEPT and list(f) not in bad:
-                bad.append(list(f))
+            # f is a finding, or the ID of a catalogue row (section 4.2).
+            item = f if isinstance(f, str) else list(f)
+            if e != KEPT and item not in bad:
+                bad.append(item)
         if pre.payload is None or worst == NONE or worst == COMPUTABLE and self.strict:
             o = {"why": pre.reasons + bad}
             if not inner:
@@ -322,20 +462,52 @@ class Decoder:
         }
         if self.outer is not None:
             out["outer"] = self.outer
-        body = None
-        if self.format in ("pos.dti", "mice.dti") and not scan.unknown_format:
-            body = self._position()
-        out["uses"] = ["position"] if body is not None else []
+        body = obj = wx = tlm = tdef = status = None
+        if not scan.unknown_format:
+            pre = wpre = tpre = None
+            self.weather = self.format in WEATHER_FORMATS or self.format == "item.dti" and self._item_weather()
+            if self.format in POSITION_FORMATS:
+                pre = self._position()
+                if self.format in OBJECT_FORMATS:
+                    obj = self._object()
+            if self.weather:
+                wpre = self._weather(pre is not None)
+            if self.format == "tlm.dti":
+                tpre = self._telemetry()
+            elif pre is not None and self.tok("tlm.b91") is not None:
+                tpre = self._telemetry_b91()
+            self._after_timestamp(pre, wpre, tpre)
+            if pre is not None:
+                body = self._body(pre)
+            if wpre is not None:
+                wx = {name: self.obj(wpre[name], "weather." + name) for name in WX_ORDER if name in wpre}
+            if tpre is not None:
+                tlm = self._lists(tpre, "telemetry", TLM_ORDER)
+            if self.format == "tlm.def.dti":
+                tdef = self._lists(self._definition(), "telemetry_definition", TLM_DEF_ORDER)
+            if self.format == "stat.dti":
+                status = self._lists(self._status(), "status", STATUS_ORDER)
+        bodies = (
+            ("object", obj),
+            ("position", body),
+            ("weather", wx),
+            ("telemetry", tlm),
+            ("telemetry_definition", tdef),
+            ("status", status),
+        )
+        has_body = any(b is not None for _, b in bodies)
+        out["uses"] = [name for name, b in bodies if b is not None]
         out["format"] = self.format
         out["verdict"] = scan.verdict()
         out["findings"] = [list(f) for f in self.findings]
-        rt = self._report_time(body is not None)
+        rt = self._report_time(has_body)
         if rt is not None:
             out["report_time"] = rt
-        if body is not None:
-            out["position"] = body
+        for name, b in bodies:
+            if b is not None:
+                out[name] = b
         out["notes"] = [n[2] for n in sorted(self.notes, key=lambda n: (n[0], n[1]))]
-        out["undecoded"] = self._undecoded(body is not None)
+        out["undecoded"] = self._undecoded(has_body)
         return out
 
     # --- Section 5: envelope ---------------------------------------------
@@ -431,15 +603,38 @@ class Decoder:
             return None
         time_tok = next((t for t in self.info if t.rule in TIME_RULES and t.depth == self.info_depth), None)
         if time_tok is None:
-            if has_body and self.format == "pos.dti" and val_pos_dti(self.line[self.info_start])[0]:
+            if has_body and self.format in REPORT_FORMATS and val_pos_dti(self.line[self.info_start])[0]:
                 # The timestamp is missing: the packet ends early.
+                return self.obj(self.missing())
+            if has_body and self.format == "wx.pl":
+                # A positionless report always has its timestamp.
+                return self.obj(self.missing())
+            if has_body and self.format in OBJ_TIME_FORMATS and self.tok("lat") is None and self.tok("cmp.block") is None:
+                # An Object that ends before its position: it is not known
+                # whether it has a timestamp (02-object section 4).
                 return self.obj(self.missing())
             if self.received is None:
                 return None
+            if has_body and self.format in OBJECT_FORMATS:
+                self.note("amb.val.objtime", "report_time")
             return {"form": "received", "utc": number(self.received), "res": number(self.received_res), "from": []}
         b = self.line[time_tok.start : time_tok.end]
-        judged = [(f, effect_time(f, time_tok.start, b)) for f in self.on(("time.dhm", "time.hms"), time_tok)]
         frm = [_ref(time_tok)]
+        if time_tok.rule == "time.mdhm":
+            # 03-weather section 4.
+            judged = [(f, effect_time_mdhm(f)) for f in self.on(("time.mdhm",), time_tok)]
+            if len(b) < 8:
+                return self.obj(Pre(None, judged or [(f, NONE) for f in self.stop()], frm))
+            mo, d, h, m = val_time_mdhm(b)
+            payload = {"form": "mdhm", "month": mo, "day": d, "hour": h, "minute": m, "zone": "utc"}
+            utc = self._utc_mdhm(mo, d, h, m)
+            notes = []
+            if utc is not None:
+                payload["utc"] = utc
+                payload["res"] = 60
+                notes.append("amb.val.mdhmyear")
+            return self.obj(Pre(payload, judged, frm, notes=notes), "report_time")
+        judged = [(f, effect_time(f, time_tok.start, b)) for f in self.on(("time.dhm", "time.hms"), time_tok)]
         if len(b) < 7:
             return self.obj(Pre(None, judged, frm))
         notes = []
@@ -486,6 +681,15 @@ class Decoder:
                 out.append(calendar.timegm((y, mo, d, h, m, 0)))
         return self._nearest(out)
 
+    def _utc_mdhm(self, mo, d, h, m):
+        """03-weather section 4: the date and time in the year of the
+        received time, the year before and the year after."""
+        if self.received is None or not 1 <= mo <= 12:
+            return None
+        year = datetime.datetime.fromtimestamp(int(self.received // 1), datetime.timezone.utc).year
+        out = [calendar.timegm((y, mo, d, h, m, 0)) for y in (year - 1, year, year + 1) if 1 <= d <= calendar.monthrange(y, mo)[1]]
+        return self._nearest(out) if out else None
+
     def _utc_hms(self, h, m, s):
         """Section 6 step 2 and 3: the time on the day of the received time,
         the day before and the day after."""
@@ -506,42 +710,328 @@ class Decoder:
             pre = self._uncompressed()
         else:
             # pos.form: the packet ends, or the byte starts neither format.
-            dti = self.line[self.info_start]
             pre = {"lat": self.missing(), "lon": self.missing(), "symbol": self.missing()}
-            pre["messaging"] = Pre({"flag": val_pos_dti(dti)[1]}, (), [[self.format, self.info_start, self.info_start + 1]])
+            self._messaging(pre)
         self._comment_fields(pre)
-        if self.format == "pos.dti":
-            self._after_timestamp(pre)
-        return self._body(pre)
+        return pre
 
-    def _after_timestamp(self, pre):
-        """10-values section 2.3: a syntax finding on the timestamp concerns
-        every value from a later token. If the six digits are in place and
-        only the seventh byte is wrong, the effect is computable; if not, it
-        is none. Only the messaging flag comes from a token before the
-        timestamp."""
+    def _messaging(self, pre):
+        """val.pos.dti: only a position report has the flag in its identifier."""
+        if self.format in REPORT_FORMATS:
+            dti = self.line[self.info_start]
+            pre["messaging"] = Pre({"flag": val_pos_dti(dti)[1]}, (), [[self.format, self.info_start, self.info_start + 1]])
+
+    # --- Object body (02-object section 3) -------------------------------
+
+    def _object(self):
+        line = self.line
+        item = self.format == "item.dti"
+        name_rule, state_rule = ("item.name", "item.state") if item else ("obj.name", "obj.state")
+        body = {}
+        t = self.tok(name_rule)
+        fs = [f for f in self.findings if f.rule == name_rule and self.info_start <= f.offset <= self.info_end]
+        if t is None:
+            # No name token: the finding of the name is the reason.
+            pre = Pre(None, [(f, NONE) for f in fs if f.kind == "syntax"] or [(f, NONE) for f in self.stop()])
+        else:
+            b = line[t.start : t.end]
+            judged = [(f, effect_obj_name(f)) for f in self.on((name_rule,), t)]
+            name = b if item else val_obj_name(b)
+            notes = ["amb.obj.name"] if not item and not name else []
+            pre = Pre({"bytes": text(name)}, judged, [_ref(t)], notes=notes)
+        body["name"] = self.obj(pre, "object.name")
+        t = self.tok(state_rule)
+        if t is None:
+            pre = self.missing()
+        else:
+            live = (val_item_state if item else val_obj_state)(line[t.start])
+            judged = [(f, effect_obj_state(f)) for f in self.on((state_rule,), t)]
+            pre = Pre({"flag": live} if live is not None else None, judged, [_ref(t)])
+        body["live"] = self.obj(pre, "object.live")
+        return body
+
+    def _after_timestamp(self, pre, wpre, tpre=None):
+        """10-values section 2.3 and 11-values-object section 4: a syntax
+        finding on the timestamp concerns every value from a later token. If
+        the six digits are in place and only the seventh byte is wrong, the
+        effect is computable; if not, it is none. Only the messaging flag of
+        the position body comes from a token before the timestamp."""
         ts = next((t for t in self.info if t.rule in TIME_RULES and t.depth == self.info_depth), None)
         digits = ts is not None and ts.end - ts.start == 7 and self.line[ts.start : ts.start + 6].isdigit()
         broken = [
             (f, COMPUTABLE if digits and f.offset == ts.start + 6 else NONE)
             for f in self.findings
             if f.kind == "syntax"
-            and f.rule in ("time.dhm", "time.hms", "pos.time")
+            and f.rule in ("time.dhm", "time.hms", "pos.time", "obj.time")
             and self.info_start <= f.offset <= self.info_end
         ]
-        if not broken:
+        if not broken or self.format not in REPORT_FORMATS + OBJ_TIME_FORMATS:
             return
-        for name, p in pre.items():
+        targets = list(wpre.values()) if wpre is not None else []
+        for p in (tpre or {}).values():
+            targets += p if isinstance(p, list) else [p]
+        for name, p in (pre or {}).items():
             if name == "messaging":
                 continue
             if name == "altitude":
-                targets = [a.pre for a in p]
+                targets += [a.pre for a in p]
             elif name == "extensions":
-                targets = [v for _, _, values in p for v in values.values()]
+                targets += [v for _, _, values in p for v in values.values()]
             else:
-                targets = [p]
-            for t in targets:
-                t.judged.extend(broken)
+                targets.append(p)
+        for t in targets:
+            t.judged.extend(broken)
+
+    # --- Telemetry bodies (04-telemetry sections 3 and 4) -----------------
+
+    def _lists(self, pre, use, order):
+        """A body from its values before the mode; a list field gives one
+        value object for each item."""
+        body = {}
+        for name in order:
+            if name not in pre:
+                continue
+            p, path = pre[name], f"{use}.{name}"
+            body[name] = [self.obj(x, path) for x in p] if isinstance(p, list) else self.obj(p, path)
+        return body
+
+    def _flags(self, t, rule, notes=()):
+        """A field of eight bits from the token t of rule, or a missing one."""
+        if t is None:
+            fs = self._in_info(rule, "syntax")
+            return Pre(None, [(f, NONE) for f in fs] or [(f, NONE) for f in self.stop()])
+        judged = [(f, NONE if f.kind == "syntax" else KEPT) for f in self.on((rule,), t)]
+        flags = val_tlm_bits(self.line[t.start : t.end])
+        return Pre({"flags": flags} if flags is not None else None, judged, [_ref(t)], notes=notes)
+
+    def _telemetry(self):
+        """The telemetry body of a telemetry report, before the mode."""
+        line, depth = self.line, self.info_depth
+        w = {}
+        t = self.tok("tlm.seq")
+        if t is None:
+            fs = self._in_info("tlm.seq", "syntax")
+            w["sequence"] = Pre(None, [(f, NONE) for f in fs] or [(f, NONE) for f in self.stop()])
+        else:
+            b = line[t.start : t.end]
+            judged = [(f, effect_tlm_seq(f, b)) for f in self.on(("tlm.seq",), t)]
+            v = val_tlm_seq(b)
+            payload = {"code": v} if isinstance(v, int) else None
+            w["sequence"] = Pre(payload, judged, [_ref(t)], reasons=[MIC] if v == MIC else [])
+        analog = []
+        for t in [t for t in self.toks("tlm.analog") if t.depth == depth][:5]:
+            b = line[t.start : t.end]
+            # A finding at the end of a token that has its ',' is on the
+            # next field (13-values-telemetry section 6).
+            closed = b.endswith(b",")
+            fs = [f for f in self.on(("tlm.analog",), t) if f.offset < t.end or not closed]
+            judged = [(f, effect_tlm_analog(f)) for f in fs]
+            analog.append(Pre(val_tlm_number(tlm_field(b)), judged, [_ref(t)]))
+        w["analog"] = analog + [self.missing() for _ in range(5 - len(analog))]
+        w["digital"] = self._flags(self.tok("tlm.digital"), "tlm.digital", ["amb.val.tlmbits"])
+        c = self._comment_token()
+        if c is not None:
+            self.read.add(c)
+            w["comment"] = Pre({"bytes": text(line[c.start : c.end])}, (), [_ref(c)])
+        return w
+
+    def _telemetry_b91(self):
+        """The telemetry body of a base-91 block, before the mode."""
+        line = self.line
+        block = self.tok("tlm.b91")
+        doubt = [(f, COMPUTABLE) for f in self.on(("tlm.b91",), block) if f.kind == "ambiguous"]
+        w = {}
+        t = self.tok("tlm.b91.seq")
+        if t is not None:
+            w["sequence"] = Pre({"code": b91(line[t.start : t.end])}, list(doubt), [_ref(t)])
+        w["analog"] = [Pre(Q("raw", b91(line[t.start : t.end])), list(doubt), [_ref(t)]) for t in self.toks("tlm.b91.analog")]
+        t = self.tok("tlm.b91.bits")
+        if t is not None:
+            w["digital"] = Pre({"flags": val_b91_bits(line[t.start : t.end])}, list(doubt), [_ref(t)])
+        return w
+
+    def _definition(self):
+        """The telemetry definition body, before the mode."""
+        line = self.line
+        # msg.sep: the text still starts at its fixed place.
+        sep = [(f, COMPUTABLE) for f in self._in_info("msg.sep", "syntax")]
+        w = {}
+        t = self.tok("msg.addr.name")
+        addr = self.tok("msg.addr")
+        fs = [
+            f
+            for f in self.findings
+            if f.rule in ("msg.addr", "msg.addr.name") and addr is not None and addr.start <= f.offset <= addr.end
+        ]
+        judged = [(f, effect_tlm_station(f)) for f in fs] + sep
+        if t is None:
+            w["station"] = Pre(None, judged or [(f, NONE) for f in self.stop()])
+        else:
+            w["station"] = Pre({"bytes": text(line[t.start : t.end])}, judged, [_ref(t)])
+        lst = next((t for r in TLM_LISTS for t in self.toks(r)), None)
+        if lst is not None:
+            kind, field, item, most = TLM_LISTS[lst.rule]
+            w["kind"] = Pre({"code": kind}, list(sep), [_ref(lst)])
+            w[field] = self._list_items(lst, item, most, kind == "eqns", sep)
+            return w
+        bits = self.tok("tlm.bits")
+        if bits is None:
+            return w
+        w["kind"] = Pre({"code": "bits"}, list(sep), [_ref(bits)])
+        w["sense"] = self._flags(self.tok("tlm.bits.sense"), "tlm.bits.sense")
+        w["sense"].judged += sep
+        t = self.tok("tlm.bits.title")
+        if t is not None:
+            judged = [(f, effect_tlm_text(f)) for f in self.on(("tlm.bits.title",), t)] + sep
+            w["title"] = Pre({"bytes": text(line[t.start : t.end])}, judged, [_ref(t)])
+        return w
+
+    def _list_items(self, lst, item, most, numbers, sep):
+        """The fields of a PARM., UNIT. or EQNS. list: the bytes between its
+        commas, up to `most` fields (13-values-telemetry section 5)."""
+        line = self.line
+        start = lst.start + 5
+        toks = {t.start: t for t in self.toks(item)}
+        fs = [f for f in self.findings if f.rule == item and lst.start <= f.offset <= lst.end]
+        out = []
+        a, k = start, 0
+        while start < lst.end:
+            body = a + (k > 0)
+            c = line.find(b",", body, lst.end)
+            b = lst.end if c < 0 else c
+            # An empty A1 has no token; the token at its place is that of A2.
+            t = toks.get(a) if k > 0 or b > a else None
+            if k >= most:
+                # An extra field: no value rule reads it.
+                if t is not None:
+                    self.unread.add(t)
+            else:
+                # A finding of a field is inside its bytes. For an empty
+                # field it is at its place, and it is not the syntax finding
+                # of an extra field, which is at a ','.
+                mine = [f for f in fs if body <= f.offset < b or body == b == f.offset and f.kind != "syntax"]
+                frm = [_ref(t if t is not None else lst)]
+                if numbers:
+                    judged = [(f, effect_tlm_coef(f)) for f in mine] + sep
+                    out.append(Pre(val_tlm_number(line[body:b]), judged, frm))
+                else:
+                    # A value finding on an empty field is the empty A1.
+                    judged = [(f, effect_tlm_text(f, b > body)) for f in mine] + sep
+                    out.append(Pre({"bytes": text(line[body:b])}, judged, frm))
+            if c < 0:
+                break
+            a, k = c, k + 1
+        return out
+
+    # --- Status body (05-status section 3) --------------------------------
+
+    def _status(self):
+        """The status body, before the mode."""
+        line = self.line
+        w = {}
+        g = self.tok("grid.loc") if self.tok("stat.grid") is not None else None
+        if g is not None:
+            # A receiver can get the letters in lower case (p. 105/81): the
+            # syntax finding of grid.loc is kept.
+            w["locator"] = Pre({"bytes": text(line[g.start : g.end])}, (), [_ref(g)], notes=["amb.stat.grid"])
+            w["symbol"] = self._symbol("sym.table", "sym.code")
+        t = self.tok("stat.text")
+        if t is not None:
+            # After a locator, the SP that starts the text is a separator.
+            s = t.start + (g is not None and line[t.start] == 0x20)
+            self.read.add(t)
+            w["text"] = Pre({"bytes": text(line[s : t.end])}, (), [_ref(t)])
+        t = self.tok("stat.beam")
+        if t is not None:
+            heading, power = val_stat_beam(line[t.start : t.end])
+            w["beam_heading"] = Pre(heading, (), [_ref(t)])
+            w["beam_power"] = Pre(power, (), [_ref(t)])
+        t = self.tok("cmt.noarchive")
+        if t is not None:
+            w["noarchive"] = Pre({"flag": True}, (), [_ref(t)])
+        return w
+
+    # --- Weather body (03-weather section 3) ------------------------------
+
+    def _item_weather(self):
+        """03-weather section 2: an Item whose symbol code is '_' and that
+        has at least one byte after its position."""
+        block = self.tok("cmp.block")
+        sc = self.tok("cmp.code") if block is not None else self.tok("sym.code")
+        if sc is None or self.line[sc.start] != 0x5F:
+            return False
+        return (block.end if block is not None else sc.end) < self.info_end
+
+    def _in_info(self, rule, kind):
+        return [f for f in self.findings if f.rule == rule and f.kind == kind and self.info_start <= f.offset <= self.info_end]
+
+    def _weather(self, has_position):
+        """The fields of the weather body before the mode applies."""
+        line, depth = self.line, self.info_depth
+        w = {}
+        wind = self.tok("ext.dirspd")
+        if wind is not None:
+            b = line[wind.start : wind.end]
+            fs = self.on(("ext.dirspd",), wind)
+            frm = [_ref(wind)]
+            calm = b == b"000/000"
+            for name, speed, v in zip(("wind_direction", "wind_speed"), (False, True), val_wx_wind(b)):
+                judged = [(f, effect_wind(f, wind.start, speed)) for f in fs]
+                if calm and speed:
+                    judged.append((CALM, COMPUTABLE))
+                if isinstance(v, Q):
+                    w[name] = Pre(v, judged, list(frm), notes=["err.wx.wind-units"] if speed else [])
+                else:
+                    w[name] = Pre(None, judged, list(frm), reasons=[v] if v else [])
+        elif self.cmp_wind is not None:
+            w["wind_direction"], w["wind_speed"] = self.cmp_wind
+        elif self.format != "wx.pl" and self.tok("cmp.block") is None:
+            # 06 section 5.1: the wind field of an uncompressed report is
+            # missing.
+            for name in ("wind_direction", "wind_speed"):
+                fs = self._in_info("ext.dirspd", "syntax")
+                w[name] = Pre(None, [(f, NONE) for f in fs] or [(f, NONE) for f in self.stop()])
+        from_wind = wind is not None or self.cmp_wind is not None
+        for name, rules in WX_FIELDS:
+            toks = sorted((t for r in rules for t in self.toks(r) if t.depth == depth), key=lambda t: t.start)
+            judged = [(f, effect_wx(f, t.rule)) for t in toks for f in self.on((t.rule,), t)]
+            if name in w and from_wind:
+                # 12-values-weather section 2.2: the wind field is the first
+                # token; a later field is a repeated token.
+                w[name].judged += judged
+                w[name].frm += [_ref(t) for t in toks]
+                continue
+            if not toks:
+                if self.format == "wx.pl" and rules[0] in WX_LEADING:
+                    fs = self._in_info(rules[0], "syntax")
+                    w[name] = Pre(None, [(f, NONE) for f in fs] or [(f, NONE) for f in self.stop()])
+                continue
+            first = toks[0]
+            v = val_wx(first.rule, line[first.start + 1 : first.end])
+            frm = [_ref(t) for t in toks]
+            if isinstance(v, Q):
+                notes = [WX_NOTES[name]] if name in WX_NOTES else []
+                if name == "wind_direction" and v.n == 0:
+                    notes.append(WDIR0)
+                w[name] = Pre(v, judged, frm, notes=notes)
+            else:
+                w[name] = Pre(None, judged, frm, reasons=[v] if v else [])
+        t = self.tok("wx.sw")
+        if t is not None:
+            judged = [(f, effect_wx(f, "wx.sw")) for f in self.on(("wx.sw",), t)]
+            w["software"] = Pre({"code": text(line[t.start : t.end])}, judged, [_ref(t)], notes=["amb.wx.tail"])
+        t = self.tok("wx.unit")
+        if t is not None:
+            w["unit"] = Pre({"bytes": text(line[t.start : t.end])}, (), [_ref(t)], notes=["amb.wx.tail"])
+        if not has_position:
+            # No position body: the comment is here, and no value rule reads
+            # the altitude or the no-archive marker in it.
+            c = self._comment_token()
+            if c is not None:
+                self.read.add(c)
+                w["comment"] = Pre({"bytes": text(line[c.start : c.end])}, (), [_ref(c)])
+            self.unread.update(t for r in ALT_RULES + ("cmt.noarchive",) for t in self.toks(r))
+        return w
 
     def _body(self, pre):
         """Apply the DAO, then build the fields in the order of section 7."""
@@ -617,8 +1107,7 @@ class Decoder:
             pre["lon"].notes.append("amb.lat.null")
 
         pre["symbol"] = self._symbol("sym.table", "sym.code")
-        dti = line[self.info_start]
-        pre["messaging"] = Pre({"flag": val_pos_dti(dti)[1]}, (), [[self.format, self.info_start, self.info_start + 1]])
+        self._messaging(pre)
         pre["datum"], dao = self._dao(level, "unc")
         if dao is not None and lat_ok and lon_t is not None and lon_t.end - lon_t.start == 9:
             self._apply_dao(pre, dao, hemisphere(lat_b, 7, 0x53), hemisphere(line[lon_t.start : lon_t.end], 8, 0x57))
@@ -663,10 +1152,10 @@ class Decoder:
                 judged = [(f, effect_cmp(f)) for f in self.on((rule,), t)]
                 pre[name] = Pre(fn(line[t.start : t.end]), judged, [_ref(t)])
         pre["symbol"] = self._symbol("cmp.table", "cmp.code")
-        dti = line[self.info_start]
-        pre["messaging"] = Pre({"flag": val_pos_dti(dti)[1]}, (), [[self.format, self.info_start, self.info_start + 1]])
+        self._messaging(pre)
 
-        cs = next((t for r in ("cmp.cs.crs", "cmp.cs.rng", "cmp.cs.alt", "cmp.cs", "cmp.cs.none") for t in self.toks(r)), None)
+        cs_rules = ("cmp.cs.crs", "cmp.cs.wind", "cmp.cs.rng", "cmp.cs.alt", "cmp.cs", "cmp.cs.none")
+        cs = next((t for r in cs_rules for t in self.toks(r)), None)
         tt = self.tok("cmp.t")
         if cs is None or cs.rule != "cmp.cs.none":
             t_judged = [(f, effect_cmp_t(f, True)) for f in self.on(("cmp.t",), tt)] if tt is not None else []
@@ -687,7 +1176,7 @@ class Decoder:
             # section 6; 01-record section 5).
             self.unread.add(tt)
         if cs is None:
-            pre["course"], pre["speed"] = self.missing(), self.missing()
+            self._course_speed(pre, self.missing(), self.missing())
         elif cs.rule != "cmp.cs.none":
             b = line[cs.start : cs.end]
             judged = [(f, effect_cmp(f)) for f in self.on((cs.rule,), cs)] + cs_t_judged
@@ -696,6 +1185,13 @@ class Decoder:
                 crs = val_cmp_crs(b)
                 pre["course"] = Pre(crs, judged, frm, notes=["amb.val.course0"] if crs.n == 0 else [])
                 pre["speed"] = Pre(val_cmp_spd(b), judged, frm)
+            elif cs.rule == "cmp.cs.wind":
+                # val.cmp.wind: the arithmetic of val.cmp.crs and val.cmp.spd.
+                crs = val_cmp_crs(b)
+                self.cmp_wind = (
+                    Pre(crs, judged, frm, notes=[WDIR0] if crs.n == 0 else []),
+                    Pre(val_cmp_spd(b), list(judged), list(frm), notes=["err.wx.wind-units"]),
+                )
             elif cs.rule == "cmp.cs.rng":
                 pre["extensions"].append(("val.cmp.rng", frm, {"range": Pre(val_cmp_rng(b), judged)}))
             elif cs.rule == "cmp.cs.alt":
@@ -704,12 +1200,20 @@ class Decoder:
                 )
             else:
                 # The kind of cs is unknown (syntax): course and speed have no value.
-                pre["course"], pre["speed"] = Pre(None, judged, frm), Pre(None, judged, frm)
+                self._course_speed(pre, Pre(None, judged, frm), Pre(None, list(judged), list(frm)))
         pre["datum"], dao = self._dao(None, "cmp")
         if dao is not None:
             self._apply_dao(pre, dao, 1, 1)
         self._ext_items(pre)
         return pre
+
+    def _course_speed(self, pre, a, b):
+        """Course and speed with no value: in a weather report they are the
+        wind (03-weather section 3)."""
+        if self.weather:
+            self.cmp_wind = (a, b)
+        else:
+            pre["course"], pre["speed"] = a, b
 
     # --- Mic-E (10-values section 7) -------------------------------------
 

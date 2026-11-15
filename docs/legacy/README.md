@@ -36,7 +36,7 @@ the bytes of a token give: the unit, the scale and the range that APRS12c
 specifies, with the page. The decoder of
 [docs/interop](../interop/README.md) applies it. A value file makes no
 claim about what the sender meant. [10-values.md](10-values.md) is the
-first value file.
+first value file. Each later value file uses its conventions.
 
 Thus, in this project, "conform" means only this: the bytes break no
 statement of APRS12c that the rules of section 3 treat as specified.
@@ -473,6 +473,10 @@ not copy the code, because several of these projects are GPL.
 | [08-message.md](08-message.md) | Messages, acknowledgements, bulletins, announcements, NWS bulletins, NTS. | `msg`, `bln`, `nws`, `nts` |
 | [09-other.md](09-other.md) | Status reports, capabilities, general and directed queries, user-defined data, test packets, frequency specifications in comments. | `stat`, `cap`, `qry`, `udf`, `inv`, `freq` |
 | [10-values.md](10-values.md) | Values of the fields of position reports and Mic-E: coordinates, position ambiguity, DAO, course, speed, altitude, symbol, timestamp, data extensions. | `val` |
+| [11-values-object.md](11-values-object.md) | Values of the name and the state of Objects and Items. Their position uses the value rules of 10-values. | `val` |
+| [12-values-weather.md](12-values-weather.md) | Values of weather reports: wind, the weather fields, the software and unit codes, the MDHM timestamp. | `val` |
+| [13-values-telemetry.md](13-values-telemetry.md) | Values of telemetry: the telemetry report, the base-91 block, the definition messages. | `val` |
+| [14-values-status.md](14-values-status.md) | Values of status reports: the text, the beam heading and power, the locator. | `val` |
 | [examples.json](examples.json) | The expected verdict and findings of each example packet of APRS12c, by page and digest. | — |
 
 ## 6. Open items

@@ -4,14 +4,17 @@
 Reads TNC2 lines from corpus files (records with or without the logged
 time) or from standard input, and writes one JSON object per line, one
 record per line (01-record section 8). The logged time of a corpus record
-is the received time, with the resolution 0.001 s (section 2). Only the
-position slice has a body: position reports, DF reports and Mic-E.
+is the received time, with the resolution 0.001 s (section 2). These
+formats have a body: position reports, DF reports, Mic-E, Objects, Items
+(docs/interop/02-object.md), weather reports (docs/interop/03-weather.md),
+telemetry and telemetry definition messages (docs/interop/04-telemetry.md)
+and status reports (docs/interop/05-status.md).
 
 With --stats no record is written. Instead the tool counts, over all input
-files: packets, records with a position body, and for each field of the
-position body, each extension value and report_time how many give a
-value, a marked value (permissive mode) or no value, grouped by the items
-of `mark` and `why`; and the count of each note. The input file range and
+files: packets, records by format and uses, and for each field of each
+body, each extension value and report_time how many give a value, a marked
+value (permissive mode) or no value, grouped by the items of `mark` and
+`why`; and the count of each note. The input file range and
 the packet count are printed with the results. One corpus file is one unit
 of work, and -j applies to --stats only: records are written in input
 order by one process.
@@ -25,7 +28,7 @@ from functools import partial
 import click
 from tqdm import tqdm
 
-from qua_network.interop.record import MODES, decode
+from qua_network.interop.record import MODES, STATUS_ORDER, TLM_DEF_ORDER, TLM_ORDER, WX_ORDER, decode
 from qua_network.parallel import jobs_option, map_files
 from qua_network.tnc2 import log_files, read_records, split_record
 
@@ -72,7 +75,14 @@ def _json(value):
 
 # --- Statistics ---------------------------------------------------------
 
-BODY_FIELDS = ("lat", "lon", "ambiguity", "datum", "altitude", "course", "speed", "symbol", "messaging", "fix", "comment")
+BODY_FIELDS = {
+    "object": ("name", "live"),
+    "position": ("lat", "lon", "ambiguity", "datum", "altitude", "course", "speed", "symbol", "messaging", "fix", "comment"),
+    "weather": WX_ORDER,
+    "telemetry": TLM_ORDER,
+    "telemetry_definition": TLM_DEF_ORDER,
+    "status": STATUS_ORDER,
+}
 
 
 def _key(item):
@@ -91,7 +101,8 @@ def _status(o):
 class Stats:
     def __init__(self):
         self.packets = 0
-        self.bodies = 0
+        self.bodies = Counter()  # body name -> records
+        self.formats = Counter()  # (format, uses) -> records
         self.truncated = 0
         self.values = Counter()  # (field, status, detail) -> values
         self.notes = Counter()  # row -> notes
@@ -103,23 +114,26 @@ class Stats:
             self.values[("report_time",) + _status(rt)] += 1
         for row, _ in rec["notes"]:
             self.notes[row] += 1
-        body = rec.get("position")
-        if body is None:
-            return
-        self.bodies += 1
-        for name in BODY_FIELDS:
-            o = body.get(name)
-            if o is None:
+        self.formats[(rec["format"] or "-", "+".join(rec["uses"]) or "-")] += 1
+        for use, fields in BODY_FIELDS.items():
+            body = rec.get(use)
+            if body is None:
                 continue
-            for item in o if isinstance(o, list) else (o,):
-                self.values[(name,) + _status(item)] += 1
-        for item in body["extensions"]:
-            for name, o in item["values"].items():
-                self.values[(f"{item['rule']} {name}",) + _status(o)] += 1
+            self.bodies[use] += 1
+            for name in fields:
+                o = body.get(name)
+                if o is None:
+                    continue
+                for item in o if isinstance(o, list) else (o,):
+                    self.values[(f"{use}.{name}",) + _status(item)] += 1
+            for item in body.get("extensions", ()):
+                for name, o in item["values"].items():
+                    self.values[(f"{use} {item['rule']} {name}",) + _status(o)] += 1
 
     def merge(self, o):
         self.packets += o.packets
-        self.bodies += o.bodies
+        self.bodies.update(o.bodies)
+        self.formats.update(o.formats)
         self.truncated += o.truncated
         self.values.update(o.values)
         self.notes.update(o.notes)
@@ -141,12 +155,18 @@ def _report(st, files, mode):
         echo(f"input: {os.path.basename(files[0])} .. {os.path.basename(files[-1])}  files={len(files)}  truncated={st.truncated}")
     else:
         echo("input: standard input")
-    echo(f"mode={mode}  packets={st.packets}  records with a position body={st.bodies}")
-    echo("\n== values: field, status, count, share of position bodies (of packets for report_time); detail (mark or why items) ==")
+    bodies = "  ".join(f"{use}={st.bodies[use]}" for use in BODY_FIELDS)
+    echo(f"mode={mode}  packets={st.packets}  records with a body: {bodies}")
+    echo("\n== records: format, uses, count, share of packets ==")
+    for (fmt, uses), c in sorted(st.formats.items(), key=lambda kv: (-kv[1], kv[0])):
+        echo(f"  {fmt:20s} {uses:20s} {c:10d}  {c / (st.packets or 1) * 100:7.3f}%")
+    echo(
+        "\n== values: field, status, count, share of the bodies of its use (of packets for report_time); detail (mark or why items) =="
+    )
     order = {s: i for i, s in enumerate(("value", "marked", "no value"))}
     for (field, status, detail), c in sorted(st.values.items(), key=lambda kv: (kv[0][0], order[kv[0][1]], -kv[1], kv[0][2])):
-        n = (st.packets if field == "report_time" else st.bodies) or 1
-        echo(f"  {field:28s} {status:9s} {c:10d}  {c / n * 100:7.3f}%  {detail}")
+        n = (st.packets if field == "report_time" else st.bodies[field.replace(" ", ".").split(".")[0]]) or 1
+        echo(f"  {field:36s} {status:9s} {c:10d}  {c / n * 100:7.3f}%  {detail}")
     echo("\n== notes: row, count ==")
     for row, c in sorted(st.notes.items(), key=lambda kv: (-kv[1], kv[0])):
         echo(f"  {row:24s} {c:10d}")

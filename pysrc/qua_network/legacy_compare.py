@@ -12,6 +12,11 @@ line, through its adapter program. The parsers are in submodules under
 - for each compared field, the packets on which the two values agree or
   differ, and those on which only one side has a value.
 
+The tool stores the results of each parser under work/legacy/parsers, one
+file for each corpus file. A later run reads them and runs only the
+decoder. A new commit of a parser or a changed adapter gives a new
+directory.
+
 With --samples, the tool also prints example lines for each count. These
 lines are corpus lines: do not copy their callsigns into a document.
 """
@@ -25,6 +30,7 @@ from functools import partial
 from pathlib import Path
 
 import click
+from blake3 import blake3
 
 from qua_network.interop.compare import OUTCOMES, RECORD_CLASSES, VIEWS, compare, record_view
 from qua_network.interop.record import MODES
@@ -33,6 +39,7 @@ from qua_network.parallel import jobs_option, map_files
 
 ADAPTERS = Path(__file__).resolve().parent / "interop" / "adapters"
 THIRDPARTY = Path(__file__).resolve().parents[2] / "3rdparty"
+RESULTS = Path(__file__).resolve().parents[2] / "work" / "legacy" / "parsers"
 # Parser name -> (submodule, command before the library directory).
 PARSERS = {
     "pythonlib": ("aprs-python", [sys.executable, "-I", str(ADAPTERS / "pythonlib.py")]),
@@ -46,11 +53,13 @@ class Result:
         self.truncated = 0
         self.counts = Counter()  # (parser, path, outcome) -> packets
         self.samples = {}  # (parser, path, outcome) -> [(line, ours, theirs)]
+        self.built = Counter()  # parser -> result files made in this run
 
     def merge(self, o, limit):
         self.packets += o.packets
         self.truncated += o.truncated
         self.counts.update(o.counts)
+        self.built.update(o.built)
         for key, items in sorted(o.samples.items()):
             have = self.samples.setdefault(key, [])
             have.extend(items[: limit - len(have)])
@@ -60,47 +69,114 @@ def _show(value):
     return None if value is None else value[1]
 
 
-def compare_file(path, mode, parsers, thirdparty, samples):
-    res = Result()
+def _digest(path):
+    """The first 12 hexadecimal digits of the BLAKE3 digest of a file."""
+    with open(path, "rb") as f:
+        return blake3(f.read()).hexdigest()[:12]
+
+
+def _stores(parsers, thirdparty, results):
+    """Parser name -> (directory of its stored results, header members).
+    The directory name has the commit of the submodule and the digest of
+    the adapter program, so a change of either gives a new directory
+    (09-comparison section 3.1)."""
+    out = {}
+    for name in parsers:
+        sub, cmd = PARSERS[name]
+        commit = _commit(thirdparty, sub)
+        adapter = _digest(cmd[-1])
+        out[name] = (
+            os.path.join(results, f"{name}-{commit[:12]}-{adapter}"),
+            {"parser": name, "commit": commit, "adapter": adapter},
+        )
+    return out
+
+
+def _stored(path, store):
+    """The stored result file of one corpus file, and its header line."""
+    directory, head = store
+    source = os.path.basename(path)
+    head = dict(head, source=source, source_bytes=os.path.getsize(path))
+    return os.path.join(directory, source + ".jsonl"), (json.dumps(head, sort_keys=True) + "\n").encode("ascii")
+
+
+def _valid(target, header):
+    try:
+        with open(target, "rb") as f:
+            return f.readline() == header
+    except OSError:
+        return False
+
+
+def _build(path, names, stores, thirdparty):
+    """Run the adapters of names on one corpus file and store their
+    results. Each file is published by rename."""
     with tempfile.TemporaryDirectory() as tmp:
         # The adapters read the same lines, as hexadecimal digits.
         hexfile = os.path.join(tmp, "lines.hex")
-        try:
-            with open(hexfile, "wb") as f:
+        with open(hexfile, "wb") as f:
+            try:
                 for _, line in _records([path]):
                     f.write(line.hex().encode("ascii") + b"\n")
-        except EOFError:
-            res.truncated = 1
-        procs = {}
-        for name in parsers:
+            except EOFError:
+                pass  # compare_file reports the truncated file
+        running = []
+        for name in names:
+            target, header = _stored(path, stores[name])
+            os.makedirs(os.path.dirname(target), exist_ok=True)
+            part = f"{target}.{os.getpid()}.tmp"
+            out = open(part, "wb")
+            out.write(header)
+            out.flush()
             sub, cmd = PARSERS[name]
-            procs[name] = subprocess.Popen(
-                cmd + [os.path.join(thirdparty, sub)], stdin=open(hexfile, "rb"), stdout=subprocess.PIPE, stderr=subprocess.DEVNULL
+            proc = subprocess.Popen(
+                cmd + [os.path.join(thirdparty, sub)], stdin=open(hexfile, "rb"), stdout=out, stderr=subprocess.DEVNULL
             )
-        try:
-            for received, line in _records([path]):
-                res.packets += 1
-                rec = _decode(received, line, mode)
-                ours = record_view(rec)
-                for name in parsers:
-                    raw = procs[name].stdout.readline()
-                    if not raw:
-                        raise click.ClickException(f"the adapter of {name} stopped at packet {res.packets} of {path}")
-                    theirs, decoded = VIEWS[name](json.loads(raw))
-                    cls = RECORD_CLASSES[(0 if rec["uses"] else 2) + (0 if decoded else 1)]
-                    pairs = [("record", cls)] + (compare(ours, theirs) if rec["uses"] and decoded else [])
-                    for field, outcome in pairs:
-                        key = (name, field, outcome)
-                        res.counts[key] += 1
-                        if samples and len(res.samples.setdefault(key, [])) < samples:
-                            res.samples[key].append((line.decode("latin-1"), _show(ours.get(field)), _show(theirs.get(field))))
-        except EOFError:
-            res.truncated = 1
-        finally:
-            for p in procs.values():
-                p.stdout.close()
-                p.kill()
-                p.wait()
+            running.append((name, proc, out, part, target))
+        for name, proc, out, part, target in running:
+            code = proc.wait()
+            out.close()
+            if code != 0:
+                os.unlink(part)
+                raise click.ClickException(f"the adapter of {name} ended with status {code} on {path}")
+            os.replace(part, target)
+
+
+def compare_file(path, mode, parsers, thirdparty, stores, samples):
+    res = Result()
+    missing = [name for name in parsers if not _valid(*_stored(path, stores[name]))]
+    if missing:
+        _build(path, missing, stores, thirdparty)
+        for name in missing:
+            res.built[name] += 1
+    results = {}
+    for name in parsers:
+        results[name] = open(_stored(path, stores[name])[0], "rb")
+        results[name].readline()  # the header
+    try:
+        for received, line in _records([path]):
+            res.packets += 1
+            rec = _decode(received, line, mode)
+            ours = record_view(rec)
+            for name in parsers:
+                raw = results[name].readline()
+                if not raw:
+                    raise click.ClickException(
+                        f"the stored results of {name} end at packet {res.packets} of {path}; delete {results[name].name}"
+                    )
+                theirs, decoded = VIEWS[name](json.loads(raw))
+                cls = RECORD_CLASSES[(0 if rec["uses"] else 2) + (0 if decoded else 1)]
+                pairs = [("record", cls)] + (compare(ours, theirs) if rec["uses"] and decoded else [])
+                for field, outcome in pairs:
+                    key = (name, field, outcome)
+                    res.counts[key] += 1
+                    if samples and len(res.samples.setdefault(key, [])) < samples:
+                        res.samples[key].append((line.decode("latin-1"), _show(ours.get(field)), _show(theirs.get(field))))
+    except EOFError:
+        res.truncated = 1
+    finally:
+        for f in results.values():
+            f.close()
     return res
 
 
@@ -112,12 +188,14 @@ def _commit(thirdparty, sub):
         return "unknown"
 
 
-def _report(res, files, mode, parsers, thirdparty):
+def _report(res, files, mode, parsers, stores):
     echo = click.echo
     echo(f"input: {os.path.basename(files[0])} .. {os.path.basename(files[-1])}  files={len(files)}  truncated={res.truncated}")
     echo(f"mode={mode}  packets={res.packets}")
     for name in parsers:
-        echo(f"\n== parser {name}: 3rdparty/{PARSERS[name][0]} at {_commit(thirdparty, PARSERS[name][0])} ==")
+        directory, head = stores[name]
+        echo(f"\n== parser {name}: 3rdparty/{PARSERS[name][0]} at {head['commit']} ==")
+        echo(f"  stored results: {directory}  made in this run: {res.built[name]} of {len(files)} files")
         echo("  records: " + "  ".join(f"{c}={res.counts[(name, 'record', c)]}" for c in RECORD_CLASSES))
         echo(f"  {'field':28s}" + "".join(f"{o:>13s}" for o in OUTCOMES) + "   differ share")
         fields = sorted({f for (p, f, _) in res.counts if p == name and f != "record"})
@@ -149,20 +227,28 @@ def _report(res, files, mode, parsers, thirdparty):
     show_default=True,
     help="Directory of the parser submodules.",
 )
+@click.option(
+    "--results",
+    type=click.Path(file_okay=False),
+    default=str(RESULTS),
+    show_default=True,
+    help="Directory of the stored results of the parsers. The tool runs a parser only for a file that has no stored result.",
+)
 @jobs_option
-def cli(paths, mode, parsers, samples, thirdparty, jobs):
+def cli(paths, mode, parsers, samples, thirdparty, results, jobs):
     files = _expand(paths)
     if not files:
         raise click.ClickException("no corpus files found")
     parsers = tuple(parsers) or tuple(sorted(PARSERS))
     thirdparty = os.path.abspath(thirdparty)
+    stores = _stores(parsers, thirdparty, os.path.abspath(results))
     res = Result()
-    func = partial(compare_file, mode=mode, parsers=parsers, thirdparty=thirdparty, samples=samples)
+    func = partial(compare_file, mode=mode, parsers=parsers, thirdparty=thirdparty, stores=stores, samples=samples)
     for path, part in map_files(func, files, jobs):
         if part.truncated:
             click.echo(f"warning: {path} is truncated; using data read so far", err=True)
         res.merge(part, samples)
-    _report(res, files, mode, parsers, thirdparty)
+    _report(res, files, mode, parsers, stores)
 
 
 if __name__ == "__main__":

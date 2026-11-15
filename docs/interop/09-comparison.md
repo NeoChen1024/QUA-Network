@@ -57,6 +57,10 @@ of Dire Wolf, aprsc, javAPRSlib, Xastir and YAAC.
   the order of the input.
 - It writes the names and the values of the parser as they are. It does
   not convert a unit and does not rename a field.
+- It leaves out a member that repeats the input: `raw` of `pythonlib`,
+  and `origpacket`, `body` and `header` of `fap`.
+- The adapter of `fap` writes each scalar as text. A scalar of Perl has
+  no fixed type. The view of section 5.2 converts the text.
 - It writes a byte above 0x7F as the character that has that number.
   Thus a text of a result compares with a byte string of a record
   ([01-record section 4.1](01-record.md#41-byte-strings)).
@@ -73,6 +77,38 @@ of Dire Wolf, aprsc, javAPRSlib, Xastir and YAAC.
 **[proposed]** The adapter of `pythonlib` runs on the Python interpreter
 that runs the tool. The adapter of `fap` runs on the `perl` of the system.
 The module needs the Perl module Date::Calc.
+
+**[proposed]** The adapter of `fap` writes the JSON text itself. An
+earlier draft used the encoder JSON::PP of the Perl core. That encoder
+took most of the run time of the tool.
+
+### 3.1 Stored results
+
+**[agreed]** The tool stores the results of each parser. A later run
+reads the stored results and does not run the parser again. The tool
+does not compress the files.
+
+**[proposed]** These rules apply to the stored results:
+
+- The results of one parser are in one directory under
+  `work/legacy/parsers`. Its name has three parts: the name of the
+  parser, the first 12 digits of the commit of its submodule, and the
+  first 12 digits of the BLAKE3 digest of its adapter.
+- Thus a new commit of the parser or a change of the adapter gives a new
+  directory.
+- The directory has one file for each corpus file. Its name is the name
+  of the corpus file and `.jsonl`.
+- The first line of a file is a header: a JSON object with `parser`,
+  `commit`, `adapter`, `source` and `source_bytes`. `source_bytes` is
+  the size of the corpus file.
+- Each later line is the result of one packet, in the order of the
+  corpus file.
+- If the header of a file is not the header that the tool expects, the
+  tool runs the parser on that corpus file again.
+- The tool writes a file under a temporary name and then renames it.
+
+The stored results are a derived product. They are not in the
+repository.
 
 ## 4. View of a record
 
@@ -142,18 +178,19 @@ for a packet that it does not decode.
 ### 5.2 `fap`
 
 **[proposed]** The parser decodes a packet if `parseaprs` returns a true
-value.
+value: `ok` is the text `1`. Each number of the table is the number of
+its text.
 
 | Path | Name in the result | Conversion |
 |---|---|---|
 | `position.lat`, `position.lon` | `latitude`, `longitude` | None. |
 | `position.course`, `position.speed`, `position.altitude` | `course`, `speed`, `altitude` | None. |
-| `position.ambiguity` | `posambiguity` | None. |
+| `position.ambiguity` | `posambiguity` | The integer of the text. |
 | `position.symbol` | `symboltable`, then `symbolcode` | None. |
-| `position.messaging` | `messaging` | 1 is `true`. |
+| `position.messaging` | `messaging` | The text `1` is `true`. |
 | `position.comment` | `comment`, if the result has `latitude` | None. |
 | `object.name` | `objectname` or `itemname` | None. |
-| `object.live` | `alive` | 1 is `true`. |
+| `object.live` | `alive` | The text `1` is `true`. |
 | `weather.wind_speed`, `weather.gust` | `wind_speed`, `wind_gust` of `wx` | Metres per second: multiply by 3.6. |
 | `weather.temperature` | `temp` of `wx` | None. |
 | The other weather paths | The same name in `wx` | None. |
@@ -208,7 +245,8 @@ make records. It does not apply here: a parser can round its numbers.
 **[proposed]** The tool `qua-legacy-compare` prints these items:
 
 - the range of input files, the packet count and the mode;
-- for each parser, the commit of its submodule;
+- for each parser, the commit of its submodule, the directory of its
+  stored results, and the count of result files that this run made;
 - for each parser, the count of each class;
 - for each parser and each path, the count of each outcome.
 

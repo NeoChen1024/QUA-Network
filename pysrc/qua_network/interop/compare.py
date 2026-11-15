@@ -115,6 +115,19 @@ def _bits(s):
     return [c == "1" for c in s]
 
 
+def _one(x):
+    """A flag that the adapter of `fap` writes as the text 1 or 0."""
+    return str(x) == "1"
+
+
+def _int(x):
+    """An integer that the adapter of `fap` writes as text, or the text."""
+    try:
+        return int(x)
+    except (TypeError, ValueError):
+        return x
+
+
 def _telemetry(view, t):
     if not isinstance(t, dict):
         return
@@ -186,7 +199,7 @@ def pythonlib_view(r):
 def fap_view(r):
     """The view of a result of the parser `fap`, and whether the parser
     decoded the packet."""
-    if not r.get("ok"):
+    if not _one(r.get("ok")):
         return {}, False
     view = {}
     for path, key in (
@@ -197,15 +210,15 @@ def fap_view(r):
         ("position.altitude", "altitude"),
     ):
         _put_n(view, path, r.get(key))
-    _put_e(view, "position.ambiguity", r, "posambiguity")
+    _put_e(view, "position.ambiguity", r, "posambiguity", _int)
     if "symbolcode" in r and "symboltable" in r:
         view["position.symbol"] = ("e", r["symboltable"] + r["symbolcode"])
-    _put_e(view, "position.messaging", r, "messaging", bool)
+    _put_e(view, "position.messaging", r, "messaging", _one)
     if "latitude" in r:
         _put_e(view, "position.comment", r, "comment")
     _put_e(view, "object.name", r, "objectname")
     _put_e(view, "object.name", r, "itemname")
-    _put_e(view, "object.live", r, "alive", bool)
+    _put_e(view, "object.live", r, "alive", _one)
     w = r.get("wx")
     if isinstance(w, dict):
         # The parser gives wind speed and gust in metres per second.

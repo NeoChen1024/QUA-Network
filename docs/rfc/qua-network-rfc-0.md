@@ -428,6 +428,11 @@ With two units for one quantity, one value has two encodings: 1000 pF and
 
 #### Decimal number
 
+The decimal number is specified in
+[`docs/spec/05-decimal-number.md`](../spec/05-decimal-number.md). This
+part keeps the decisions on its use, the reasons and the dropped
+alternatives.
+
 The integer rule above fits a quantity with a known range and one
 resolution. It does not fit a quantity with a wide range, such as speed or
 altitude. It also does not fit a telemetry value with no registered
@@ -435,80 +440,23 @@ schema, because that value has no fixed scale. The decimal number is for
 these cases.
 
 - **[agreed]** A decimal number is a significand `m` and an exponent `e`.
-  Its value is `m` × 10^`e`. The definition of a field states whether the
-  field is a decimal number or an integer with a fixed scale.
+  Its value is `m` × 10^`e`.
 - **[agreed]** Altitude is a decimal number, in metres.
-- **[agreed]** A decimal number has one of four formats. Each is in
-  big-endian order, with `e` before `m`. `e` and `m` are two's-complement
-  integers. No format is longer than 4 bytes.
+- **[agreed]** A decimal number has a format of 2, 3 or 4 bytes. The
+  length of the TLV gives the format. There is no format of 1 byte.
+- **[agreed]** One value has one encoding and one text form.
+- **[agreed]** The format has positive infinity and negative infinity, in
+  the 2-byte format. It has no "not a number". A sender that has no value
+  omits the TLV.
 
-  | Bytes | Bits of `e` | Range of `e` | Bits of `m` | Range of `m` |
-  |---|---|---|---|---|
-  | 1 | 4 | −8 to 7 | 4 | −8 to 7 |
-  | 2 | 4 | −8 to 7 | 12 | −2048 to 2047 |
-  | 3 | 4 | −8 to 7 | 20 | −524288 to 524287 |
-  | 4 | 8 | −128 to 127 | 24 | −8388608 to 8388607 |
-
-- **[agreed]** The length of the TLV gives the format.
-- **[agreed]** A TLV therefore holds one decimal number at most, and the
-  number is the last field of the TLV.
-- **[agreed]** Zero has one encoding: one byte, with `m` 0 and `e` 0. For
-  every other finite value, `m` MUST NOT be a multiple of 10.
-- **[agreed]** A sender MUST use the shortest format that holds `m` and
-  `e`.
-- **[agreed]** The format has two special values, in the 1-byte format
-  only. The byte `70` (`m` 0, `e` 7) is positive infinity. The byte `80`
-  (`m` 0, `e` −8) is negative infinity.
-- **[agreed]** Positive infinity states that the value is greater than
-  every value that the sender can give. Negative infinity states that it
-  is less than every such value. An infinity is not an error code.
-- **[agreed]** The definition of a field states whether the field allows
-  an infinity.
-- **[agreed]** A decoder MUST reject an infinity in a field that does not
-  allow it.
-- **[agreed]** The format has no "not a number".
-- **[agreed]** The other 13 encodings of 1 byte with `m` 0 stay invalid.
-  The specification does not reserve them for a later use.
-- **[agreed]** A sender that has no value omits the TLV.
-- **[agreed]** A decoder MUST reject a decimal number that is not in this
-  form. The cases are these:
-  - `m` is a multiple of 10 and is not 0;
-  - `m` is 0, and the bytes are not `00`, `70` or `80`;
-  - a shorter format holds `m` and `e`.
-- **[agreed]** If `e` is from −8 to 7, the text form is the plain decimal
-  value, with no exponent notation: `25.3`, `-12.7`, `0.12`, `85000`.
-- **[agreed]** The plain form has no `+` sign. Its integer part is `0`, or
-  starts with a digit from 1 to 9. Its fraction has 8 digits at most and
-  does not end in `0`. The text `-0` is invalid.
-- **[agreed]** If `e` is outside −8 to 7, the text form is `m`, the
-  letter `e` and the exponent, each as an integer: `3e9`, `-15e-12`. Such a
-  value has no plain form.
-- **[agreed]** The text form of positive infinity is `inf`. The text
-  form of negative infinity is `-inf`.
-- **[agreed]** A parser MUST reject a text that breaks these rules, or
-  whose value has no encoding.
-
-With these rules, one value has one encoding and one text form. `m` and
-`e` are unique for a value, because `m` has no factor of 10. The
+`m` and `e` are unique for a value, because `m` has no factor of 10. The
 conversion to text moves the decimal point and needs no rounding.
 
-In the formats of 1 to 3 bytes, the first hexadecimal digit is `e`. The
-bytes `F0 FD` have `e` = −1 and `m` = 253, the value 25.3.
-
-Examples, derived by hand. They are not test vectors.
-
-| Value | `m` | `e` | Bytes |
-|---|---|---|---|
-| 0 | 0 | 0 | 1 |
-| 100 | 1 | 2 | 1 |
-| 25.3 | 253 | −1 | 2 |
-| −12.7 | −127 | −1 | 2 |
-| 853.4 | 8534 | −1 | 3 |
-| 1013.2 | 10132 | −1 | 3 |
-| 10668.25 | 1066825 | −2 | 4 |
-| 3 × 10^9 | 3 | 9 | 4 |
-| positive infinity | 0 | 7 | 1 |
-| negative infinity | 0 | −8 | 1 |
+An earlier decision of this revision had a format of 1 byte, with 4 bits
+for `e` and 4 bits for `m`. Zero and the two infinities were in it. The
+author removed it. Its significand is from −8 to 7, so it holds too few
+values: it cannot hold 9. Zero and the infinities are now in the 2-byte
+format. The cost is one byte for each value that the 1-byte format held.
 
 An infinity covers a sensor at the end of its range, and a quantity that
 is infinite, such as the standing wave ratio of an open line. The two
@@ -521,14 +469,15 @@ finite value is lost. Each has one encoding. A later minor version cannot
 add a special value, because a decoder of this version rejects the
 encoding (section 14, question 23). The decision is therefore made now.
 
-The author does not reserve the other 13 encodings, for two reasons. An integer with a fixed scale has no code for an absent value, so
+The author does not reserve the other encodings with `m` 0, for two
+reasons. An integer with a fixed scale has no code for an absent value, so
 a code in the decimal number would serve one kind of number only. A code
 in the manner of "not a number" is also easy to misuse.
 
 An earlier proposal of this revision had no special value. The author
 added the infinities. The author first considered the 4-byte format for
-them. One format is sufficient for a single encoding, and the 1-byte
-format costs 3 bytes less.
+them, and then the 1-byte format. One format is sufficient for a single
+encoding. With no 1-byte format, the 2-byte format is the shortest.
 
 The largest significand of the 4-byte format has 7 digits. A value with
 more significant digits has no encoding. The author accepts this limit. A
@@ -2141,11 +2090,15 @@ anything is decided on them.
     specification file, and a decoder and an encoder written from it,
     compared with the library on the corpus. Next: test vectors in
     `vectors/`, and the open items of the file.
-15. When the formats of the decimal number of 5.3 are settled, move it
-    to `docs/spec/` and write test vectors. Include encodings that a
-    decoder rejects (section 14, question 24).
+15. Decimal number (5.3). Done: the specification file
+    `docs/spec/05-decimal-number.md`. Next: test vectors, with encodings
+    that a decoder rejects (section 14, question 24).
 16. List the quantities that the protocol carries, each with its unit
     (5.3). This goes with the tag table of step 6.
+17. Move the topics of section 5 to `docs/spec/`, when most of the items
+    of a topic are not open. The order: the rest of 5.3 in one file
+    (units, time and text), then 5.10, then 5.1 when its layout is
+    decided. 5.4 and 5.5 stay in the RFC for now.
 
 ## Appendix A. Transceiver packet limits
 

@@ -882,8 +882,10 @@ dropped alternatives.
   independent decoders give the same string for the same field.
 - **[agreed]** The specification allows one Unishox2 preset,
   `USX_PSET_DFLT`, for every string (see "Choice of preset" below).
-- **[proposed]** The specification ships test vectors taken from real
-  corpus strings.
+- **[agreed]** The specification ships test vectors
+  (`vectors/text-compression.json`). Their texts are written for this
+  project. An earlier proposal took the texts from the corpus. The
+  author dropped it: those texts hold the callsigns of other stations.
 - The canonical text form shows the uncompressed string. Compression is not
   visible in text.
 - The short Unicode symbol of 5.6 is not compressed; at 8 bytes or less
@@ -2038,11 +2040,12 @@ anything is decided on them.
     16 by 16.
 14. Text compression (5.7; section 14, question 16). Done: the
     specification file, and a decoder and an encoder written from it,
-    compared with the library on the corpus. Next: test vectors in
-    `vectors/`, and the open items of the file.
+    compared with the library on the corpus, and test vectors in
+    `vectors/text-compression.json`. Next: the open items of the file.
 15. Decimal number (5.3). Done: the specification file
-    `docs/spec/05-decimal-number.md`. Next: test vectors, with encodings
-    that a decoder rejects (section 14, question 24).
+    `docs/spec/05-decimal-number.md`, and test vectors in
+    `vectors/decimal-number.json`, with encodings that a decoder rejects.
+    Next: the questions on its use (section 14, question 24).
 16. List the quantities that the protocol carries, each with its unit,
     in section 3 of `docs/spec/06-numbers-units-text.md`. This goes with
     the tag table of step 6.
@@ -2112,6 +2115,10 @@ commands.
   files from `vectors/` and compares.
 - `qua-icon-stats`: size of the candidate icon bitmap forms on the glyphs
   of BDF fonts.
+- `qua-make-vectors`: writes the vector files of the decimal number, the
+  text compression, the hop hash, the PDU and the relay. Each comes from
+  a module that is independent of the module that `qua-check-vectors`
+  checks.
 - `qua-icon-encode`: encodes a 16 by 16 picture as an icon bitmap field,
   and produces the icon bitmap vectors by a path independent of the
   encoder that `qua-check-vectors` checks.

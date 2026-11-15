@@ -34,6 +34,7 @@ uv pip install --python .venv/bin/python -e .
 | `qua-corpus-import` | Convert raw corpus files to Parquet, losslessly. |
 | `qua-length-stats` | Payload and frame length statistics over the corpus. |
 | `qua-check-vectors` | Recompute the conformance vectors and compare. |
+| `qua-make-vectors` | Write the computed vector files, by a path independent of the checked modules. |
 | `qua-icon-stats` | Size of the candidate icon bitmap forms on BDF font glyphs. |
 | `qua-icon-encode` | Encode a 16 by 16 picture as an icon bitmap field; produce the icon bitmap vectors. |
 | `qua-spec-extract` | Extract the reference PDFs to Markdown under `work/`, for reading and search. |

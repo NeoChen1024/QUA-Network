@@ -4,7 +4,7 @@
 |---|---|
 | Status | Draft. Not frozen. Items carry the labels **[agreed]**, **[proposed]** and **[open]** with the meaning given in the RFC. |
 | Rationale | [RFC draft 0, section 5.3](../rfc/qua-network-rfc-0.md#decimal-number) |
-| Vectors | None yet. |
+| Vectors | [`vectors/decimal-number.json`](../../vectors/decimal-number.json) |
 
 The key words MUST, MUST NOT, SHOULD, SHOULD NOT and MAY are used as in
 RFC 2119.
@@ -130,10 +130,26 @@ whose value has no encoding.
 One value has one text form. The conversion to text moves the decimal
 point and needs no rounding.
 
-## 8. Examples
+## 8. Test vectors
 
-A script that is not part of this repository computed the bytes. The
-examples are not test vectors.
+`vectors/decimal-number.json` has the test vectors. Each vector is one of
+three kinds:
+
+| Kind | Keys | A conformant implementation |
+|---|---|---|
+| A value | `text`, `m`, `e`, `bytes` | Decodes `bytes` to `m` and `e`, and encodes them to `bytes`. It gives `text` for the value, and the value for `text`. |
+| An invalid encoding | `bytes`, `invalid` | Rejects `bytes`. `invalid` is the first case of section 6 that applies. If `infinity` is false, the field does not allow an infinity. |
+| An invalid text | `text`, with `invalid` equal to `text` | Rejects `text`. |
+
+For an infinity, `m` and `e` are those of the table of section 5.
+
+`qua-make-vectors` computes the vectors with `vectors_decimal.py`. This
+module gets `m` and `e` from the text with the `decimal` module of
+Python, and it packs the bytes with the `struct` module.
+`qua-check-vectors` checks the vectors against `decimal_number.py`, which
+uses neither module. Neither of the two modules imports the other.
+
+The tables below are a copy of some vectors. The file is authoritative.
 
 | Value | `m` | `e` | Bytes | Text |
 |---|---|---|---|---|
@@ -162,7 +178,5 @@ Invalid encodings:
 
 ## 9. Open items
 
-- **[open]** Test vectors, with encodings that a decoder rejects (RFC
-  section 15, step 15).
 - **[open]** The questions on the use of the decimal number are in the
   RFC (section 14, question 24).

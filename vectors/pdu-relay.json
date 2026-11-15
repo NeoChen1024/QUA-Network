@@ -1,0 +1,19 @@
+[
+  {"relay": "N0CALL-7", "limit": 240, "received": "016001132100194913020080341212AABB310103B39D27D0", "sent": "016001132100194913020080341212AABB31010A336CC7A4034A74", "note": "the first relay adds its entry"},
+  {"relay": "BV5AB-33", "limit": 240, "received": "016001132100194913020080341212AABB31010A336CC7A4034A74", "sent": "016001132100194913020080341212AABB310111336CC79C9CF8436AF1D3", "note": "the second relay"},
+  {"relay": "PJ4/KA1ABC", "limit": 240, "received": "016001132100194913020080341212AABB310111336CC79C9CF8436AF1D3", "sent": "016001132100194913020080341212AABB310118336CC79C9CF89053E04174EB17", "note": "the third relay; no hop remains after it"},
+  {"relay": "N0CALL-7", "limit": 240, "received": "016001132100194913020080341212AABB310103B39D27D0A55AFF", "sent": "016001132100194913020080341212AABB31010A336CC7A4034A74", "note": "a relay does not send the padding on"},
+  {"relay": "PJ4/KA1ABC", "limit": 30, "received": "016001132100194913020080341212AABB310111336CC79C9CF8436AF1D3", "sent": "016001132100194913020080341212AABB3101109C9CF89053E0F1259807", "note": "room for 2 entries: the relay drops the oldest entry"},
+  {"relay": "PJ4/KA1ABC", "limit": 32, "received": "016001132100194913020080341212AABB310111336CC79C9CF8436AF1D3", "sent": "016001132100194913020080341212AABB3101109C9CF89053E0F1259807", "note": "room for 2 entries and 2 bytes more: the same result"},
+  {"relay": "PJ4/KA1ABC", "limit": 27, "received": "016001132100194913020080341212AABB310111336CC79C9CF8436AF1D3", "sent": "016001132100194913020080341212AABB3101089053E04A9E2018", "note": "room for 1 entry: only the entry of the relay stays"},
+  {"relay": "N0CALL-7", "limit": 24, "received": "016001132100194913020080341212AABB310103B39D27D0", "sent": "016001132100194913020080341212AABB310102B01E4C22", "note": "room for no entry: the trailer has only the control byte"},
+  {"relay": "N0CALL-7", "limit": 26, "received": "016001132100194913020080341212AABB310103B39D27D0", "sent": "016001132100194913020080341212AABB310102B01E4C22", "note": "room for no entry, 2 bytes free"},
+  {"relay": "PJ4/KA1ABC", "limit": 240, "received": "016001132100194913020080341212AABB3101099C9CF88D07C01A", "sent": "016001132100194913020080341212AABB3101109C9CF89053E0F1259807", "note": "the trace is already truncated; the relay adds its entry"},
+  {"relay": "N0CALL-7", "limit": 240, "received": "016001132100194913020080341212AABB310103B39D27D0", "not_radio": true, "sent": "016001132100194913020080341212AABB31018A336CC79BCAEA26", "note": "the relay got the PDU over a path that is not radio: it sets the bit Not Radio"},
+  {"relay": "BV5AB-33", "limit": 240, "received": "016001132100194913020080341212AABB3101CA336CC77C954C8D", "sent": "016001132100194913020080341212AABB3101D1336CC79C9CF8CD63285C", "note": "the relay keeps the bit Not Radio and copies the reserved bit"},
+  {"relay": "YW18FIFA/MM-A", "limit": 240, "received": "016001132100194913020080341212AABB310118336CC79C9CF89053E04174EB17", "sent": null, "reason": "no hop remains", "note": "the hops remaining are 0"},
+  {"relay": "N0CALL-7", "limit": 240, "received": "0100000E3DEBEB5B0E000000000000BEB1DFD1", "sent": null, "reason": "no hop remains", "note": "the hop limit is 0"},
+  {"relay": "N0CALL-7", "limit": 240, "received": "016001132100194913020080341212AABB310111336CC79C9CF8436AF1D3", "sent": null, "reason": "own entry", "note": "the hash of the relay is one of the entries"},
+  {"relay": "BV5AB-33", "limit": 240, "received": "016001132100194913020080341212ABBB31010A336CC7A4034A74", "sent": null, "reason": "invalid", "note": "the checksum is not good"},
+  {"relay": "N0CALL-7", "limit": 240, "received": "016001132100194913020080341212AABB31010458F9ED04", "sent": null, "reason": "invalid", "note": "the trailer is not valid: the hops remaining are more than the hop limit"}
+]

@@ -4,7 +4,7 @@
 |---|---|
 | Status | Draft. Not frozen. Items carry the labels **[agreed]**, **[proposed]** and **[open]** with the meaning given in the RFC. |
 | Rationale | [RFC draft 0, section 5.1](../rfc/qua-network-rfc-0.md#51-header) |
-| Vectors | [`vectors/crc32c.json`](../../vectors/crc32c.json) |
+| Vectors | [`vectors/pdu.json`](../../vectors/pdu.json), [`vectors/crc32c.json`](../../vectors/crc32c.json) |
 
 The key words MUST, MUST NOT, SHOULD, SHOULD NOT and MAY are used as in
 RFC 2119.
@@ -82,6 +82,9 @@ reads it before every other field. [07-versions](07-versions.md) section
 
 **[agreed]** The least significant bit of the first byte of a PDU is 1.
 The version byte gives this bit.
+
+**[agreed]** If this bit is 0, the bytes are not a PDU. A receiver does
+not read them as a PDU.
 
 ### 4.2 Hop limit and flags
 
@@ -205,6 +208,9 @@ source part, the authentication tag if there is one, and the trailer.
 **[agreed]** A relay changes the trailer, so it computes the checksum
 again.
 
+**[agreed]** A receiver computes the CRC-32C of the bytes before the
+checksum. If the result is not the checksum, the PDU is invalid.
+
 The CRC-32C of a whole PDU, with its checksum, is `0x48674BC7`. This
 follows from the parameters and the byte order.
 
@@ -217,7 +223,61 @@ computes it again.
 little-endian order ([06-numbers-units-text](06-numbers-units-text.md)
 section 2).
 
-## 10. Open items
+## 10. Test vectors
+
+`vectors/pdu.json` has the test vectors. Each vector is one of two kinds:
+
+| Kind | Keys | A conformant implementation |
+|---|---|---|
+| A valid PDU | `bytes`, and one key for each field | Reads each field from `bytes` with the value of its key. |
+| Invalid bytes | `bytes`, `invalid` | Rejects `bytes`. `invalid` is the cause. |
+
+The keys of a valid PDU:
+
+| Key | Value |
+|---|---|
+| `version` | The major version and the minor version |
+| `hop_limit`, `type`, `source_length`, `sequence` | The field, as a number |
+| `no_internet`, `translated`, `authenticated` | The flag |
+| `reserved` | The two reserved bits of the second byte, as a number |
+| `source` | The text form of the source identifier |
+| `tlv` | The bytes of the TLV area |
+| `not_radio`, `trailer_reserved`, `entry_count`, `hops_remaining` | The fields of the control byte ([09-hop-trace](09-hop-trace.md) section 4) |
+| `entries` | The entries, each as a number in 6 hexadecimal digits |
+| `length` | The length of the PDU in bytes |
+| `padding` | The bytes after the PDU |
+
+The values of `invalid`:
+
+| `invalid` | Cause |
+|---|---|
+| `not a PDU` | The least significant bit of the first byte is 0, or there are no bytes (section 4.1). |
+| `source length` | The source length is less than 14 (section 4.4). |
+| `short` | The link gives fewer bytes than the length of the PDU (section 7). |
+| `checksum` | The checksum is wrong (section 8). |
+| `trailer` | The trailer is not valid ([09-hop-trace](09-hop-trace.md) section 4). |
+
+Each set of invalid bytes has one cause only.
+
+The vectors have these limits:
+
+- No vector has the flag Authenticated, because the length of the tag is
+  open.
+- The type byte has no assigned values yet. The values in the vectors
+  have no meaning.
+- The TLV area follows the syntax of [03-tlv](03-tlv.md). Its tags have
+  no meaning.
+- Some vectors follow **[proposed]** rules. They change if the rule
+  changes.
+
+`qua-make-vectors` computes the vectors with `vectors_pdu.py`. This
+module imports no other module of the package. It
+packs the bytes with the `struct` module of Python and has its own
+table-driven CRC-32C. It takes the identifiers from
+`vectors/identifier.json` and the entries from `vectors/hop-hash.json`.
+`qua-check-vectors` checks the vectors against `pdu.py`.
+
+## 11. Open items
 
 These are also in the RFC (section 14, question 25).
 
@@ -228,4 +288,6 @@ These are also in the RFC (section 14, question 25).
   it, and whether it also applies to a trunk (RFC 8.2).
 - **[open]** How long a relay or a receiver keeps a deduplication entry
   (RFC 6.2).
-- **[open]** Test vectors for a whole PDU.
+- **[open]** Test vectors for a PDU with an authentication tag.
+- **[open]** What a receiver does with a version that it does not know
+  ([07-versions](07-versions.md) section 6).

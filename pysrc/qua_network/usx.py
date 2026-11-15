@@ -53,7 +53,11 @@ MAX_TEXT = 255
 
 
 class Malformed(ValueError):
-    """The compressed string is not valid."""
+    """The compressed string is not valid. case is the case of section 7."""
+
+    def __init__(self, case, message):
+        super().__init__(message)
+        self.case = case
 
 
 class _Reader:
@@ -64,7 +68,7 @@ class _Reader:
 
     def read(self, n):
         if self.pos + n > self.end:
-            raise Malformed("the bits end inside a code")
+            raise Malformed(3, "the bits end inside a code")
         v = 0
         for p in range(self.pos, self.pos + n):
             v = (v << 1) | ((self.data[p >> 3] >> (7 - (p & 7))) & 1)
@@ -115,24 +119,24 @@ class _Decoder:
 
     def emit(self, b):
         if len(self.out) + len(b) > self.n:
-            raise Malformed("the output is longer than the length byte")
+            raise Malformed(4, "the output is longer than the length byte")
         self.out += b
 
     def run(self):
         r = self.r
         if r.read(1) != 1:
-            raise Malformed("the first bit is not 1")
+            raise Malformed(2, "the first bit is not 1")
         while len(self.out) < self.n:
             if self.state == DELTA:
                 self.delta_state()
             else:
                 self.set_state()
         if r.end - r.pos >= 8:
-            raise Malformed("bytes after the end of the string")
+            raise Malformed(5, "bytes after the end of the string")
         try:
             bytes(self.out).decode("utf-8")
         except UnicodeDecodeError:
-            raise Malformed("the output is not UTF-8") from None
+            raise Malformed(16, "the output is not UTF-8") from None
         return bytes(self.out)
 
     # Section 5.1: the states Letters and Digits.
@@ -148,7 +152,7 @@ class _Decoder:
         elif h == DELTA:
             k = r.unary(5)
             if k == 5:
-                raise Malformed("a special code after a single Unicode switch")
+                raise Malformed(6, "a special code after a single Unicode switch")
             self.code_point(k)
         elif h != ALPHA:
             self.item(h, r.position())
@@ -165,7 +169,7 @@ class _Decoder:
         p = r.position()
         if p == 0:
             if r.set_code() != ALPHA:
-                raise Malformed("a set code after a shift")
+                raise Malformed(7, "a set code after a shift")
             self.all_upper = True
         elif p == 1:
             self.state = DELTA
@@ -198,13 +202,13 @@ class _Decoder:
         self.prev += -d if negative else d
         c = self.prev
         if c < 0x80 or c > 0x10FFFF or 0xD800 <= c <= 0xDFFF:
-            raise Malformed("a code point out of range")
+            raise Malformed(9, "a code point out of range")
         self.emit(chr(c).encode("utf-8"))
 
     # Section 5.4: one item of a set.
     def item(self, h, p):
         if self.all_upper and p == 1:
-            raise Malformed("position 1 in a run of upper-case letters")
+            raise Malformed(8, "position 1 in a run of upper-case letters")
         it = SETS[h][p]
         if it is ESCAPE:
             self.escape()
@@ -212,11 +216,11 @@ class _Decoder:
             self.emit(b"\r\n")
         elif it is RPT:
             if not self.out:
-                raise Malformed("a repeated byte at the start")
+                raise Malformed(11, "a repeated byte at the start")
             self.note("repeated byte")
             self.emit(self.out[-1:] * (self.r.count() + 4))
         elif it is TERM:
-            raise Malformed("the end code")
+            raise Malformed(10, "the end code")
         elif isinstance(it, tuple):
             self.note("sequence")
             self.emit(SEQUENCES[it[1]])
@@ -233,9 +237,9 @@ class _Decoder:
         length = r.count() + MIN_REPEAT
         distance = r.count() + MIN_REPEAT - 1
         if distance > len(self.out):
-            raise Malformed("a repeat that starts before the string")
+            raise Malformed(12, "a repeat that starts before the string")
         if length > distance:
-            raise Malformed("a repeat that is longer than its distance")
+            raise Malformed(13, "a repeat that is longer than its distance")
         self.note("repeat")
         start = len(self.out) - distance
         self.emit(self.out[start : start + length])
@@ -245,10 +249,10 @@ class _Decoder:
         r = self.r
         k = r.unary(5)
         if k < 5:
-            raise Malformed(("a template", "hexadecimal digits", "a UUID", "hexadecimal digits", "a UUID")[k])
+            raise Malformed(14, ("a template", "hexadecimal digits", "a UUID", "hexadecimal digits", "a UUID")[k])
         n = r.count()
         if n == 0:
-            raise Malformed("an empty run of bytes")
+            raise Malformed(15, "an empty run of bytes")
         self.note("bytes")
         self.emit(bytes(r.read(8) for _ in range(n)))
 
@@ -259,7 +263,7 @@ def decode(data, length, events=None):
     given, is a dict that gets a count for each optional part that the
     input uses."""
     if not 1 <= length <= MAX_TEXT:
-        raise Malformed("the length byte is 0")
+        raise Malformed(1, "the length byte is 0")
     return _Decoder(data, length, events).run()
 
 

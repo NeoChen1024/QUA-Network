@@ -4,7 +4,7 @@
 |---|---|
 | Status | Draft. Not frozen. Items carry the labels **[agreed]**, **[proposed]** and **[open]** with the meaning given in the RFC. |
 | Rationale | [RFC draft 0, section 5.9](../rfc/qua-network-rfc-0.md#59-hop-trace) |
-| Vectors | [`vectors/hop-hash.json`](../../vectors/hop-hash.json) |
+| Vectors | [`vectors/hop-hash.json`](../../vectors/hop-hash.json), [`vectors/pdu-relay.json`](../../vectors/pdu-relay.json) |
 
 The key words MUST, MUST NOT, SHOULD, SHOULD NOT and MAY are used as in
 RFC 2119.
@@ -168,13 +168,32 @@ belongs to gateway provenance (RFC 8.3).
 | `YW18FIFA/MM-A` | `66 74 1F D1 E2 F5 9F 58` | `0x65DF98` | `98 DF 65` |
 
 This table is a copy of `vectors/hop-hash.json`, which is authoritative.
-A script that is separate from the package computed the values. Its
+`qua-make-vectors` computes the values with `vectors_pdu.py`, which
+imports no other module of the package. Its
 CRC-32C uses a table and gives the check value of [08-pdu](08-pdu.md)
 section 8. `qua-check-vectors` computes the values again with the
 bit-by-bit CRC-32C of the package.
 
+`vectors/pdu-relay.json` has the vectors for a relay. Each vector has
+these keys:
+
+| Key | Value |
+|---|---|
+| `received` | The bytes that the relay received |
+| `relay` | The text form of the identifier of the relay |
+| `limit` | The PDU limit in bytes. Its value is open (RFC 6.1), so each vector states one. |
+| `not_radio` | If true, the relay got the PDU over a path that is not radio, and it transmits on radio (section 7.2) |
+| `sent` | The bytes that the relay sends, or `null` if it does not send the PDU on |
+| `reason` | Why the relay does not send the PDU on: `invalid`, `no hop remains` or `own entry` (section 7) |
+
+The rules of section 7 are **[proposed]** in part. A vector changes if
+its rule changes. `vectors_pdu.py` computes these vectors too
+([08-pdu](08-pdu.md) section 10). `qua-check-vectors`
+checks them against `pdu.py`. `vectors/pdu.json` has PDUs with a trailer,
+and PDUs whose trailer is not valid.
+
 ## 9. Open items
 
 - **[open]** The use of the reserved bit of the control byte.
-- **[open]** Test vectors for a whole trailer, and for a PDU that a relay
-  sends on.
+- **[open]** What a relay does with a PDU that is larger than the PDU
+  limit with no entry.

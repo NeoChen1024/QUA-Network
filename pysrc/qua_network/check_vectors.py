@@ -11,7 +11,7 @@ from pathlib import Path
 
 import click
 
-from qua_network import icon, identifier
+from qua_network import decimal_number, icon, identifier, pdu, usx
 from qua_network.crc import crc32c
 
 
@@ -72,10 +72,91 @@ def check_icon_bitmap(v):
     return None if back == pixels else f"decode gives {back.hex().upper()}"
 
 
+def check_decimal_number(v):
+    if v.get("invalid") == "text":
+        try:
+            decimal_number.from_text(v["text"])
+        except decimal_number.DecimalError:
+            return None
+        return "the parser accepts the text"
+    data = bytes.fromhex(v["bytes"])
+    if "invalid" in v:
+        try:
+            decimal_number.decode(data, v.get("infinity", True))
+        except decimal_number.DecimalError as e:
+            return None if e.case == v["invalid"] else f"decoder gives case {e.case}"
+        return "decoder accepts it"
+    want = v["text"] if v["text"] in (decimal_number.INF, decimal_number.NEG_INF) else (v["m"], v["e"])
+    try:
+        if decimal_number.decode(data) != want:
+            return f"decode gives {decimal_number.decode(data)}"
+        if decimal_number.encode(want) != data:
+            return f"encode gives {decimal_number.encode(want).hex().upper()}"
+        if decimal_number.to_text(want) != v["text"]:
+            return f"the text form is {decimal_number.to_text(want)}"
+        if decimal_number.from_text(v["text"]) != want:
+            return f"the parser gives {decimal_number.from_text(v['text'])}"
+    except decimal_number.DecimalError as e:
+        return f"rejected: {e}"
+    return None
+
+
+def check_text_compression(v):
+    data = bytes.fromhex(v["compressed"])
+    try:
+        got = usx.decode(data, v["length"])
+    except usx.Malformed as e:
+        if "invalid" not in v:
+            return f"decoder rejects it: {e}"
+        return None if e.case == v["invalid"] else f"decoder gives case {e.case}"
+    if "invalid" in v:
+        return "decoder accepts it"
+    if len(got) != v["length"]:
+        return "the length is not the length of the text"
+    return None if got == v["text"].encode("utf-8") else f"decode gives {got!r}"
+
+
+def check_pdu(v):
+    data = bytes.fromhex(v["bytes"])
+    try:
+        got = pdu.parse(data)
+    except pdu.PduError as e:
+        if "invalid" not in v:
+            return f"parser rejects it: {e}"
+        return None if e.reason == v["invalid"] else f"parser gives the reason {e.reason}"
+    if "invalid" in v:
+        return "parser accepts it"
+    got["source"] = identifier.decode(got["source"])
+    got["entries"] = [f"{e:06X}" for e in got["entries"]]
+    for key in ("tlv", "padding"):
+        got[key] = got[key].hex().upper()
+    for key, want in v.items():
+        if key not in ("bytes", "note") and got[key] != want:
+            return f"{key} is {got[key]}"
+    return None
+
+
+def check_pdu_relay(v):
+    received = bytes.fromhex(v["received"])
+    try:
+        got = pdu.relay(received, identifier.encode(v["relay"]), v["limit"], v.get("not_radio", False))
+    except pdu.NotSentOn as e:
+        if v["sent"] is not None:
+            return f"relay does not send it on: {e}"
+        return None if e.reason == v["reason"] else f"relay gives the reason {e.reason}"
+    if v["sent"] is None:
+        return "relay sends it on"
+    return None if got == bytes.fromhex(v["sent"]) else f"relay sends {got.hex().upper()}"
+
+
 CHECKS = {
     "identifier.json": check_identifier,
     "hop-hash.json": check_hop_hash,
     "crc32c.json": check_crc32c,
+    "decimal-number.json": check_decimal_number,
+    "pdu.json": check_pdu,
+    "pdu-relay.json": check_pdu_relay,
+    "text-compression.json": check_text_compression,
     "icon-colour.json": check_icon_colour,
     "icon-bitmap.json": check_icon_bitmap,
 }

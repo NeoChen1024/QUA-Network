@@ -100,10 +100,16 @@ changes; link to it instead of restating formats, constants or figures here.
   is a format change and needs the author's decision; adding vectors is not.
 - Round-trip agreement between an encoder and its own decoder is not
   evidence that either is correct.
-- Run `qua-check-vectors` after touching `vectors/`, `identifier.py`, `icon.py`, or
-  any document table that quotes a vector.
+- Run `qua-check-vectors` after touching `vectors/`, a module that it checks
+  (`identifier.py`, `icon.py`, `crc.py`, `usx.py`, `decimal_number.py`,
+  `pdu.py`), or any document table that quotes a vector.
 - `icon_encode.py` produces `vectors/icon-bitmap.json` and is the path
   independent of `icon.py`. Neither imports the other.
+- `qua-make-vectors` writes the other computed vector files from
+  `vectors_decimal.py`, `vectors_text.py` and `vectors_pdu.py`. These are
+  the paths independent of `decimal_number.py`, `usx.py`, `pdu.py`,
+  `crc.py` and the hop hash of `identifier.py`. They do not import those
+  modules, and those modules do not import them.
 
 ## Data safety
 

@@ -4,7 +4,7 @@
 |---|---|
 | Status | Draft. Not frozen. Items carry the labels **[agreed]**, **[proposed]** and **[open]** with the meaning given in the RFC. |
 | Rationale | [RFC draft 0, section 5.7](../rfc/qua-network-rfc-0.md#57-text-compression) |
-| Vectors | None yet. |
+| Vectors | [`vectors/text-compression.json`](../../vectors/text-compression.json) |
 
 The key words MUST, MUST NOT, SHOULD, SHOULD NOT and MAY are used as in
 RFC 2119.
@@ -396,10 +396,41 @@ The check of this file against the library is the tool
 [`docs/research/03-text-compression-check.md`](../research/03-text-compression-check.md)
 has its result.
 
-## 10. Open items
+## 10. Test vectors
+
+`vectors/text-compression.json` has the test vectors. Each vector is one
+of two kinds:
+
+| Kind | Keys | A conformant decoder |
+|---|---|---|
+| A valid string | `text`, `length`, `compressed` | Gives `text` for the bytes `compressed` and the length byte `length`. |
+| An invalid string | `length`, `compressed`, `invalid` | Gives no text. `invalid` is the case of section 7 that a decoder finds first, if it reads the bits in their order. |
+
+The vectors are for a decoder. This file does not pin an encoder, so an
+encoder can give different bytes for a `text`.
+
+The key `from` states how the vector was made:
+
+| `from` | Meaning |
+|---|---|
+| `library` | The encoder of the Unishox2 library made `compressed`, at the commit of section 9. For a valid string, the text is the input. For an invalid string, the library used a part that this file leaves out; `note` has the input. |
+| `bits` | `vectors_text.py` wrote `compressed` as bits, from sections 3 to 6. It has its own copy of the table of section 4. |
+
+`qua-make-vectors` computes the vectors with `vectors_text.py`. Neither
+path uses the decoder of the package. `qua-check-vectors` checks the
+vectors against that decoder, `usx.py`.
+
+Each case of section 7 has one vector or more. The valid vectors with
+`bits` have each part of the format: the shift, the upper-case run, the
+three states, each sequence, each row of a count that a text can have,
+the repeat, the repeated byte and the item Bytes. Where bits remain after
+the last code, one vector has them as 0 and one has them as 1.
+
+**[agreed]** The texts of the vectors are written for this project. They
+are not from the corpus (RFC 5.7).
+
+## 11. Open items
 
 - **[open]** The form of the placeholder of section 7.
 - **[open]** What the text form of a PDU shows for an invalid compressed
   string (RFC section 14, question 16).
-- **[open]** Test vectors. The valid vectors come from the Unishox2
-  library. Each invalid vector names its case of section 7.

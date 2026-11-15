@@ -314,14 +314,14 @@ are to be checked against them.
 - **[agreed]** Temperature is in degrees Celsius, not in kelvin.
 - **[agreed]** Speed is in kilometres per hour, not in metres per second.
 - **[agreed]** Pressure is in hectopascals, not in pascals.
-- **[proposed]** Speed is a decimal number (below), not an integer with a
+- **[agreed]** Speed is a decimal number (below), not an integer with a
   fixed scale. An aircraft exceeds 255 km/h, the range of one byte.
-- **[proposed]** Wind speed is a speed. It is in kilometres per hour too.
-- **[proposed]** One quantity has one unit. The specification fixes it, and
+- **[agreed]** Wind speed is a speed. It is in kilometres per hour too.
+- **[agreed]** One quantity has one unit. The specification fixes it, and
   a sender cannot choose another. No field holds a prefix.
-- **[proposed]** The SI unit is not practical if, for the usual values of
+- **[agreed]** The SI unit is not practical if, for the usual values of
   the quantity, it needs more bytes or gives text that is hard to read.
-- **[proposed]** A practical unit is a unit of daily metric use. The mile
+- **[agreed]** A practical unit is a unit of daily metric use. The mile
   per hour, the knot and the degree Fahrenheit are not practical units in
   this sense.
 - **[agreed]** Time is an integer count from a fixed epoch in UTC.
@@ -330,7 +330,7 @@ are to be checked against them.
 - **[agreed]** Strings are UTF-8.
 - **[agreed]** Telemetry is self-describing or refers to a registered schema.
   A value MUST NOT depend on a separate definition packet having been heard.
-- **[proposed]** A gateway that translates a legacy value to a unit of this
+- **[agreed]** A gateway that translates a legacy value to a unit of this
   section rounds the value. A reasonable loss is acceptable (3.2). The
   rounding rule is not written (section 14, question 10).
 
@@ -1829,8 +1829,8 @@ anything is decided on them.
     - The rule against a multiple of 10 removes the digit count as a
       statement of resolution. Is that correct, given the precision item
       of 5.3?
-    - Which other fields are decimal numbers? Altitude is agreed and speed
-      is proposed. The weather values are candidates.
+    - Which other fields are decimal numbers? Altitude and speed are
+      agreed. The weather values are candidates.
     - Which fields allow an infinity?
     - A TLV holds one decimal number at most, and no number has a code
       for an absent value. How does a telemetry TLV hold several values,

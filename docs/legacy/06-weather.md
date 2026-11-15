@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Draft. Not frozen. A catalogue row that waits for the author is marked **[open]**. A reviewed exception is marked **[agreed]**. |
+| Status | Draft. Not frozen. A catalogue row that waits for the author is marked **[open]**. A reviewed exception or another decision of the author is marked **[agreed]**. |
 | Reference | `APRS12c.pdf` in submodule `3rdparty/aprsspec`, commit `5830d42f`. The conventions, the general rules and the tokenizer model are in [README](README.md). |
 
 ## 1. Scope
@@ -92,6 +92,16 @@ code and reads the weather data from that byte. If the direction of the
 wind field matches, the tokenizer counts `c` and `s` as read for this
 report (section 6.2).
 
+**[agreed]** If the wind field is missing, the data can start with the
+fields that the wind field replaces. The tokenizer reads them at their
+leading places ([amb.wx.leading](#amb.wx.leading)):
+
+- If a `c` field is at the byte after the symbol code, it is `wx.wdir`.
+- If an `s` field follows that `c` field directly, it is `wx.wspd`, the
+  wind speed in mph. It is not snowfall.
+
+The `syntax` finding for the missing wind field stays.
+
 ### 5.2 Compressed position
 
 | ID | Field | Format | Required | Ends at | Source |
@@ -105,6 +115,12 @@ report (section 6.2).
 
 No field after the block is required. Bytes there that start no weather
 field are the tail or the comment (6.2).
+
+**[proposed]** If the `cs` bytes of the block are not the wind
+([amb.wx.cmpwind](#amb.wx.cmpwind)), the tokenizer reads a `c` field
+directly after the block, and an `s` field directly after it, as section
+5.1 says for a missing wind field. The tokenizer gives no finding for
+this.
 
 ### 5.3 Object
 
@@ -162,7 +178,9 @@ If a leading place does not contain its letter, the field is missing:
 - If several places are missing at one byte, only the first gives the
   finding.
 
-A complete report has no leading places.
+A complete report has no leading places, with one exception: a report
+with no wind can have `c` and `s` at the start of its data (sections 5.1
+and 5.2).
 
 After the leading places, the tokenizer reads a weather field at any
 place where a matching value of the full width follows its letter. If
@@ -262,7 +280,8 @@ the limit that applies after a data extension.
 | <a id="amb.wx.rawdti"></a>`amb.wx.rawdti` | p. 31/17, p. 82/62 | `'!'` starts a position, and `'$'` starts an NMEA sentence. Each of them also starts an Ultimeter report. The diagram of that report is the identifier and n bytes of unspecified content. Only the examples show `!!` and `$ULTW`. | ambiguous | 7 | As the reviewed exception of [section 10](#10-reviewed-exceptions) says, only `!!` and `$ULTW` select raw weather. The tokenizer reads every other `'!'` or `'$'` field as 03 says. If a `$ULTW` field is also an NMEA sentence, 01's [amb.dti.shared](01-frame.md#amb.dti.shared) applies. |
 | <a id="amb.wx.symbol"></a>`amb.wx.symbol` | p. 76/58, p. 82/62, p. 85/65 | The `'_'` symbol identifies a complete report. But the position and Object formats permit an extension and a comment after any symbol. | ambiguous | 1 | The `'_'` symbol is a marker that starts weather data. If there are bytes after the block, the report is a weather report. The tokenizer reads it as section 5 says. In an uncompressed report, a missing wind field gives `syntax` at the byte after the symbol code (5.1). This also applies if the bytes there are text. An interpretation of the bytes as a comment does not prevent the finding. A comment can follow the data ([amb.wx.comment](#amb.wx.comment)). |
 | <a id="amb.wx.carriers"></a>`amb.wx.carriers` | p. 33/19, p. 75/57, p. 85/65, p. 87/67 | The weather pages name positions and Objects. APRS12c handles Items as Objects, except for listed differences (p. 75/57). | ambiguous | 1, 4 | On an Item, as on an Object, the `'_'` symbol is a marker that starts weather data. The tokenizer reads the bytes after the block as a complete report. The token of byte 0 keeps the rule ID `item.dti`. The tokenizer gives no `ambiguous`, because every such Item has the same ambiguity. |
-| <a id="amb.wx.order"></a>`amb.wx.order` | p. 84/64 | APRS12c does not say if a weather field can repeat. Snowfall and wind speed use the same letter `s`. | unstated | 2 | The place of wind speed is the second leading place. Thus `s` at any other place is snowfall. A repeated field keeps its token and gives `unstated` at its letter. |
+| <a id="amb.wx.order"></a>`amb.wx.order` | p. 84/64 | APRS12c does not say if a weather field can repeat. Snowfall and wind speed use the same letter `s`. | unstated | 2 | The place of wind speed is the second leading place. Thus `s` at any other place is snowfall. A complete report with no wind also has leading places ([amb.wx.leading](#amb.wx.leading)). A repeated field keeps its token and gives `unstated` at its letter. |
+| <a id="amb.wx.leading"></a>`amb.wx.leading` | p. 84/64, p. 85/65 | The wind field replaces the `c` and `s` fields in a complete report. APRS12c does not address a complete report that has these two fields in place of the wind field. | unstated | 2 | **[agreed]** The report has a `syntax` finding for the missing wind field. A `c` field directly after the symbol code is `wx.wdir`. An `s` field directly after that `c` field is at the second leading place, so it is `wx.wspd`. An earlier version of this file read this `s` as snowfall, because it is outside a positionless report. The author dropped that reading: the `s` field is at the place of the wind speed. |
 | <a id="amb.wx.required"></a>`amb.wx.required` | p. 84/64, p. 85/65, p. 86/66 | The note on minimum content names an MDHM timestamp, `c`, `s`, `g` and `t`. This list matches only the positionless format. One Object example has no `t`. | conflict | 3 | Positionless: a missing `c`, `s`, `g` or `t` gives `syntax`. Complete reports: `g` and `t` are optional. |
 | <a id="amb.wx.unknown"></a>`amb.wx.unknown` | p. 84/64 | An unknown value is "a series of dots or spaces". This can mean all of one byte, or any mix. | ambiguous | 1 | Any mix of `'.'` and SP gives no finding. Fill mixed with digits gives `syntax`. |
 | <a id="amb.wx.width"></a>`amb.wx.width` | p. 84/64 | The sentence that permits a decimal point follows the snowfall entry. It can apply to snowfall only or to every value. | ambiguous | 1 | Every value can contain one `'.'`. A value whose width is not the width of its field does not start a field. |

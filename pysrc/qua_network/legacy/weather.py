@@ -123,6 +123,18 @@ def _elements(scan, p, end, depth, seen):
     return p
 
 
+def _leading_wind(scan, p, end, depth, seen):
+    """amb.wx.leading: a complete report with no wind can start its data
+    with a c field and, directly after it, an s field that is the wind
+    speed. Returns the offset after them."""
+    line = scan.line
+    if p < end and line[p] == 0x63 and _fixed(line, p + 1, end, "wx.wdir", 3):
+        p = _element(scan, p, depth, "wx.wdir", 3, seen)
+        if p < end and line[p] == 0x73 and _fixed(line, p + 1, end, "wx.wspd", 3):
+            p = _element(scan, p, depth, "wx.wspd", 3, seen)
+    return p
+
+
 def _data(scan, p, end, depth, positionless, wind=True):
     """Weather data from p, then what follows it; positionless selects the
     leading elements of a positionless report (6.2). wind tells a complete
@@ -152,6 +164,8 @@ def _data(scan, p, end, depth, positionless, wind=True):
             p = e
     elif wind:
         seen.update(("wx.wdir", "wx.wspd"))
+    else:
+        p = _leading_wind(scan, p, end, depth, seen)
     q = _elements(scan, p, end, depth, seen)
     _after(scan, q, end, depth)
 

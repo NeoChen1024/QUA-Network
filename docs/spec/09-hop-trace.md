@@ -103,12 +103,9 @@ has heard. It shows an entry that it cannot resolve as the hash.
 **[proposed]** The source writes the hops remaining equal to its hop
 limit. It writes 0 in every other bit of the control byte.
 
-**[proposed]** A source that sets a hop limit above 0 MUST leave room
-for one entry: the size of the PDU as sent plus 3 bytes MUST NOT exceed
-the MTU of RFC 6.1.
-
-**[proposed]** The source SHOULD leave room for the whole path: 3 bytes
-for each hop of its limit. This is 21 bytes at a limit of 7.
+**[agreed]** The specification does not make a source leave room for
+entries. The PDU as sent, with its trailer of 1 byte, fits the PDU limit
+of RFC 6.1.
 
 ## 7. Relay
 
@@ -121,13 +118,13 @@ for each hop of its limit. This is 21 bytes at a limit of 7.
 
 **[proposed]** To send a PDU on, a relay does these steps:
 
-1. It adds its entry after the last entry.
-2. It adds 1 to the entry count.
-3. It subtracts 1 from the hops remaining.
+1. It subtracts 1 from the hops remaining.
+2. It adds its entry after the last entry, if section 7.1 permits it.
+3. It writes the number of entries in the entry count.
 4. It computes the checksum again.
 
-**[agreed]** A relay adds one entry. **[proposed]** It changes nothing
-before the trailer.
+**[agreed]** A relay adds one entry. Section 7.1 gives the one
+exception. **[proposed]** A relay changes nothing before the trailer.
 
 ### 7.1 A trailer that does not fit
 
@@ -135,10 +132,17 @@ before the trailer.
 trailer does not fit, the oldest entries are dropped. The trailer keeps
 the most recent hops.
 
-**[proposed]** If the PDU with the new entry is larger than the MTU of
-RFC 6.1, the relay first drops entries, the oldest first. It drops only
-as many as are necessary. A relay MUST NOT drop an entry for a different
-reason.
+**[agreed]** If the PDU with the new entry is larger than the PDU limit
+of RFC 6.1, the relay keeps only the newest entries that fit. The entry
+of the relay is the newest. The relay drops the other entries, the oldest
+first.
+
+**[agreed]** If no entry fits, the trailer has only the control byte.
+The relay does not add its entry. It still sends the PDU on, and it still
+subtracts 1 from the hops remaining.
+
+**[proposed]** A relay drops only as many entries as are necessary. A
+relay MUST NOT drop an entry for a different reason.
 
 ### 7.2 A path that is not radio
 
@@ -172,8 +176,5 @@ bit-by-bit CRC-32C of the package.
 ## 9. Open items
 
 - **[open]** The use of the reserved bit of the control byte.
-- **[open]** The limit on the uncompressed form already counts the whole
-  path (RFC 5.5). How that limit and the two rules on room for entries
-  (section 6) fit together.
 - **[open]** Test vectors for a whole trailer, and for a PDU that a relay
   sends on.

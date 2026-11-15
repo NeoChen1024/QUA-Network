@@ -596,12 +596,9 @@ same version.
   to the uncompressed form (5.7).
 - **[agreed]** The uncompressed value of every field fits a TLV (5.2).
   This follows from the limit on the uncompressed form.
-- **[agreed]** The limit on the uncompressed form counts the largest hop
-  trace that the PDU can get (5.9). The hop trace therefore takes room from
-  the PDU. The author accepts this, so that the protocol is rigorous.
-- **[agreed]** The largest hop trace is the control byte and 3 bytes for
-  each hop of the hop limit of the PDU. The frame with the uncompressed
-  form, that trailer and the checksum fits the MTU of 6.1.
+- **[agreed]** The limit on the uncompressed form counts a trailer of
+  the control byte only (5.9). The frame with the uncompressed form, the
+  control byte and the checksum fits the MTU of 6.1.
 - **[agreed]** A signature does not show which form the source used. A
   relay or a gateway that changes the form does not obey 6.2, and the
   signature still verifies. The author accepts this. The content is more
@@ -613,6 +610,12 @@ An earlier revision computed signatures over the bytes as sent. It relied
 on the canonical encoder of 5.7, so that a text log gave the same bytes.
 The author replaced it. The uncompressed form does not change when a
 sender compresses a field, so the rules are much simpler.
+
+An earlier decision made the limit on the uncompressed form count the
+largest hop trace that the PDU can get: the control byte and 3 bytes for
+each hop of the hop limit. The hop trace then took room from every PDU.
+The author replaced it. A relay can truncate the trace down to the
+control byte, so no PDU needs room for entries (5.9).
 
 An earlier decision let the uncompressed form be longer than the PDU
 limit, if the bytes as sent fitted. The author replaced it with the first
@@ -1118,7 +1121,9 @@ that is not radio, a reserved bit, the entry count and the hops
 remaining. An entry is the 24 least significant bits of the CRC-32C of
 the identifier of the relay. A relay adds its entry, lowers the hops
 remaining and computes the checksum again. If the PDU no longer fits the
-MTU, the relay drops the oldest entries.
+MTU, the relay drops the oldest entries. If not one entry fits, the
+relay sends the PDU on with the control byte only. A source does not
+have to leave room for entries.
 
 Reasons:
 
@@ -1174,6 +1179,10 @@ Properties to keep in mind:
   that heard the source directly. What it keeps, the most recent hops, is
   what the loop guard above needs most: a PDU bouncing between neighbours
   finds its last relays still listed.
+- A PDU that fills the PDU limit has no room for an entry, so its trace
+  stays empty. The hops taken are still known from the hop limit and the
+  hops remaining. The loop guard of the entries does not work for such a
+  PDU. Deduplication (6.2) and the hops remaining still stop a loop.
 - In canonical text the trace is written as the hash values, not as
   resolved callsigns. Resolution belongs to the display. The same PDU
   therefore has a different text form after each hop, differing only in
@@ -1181,6 +1190,14 @@ Properties to keep in mind:
 
 Dropped:
 
+- Two rules that made a source leave room for entries. A source with a
+  hop limit above 0 had to leave room for one entry. It was recommended
+  to leave room for the whole path, 21 bytes at a limit of 7. The author
+  dropped both. A relay can truncate the trace, so a source needs room
+  for the control byte only. A source that wants its path to be visible
+  can leave room by its own choice. The author accepts the cost in the
+  properties above, and notes that a relay can also remember a hash of
+  the source part for deduplication.
 - Two checksums: one written by the source over its own part and never
   changed, and a second over the trailer, recomputed by relays. It kept an
   end-to-end check on the content and let a station use a PDU whose trailer
@@ -1366,6 +1383,13 @@ it.
 - **[agreed]** A relay or a receiver keeps a deduplication entry for a
   limited time. A sequence number can occur again (5.1). **[open]** The
   length of that time.
+- **[agreed]** A relay can use a hash of the source part as an additional
+  means of deduplication. BLAKE3 (10.3) is one choice. The key stays
+  `(source, sequence number)`. The source part does not change in transit
+  (5.1), so the hop trace does not change this hash.
+- **[open]** What a relay does with two PDUs that have the same key and
+  different hashes of the source part. This occurs when a sequence number
+  occurs again (5.1).
 - **[proposed]** Link-level fragmentation MAY exist on point-to-point trunks
   that have ARQ. Access-network receivers never see it.
 

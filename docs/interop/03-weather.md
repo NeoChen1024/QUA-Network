@@ -79,6 +79,15 @@ packet. These cases give a no-value object:
 - A finding has the effect `none`, or `computable` in strict mode
   ([12-values-weather section 6](../legacy/12-values-weather.md#6-effect-of-findings)).
 
+**[agreed]** The bytes `h100` give the humidity the effect `computable`
+([amb.wx.hum100](../legacy/06-weather.md#amb.wx.hum100)). In strict mode,
+`humidity` is a no-value object. In permissive mode, it is 100, with a
+mark.
+
+**[agreed]** Each field after `h100` has the same effect. In strict
+mode it is a no-value object. In permissive mode it has its value, with
+the mark of the humidity.
+
 **[proposed]** If a field occurs more than once, the field has the effect
 `computable`. In permissive mode, the field has the number of the first
 token, with a mark. `from` lists every token of the field.

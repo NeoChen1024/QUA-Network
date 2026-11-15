@@ -331,6 +331,9 @@ READ = frozenset(
 )
 EXT_RULES = ("ext.csespd", "ext.phg", "ext.phgr", "ext.rng", "ext.dfs", "ext.brgnrq")
 ALT_RULES = ("cmt.alt", "cmt.alt.neg")
+# 01-record section 7.1: the comment of the position body leaves out the
+# bytes of these tokens.
+COMMENT_OUT = ALT_RULES + ("cmt.dao", "tlm.b91")
 TIME_RULES = ("time.dhm", "time.hms", "time.mdhm")
 # Formats that have a position body, and those that also have an object body.
 POSITION_FORMATS = ("pos.dti", "mice.dti", "obj.dti", "item.dti", "wx.pos", "wx.obj")
@@ -1255,9 +1258,17 @@ class Decoder:
                 fs = self._in_info("ext.dirspd", "syntax")
                 w[name] = Pre(None, [(f, NONE) for f in fs] or [(f, NONE) for f in self.stop()])
         from_wind = wind is not None or self.cmp_wind is not None
+        # 12-values-weather section 6, amb.wx.hum100: a token after the
+        # `h100` token is a field only if `h100` is the humidity.
+        hum100 = [(f, t.end) for t in self.toks("wx.hum") for f in self.on(("wx.hum",), t) if f.kind == "ambiguous"]
+
+        def after_hum100(t):
+            return [(f, COMPUTABLE) for f, end in hum100 if t.start >= end]
+
         for name, rules in WX_FIELDS:
             toks = sorted((t for r in rules for t in self.toks(r) if t.depth == depth), key=lambda t: t.start)
             judged = [(f, effect_wx(f, t.rule)) for t in toks for f in self.on((t.rule,), t)]
+            judged += [j for t in toks for j in after_hum100(t)]
             if name in w and from_wind:
                 # 12-values-weather section 2.2: the wind field is the first
                 # token; a later field is a repeated token.
@@ -1281,11 +1292,11 @@ class Decoder:
                 w[name] = Pre(None, judged, frm, reasons=[v] if v else [])
         t = self.tok("wx.sw")
         if t is not None:
-            judged = [(f, effect_wx(f, "wx.sw")) for f in self.on(("wx.sw",), t)]
+            judged = [(f, effect_wx(f, "wx.sw")) for f in self.on(("wx.sw",), t)] + after_hum100(t)
             w["software"] = Pre({"code": text(line[t.start : t.end])}, judged, [_ref(t)], notes=["amb.wx.tail"])
         t = self.tok("wx.unit")
         if t is not None:
-            w["unit"] = Pre({"bytes": text(line[t.start : t.end])}, (), [_ref(t)], notes=["amb.wx.tail"])
+            w["unit"] = Pre({"bytes": text(line[t.start : t.end])}, after_hum100(t), [_ref(t)], notes=["amb.wx.tail"])
         if not has_position:
             # No position body: the comment is here, and no value rule reads
             # the altitude or the no-archive marker in it.
@@ -1702,7 +1713,32 @@ class Decoder:
         c = self._comment_token()
         if c is not None:
             self.read.add(c)
-            pre["comment"] = Pre({"bytes": text(line[c.start : c.end])}, (), [_ref(c)])
+            b = self._comment_bytes(c)
+            if b:
+                pre["comment"] = Pre({"bytes": text(b)}, (), [_ref(c)])
+
+    def _comment_bytes(self, c):
+        """The bytes of the comment token c without the tokens of
+        COMMENT_OUT that are directly inside it, and without the `/` after
+        a data extension (01-record section 7.1)."""
+        line = self.line
+        spans = sorted(
+            (t.start, t.end)
+            for t in self.info
+            if t.rule in COMMENT_OUT and t.depth == c.depth + 1 and c.start <= t.start and t.end <= c.end
+        )
+        out = bytearray()
+        pos = c.start
+        for start, end in spans:
+            if start > pos:
+                out += line[pos:start]
+            pos = max(pos, end)
+        out += line[pos : c.end]
+        # The `/` after a data extension is a separator, not text.
+        after_ext = any(t.rule.startswith("ext.") and t.end == c.start and t.depth == c.depth for t in self.info)
+        if after_ext and out[:1] == b"/":
+            del out[:1]
+        return bytes(out)
 
     def _comment_token(self):
         """cmt.text of the position comment, or the one inside mice.status."""

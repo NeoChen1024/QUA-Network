@@ -702,6 +702,9 @@ def effect_wx(f, rule):
         return COMPUTABLE if rule == "wx.temp" else NONE
     if f.kind == "unstated":
         return KEPT if rule == "wx.sw" else COMPUTABLE
+    if f.kind == "ambiguous" and rule == "wx.hum":
+        # amb.wx.hum100: the bytes `100`.
+        return COMPUTABLE
     return KEPT
 
 

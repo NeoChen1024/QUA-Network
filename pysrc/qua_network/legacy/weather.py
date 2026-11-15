@@ -116,6 +116,12 @@ def _elements(scan, p, end, depth, seen):
         if el is None:
             break
         rule, width = el
+        if rule == "wx.hum" and line[p + 1 : p + 4] == b"100" and p + 4 <= end:
+            # Section 10, amb.wx.hum100: the field has three digits. The
+            # other reading is `h10` and text from the last digit.
+            p = _element(scan, p, depth, rule, 3, seen)
+            scan.find(rule, "ambiguous", p - 1)
+            continue
         n = _fixed(line, p + 1, end, rule, width)
         if n is None:
             break

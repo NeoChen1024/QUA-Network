@@ -127,7 +127,7 @@ the value of its `cs` token.
 | <a id="val.wx.rain1h"></a>`val.wx.rain1h` | Rain in the last hour | [`wx.rain1h`](06-weather.md#wx.rain1h) | The number of the value. | Hundredths of an inch | p. 84/64 |
 | <a id="val.wx.rain24h"></a>`val.wx.rain24h` | Rain in the last 24 hours | [`wx.rain24h`](06-weather.md#wx.rain24h) | The number of the value. | Hundredths of an inch | p. 84/64 |
 | <a id="val.wx.rainmid"></a>`val.wx.rainmid` | Rain since midnight | [`wx.rainmid`](06-weather.md#wx.rainmid) | The number of the value. | Hundredths of an inch ([amb.val.midnight](#amb.val.midnight)) | p. 84/64 |
-| <a id="val.wx.hum"></a>`val.wx.hum` | Humidity | [`wx.hum`](06-weather.md#wx.hum) | The bytes `00` give 100. Any other value gives its number. | Percent. 1 to 100. | p. 84/64 |
+| <a id="val.wx.hum"></a>`val.wx.hum` | Humidity | [`wx.hum`](06-weather.md#wx.hum) | The bytes `00` give 100. The bytes `100` give 100 ([amb.wx.hum100](06-weather.md#amb.wx.hum100)). Any other value gives its number. | Percent. 1 to 100. | p. 84/64 |
 | <a id="val.wx.baro"></a>`val.wx.baro` | Barometric pressure | [`wx.baro`](06-weather.md#wx.baro) | The number of the value. | Tenths of a hectopascal ([amb.val.baroref](#amb.val.baroref)) | p. 84/64 |
 | <a id="val.wx.lum"></a>`val.wx.lum` | Luminosity | [`wx.lum`](06-weather.md#wx.lum), [`wx.lumk`](06-weather.md#wx.lumk) | `wx.lum`: the number of the value. `wx.lumk`: 1000 more than the number of the value. | Watts per square metre. `wx.lum` 0 to 999, `wx.lumk` 1000 to 1999. | p. 84/64 |
 | <a id="val.wx.snow"></a>`val.wx.snow` | Snowfall in the last 24 hours | [`wx.snow`](06-weather.md#wx.snow) | The number of the value. | Inches | p. 84/64 |
@@ -171,7 +171,18 @@ token that has no row has only findings with the effect `kept`.
 | `wx.temp` | `value` (`-00`) | Temperature | `computable`: 0 |
 | A weather field of 06 section 6.1 | `unstated` (a repeated field) | The value of the field | `computable`: the number of the first token (section 2.2) |
 | `wx.sw` | `unstated` (a code that is not listed) | Software code | `kept`: the list is open |
+| `wx.hum` | `ambiguous` (the bytes `100`) | Humidity | `computable`: 100 |
+| `wx.hum` | `ambiguous` (the bytes `100`) | The value of each weather field, `wx.sw` and `wx.unit` after that token | `computable`: the value of the field |
 | `dti` | `discouraged` (positionless report) | All | `kept` |
+
+**[agreed]** The bytes `h100` have the effect `computable` on the
+humidity. In strict mode, the humidity has no value. In permissive mode,
+it is 100, with a mark
+([06 section 10](06-weather.md#10-reviewed-exceptions)).
+
+**[agreed]** The same finding has the effect `computable` on each
+field after the `h100` token. These bytes are fields only if `h100` is
+the humidity. If not, they are text.
 
 A `syntax` finding on `ext.dirspd` at the byte after the symbol code
 means that the wind field is missing

@@ -477,8 +477,52 @@ record unit.
 | `symbol` | Object | `chars`: the table byte and the code byte, in that order, as a byte string. `classic`: the number of RFC 5.6 as an integer, if the symbol has one. `from`. | `val.sym` |
 | `messaging` | Flag | Messaging flag. Absent for an Object or an Item. | `val.pos.dti`, `val.mice.msgcap` |
 | `fix` | Code | Fix age: `"current"` or `"old"`. | `val.mice.dti`, `val.cmp.t` |
-| `comment` | Bytes | The bytes of the `cmt.text` token. In Mic-E, the `cmt.text` inside `mice.status`. | — |
+| `comment` | Bytes | The bytes of the `cmt.text` token, without the tokens of section 7.1. In Mic-E, the `cmt.text` inside `mice.status`. | — |
 | `extensions` | List | Values that have no field of their own (below). | — |
+
+### 7.1 Comment
+
+**[agreed]** The `comment` leaves out the bytes of each altitude token
+that is directly inside the `cmt.text` token: `cmt.alt` and `cmt.alt.neg`.
+The `altitude` field has their values. A data extension is before the
+`cmt.text` token. Thus the `comment` does not have its bytes.
+
+**[proposed]** The `comment` also leaves out the bytes of each `cmt.dao`
+token and of each `tlm.b91` token that is directly inside the `cmt.text`
+token.
+
+**[agreed]** The `comment` leaves out a `/` after a data extension. The
+rule has these conditions:
+
+- a data extension token, with a rule ID that starts with `ext.`, ends
+  where the `cmt.text` token starts;
+- after the removal of the tokens above, the first byte that remains is
+  `/`.
+
+The record removes that one byte. An example is `PHG5132/Digi`: the
+`comment` is `Digi`.
+
+**[proposed]** These rules apply to the `comment`:
+
+- The `comment` has the other bytes of the `cmt.text` token, in their
+  order. The record does not remove a space.
+- The record leaves out a token of the list also if its field has no
+  value. The `line` keeps the bytes.
+- If no byte remains, the record leaves out `comment`.
+- `from` names the `cmt.text` token.
+- The `comment` keeps the bytes of a frequency specification
+  ([07-frequency section 6](07-frequency.md#6-open-items)).
+
+**[proposed]** These rules apply only to the `comment` of the position
+body. The `comment` of another body has all bytes of its token.
+
+Dropped: an earlier draft gave all bytes of the `cmt.text` token. The
+altitude was then in two fields of the record. The parsers of
+[09-comparison](09-comparison.md) remove it from the comment. They also
+remove the `/` after a data extension
+([div.comment](../legacy/divergence/01-comment.md)).
+
+### 7.2 Other rules
 
 **[agreed]** If a position has ambiguity, `v` is the edge of the box
 that is nearest to the equator or to the prime meridian. A blanked digit
@@ -611,7 +655,7 @@ example shows one record on several lines for reading.
   "speed": {"v": 66.672, "res": 1.852, "from": [["ext.csespd", 49, 56]]},
   "symbol": {"chars": "/>", "classic": 29, "from": [["sym.table", 38, 39], ["sym.code", 48, 49]]},
   "messaging": {"flag": true, "from": [["pos.dti", 22, 23]]},
-  "comment": {"bytes": " Test /A=001234", "from": [["cmt.text", 56, 71]]},
+  "comment": {"bytes": " Test ", "from": [["cmt.text", 56, 71]]},
   "extensions": []},
  "notes": [["amb.val.ambiguity", "position.lat"], ["amb.val.ambiguity", "position.lon"],
            ["amb.val.datum", "position.datum"], ["amb.val.altref", "position.altitude"],

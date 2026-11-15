@@ -20,7 +20,8 @@ weather body. [04-telemetry.md](04-telemetry.md) specifies the telemetry
 body and the telemetry definition body. [05-status.md](05-status.md)
 specifies the status body. [06-message.md](06-message.md) specifies the
 message body and the bulletin body. [07-frequency.md](07-frequency.md)
-specifies the frequency body.
+specifies the frequency body. [08-capabilities.md](08-capabilities.md)
+specifies the capabilities body.
 The other uses get their bodies later ([README section 5](README.md#5-open-items)).
 
 ## 2. Input
@@ -39,7 +40,8 @@ the value rules of the value files of docs/legacy to the tokens
 [13-values-telemetry](../legacy/13-values-telemetry.md),
 [14-values-status](../legacy/14-values-status.md),
 [15-values-message](../legacy/15-values-message.md),
-[16-values-frequency](../legacy/16-values-frequency.md)). It MUST NOT read a value from bytes outside the tokens that the value rule
+[16-values-frequency](../legacy/16-values-frequency.md),
+[17-values-capabilities](../legacy/17-values-capabilities.md)). It MUST NOT read a value from bytes outside the tokens that the value rule
 names.
 
 **[proposed]** If the line is a third-party packet, the record describes
@@ -363,7 +365,7 @@ codes, flags, byte strings and the fields of a timestamp.
 | `destination` | Byte string | The bytes of `addr.dest`, or of `tp.dest`. |
 | `path` | List of byte strings | One item for each path entry, in order: the bytes between the separators, with the `'*'` if the entry has one. For a third-party packet, the entries of `tp.net` and `tp.gate`. |
 | `outer` | Object | Only for a third-party packet: `source`, `destination` and `path` of the outer header. |
-| `uses` | List of strings | The names of the uses of the packet. Each name is the key of a body. The names are `"object"`, `"position"`, `"weather"`, `"telemetry"`, `"telemetry_definition"`, `"status"`, `"message"`, `"bulletin"` and `"frequency"`, in this order. The list is empty if the record has no body. |
+| `uses` | List of strings | The names of the uses of the packet. Each name is the key of a body. The names are `"object"`, `"position"`, `"weather"`, `"telemetry"`, `"telemetry_definition"`, `"status"`, `"message"`, `"bulletin"`, `"capabilities"` and `"frequency"`, in this order. The list is empty if the record has no body. |
 | `format` | String | The rule ID of the identifier token, for example `pos.dti`, `mice.dti` or `wx.pos`. |
 | `verdict` | String or `null` | The verdict of the tokenizer. `null` if the tokenizer has no reader for the format. |
 | `findings` | List | Every finding of the tokenizer, as `[rule, kind, offset]`. |
@@ -376,6 +378,7 @@ codes, flags, byte strings and the fields of a timestamp.
 | `status` | Object | The status body ([05-status](05-status.md)). Present if the identifier is `stat.dti`. |
 | `message` | Object | The message body ([06-message](06-message.md)). Present if the identifier is `msg.dti`. |
 | `bulletin` | Object | The bulletin body ([06-message](06-message.md#4-bulletin-body)). Present if the identifier is `bln.dti` or `nws.dti`. |
+| `capabilities` | Object | The capabilities body ([08-capabilities](08-capabilities.md)). Present if the identifier is `cap.dti`. |
 | `frequency` | Object | The frequency body ([07-frequency](07-frequency.md)). Present if the text of the packet has a frequency specification. |
 | `notes` | List | Section 4.5. |
 | `undecoded` | List | Each token of the information field that no value rule reads, as `[rule, start, end]`. The bytes are in `line`. The list includes such tokens inside `cmt.text`. `cmt.text` itself is in the body. Residue is listed. |
@@ -754,7 +757,7 @@ differ between the modes:
   differential tests ([README section 5](README.md#5-open-items)).
 - **[proposed]** The order of the names in `uses`: `object`, `position`,
   `weather`, `telemetry`, `telemetry_definition`, `status`, `message`,
-  `bulletin`, `frequency`.
+  `bulletin`, `capabilities`, `frequency`.
 - **[open]** Whether `source` also gives a QUA Network identifier
   ([spec 01 section 8](../spec/01-station-identifier.md#8-mapping-to-an-ax25-address)).
 - **[open]** `fix` exists only for the compressed format and Mic-E. A

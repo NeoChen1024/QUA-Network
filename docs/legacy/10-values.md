@@ -29,7 +29,9 @@ of telemetry, the base-91 block in a comment included.
 [14-values-status](14-values-status.md) gives the values of status
 reports. [15-values-message](15-values-message.md) gives the values of
 messages and bulletins. [16-values-frequency](16-values-frequency.md)
-gives the values of the frequency specification. The area descriptor,
+gives the values of the frequency specification.
+[17-values-capabilities](17-values-capabilities.md) gives the values of
+station capabilities. The area descriptor,
 locators and the symbols in the address fields are also outside this
 file.
 

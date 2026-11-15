@@ -9,7 +9,8 @@ weather body that of docs/interop/03-weather.md. The telemetry body and
 the telemetry definition body are those of docs/interop/04-telemetry.md.
 The status body is that of docs/interop/05-status.md. The message body and
 the bulletin body are those of docs/interop/06-message.md. The frequency
-body is that of docs/interop/07-frequency.md.
+body is that of docs/interop/07-frequency.md. The capabilities body is that
+of docs/interop/08-capabilities.md.
 """
 
 import calendar
@@ -276,6 +277,12 @@ READ = frozenset(
         "nws.kw",
         "nws.level",
         "nws.ref",
+        "cap.dti",
+        "cap.item",
+        "cap.sep",
+        "cap.token",
+        "cap.value",
+        "cap.pad",
         "freq.lead",
         "freq.mhz",
         "freq.uw",
@@ -359,6 +366,8 @@ STATUS_ORDER = ("locator", "symbol", "text", "beam_heading", "beam_power", "noar
 # 06-message sections 3 and 4.
 MSG_ORDER = ("addressee", "kind", "text", "id", "reply_ack", "ack_id", "noarchive")
 BLN_ORDER = ("kind", "id", "group", "level", "text", "reference", "noarchive")
+# 08-capabilities section 3.
+CAP_ORDER = ("items",)
 # 07-frequency section 3.
 FREQ_ORDER = (
     "frequency",
@@ -404,6 +413,7 @@ FIELD_ORDER += tuple("telemetry_definition." + name for name in TLM_DEF_ORDER)
 FIELD_ORDER += tuple("status." + name for name in STATUS_ORDER)
 FIELD_ORDER += tuple("message." + name for name in MSG_ORDER)
 FIELD_ORDER += tuple("bulletin." + name for name in BLN_ORDER)
+FIELD_ORDER += tuple("capabilities." + name for name in CAP_ORDER)
 FIELD_ORDER += tuple("frequency." + name for name in FREQ_ORDER) + ("report_time",)
 _DEST_CHILDREN = ("mice.dest.a", "mice.dest.b", "mice.dest.c", "mice.dest.ns", "mice.dest.lonoff", "mice.dest.we")
 _DEST_RULES = frozenset(("dest.mice", "mice.dest") + _DEST_CHILDREN)
@@ -529,7 +539,7 @@ class Decoder:
         }
         if self.outer is not None:
             out["outer"] = self.outer
-        body = obj = wx = tlm = tdef = status = msg = bln = freq = None
+        body = obj = wx = tlm = tdef = status = msg = bln = cap = freq = None
         if not scan.unknown_format:
             pre = wpre = tpre = None
             self.weather = self.format in WEATHER_FORMATS or self.format == "item.dti" and self._item_weather()
@@ -558,6 +568,8 @@ class Decoder:
                 msg = self._lists(self._message(), "message", MSG_ORDER)
             if self.format in ("bln.dti", "nws.dti"):
                 bln = self._lists(self._bulletin(), "bulletin", BLN_ORDER)
+            if self.format == "cap.dti":
+                cap = self._lists(self._capabilities(), "capabilities", CAP_ORDER)
             # 07-frequency section 2: only in a record with another body.
             fpre = self._frequency() if any(b is not None for b in (body, status)) else None
             if fpre:
@@ -571,6 +583,7 @@ class Decoder:
             ("status", status),
             ("message", msg),
             ("bulletin", bln),
+            ("capabilities", cap),
             ("frequency", freq),
         )
         has_body = any(b is not None for _, b in bodies)
@@ -1098,6 +1111,32 @@ class Decoder:
         if ref is not None:
             w["reference"] = ref
         return w
+
+    # --- Capabilities body (08-capabilities section 3) ---------------------
+
+    def _capabilities(self):
+        """The capabilities body, before the mode: one item for each
+        cap.item token."""
+        line = self.line
+        items = []
+        for it in self.toks("cap.item"):
+            inside = [t for t in self.info if t.depth == it.depth + 1 and it.start <= t.start and t.end <= it.end]
+            name = next((t for t in inside if t.rule == "cap.token"), None)
+            value = next((t for t in inside if t.rule == "cap.value"), None)
+            judged = []
+            for f in self.on(("cap.item", "cap.token", "cap.value"), it):
+                # A count with a byte that is not a digit is still a byte string.
+                judged.append((f, KEPT if f.rule == "cap.value" and value is not None else NONE))
+            if name is None:
+                items.append(Pre(None, judged or [(f, NONE) for f in self.stop()], [_ref(it)]))
+                continue
+            frm = [_ref(name)] + ([_ref(value)] if value is not None else [])
+            extra = {"value": text(line[value.start : value.end])} if value is not None else None
+            notes = ("amb.cap.form",) if any(t.rule == "cap.pad" for t in inside) else ()
+            if any(e == NONE for _, e in judged):
+                frm = [_ref(it)]
+            items.append(Pre({"bytes": text(line[name.start : name.end])}, judged, frm, notes=notes, extra=extra))
+        return {"items": items}
 
     # --- Frequency body (07-frequency section 3) ---------------------------
 

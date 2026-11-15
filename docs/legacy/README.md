@@ -479,6 +479,7 @@ not copy the code, because several of these projects are GPL.
 | [14-values-status.md](14-values-status.md) | Values of status reports: the text, the beam heading and power, the locator. | `val` |
 | [15-values-message.md](15-values-message.md) | Values of messages, acknowledgements, rejections and bulletins. | `val` |
 | [16-values-frequency.md](16-values-frequency.md) | Values of the frequency specification in a comment or a status text. | `val` |
+| [17-values-capabilities.md](17-values-capabilities.md) | Values of station capabilities. | `val` |
 | [examples.json](examples.json) | The expected verdict and findings of each example packet of APRS12c, by page and digest. | — |
 
 ## 6. Open items

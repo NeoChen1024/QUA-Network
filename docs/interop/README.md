@@ -93,8 +93,10 @@ This directory defers these items. Each is **[open]**.
   test data, the Maidenhead locator beacon, the obsolete Object format and
   a packet whose identifier the tokenizer does not recognise. Station
   capabilities have a body ([08-capabilities](08-capabilities.md)).
-- **[agreed]** Raw weather reports and raw NMEA sentences get no body
-  now. The author decides again after the differential tests.
+- **[agreed]** Raw weather reports and raw NMEA sentences get no body.
+  As the author decided, the reason is that the raw output of a device
+  is not a format for a packet. An earlier draft deferred this decision
+  until after the differential tests.
 - The encoder, from a record to a legacy packet. Its output is a TNC2 line,
   as the corpus records it, or an AX.25 frame for a KISS TNC. An encoder
   and a decoder can agree on a round trip. This is not evidence that

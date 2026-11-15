@@ -242,4 +242,5 @@ The values are derived as follows:
 - **[open]** The place of the comment. This file puts it in the position
   body if the record has one. Another option is one comment field in the
   envelope for every format.
-- **[open]** The values of storm data and of raw weather reports.
+- **[open]** The values of storm data. A raw weather report gets no
+  body ([README section 5](README.md#5-open-items)).

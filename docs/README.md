@@ -7,7 +7,7 @@
 | Where does a figure come from? | Regenerate it from the corpus with the tools; RFC section 13 gives the method and caveats. The RFC quotes no corpus statistics. `research/` is for a report that fixes a result at a stated capture window. Not started. |
 | What are legacy APRS packets meant to contain, field by field? | [`legacy/`](legacy/README.md): this project's reading of APRS12c, with page citations, the ambiguities it resolves and the errata it found. The legacy tokenizer implements it. |
 | What does a decoder give for one legacy packet? How does a gateway translate it, and how is a legacy packet encoded? | [`interop/`](interop/README.md): the record of a legacy packet, its strict and permissive modes, and later the gateway translation and the encoder. Not a QUA Network wire format. So far: [the record, position slice](interop/01-record.md). |
-| How does deployed APRS software actually behave? | `divergence/`, one file per catalogue entry (RFC Appendix E). Not started. |
+| How does deployed APRS software actually behave? | [`legacy/divergence/`](legacy/divergence/README.md), one file per catalogue entry (RFC Appendix E). [`interop/09-comparison.md`](interop/09-comparison.md) specifies the comparison that finds the entries. |
 | What are the conformance values? | [`../vectors/`](../vectors/), checked by `qua-check-vectors`. |
 
 The RFC records direction and rationale and carries a status label on every

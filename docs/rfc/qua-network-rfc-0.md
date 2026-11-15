@@ -2072,6 +2072,10 @@ Each entry records: a short description, the category, example packets from
 the corpus, frequency in the corpus, how each parser behaves, the relevant
 specification text if any, and the decision taken for QUA Network.
 
+The catalogue is in `docs/legacy/divergence/`, one file per entry. The
+comparison that finds the entries is specified in
+`docs/interop/09-comparison.md`.
+
 ### E.4 Handling third-party code
 
 Implementations are referenced, not copied. Use git submodules or record the

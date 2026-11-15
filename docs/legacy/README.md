@@ -444,8 +444,9 @@ The numbered files do not record what deployed decoders do (rule 6). The
 earlier draft of this directory recorded it. That draft read the source
 code at the commits below, and it did not run the code. The notes are in
 the history of this repository at commit `722e30a`. They are a starting
-point for the divergence catalogue (RFC Appendix E). This project does
-not copy the code, because several of these projects are GPL.
+point for the divergence catalogue (RFC Appendix E), which is in
+[divergence/](divergence/README.md). This project does not copy the
+code, because several of these projects are GPL.
 
 | Decoder | Repository | Commit | Licence | Read |
 |---|---|---|---|---|
@@ -480,6 +481,7 @@ not copy the code, because several of these projects are GPL.
 | [15-values-message.md](15-values-message.md) | Values of messages, acknowledgements, rejections and bulletins. | `val` |
 | [16-values-frequency.md](16-values-frequency.md) | Values of the frequency specification in a comment or a status text. | `val` |
 | [17-values-capabilities.md](17-values-capabilities.md) | Values of station capabilities. | `val` |
+| [divergence/](divergence/README.md) | The divergence catalogue of RFC Appendix E: what deployed parsers do. Its entries are not numbered files of this directory, and the rules of section 3 do not apply to them. | `div` |
 | [examples.json](examples.json) | The expected verdict and findings of each example packet of APRS12c, by page and digest. | — |
 
 ## 6. Open items

@@ -155,7 +155,7 @@ The tokenizer puts a `value` finding at the first byte of the value.
 | <a id="wx.rain1h"></a>`wx.rain1h` | Rain, last hour | `r`, 3 bytes. | No | 4 bytes | p. 84/64 |
 | <a id="wx.rain24h"></a>`wx.rain24h` | Rain, 24 hours | `p`, 3 bytes. | No | 4 bytes | p. 84/64 |
 | <a id="wx.rainmid"></a>`wx.rainmid` | Rain since midnight | `P`, 3 bytes. | No | 4 bytes | p. 84/64 |
-| <a id="wx.hum"></a>`wx.hum` | Humidity | `h`, 2 bytes, %. `00` is 100. The bytes `100` are a field of 3 bytes ([section 10](#10-reviewed-exceptions)). | No | 3 bytes, or 4 for `h100` | p. 84/64 |
+| <a id="wx.hum"></a>`wx.hum` | Humidity | `h`, 2 bytes, %. `00` is 100. Three digits that are `100` or that start with `0` are a field of 3 bytes ([section 10](#10-reviewed-exceptions)). | No | 3 bytes, or 4 with three digits | p. 84/64 |
 | <a id="wx.baro"></a>`wx.baro` | Pressure | `b`, 5 bytes, tenths of hPa. | No | 6 bytes | p. 84/64 |
 | <a id="wx.lum"></a>`wx.lum` | Luminosity | `L`, 3 bytes, 000 to 999 W/m² ([amb.wx.lum](#amb.wx.lum)). | No | 4 bytes | p. 84/64 |
 | <a id="wx.lumk"></a>`wx.lumk` | Luminosity, 1000 up | `l`, 3 bytes, 1000 more than the digits. | No | 4 bytes | p. 84/64 |
@@ -292,6 +292,7 @@ the limit that applies after a data extension.
 | <a id="amb.wx.cmpwind"></a>`amb.wx.cmpwind` | p. 56/38, p. 57/39, p. 86/66 | The weather diagram makes `cs` the wind. But the compression type byte and the first `cs` byte can make `cs` an altitude, a range or nothing. | conflict | 3, 4 | The tokenizer accepts both sides. An altitude also restricts the type byte, so the altitude is the stricter format. `cs` keeps the token of 02. The tokenizer gives no finding, because every report with that type byte has the same ambiguity. The tokenizer counts `c` and `s` as read only for a `cmp.cs.wind` token. |
 | <a id="amb.wx.letters"></a>`amb.wx.letters` | p. 84/64 | The other parameters "include" those listed. Thus other letters can occur, with no specified width. | unstated | 3, 4 | A letter that is not in 6.1 starts no complete weather field. The data ends at this letter. The bytes from it are the tail or the comment ([amb.wx.comment](#amb.wx.comment)), with no finding. |
 | <a id="amb.wx.hum100"></a>`amb.wx.hum100` | p. 84/64 | The humidity has two digits, and `00` is 100 %. Senders also write `h100`. By the format of APRS12c, these bytes are the humidity 10 and one byte of text. | ambiguous | 7 | **[agreed]** The reviewed exception of [section 10](#10-reviewed-exceptions) applies. `h100` is one `wx.hum` token of 4 bytes, with `ambiguous` at its last byte. The tokenizer reads the fields after it. |
+| <a id="amb.wx.hum0"></a>`amb.wx.hum0` | p. 84/64 | The humidity has two digits. Senders also write three digits with a `0` at the start, for example `h078`. By the format of APRS12c, these bytes are the humidity 7 and one byte of text. | ambiguous | 7 | **[agreed]** The reviewed exception of [section 10](#10-reviewed-exceptions) applies. `h` and three digits that start with `0` are one `wx.hum` token of 4 bytes, with `ambiguous` at its last byte. The tokenizer reads the fields after it. |
 | <a id="amb.storm.placement"></a>`amb.storm.placement` | p. 34/20, p. 87/67 | Storm data is optional in a storm report. APRS12c specifies no delimiter between the storm data and the comment. | ambiguous | 1, 4 | A storm type of the closed list is a marker that starts storm data. The tokenizer reads the bytes as storm data, as section 8 says, with `syntax` where they fail. An interpretation of the bytes as a comment does not prevent the finding. If there is no storm type, the bytes are comment text, with no finding. |
 | <a id="err.wx.object-dti"></a>`err.wx.object-dti` | p. 86/66, p. 134/110 | The weather Object diagram of Appendix 1 has the identifier `'*'`. Chapter 12 and every other Object diagram have `';'`. | conflict | 3 | A typing error in the diagram (`'*'` for `';'`). It permits nothing. A weather Object starts with `';'`. Every `'*'` field is the Peet Bros format, as 01's [err.dti.star](01-frame.md#err.dti.star) says. |
 | <a id="err.wx.object-time"></a>`err.wx.object-time` | p. 86/66 | The first weather Object example has no timestamp. The diagram specifies 7 bytes. | conflict | 3 | The tokenizer accepts both. 05 reads a position in place of the timestamp ([amb.obj.time](05-object-item.md#amb.obj.time)). |
@@ -330,14 +331,35 @@ as follows:
 - The tokenizer gives `ambiguous` at the last byte of the token
   ([amb.wx.hum100](#amb.wx.hum100)).
 - The tokenizer reads the fields after the token, as section 6.2 says.
-- No other humidity with three digits is an exception. For example,
-  `h055` is the humidity 5 and a `5` that starts no field.
 
 As the author decided, the reason is that the format of APRS12c gives a
 value here that the sender did not mean. Without the exception, the
 decoder gives the humidity 10 with no finding, and it gives no value for
 the fields after it. The divergence catalogue has the entry
 [div.humidity-width](divergence/04-humidity-width.md).
+
+**[agreed]** Humidity of three digits with a `0` at the start
+(p. 84/64). By the format of APRS12c, `h078` is the humidity 7 and an
+`8` that starts no field. The tokenizer reads these bytes as follows:
+
+- If the three bytes after an `h` are digits and the first digit is `0`,
+  the `wx.hum` token has the `h` and these three bytes.
+- The tokenizer gives `ambiguous` at the last byte of the token
+  ([amb.wx.hum0](#amb.wx.hum0)).
+- The tokenizer reads the fields after the token, as section 6.2 says.
+
+As the author decided, the reason is the same as for `h100`. The entry
+[div.humidity-width](divergence/04-humidity-width.md) has the comparison.
+
+**[agreed]** No other humidity with three digits is an exception. For
+example, `h255` is the humidity 25 and a `5` that starts no field.
+
+**[agreed]** The bytes `h000` are not the humidity 100. Only the two
+bytes `00` are 100.
+
+**[proposed]** The bytes `h000` are in the exception. Their number is 0,
+which is below the range of the humidity
+([val.wx.hum](12-values-weather.md#val.wx.hum)).
 
 ## 11. Open items
 

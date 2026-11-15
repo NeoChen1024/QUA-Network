@@ -1258,8 +1258,9 @@ class Decoder:
                 fs = self._in_info("ext.dirspd", "syntax")
                 w[name] = Pre(None, [(f, NONE) for f in fs] or [(f, NONE) for f in self.stop()])
         from_wind = wind is not None or self.cmp_wind is not None
-        # 12-values-weather section 6, amb.wx.hum100: a token after the
-        # `h100` token is a field only if `h100` is the humidity.
+        # 12-values-weather section 6, amb.wx.hum100 and amb.wx.hum0: a
+        # token after a humidity of three digits is a field only if the
+        # three digits are the humidity.
         hum100 = [(f, t.end) for t in self.toks("wx.hum") for f in self.on(("wx.hum",), t) if f.kind == "ambiguous"]
 
         def after_hum100(t):
@@ -1287,7 +1288,9 @@ class Decoder:
                 notes = [WX_NOTES[name]] if name in WX_NOTES else []
                 if name == "wind_direction" and v.n == 0:
                     notes.append(WDIR0)
-                w[name] = Pre(v, judged, frm, notes=notes)
+                # val.wx.hum: only the three digits `000` give a number
+                # below the range (10-values section 2.4).
+                w[name] = Pre(v, judged, frm, notes=notes, in_range=first.rule != "wx.hum" or v.n >= 1)
             else:
                 w[name] = Pre(None, judged, frm, reasons=[v] if v else [])
         t = self.tok("wx.sw")

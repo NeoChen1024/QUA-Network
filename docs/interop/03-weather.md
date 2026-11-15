@@ -88,6 +88,14 @@ mark.
 mode it is a no-value object. In permissive mode it has its value, with
 the mark of the humidity.
 
+**[agreed]** A humidity of three digits that start with `0`, for
+example `h078`, has the same rules
+([amb.wx.hum0](../legacy/06-weather.md#amb.wx.hum0)). In permissive
+mode, `humidity` is the number of the three digits, with a mark.
+
+**[proposed]** For the bytes `h000`, `humidity` is a no-value object in
+both modes. The number 0 is below the range.
+
 **[proposed]** If a field occurs more than once, the field has the effect
 `computable`. In permissive mode, the field has the number of the first
 token, with a mark. `from` lists every token of the field.

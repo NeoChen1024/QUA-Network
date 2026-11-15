@@ -386,6 +386,11 @@ are to be checked against them.
 - **[proposed]** Precision or uncertainty is an explicit field. Blanked digits
   are not used.
 - **[agreed]** Strings are UTF-8.
+- **[agreed]** The format does not forbid a character in a free-text
+  field. A text can hold control characters and other special characters.
+  An implementation MUST be prepared for every character in such a field.
+- **[proposed]** This applies when the implementation shows the text,
+  writes it to a log or gives it to a different program.
 - **[agreed]** Telemetry is self-describing or refers to a registered schema.
   A value MUST NOT depend on a separate definition packet having been heard.
 - **[agreed]** A gateway that translates a legacy value to a unit of this
@@ -579,7 +584,7 @@ binary16. Three reasons:
 - **[agreed]** The mapping makes no claim about a legacy APRS packet. A
   translation between APRS and QUA Network can lose information (3.2).
 - **[agreed]** A compressed field is an icon bitmap in the gap form (5.6)
-  or a string marked compressed (5.7). A fixed encoding, such as the
+  or a string in the compressed form (5.7). A fixed encoding, such as the
   identifier of 5.8, is not a compressed field.
 - **[agreed]** The uncompressed form of a PDU has the same content and no
   compressed field. In it, every icon bitmap is in the plain form, and
@@ -632,6 +637,8 @@ same version.
 - **[agreed]** The source computes a signature over the uncompressed form
   of the PDU (5.4). The uncompressed form does not depend on the form that
   the source chose, so the rules are much simpler.
+- **[agreed]** A PDU with an invalid compressed string has no
+  uncompressed form. The check of its signature fails (5.7).
 - **[agreed]** In the uncompressed form, a string is passthrough and has
   no length byte (5.7). Every TLV length and the payload length of 5.1 are
   those of the uncompressed form. The other header fields are as sent.
@@ -908,14 +915,19 @@ dropped alternatives.
 - **[agreed]** The specification file lists each compressed string that
   is invalid (its section 7). A decoder gives no text for an invalid
   string.
-- **[open]** What a receiver does with a field that holds an invalid
-  string (section 14, question 16).
-- **[proposed]** Each text field carries a marker saying which form it holds:
-  passthrough or compressed. There is one preset, so the marker is not a
-  preset number.
-- **[open]** How a text field carries the marker. A passthrough string has
-  no length byte, so the marker is not a byte of a passthrough string
-  (section 14, question 16).
+- **[agreed]** A receiver shows a clear placeholder in the place of an
+  invalid string.
+- **[agreed]** A PDU with an invalid string has no uncompressed form, so
+  the check of its signature fails (5.5).
+- **[open]** The form of the placeholder, and what the text form shows
+  for such a PDU (section 14, question 16).
+- **[agreed]** Each free-text field has two tags: one for the passthrough
+  form and one for the compressed form. The tag states the form. The
+  string has no marker.
+- **[agreed]** The two tags of one field are adjacent numbers. The
+  uncompressed form has the passthrough tag. The TLV order of the
+  uncompressed form is then the order as sent.
+- **[agreed]** A PDU MUST NOT have both tags of one field.
 - **[agreed]** The specification pins the exact decoder behaviour of every
   compressed form that it allows. It does not pin an encoder. Two
   independent decoders give the same string for the same field.
@@ -927,6 +939,15 @@ dropped alternatives.
   visible in text.
 - The short Unicode symbol of 5.6 is not compressed; at 8 bytes or less
   there is nothing to gain.
+
+An earlier revision proposed a marker in each text field that gave the
+form of the string. Two tags replace it and cost no byte. The author also
+considered a rule that a sender compresses every text, so that no mark is
+necessary. It was dropped. The uncompressed form needs the passthrough
+form (5.5). A text that does not compress becomes longer, and a long one
+then does not fit a TLV.
+[`docs/research/03-text-compression-check.md`](../research/03-text-compression-check.md)
+gives the cost.
 
 An earlier revision proposed a canonical encoder. A sender used the
 compressed form if and only if it was strictly shorter. The specification
@@ -984,7 +1005,8 @@ What it does embed is small, and is selected by a preset:
   markup punctuation: `": "`, `": `, `</`, `="`, `":"` and `://`. The text
   presets use English fragments instead: ` the `, ` and `, `tion`, ` with`,
   `ing`, `ment`. There are also URL and JSON variants.
-- A few templates for date, time and telephone-number formats.
+- A few templates for date, time and telephone-number formats. The
+  specification does not have them (see "Rules of the decoder" below).
 
 This is a light prior, of a different order from a vocabulary that goes out
 of date.
@@ -1031,9 +1053,8 @@ reasons.
   decoder stops at an end code or at the end of the bits, and its encoder
   often writes only a part of the end code. A decoder that stops at the
   length of the text needs no end code.
-- **The decoder ignores the bits after the last code.** The library gives
-  only the length of its output in bytes. A sender that uses the library
-  does not know where the last code ends, so it cannot set these bits.
+- **The decoder ignores the bits after the last code.** The decoder
+  stops at the length of the text. It has no use for these bits.
 - **Every input that the decoder cannot read is invalid.** The library
   decoder stops on such an input and gives the output that it has. Two
   decoders must give the same result for the same field.
@@ -1042,6 +1063,21 @@ reasons.
   invalid.
 - **A back-reference cannot be longer than its distance.** The library
   then copies bytes that it has not written yet.
+- **The templates, the hexadecimal digits and the UUID are invalid.**
+  The author decided this: the project does not support these parts, so
+  the format does not have them. They are for dates, telephone numbers
+  and identifiers in fixed forms. A decoder without them is smaller.
+- **A placeholder replaces an invalid string.** The other fields of the
+  PDU can still be correct.
+- **The signature check of a PDU with an invalid string fails.** A
+  change that breaks the string also breaks the signature, so no check
+  can succeed.
+
+The removal of the three parts has a cost. The encoder of the library
+uses them, so its output is invalid for some texts. A sender cannot use
+the encoder of the library as it is. The research report of "Risk to
+manage" below gives how often the library uses each part, and the size
+with and without them.
 
 **[agreed]** There is no rule for the value of the bits after the last
 code. A length byte that is too small is therefore not always invalid. If
@@ -1049,8 +1085,8 @@ the codes that remain have fewer than 8 bits, the decoder gives a text
 that is too short. The author accepts this. A malformed input can give a
 wrong text, and integrity is not the task of the compression.
 
-A rule for the last bits was considered and dropped. It closes this case,
-but then a sender cannot use the library as it is.
+A rule for the last bits was considered and dropped. It closes this
+case, but it is a check of integrity.
 
 #### Risk to manage
 
@@ -1362,6 +1398,8 @@ other fields are compact binary encodings of data.
 - **[agreed]** A subgroup is a logical unit of the specification. It has
   no effect on the wire format: a PDU has no mark for a subgroup, and a
   decoder reads the TLVs of a subgroup as it reads every other TLV.
+- **[agreed]** A free-text field has two tags in a schema, one for each
+  form of the string (5.7).
 - **[agreed]** Each schema states the tags of the TLVs of a subgroup that
   it includes. The tags of one subgroup can therefore differ between two
   types.
@@ -1838,6 +1876,8 @@ before any of it is treated as sound.
     the part that does not change again with each part that does.
 37. A packet in which an absent field can mean "not changed" or
     "removed".
+38. A part of an adopted format that this protocol has no use for, kept
+    because the format has it. Every decoder then has to implement it.
 
 ## 13. Measurements from the APRS-IS corpus
 
@@ -1972,12 +2012,10 @@ anything is decided on them.
 15. The byte limit of the Unicode symbol form, proposed as 8 (5.6).
 16. Unishox2 (5.7). The preset is decided, and the specification file
     `docs/spec/04-text-compression.md` states the decoder. These remain:
-    - Which parts of the Unishox2 format does the specification make
-      invalid, if any? The candidates are the templates, the UUID and
-      the hexadecimal digits (section 10 of the file).
-    - What does a receiver do with a field that holds an invalid
-      compressed string?
-    - How does a text field mark its form, passthrough or compressed?
+    - A receiver shows a placeholder for an invalid compressed string.
+      What is the form of the placeholder?
+    - A PDU with an invalid compressed string has no uncompressed form
+      (5.4). What does its text form show?
     - What does a receiver do with a PDU whose uncompressed form does not
       fit the PDU limit?
 17. Use of the unused identifier values: the all-zero identifier, and

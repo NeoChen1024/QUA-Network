@@ -5,17 +5,25 @@ the Unishox2 library, on the free text of the corpus.
 For each text of a record (valid UTF-8, 1 to 255 bytes) the tool does
 these checks. A text counts once for each corpus file that has it.
 
-Encoder: the bytes of usx.encode() are equal to the bytes of the library
-with the preset USX_PSET_DFLT.
+Library output: usx.decode() gives the text for the output of the library
+with the preset USX_PSET_DFLT, or it rejects the output because the
+library used a part that the specification leaves out (a template,
+hexadecimal digits, a UUID).
 
-Decoder: usx.decode() gives the text for the output of the library.
+Encoder: if usx.decode() does not reject the output of the library, the
+bytes of usx.encode() are equal to it. For every text, usx.decode() and
+the decoder of the library both give the text for the bytes of
+usx.encode().
 
-Simple encoder: usx.decode() and the library both give the text for the
-output of usx.encode(simple=True).
+Simple encoder: the same two decoders give the text for the bytes of
+usx.encode(simple=True).
 
-Parts: which optional parts of the format the output of the library uses.
+Size: the size of the texts under the rule of RFC 5.7, and the size if a
+sender compresses every text.
 
-Mutations: the tool changes the output of the library (one bit, one byte
+Parts: which optional parts of the format the output of usx.encode() uses.
+
+Mutations: the tool changes the output of usx.encode() (one bit, one byte
 less, one byte more, the length byte one more or one less). If
 usx.decode() gives a text for the changed input, the library must give
 the same bytes at the start of its output. The changes are a function of
@@ -42,6 +50,7 @@ from qua_network.parallel import jobs_option, map_files
 
 BUF = 4096
 MUTATIONS = ("one bit", "one byte less", "one byte more", "length + 1", "length - 1")
+LEFT_OUT = ("a template", "hexadecimal digits", "a UUID")  # reasons of usx.Malformed
 
 
 class Part:
@@ -110,13 +119,33 @@ def check_file(path, mode, mutations):
         ref = buf.raw[:r]
         n["size: library"] += count * min(size, r + 1)
 
-        if usx.encode(b) != ref:
-            n["encoder: differs"] += 1
+        try:
+            valid = usx.decode(ref, size) == b
+            n["library output: decoder gives the text" if valid else "library output: decoder differs"] += 1
+        except usx.Malformed as e:
+            valid = False
+            if str(e) in LEFT_OUT:
+                n["library output: uses a part that is left out"] += 1
+                n[("left out", str(e), "texts")] += 1
+                n[("left out", str(e), "texts by packet")] += count
+            else:
+                n[f"library output: decoder rejects ({e})"] += 1
+
+        mine = usx.encode(b)
+        if valid:
+            n["encoder: equal to the library" if mine == ref else "encoder: differs from the library"] += 1
+        n["size: encoder"] += count * min(size, len(mine) + 1)
+        n["size: encoder, every text compressed"] += count * (len(mine) + 1)
+        if len(mine) + 1 < size:
+            n["compressed form is shorter: texts by packet"] += count
         events = {}
         try:
-            n["decoder: gives the text" if usx.decode(ref, size, events) == b else "decoder: differs"] += 1
-        except usx.Malformed as e:
-            n[f"decoder: rejects ({e})"] += 1
+            ok = usx.decode(mine, size, events) == b
+        except usx.Malformed:
+            ok = False
+        n["encoder: decoder gives the text" if ok else "encoder: decoder differs"] += 1
+        r, raw = library_decode(mine)
+        n["encoder: library gives the text" if raw[: max(r, 0)] == b else "encoder: library differs"] += 1
         for name in events:
             n[("part", name, "texts")] += 1
             n[("part", name, "texts by packet")] += count
@@ -138,7 +167,7 @@ def check_file(path, mode, mutations):
             rng = random.Random(int.from_bytes(blake3(b).digest(8), "big"))
             for _ in range(mutations):
                 kind = rng.choice(MUTATIONS)
-                data, length = _mutate(rng, kind, ref, size)
+                data, length = _mutate(rng, kind, mine, size)
                 n[("mutation", kind, "inputs")] += 1
                 try:
                     got = usx.decode(data, length)
@@ -173,19 +202,24 @@ def _report(parts, files, mode, mutations):
     echo(f"not checked: over 255 bytes={n['texts over 255 bytes']}  not utf-8={n['texts not utf-8']}")
 
     echo("\n== checks: texts ==")
-    plain = sorted(k for k in n if isinstance(k, str) and ":" in k and not k.startswith("size"))
-    for k in ["library encoder fails"] + plain:
-        if k in n or k == "library encoder fails":
-            echo(f"  {k:46s} {n[k]:12d}")
-    echo(f"  {'encoder: equal to the library':46s} {t - n['encoder: differs']:12d}")
+    echo(f"  {'library encoder fails':50s} {n['library encoder fails']:12d}")
+    for k in sorted(k for k in n if isinstance(k, str) and ":" in k and not k.startswith(("size", "compressed"))):
+        echo(f"  {k:50s} {n[k]:12d}")
 
-    echo("\n== size under the rule of RFC 5.7, by packet: bytes, share of the text bytes ==")
+    echo("\n== parts that are left out, in the output of the library: texts, share, by packet, share ==")
+    for name in LEFT_OUT:
+        a, b = n[("left out", name, "texts")], n[("left out", name, "texts by packet")]
+        echo(f"  {name:18s} {a:12d} {_pct(a, t)} {b:12d} {_pct(b, n['texts by packet'])}")
+
+    echo("\n== size by packet: bytes, share of the text bytes ==")
     total = n["bytes by packet"]
-    echo(f"  {'text':24s} {total:14d}")
-    for k in ("size: library", "size: simple encoder"):
-        echo(f"  {k[6:]:24s} {n[k]:14d} {_pct(n[k], total)}")
+    echo(f"  {'text':38s} {total:14d}")
+    for k in ("size: library", "size: encoder", "size: simple encoder", "size: encoder, every text compressed"):
+        echo(f"  {k[6:]:38s} {n[k]:14d} {_pct(n[k], total)}")
+    k = "compressed form is shorter: texts by packet"
+    echo(f"  {k:38s} {n[k]:14d} {_pct(n[k], n['texts by packet'])}")
 
-    echo("\n== optional parts in the output of the library: texts, share, by packet, share ==")
+    echo("\n== optional parts in the output of the encoder: texts, share, by packet, share ==")
     names = sorted({k[1] for k in n if isinstance(k, tuple) and k[0] == "part"}, key=lambda x: -n[("part", x, "texts")])
     for name in names:
         a, b = n[("part", name, "texts")], n[("part", name, "texts by packet")]

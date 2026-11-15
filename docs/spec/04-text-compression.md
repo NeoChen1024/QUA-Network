@@ -17,8 +17,9 @@ decoder gets the text from the bits, and which inputs are invalid.
 It does not specify these:
 
 - Which fields are free text.
-- How a field states that its string is compressed (RFC 5.7).
-- What a receiver does with a field that holds an invalid string.
+- How a field states that its string is compressed. The tag of the field
+  states it (RFC 5.7).
+- Which characters a text can have (RFC 5.3).
 
 Terms:
 
@@ -34,6 +35,10 @@ Terms:
 
 **[agreed]** The compressed form is the format of Unishox2 with the
 preset `USX_PSET_DFLT`, for one string. There is no other preset.
+
+**[agreed]** The compressed form does not have these parts of Unishox2:
+the templates, the hexadecimal digits and the UUID. A compressed string
+that uses one of them is invalid (section 7, case 14).
 
 Sections 3 to 6 state this format. This file is the definition. The
 Unishox2 library is not (section 9).
@@ -127,7 +132,7 @@ There are three sets: Letters, Symbols and Digits.
 
 | Position | Code | Letters | Symbols | Digits |
 |---|---|---|---|---|
-| 0 | `00` | Switch | `"` | Escape |
+| 0 | `00` | Switch | `"` | Bytes |
 | 1 | `010` | Space | `{` | `,` |
 | 2 | `011` | `e` | `}` | `.` |
 | 3 | `1000` | `t` | `_` | `0` |
@@ -253,12 +258,12 @@ The set code after `s` = 1:
 | CR LF | The output gets the two bytes. |
 | A sequence | The output gets the bytes of the sequence. |
 | Repeated byte | Read a count `c`. The output gets its last byte again, `c` + 4 times. |
-| Escape | Section 6.2. |
+| Bytes | Section 6.2. |
 
 Only a digit changes the state. A digit changes it from each of the three
 states.
 
-## 6. Repeat and escape
+## 6. Repeat and bytes
 
 ### 6.1 Repeat
 
@@ -268,45 +273,15 @@ The decoder reads a count `a` and then a count `b`. The length is
 The decoder goes back by the distance from the end of the output. It
 copies the length in bytes from there to the end of the output.
 
-### 6.2 Escape
+### 6.2 Bytes
 
-The decoder reads a step code `e` with the limit 5.
+The decoder does these steps:
 
-| `e` | Step |
-|---|---|
-| 0 | A template (see below). |
-| 1 | Read a count `n`. Then read `n` numbers of 4 bits. The output gets each as a hexadecimal digit, with `a` to `f`. |
-| 2 | A UUID with `a` to `f` (see below). |
-| 3 | As 1, with `A` to `F`. |
-| 4 | A UUID with `A` to `F`. |
-| 5 | Read a count `n`. Then read `n` numbers of 8 bits. The output gets each as one byte. |
+1. It reads 5 bits. Each of them MUST be 1.
+2. It reads a count `n`.
+3. It reads `n` numbers of 8 bits. The output gets each as one byte.
 
-An escape does not change the state.
-
-**UUID.** The decoder reads 32 numbers of 4 bits. The output gets each as
-a hexadecimal digit. The output gets a `-` after the digits 8, 12, 16 and
-20.
-
-**Template.** The decoder reads a step code `t` with the limit 4, and
-then a count `r`. `t` selects the template:
-
-| `t` | Template | Characters |
-|---|---|---|
-| 0 | `tfff-of-tfTtf:rf:rf.fffZ` | 24 |
-| 1 | `tfff-of-tf` | 10 |
-| 2 | `(fff) fff-ffff` | 14 |
-| 3 | `tf:rf:rf` | 8 |
-
-The decoder uses the template without its last `r` characters. For each
-character that remains, from the first:
-
-| Character | Step |
-|---|---|
-| `f` | Read a number of 4 bits. The output gets it as a hexadecimal digit, with `a` to `f`. |
-| `r` | Read a number of 3 bits. The output gets it as a digit. |
-| `t` | Read a number of 2 bits. The output gets it as a digit. |
-| `o` | Read a number of 1 bit. The output gets it as a digit. |
-| A different character | The output gets the character. |
+The item does not change the state.
 
 ## 7. Invalid input
 
@@ -328,13 +303,23 @@ in no other case:
 11. An item is the repeated byte, and the output is empty.
 12. In a repeat, the distance is larger than the length of the output.
 13. In a repeat, the length is larger than the distance.
-14. In a template, `t` is 4.
-15. In a template, `r` is larger than the count of characters.
-16. In an escape with `e` = 1, 3 or 5, the count `n` is 0.
-17. The output of `N` bytes is not valid UTF-8.
+14. In the item Bytes (6.2), one of the 5 bits is 0. In Unishox2, such
+    bits start a template, hexadecimal digits or a UUID.
+15. In the item Bytes, the count `n` is 0.
+16. The output of `N` bytes is not valid UTF-8.
 
 **[agreed]** A decoder MUST NOT give a text, or a part of a text, for
 an invalid compressed string.
+
+**[agreed]** A receiver that shows the text shows a placeholder in its
+place. A person MUST be able to see that the placeholder is not text of
+the sender.
+
+**[proposed]** An invalid compressed string does not make the other
+fields of the PDU invalid.
+
+**[agreed]** A PDU with an invalid compressed string has no uncompressed
+form (RFC 5.4). The check of its signature fails (RFC 5.5).
 
 ## 8. Encoding
 
@@ -349,14 +334,13 @@ format. A decoder MUST have all of them.
 - The repeat (6.1).
 - The repeated byte.
 - The sequences.
-- The templates, the hexadecimal digits and the UUID (6.2).
 - The state Unicode. One code point after the set code Unicode is
   sufficient.
 - The upper-case run. A shift for each letter is sufficient.
 
 A text can have characters with no item and no code point: the control
 characters below U+0020 other than LF, CR and Tab, and U+007F. Only the
-escape with `e` = 5 can hold these.
+item Bytes can hold these.
 
 A length byte that is too small can give a text that is too short
 (section 2, rules 4 and 5). This is not an invalid string.
@@ -391,18 +375,20 @@ For each case of section 7, the library decoder does this:
 |---|---|
 | 1 | Not applicable. |
 | 2 | Ignores the first bit. |
-| 3, 11, 12, 14, 15, 16 | Stops with no error. It gives the output that it has. |
+| 3, 11, 12, 15 | Stops with no error. It gives the output that it has. |
 | 4 | Not applicable. It has a limit for the output buffer. |
 | 5 | Continues to decode. |
 | 6 | Reads the step code as in the state Unicode. |
 | 7 | Gives the item of the set, as after a shift. |
 | 8 | Changes to the state Unicode. It gives no output for the item. |
-| 9, 17 | Writes the bytes. It does no check. |
+| 9, 16 | Writes the bytes. It does no check. |
 | 10 | Stops. This is its normal end. |
 | 13 | Copies bytes that it has not written yet. |
+| 14 | Decodes the template, the hexadecimal digits or the UUID. |
 
-The library has a template character `F`, for the digits `A` to `F`. No
-template of the preset has it, so this file does not have it.
+The library encoder uses templates, hexadecimal digits and the UUID. Its
+output is therefore invalid for some texts. A sender cannot use the
+library encoder as it is.
 
 The check of this file against the library is the tool
 `qua-legacy-usx-check`.
@@ -411,13 +397,8 @@ has its result.
 
 ## 10. Open items
 
-- **[open]** Whether the specification makes parts of the format
-  invalid: the templates, the UUID, the hexadecimal digits. The
-  measurement of how often an encoder uses each part is in the research
-  report of section 9.
-- **[open]** Whether a text can have control characters. RFC 5.3 owns
-  this question. If it cannot, the escape with `e` = 5 has no use.
-- **[open]** What a receiver does with a field that holds an invalid
-  compressed string (RFC section 14, question 16).
+- **[open]** The form of the placeholder of section 7.
+- **[open]** What the text form of a PDU shows for an invalid compressed
+  string (RFC section 14, question 16).
 - **[open]** Test vectors. The valid vectors come from the Unishox2
   library. Each invalid vector names its case of section 7.

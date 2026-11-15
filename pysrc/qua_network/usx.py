@@ -1,13 +1,16 @@
 # SPDX-License-Identifier: Apache-2.0
 """Text compression of docs/spec/04-text-compression.md: the format of
-Unishox2 with its default preset, for one string.
+Unishox2 with its default preset, for one string, without the templates,
+the hexadecimal digits and the UUID of Unishox2.
 
 decode() follows the specification file. It rejects every input that the
 file makes invalid.
 
-The specification does not pin an encoder. encode() makes the same choices
-as the reference implementation of Unishox2 (3rdparty/Unishox2, Apache-2.0),
-so that qua-legacy-usx-check can compare the two outputs byte for byte.
+The specification does not pin an encoder. encode() makes the choices of
+the reference implementation of Unishox2 (3rdparty/Unishox2, Apache-2.0),
+but it does not use the parts that the file leaves out. Its output is
+equal to the output of the library for each text for which the library
+does not use those parts; qua-legacy-usx-check compares the two.
 encode(text, simple=True) is the smallest encoder that section 8 of the
 file allows: it uses no optional part of the format.
 
@@ -44,10 +47,6 @@ COUNT_BITS = (2, 4, 7, 11, 16)
 COUNT_BASE = (0, 4, 20, 148, 2196)
 DIFF_BITS = (6, 12, 14, 16, 21)
 DIFF_BASE = (0, 64, 4160, 20544, 86080)
-
-# Section 6.2: the templates. f: 4 bits. r: 3 bits. t: 2 bits. o: 1 bit.
-TEMPLATES = (b"tfff-of-tfTtf:rf:rf.fffZ", b"tfff-of-tf", b"(fff) fff-ffff", b"tf:rf:rf")
-_FIELD_BITS = {ord("f"): 4, ord("r"): 3, ord("t"): 2, ord("o"): 1}
 
 MIN_REPEAT = 5  # the shortest back-reference
 MAX_TEXT = 255
@@ -98,10 +97,6 @@ class _Reader:
     def count(self):
         k = self.unary(4)
         return self.read(COUNT_BITS[k]) + COUNT_BASE[k]
-
-
-def _hex(nibble, upper):
-    return (b"0123456789ABCDEF" if upper else b"0123456789abcdef")[nibble]
 
 
 class _Decoder:
@@ -245,38 +240,17 @@ class _Decoder:
         start = len(self.out) - distance
         self.emit(self.out[start : start + length])
 
-    # Section 6.2: the escapes of the digit set.
+    # Section 6.2: a run of bytes. The other escapes of Unishox2 are invalid.
     def escape(self):
         r = self.r
         k = r.unary(5)
-        if k == 0:
-            t = r.unary(4)
-            if t == 4:
-                raise Malformed("template 4")
-            tpl = TEMPLATES[t]
-            rest = r.count()
-            if rest > len(tpl):
-                raise Malformed("a template with more characters left out than it has")
-            self.note("template")
-            for c in tpl[: len(tpl) - rest]:
-                bits = _FIELD_BITS.get(c)
-                self.emit(bytes((c,)) if bits is None else bytes((_hex(r.read(bits), False),)))
-        elif k == 5:
-            n = r.count()
-            if n == 0:
-                raise Malformed("an empty run of bytes")
-            self.note("raw bytes")
-            self.emit(bytes(r.read(8) for _ in range(n)))
-        elif k in (2, 4):
-            self.note("uuid")
-            digits = bytes(_hex(r.read(4), k == 4) for _ in range(32))
-            self.emit(b"-".join((digits[:8], digits[8:12], digits[12:16], digits[16:20], digits[20:])))
-        else:
-            n = r.count()
-            if n == 0:
-                raise Malformed("an empty run of hexadecimal digits")
-            self.note("hexadecimal run")
-            self.emit(bytes(_hex(r.read(4), k == 3) for _ in range(n)))
+        if k < 5:
+            raise Malformed(("a template", "hexadecimal digits", "a UUID", "hexadecimal digits", "a UUID")[k])
+        n = r.count()
+        if n == 0:
+            raise Malformed("an empty run of bytes")
+        self.note("bytes")
+        self.emit(bytes(r.read(8) for _ in range(n)))
 
 
 def decode(data, length, events=None):
@@ -299,21 +273,6 @@ for _h, _set in enumerate(SETS):
             if "a" <= _it <= "z":
                 _CODE[ord(_it) - 32] = (_h, _p)
 _SEQ_CODE = ((SYM, 25), (SYM, 26), (SYM, 27), (NUM, 23), (NUM, 24), (NUM, 25))
-_DIGIT, _LOWER, _UPPER, _NOT = range(4)
-
-
-def _nibble_type(c):
-    if 0x30 <= c <= 0x39:
-        return _DIGIT
-    if 0x61 <= c <= 0x66:
-        return _LOWER
-    if 0x41 <= c <= 0x46:
-        return _UPPER
-    return _NOT
-
-
-def _nibble(c):
-    return c - 0x30 if c <= 0x39 else (c | 0x20) - 0x61 + 10
 
 
 class _Writer:
@@ -396,35 +355,6 @@ class _Encoder:
                 best = (extra, at - j - MIN_REPEAT + 1)
         return best
 
-    def template(self, at):
-        s, n, w = self.s, len(self.s), self.w
-        for i, tpl in enumerate(TEMPLATES):
-            j = 0
-            while j < len(tpl) and at + j < n:
-                t, c = tpl[j], s[at + j]
-                if t == 0x66:
-                    if _nibble_type(c) not in (_DIGIT, _LOWER):
-                        break
-                elif t in (0x72, 0x74, 0x6F):
-                    if not 0x30 <= c <= (0x37 if t == 0x72 else 0x33 if t == 0x74 else 0x31):
-                        break
-                elif t != c:
-                    break
-                j += 1
-            if 100 * j > 66 * len(tpl):
-                self.escape()
-                w.put(0, 1)
-                w.unary(i, 4)
-                w.count(len(tpl) - j)
-                for k in range(j):
-                    bits = _FIELD_BITS.get(tpl[k])
-                    if bits == 4:
-                        w.put(_nibble(s[at + k]), 4)
-                    elif bits:
-                        w.put(s[at + k] - 0x30, bits)
-                return j
-        return 0
-
     def run(self):
         s, n, w = self.s, len(self.s), self.w
         all_upper = False
@@ -452,55 +382,6 @@ class _Encoder:
                 self.code(NUM, 26)
                 w.count(run - at - 4)
                 at = run
-                continue
-            if at <= n - 36 and s[at + 8] == s[at + 13] == s[at + 18] == s[at + 23] == 0x2D:
-                kind = _DIGIT
-                for p in range(at, at + 36):
-                    # The reference compares the position in the string, not
-                    # the position in the UUID, with 8, 13, 18 and 23.
-                    if s[p] == 0x2D and p in (8, 13, 18, 23):
-                        continue
-                    t = _nibble_type(s[p])
-                    if t == _NOT or (t != _DIGIT and kind != _DIGIT and kind != t):
-                        break
-                    if t != _DIGIT:
-                        kind = t
-                else:
-                    self.escape()
-                    if kind == _LOWER:
-                        w.put(0b110, 3)
-                    else:
-                        w.put(0b11110, 5)
-                    for p in range(at, at + 36):
-                        if s[p] != 0x2D:
-                            w.put(_nibble(s[p]), 4)
-                    at += 36
-                    continue
-            if at < n - 5:
-                kind, size = _DIGIT, 0
-                while at + size < n:
-                    t = _nibble_type(s[at + size])
-                    if t == _NOT or (t != _DIGIT and kind != _DIGIT and kind != t):
-                        break
-                    if t != _DIGIT:
-                        kind = t
-                    size += 1
-                if size > 10 and kind == _DIGIT:
-                    kind = _LOWER
-                if kind != _DIGIT and size > 3:
-                    self.escape()
-                    if kind == _LOWER:
-                        w.put(0b10, 2)
-                    else:
-                        w.put(0b1110, 4)
-                    w.count(size)
-                    for p in range(at, at + size):
-                        w.put(_nibble(s[p]), 4)
-                    at += size
-                    continue
-            used = self.template(at)
-            if used:
-                at += used
                 continue
             for i, seq in enumerate(SEQUENCES):
                 if s.startswith(seq, at):

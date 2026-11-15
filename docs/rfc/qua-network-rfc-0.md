@@ -220,6 +220,40 @@ substantial share of the mean frame (section 13).
 - **[proposed]** Header contents: protocol version (5.10), flags, source
   callsign and SSID (encoded as in 5.8), a per-source sequence number, hop
   limit, and payload length. Everything else is a TLV.
+- **[agreed]** The header also has the type of the PDU. One PDU has one
+  type (5.11).
+- **[proposed]** The header is 14 bytes, in this layout:
+
+  | Offset | Bytes | Field |
+  |---|---|---|
+  | 0 | 1 | Version byte (5.10). |
+  | 1 | 1 | Hop limit, 3 bits. Flags, 5 bits. |
+  | 2 | 1 | Type (5.11). |
+  | 3 | 1 | Payload length. |
+  | 4 | 8 | Source identifier (5.8), in big-endian order. |
+  | 12 | 2 | Sequence number, in big-endian order. |
+
+- **[agreed]** The version byte is the first byte of the PDU. A receiver
+  reads it before every other field, so it knows how to read them.
+- **[agreed]** The sequence number has 16 bits. A station starts at a
+  random value each time that it starts. It adds 1 for each PDU that it
+  sends. After 65535, the next number is 0.
+- **[agreed]** A sequence number can therefore occur again. A relay or a
+  receiver keeps a deduplication entry for a limited time only (6.2).
+- **[agreed]** The header has these three flags:
+
+  | Flag | Meaning |
+  |---|---|
+  | No Internet | A gateway does not carry the PDU from radio to the Internet. |
+  | Translated | A gateway made the PDU from a legacy packet (section 14, question 10). |
+  | Authenticated | The PDU has an authentication tag (section 10). |
+
+- **[proposed]** In the second byte, from the most significant bit down:
+  the hop limit in 3 bits, then the flags No Internet, Translated and
+  Authenticated, then 2 reserved bits. A source writes 0 in a reserved
+  bit. A receiver ignores a reserved bit.
+- **[open]** How a receiver finds the end of the TLV area in a PDU that
+  has an authentication tag. The payload length counts both.
 - **[proposed]** The header never changes in transit. It carries the hop
   limit chosen by the source, not a count that relays decrement; the number
   of hops used is read from the trailer (5.9). The payload length counts
@@ -253,6 +287,25 @@ substantial share of the mean frame (section 13).
   field of length 1, which is not a multiple of 7, and rejects the frame,
   and a QUA Network receiver can tell the two kinds of frame apart from that
   one bit. Both can share a channel and a single HDLC decoder (7.1).
+  The version byte gives this bit (5.10).
+
+The flags hold only what a relay or a gateway needs before it reads a
+TLV. In APRS, the path entries `NOGATE` and `RFONLY` have the function of
+the flag No Internet.
+
+A station with no permanent storage starts its sequence number again
+when it restarts. If it started at 0, the relays near it would have
+entries for the same numbers and would drop its new PDUs. The random
+start and the time limit of an entry are the answer to this. Dropped: a
+sequence number of 32 bits. It costs 2 more bytes in every PDU. With
+these two rules, 16 bits are sufficient for deduplication. The sequence
+number alone does not prevent a replay (section 14, question 7).
+
+A frame that no relay has changed has 19 bytes that are not TLVs: the
+header of 14, the control byte of 5.9 and the checksum of 4. Each hop adds
+3 bytes. For comparison, an AX.25 UI frame with no digipeater has 18: the
+16 bytes of section 4 and a frame check sequence of 2. Each digipeater
+adds 7 (derived).
 
 ### 5.2 TLV container
 
@@ -275,6 +328,8 @@ substantial share of the mean frame (section 13).
   [`docs/spec/03-tlv.md`](../spec/03-tlv.md).
 - **[agreed]** A tag may repeat, for example for several values of one
   telemetry item.
+- **[agreed]** Each PDU type has its own tag space (5.11). A tag has a
+  meaning only together with the type.
 
 Why this container:
 
@@ -553,7 +608,7 @@ binary16. Three reasons:
 A non-normative sketch of what a position report might look like:
 
 ```
-QUA1 N0CALL-9 seq=1042 hop=2 pos=24.2500000,120.6700000 alt=152 sym=/> cmt="mobile"
+QUA1 N0CALL-9 position seq=1042 hop=2 pos=24.2500000,120.6700000 alt=152
 ```
 
 An earlier revision claimed the mapping for every PDU, compressed fields
@@ -1258,13 +1313,101 @@ Computed with the `blake3` Python package (1.0.11).
     a new compressed field format.
 - **[agreed]** The header carries the major version and the minor version.
   The version marker of the text form follows the header (5.4).
-- **[proposed]** The two numbers are 4 bits each and share one byte. The
-  major version is the upper 4 bits. A comparison of two version bytes as
-  numbers then gives the order of the versions.
+- **[agreed]** The two numbers share the version byte, which is the first
+  byte of the PDU (5.1). From the most significant bit down, the byte has
+  the major version in 3 bits, the minor version in 4 bits, and one bit
+  that is always 1.
+- A comparison of two version bytes as numbers gives the order of the
+  versions.
+
+An earlier proposal gave each number 4 bits. It was in conflict with the
+first-byte rule of 5.1: with the version in the first byte, the minor
+version could only be odd. The author replaced it. The minor version has
+the larger field, because a new TLV needs only a new minor version, so
+this number grows faster.
 
 The specification can fix the compressed field formats, because few fields
 need compression. In practice these are the strings and the bitmap. The
 other fields are compact binary encodings of data.
+
+### 5.11 PDU types
+
+- **[agreed]** One PDU has one type. The header gives the type (5.1). A
+  PDU does not mix the content of two types.
+- **[agreed]** Each type has its own tag space (5.2). A later extension
+  can then add a TLV to one type and not change another type.
+- **[agreed]** The definition of a type is its schema: the list of the
+  TLVs that a PDU of the type can hold.
+- **[agreed]** A subgroup is a set of TLVs that stations often send
+  together, for example the coordinates and the altitude. The
+  specification defines a subgroup once. The schema of a type includes a
+  subgroup by reference.
+- **[agreed]** The schema of a type can include the position subgroup, if
+  the content of the type belongs to a place. A weather PDU is an example.
+- **[agreed]** A subgroup is a logical unit of the specification. It has
+  no effect on the wire format: a PDU has no mark for a subgroup, and a
+  decoder reads the TLVs of a subgroup as it reads every other TLV.
+- **[agreed]** Each schema states the tags of the TLVs of a subgroup that
+  it includes. The tags of one subgroup can therefore differ between two
+  types.
+- **[proposed]** The type field is one byte.
+- **[proposed]** The types are these:
+
+  | Type | Content | Sent | Legacy APRS use |
+  |---|---|---|---|
+  | Position | Coordinates, altitude, course, speed. | When the station moves. | Position report, Mic-E, compressed position |
+  | Station information | Symbol (5.6), comment or status text (5.7), frequency, software. | Seldom. | Comment, status report, frequency specification |
+  | Weather | Weather values, in the units of 5.3. The position subgroup. | At a fixed interval. | Weather report |
+  | Telemetry | Values that describe themselves (5.3). | At a fixed interval. | Telemetry report and its definition packets |
+  | Message | Addressee, message identifier, text, acknowledgement, segment (6.5). | On an event. | Message, bulletin |
+  | Identity and keys | The content of section 10. | Seldom. | None |
+
+- **[proposed]** A receiver keeps, for each station, the most recent PDU
+  of each type. A new PDU of a type replaces the earlier PDU of that type
+  as a whole. A TLV that the new PDU does not have has no value.
+- **[proposed]** A relay forwards a PDU of a type that it does not know.
+  The header is the same for every type. The text form of such a PDU has
+  the number of the type, and each TLV as a tag and hexadecimal digits
+  (5.4).
+- **[proposed]** A new type needs only a new minor version (5.10).
+- The packet class of 6.3 and of the trunk filters of 8.2 is the type.
+- **[agreed]** An object is not a type. The object name is a subgroup
+  that the schema of a type can include. If a PDU has an object name, its
+  content describes that object. If it has none, its content describes the
+  source.
+- **[agreed]** The Object and the Item of APRS are one thing here: a PDU
+  with an object name. The position of a repeater is a position PDU with
+  the name of the repeater. Its frequency is a station information PDU
+  with the same name.
+- **[proposed]** A receiver keeps the most recent PDU of each type for
+  each object of a source, as it does for the source itself.
+- **[open]** Which types include the object name, and how a source states
+  that an object no longer exists.
+
+An object as a type of its own was not adopted. Its schema would hold a
+position, a text and weather data together, which is the mix that a type
+prevents.
+
+Why a PDU has one type:
+
+- Content with different rates does not travel together. A position
+  changes when the station moves. A comment, a frequency and a symbol
+  almost never change. In APRS, a comment is part of each position
+  report, so a station sends it again each time. 5.7 has the same
+  observation.
+- An absent field has one meaning. In a PDU that can hold any mix of
+  fields, a position with no comment can mean that the comment did not
+  change, or that the station removed it. With types, the rule above
+  decides.
+- The core position report of goal G4 has a size limit. A PDU that can
+  hold any TLV has none.
+- A rule for one kind of traffic reads one field: a trunk filter, a
+  recommended size, or a rule that only verified sources send messages
+  (10.4).
+
+A cost is that a station sends more PDUs. Each PDU has the 19 bytes of
+5.1, and a preamble and a channel access on air. The measurement of
+section 15, step 11 gives how often stations send the same comment again.
 
 ## 6. Size budget
 
@@ -1303,6 +1446,9 @@ it.
   receiver must hold reassembly state.
 - **[agreed]** The deduplication key is `(source, sequence number)`, not a
   hash of the frame bytes, because the hop trace grows in transit.
+- **[agreed]** A relay or a receiver keeps a deduplication entry for a
+  limited time. A sequence number can occur again (5.1). **[open]** The
+  length of that time.
 - **[proposed]** Link-level fragmentation MAY exist on point-to-point trunks
   that have ARQ. Access-network receivers never see it.
 
@@ -1468,6 +1614,10 @@ by speed. It recommends a bitrate and lets the airtime budget do the rest.
 
 - **[agreed]** Gateway provenance (who received the packet, on which port,
   through which gateways) is a first-class field, designed in from the start.
+- **[agreed]** Gateway provenance is not part of the PDU. A gateway does
+  not change a PDU (6.2). The provenance travels next to the PDU, in the
+  envelope of the link that carries the PDU between gateways (7.3, 8.2).
+- **[open]** The format of that envelope.
 
 ## 9. Medium access
 
@@ -1666,6 +1816,13 @@ before any of it is treated as sound.
 33. A unit chosen for agreement with the SI where another unit is the
     practical one.
 34. A special value of a number used as an error code.
+35. One fact in two places of a packet, such as a second copy of the hop
+    limit (5.9). A rule is then necessary for the case that the two
+    differ.
+36. Content with different rates in one packet. The station then sends
+    the part that does not change again with each part that does.
+37. A packet in which an absent field can mean "not changed" or
+    "removed".
 
 ## 13. Measurements from the APRS-IS corpus
 
@@ -1760,7 +1917,8 @@ anything is decided on them.
 ## 14. Open questions
 
 1. TLV container: the size of the tag space, whether tag bits tell a
-   receiver what to do with an unknown TLV, and the tag table (5.2).
+   receiver what to do with an unknown TLV, and the tag table of each
+   PDU type (5.2, 5.11).
 2. The exact PDU limit below 255 bytes, given the link envelope (6.1).
 3. The airtime budget: its value, its window, and how it is expressed per PHY
    (6.3).
@@ -1773,14 +1931,16 @@ anything is decided on them.
 7. Cryptographic review of the TESLA parameters, the truncated Schnorr
    challenge, and the chain rollover construction (10.4, 10.6). Also of a
    signature or a MAC over the uncompressed form instead of the bytes as
-   sent (5.5).
+   sent (5.5). Also of replay protection: the sequence number has 16 bits
+   and starts at a random value (5.1), so 10.4 cannot rely on it alone.
 8. The format and distribution of infrastructure attestations (10.5).
 9. Area identifiers: how they are assigned and by whom (8.2).
 10. Migration: a translation between legacy APRS and QUA Network at a
     gateway can lose information (3.2). Which kinds of legacy packet does a
     gateway translate? What does it do with a legacy packet that has no QUA
-    Network form? How is a translated packet marked? Who is the source of a
-    translated PDU, and who issues its sequence number (6.5)?
+    Network form? Who is the source of a translated PDU, and who issues
+    its sequence number (6.5)? A translated PDU has the flag Translated of
+    5.1.
     How does a gateway round a value, and how much loss is reasonable
     (5.3)? `docs/interop/` holds the work on the translation.
 11. Message reliability: acknowledgement, retry policy and segment
@@ -1828,6 +1988,8 @@ anything is decided on them.
       get a meaning in a later minor version. Which values does the
       specification reserve as "ignore" instead? This waits for the
       definition of the formats.
+    - The version byte holds 8 major versions and 16 minor versions. What
+      happens when one of the two fields is full?
 24. Decimal number and units (5.3):
     - The rule against a multiple of 10 removes the digit count as a
       statement of resolution. Is that correct, given the precision item
@@ -1846,6 +2008,25 @@ anything is decided on them.
       temperature in kelvin and pressure in pascals. The record is not a
       wire format, so the units can differ. Does the record change to the
       units of 5.3?
+25. Header (5.1):
+    - The positions of the flags in the second byte, and the use of the
+      two reserved bits.
+    - How a receiver finds the end of the TLV area in a PDU that has an
+      authentication tag.
+    - The exact rule for the flag No Internet: which stations obey it,
+      and whether it also applies to a trunk (8.2).
+    - How long a relay or a receiver keeps a deduplication entry (6.2).
+26. The envelope that carries gateway provenance next to a PDU (8.3).
+27. PDU types (5.11):
+    - The list of types and the schema of each.
+    - The list of subgroups.
+    - Which types include the object name, and how a source states that
+      an object no longer exists.
+    - Are the comment and the status text one field or two?
+    - Is a bulletin a message to a group?
+    - Do the station capabilities and the queries of APRS get a form?
+    - Which type numbers are for experiments?
+    - The interval of each type, with the airtime budget of 6.3.
 
 ## 15. Next steps
 
@@ -1874,7 +2055,9 @@ anything is decided on them.
 6. Draft the header and TLV tag table. Re-encode the corpus. Report, per
    candidate: the length distribution per packet class and the resulting
    airtime per PHY. The re-encoding can drop legacy content that has no
-   QUA Network field (3.2). It measures size and airtime only.
+   QUA Network field (3.2). It measures size and airtime only. The header
+   fields are in 5.1, and the PDU types are in 5.11. The schema and the
+   tag table of each type are the part that remains.
 7. Dropped. An earlier revision listed a check of a semantic round trip
    here: APRS to semantic record to QUA Network to semantic record, with
    equal records. The author dropped the check. It tested a goal that QUA

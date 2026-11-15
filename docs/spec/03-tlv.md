@@ -15,6 +15,9 @@ This file specifies how the fields of a PDU are laid out as a sequence of
 TLVs: how a tag and a length are written, and in what order TLVs appear. It
 does not assign tags or define the content of any TLV.
 
+**[agreed]** Each PDU type has its own tag space (RFC 5.11). A tag has a
+meaning only together with the type of the PDU.
+
 The TLV area follows the header (RFC 5.1). Its length follows from the
 header. The hop trace (RFC 5.9) is not part of it.
 
@@ -90,5 +93,6 @@ unchanged, in place, when it relays or logs the PDU (RFC 5.2).
 - Whether some bits of a tag say what a receiver does with a TLV it does not
   know (ignore it, or not act on the PDU), in the manner of CoAP option
   numbers.
-- The tag table.
+- The tag table of each PDU type. The schema of a type also states the tags
+  of each subgroup that it includes (RFC 5.11).
 - Test vectors, including areas a decoder must reject.

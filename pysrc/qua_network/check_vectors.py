@@ -12,16 +12,7 @@ from pathlib import Path
 import click
 
 from qua_network import icon, identifier
-
-
-def crc32c(data):
-    """CRC-32C (Castagnoli), bit by bit, with the parameters of RFC 5.1."""
-    crc = 0xFFFFFFFF
-    for byte in data:
-        crc ^= byte
-        for _ in range(8):
-            crc = (crc >> 1) ^ (0x82F63B78 if crc & 1 else 0)
-    return crc ^ 0xFFFFFFFF
+from qua_network.crc import crc32c
 
 
 def check_identifier(v):
@@ -39,8 +30,14 @@ def check_hop_hash(v):
     ident = int(v["identifier"], 16)
     if identifier.encode(v["text"]) != ident:
         return "identifier does not match text"
-    got = identifier.hop_hash(ident).hex().upper()
-    return None if got == v["hash"] else f"hash is {got}"
+    if ident.to_bytes(8, "little").hex().upper() != v["identifier_bytes"]:
+        return "identifier_bytes are not the identifier in little-endian order"
+    got = identifier.hop_hash(ident)
+    if got != int(v["hash"], 16):
+        return f"hash is {got:06X}"
+    if got.to_bytes(3, "little").hex().upper() != v["hash_bytes"]:
+        return "hash_bytes are not the hash in little-endian order"
+    return None
 
 
 def check_crc32c(v):

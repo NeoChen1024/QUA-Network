@@ -42,17 +42,18 @@ format of 1 byte.
 
 **[agreed]** These rules apply to each format:
 
-1. `e` comes before `m`. `e` has the most significant bits of the first
-   byte.
-2. The bytes are in big-endian order.
+1. The format is one integer of 16, 24 or 32 bits. `e` has its most
+   significant bits, and `m` has the other bits.
+2. The integer is in little-endian order
+   ([06-numbers-units-text](06-numbers-units-text.md) section 2).
 3. `e` and `m` are two's-complement integers.
 
 **[agreed]** The length of the TLV gives the format. A TLV therefore
 holds one decimal number at most, and the number is the last field of the
 TLV.
 
-In the formats of 2 and 3 bytes, the first hexadecimal digit is `e`. The
-bytes `F0 FD` have `e` = −1 and `m` = 253. The value is 25.3.
+The bytes `FD F0` are the integer `F0FD`. Its 4 most significant bits
+are `e` = −1, and the other 12 bits are `m` = 253. The value is 25.3.
 
 ## 4. One encoding for one value
 
@@ -77,8 +78,8 @@ negative infinity. They are in the 2-byte format only.
 
 | Value | Bytes | `m` | `e` |
 |---|---|---|---|
-| Positive infinity | `70 00` | 0 | 7 |
-| Negative infinity | `80 00` | 0 | −8 |
+| Positive infinity | `00 70` | 0 | 7 |
+| Negative infinity | `00 80` | 0 | −8 |
 
 **[agreed]** These rules apply:
 
@@ -99,7 +100,7 @@ cases:
 
 1. The number does not have 2, 3 or 4 bytes.
 2. `m` is a multiple of 10 and is not 0.
-3. `m` is 0, and the bytes are not `00 00`, `70 00` or `80 00`.
+3. `m` is 0, and the bytes are not `00 00`, `00 70` or `00 80`.
 4. A shorter format holds `m` and `e`.
 5. The number is an infinity, and the field does not allow it.
 
@@ -137,27 +138,27 @@ examples are not test vectors.
 | Value | `m` | `e` | Bytes | Text |
 |---|---|---|---|---|
 | 0 | 0 | 0 | `00 00` | `0` |
-| 9 | 9 | 0 | `00 09` | `9` |
-| 100 | 1 | 2 | `20 01` | `100` |
-| 25.3 | 253 | −1 | `F0 FD` | `25.3` |
-| −12.7 | −127 | −1 | `FF 81` | `-12.7` |
-| 853.4 | 8534 | −1 | `F0 21 56` | `853.4` |
-| 1013.2 | 10132 | −1 | `F0 27 94` | `1013.2` |
-| 10668.25 | 1066825 | −2 | `FE 10 47 49` | `10668.25` |
-| 3 × 10^9 | 3 | 9 | `09 00 00 03` | `3e9` |
-| −15 × 10^−12 | −15 | −12 | `F4 FF FF F1` | `-15e-12` |
-| Positive infinity | 0 | 7 | `70 00` | `inf` |
-| Negative infinity | 0 | −8 | `80 00` | `-inf` |
+| 9 | 9 | 0 | `09 00` | `9` |
+| 100 | 1 | 2 | `01 20` | `100` |
+| 25.3 | 253 | −1 | `FD F0` | `25.3` |
+| −12.7 | −127 | −1 | `81 FF` | `-12.7` |
+| 853.4 | 8534 | −1 | `56 21 F0` | `853.4` |
+| 1013.2 | 10132 | −1 | `94 27 F0` | `1013.2` |
+| 10668.25 | 1066825 | −2 | `49 47 10 FE` | `10668.25` |
+| 3 × 10^9 | 3 | 9 | `03 00 00 09` | `3e9` |
+| −15 × 10^−12 | −15 | −12 | `F1 FF FF F4` | `-15e-12` |
+| Positive infinity | 0 | 7 | `00 70` | `inf` |
+| Negative infinity | 0 | −8 | `00 80` | `-inf` |
 
 Invalid encodings:
 
 | Bytes | Case of section 6 |
 |---|---|
 | `00` | 1 |
-| `10 0A` | 2: `m` is 10 |
-| `10 00` | 3 |
-| `00 00 09` | 4: the 2-byte format holds `m` 9 and `e` 0 |
-| `00 00 00 09` | 4 |
+| `0A 10` | 2: `m` is 10 |
+| `00 10` | 3 |
+| `09 00 00` | 4: the 2-byte format holds `m` 9 and `e` 0 |
+| `09 00 00 00` | 4 |
 
 ## 9. Open items
 

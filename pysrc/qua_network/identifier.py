@@ -6,7 +6,7 @@ research aid for checking vectors and measuring the corpus, not a reference
 implementation.
 """
 
-from blake3 import blake3
+from qua_network.crc import crc32c
 
 ALPHABET = "/0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 BASE = len(ALPHABET)
@@ -85,5 +85,7 @@ def decode(value):
 
 
 def hop_hash(value):
-    """24-bit hop trace entry: first 3 bytes of BLAKE3 over the big-endian identifier."""
-    return blake3(value.to_bytes(8, "big")).digest()[:3]
+    """24-bit hop trace entry, as a number: the 24 least significant bits of
+    CRC-32C over the 8 bytes of the identifier in little-endian order. In a
+    PDU it is 3 bytes in little-endian order."""
+    return crc32c(value.to_bytes(8, "little")) & 0xFFFFFF

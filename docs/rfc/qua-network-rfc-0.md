@@ -247,8 +247,8 @@ removes that word for the PDU.
   | 1 | 1 | Hop limit, 3 bits. Flags, 5 bits. |
   | 2 | 1 | Type (5.11). |
   | 3 | 1 | Source length. |
-  | 4 | 8 | Source identifier (5.8), in big-endian order. |
-  | 12 | 2 | Sequence number, in big-endian order. |
+  | 4 | 8 | Source identifier (5.8), in little-endian order. |
+  | 12 | 2 | Sequence number, in little-endian order. |
 
 - **[agreed]** The version byte is the first byte of the PDU. A receiver
   reads it before every other field, so it knows how to read them.
@@ -316,8 +316,12 @@ removes that word for the PDU.
 - **[proposed]** The checksum is always present, including in authenticated
   PDUs. A TESLA MAC cannot be verified until its key is disclosed later
   (10.4), so relays and receivers need a check they can evaluate at once.
-- **[open]** The byte order of the checksum on the wire, to be fixed with the
-  header layout.
+- **[agreed]** Every integer of more than one byte in a PDU is in
+  little-endian order
+  ([`docs/spec/06-numbers-units-text.md`](../spec/06-numbers-units-text.md)
+  section 2). This includes the source identifier, the sequence number
+  and the checksum. A text or a screen still shows a number with its most
+  significant digit first.
 - **[proposed]** The least significant bit of the first byte of a PDU is 1.
   In AX.25 the first byte of a frame is an address byte whose low bit, the
   extension bit, is always 0. An AX.25 parser therefore sees an address
@@ -329,6 +333,16 @@ removes that word for the PDU.
 The flags hold only what a relay or a gateway needs before it reads a
 TLV. In APRS, the path entries `NOGATE` and `RFONLY` have the function of
 the flag No Internet.
+
+An earlier proposal had the integers of the header in big-endian order,
+and the order of the checksum was open. The author replaced it.
+Little-endian is the order of the processors in current use, so an
+implementation needs no byte swap. One rule for every integer is also
+simpler than a rule for each field. A checksum that follows the data in
+little-endian order also gives a constant result: the CRC-32C of the data
+and the checksum together is `0x48674BC7`. This was run with the CRC-32C
+of the package on 201 inputs of 0 to 199 bytes. The big-endian order does
+not give a constant result.
 
 A station with no permanent storage starts its sequence number again
 when it restarts. If it started at 0, the relays near it would have
@@ -1170,8 +1184,11 @@ the frame.
 
 - **[agreed]** A relay appends one entry. No entry is reserved in advance,
   so a PDU that is never relayed carries a trailer of one byte.
-- **[agreed]** An entry is a 24-bit hash of the relay's identifier: the first
-  3 bytes of BLAKE3 over the 8-byte identifier of 5.8 in big-endian order.
+- **[agreed]** An entry is a 24-bit hash of the relay's identifier. The
+  hash function is CRC-32C, with the parameters of 5.1. Its input is the 8
+  bytes of the identifier of 5.8, as they are in a PDU.
+- **[agreed]** The entry is the 24 least significant bits of that
+  CRC-32C. In the trailer it is 3 bytes in little-endian order.
 - **[agreed]** A hash is sufficient identification because every relay also
   transmits its full identifier periodically in its own beacons. FT8 works
   the same way: a non-standard callsign is sent in full in some messages
@@ -1309,18 +1326,33 @@ Dropped:
 flag set when the PDU has passed between radio links of different kinds,
 for example from a LoRa channel to a 1200 baud one.
 
+An earlier decision made the entry the first 3 bytes of BLAKE3 over the
+identifier in big-endian order. The author replaced it. BLAKE3 is heavy
+for an input of 8 bytes, and a relay already has CRC-32C for the
+checksum. A relay that does no authentication then needs no BLAKE3. The
+entry is not a protection against a deliberate collision: a value of 24
+bits can be matched by trial with each of the two functions.
+
+A check on identifiers that are close to each other, made with a script
+that is not in the repository: 703,040 identifiers from four prefixes, a
+digit and three letters. The 24-bit CRC-32C value gave 11,471 pairs with
+the same entry, and BLAKE3 gave 14,752. A random function gives about
+14,730 (derived: the count of pairs divided by 2^24).
+
 Test vectors:
 
-| Identifier | 8 bytes, big-endian | Hop hash |
-|---|---|---|
-| `N0CALL` | `0000000E5BEBEB3D` | `A8E2C0` |
-| `N0CALL-7` | `0000000E5BEBEB45` | `FF0D58` |
-| `N0CALL-15` | `8000021349190021` | `4F68FE` |
-| `BV5AB-33` | `80000007B01E3AF5` | `A40801` |
-| `PJ4/KA1ABC` | `01C577F1F48964A5` | `902929` |
-| `YW18FIFA/MM-A` | `589FF5E2D11F7466` | `6FF4AF` |
+| Identifier | Bytes in a PDU | Hop hash | Bytes in the trailer |
+|---|---|---|---|
+| `N0CALL` | `3D EB EB 5B 0E 00 00 00` | `0x8ACFF6` | `F6 CF 8A` |
+| `N0CALL-7` | `45 EB EB 5B 0E 00 00 00` | `0xC76C33` | `33 6C C7` |
+| `N0CALL-15` | `21 00 19 49 13 02 00 80` | `0xD6B6EE` | `EE B6 D6` |
+| `BV5AB-33` | `F5 3A 1E B0 07 00 00 80` | `0xF89C9C` | `9C 9C F8` |
+| `PJ4/KA1ABC` | `A5 64 89 F4 F1 77 C5 01` | `0xE05390` | `90 53 E0` |
+| `YW18FIFA/MM-A` | `66 74 1F D1 E2 F5 9F 58` | `0x65DF98` | `98 DF 65` |
 
-Computed with the `blake3` Python package (1.0.11).
+This table is a copy of `vectors/hop-hash.json`. A script that is
+separate from the package computed the values, with a table-driven
+CRC-32C that gives the check value of 5.1.
 
 ### 5.10 Versions
 
@@ -1671,18 +1703,20 @@ every packet is not acceptable.
 
 ### 10.3 Hash function
 
-- **[agreed]** BLAKE3 is the only hash function in the specification. The
-  frame checksum of 5.1 is CRC-32C; it is an error-detecting code, not a
-  hash, and is the one exception to "BLAKE3 everywhere". It is
-  used for hop trace entries (5.9), for the TESLA hash chain, for message
-  authentication codes through its keyed mode, and wherever else a hash is
-  needed, including the Schnorr challenge and the hash of an off-air key.
+- **[agreed]** BLAKE3 is the only cryptographic hash function in the
+  specification. CRC-32C is the checksum of 5.1 and the function of the
+  hop trace entries (5.9); it is an error-detecting code, not a
+  cryptographic hash. BLAKE3 is used for the TESLA hash chain, for message
+  authentication codes through its keyed mode, and wherever else a
+  cryptographic hash is needed, including the Schnorr challenge and the
+  hash of an off-air key. An earlier decision also used BLAKE3 for the hop
+  trace entries (5.9).
 - One primitive keeps microcontroller implementations small. BLAKE3's keyed
   mode is a MAC by construction, so no HMAC wrapper is needed.
 - **[proposed]** Each use has its own domain separation, so that a value
   computed for one purpose can never be valid for another. BLAKE3's
   key-derivation mode with a fixed context string per use is the intended
-  mechanism. Hop trace entries are the plain hash, as specified in 5.9.
+  mechanism.
 - The cryptographic uses remain subject to the review called for below.
 
 ### 10.4 Proposed scheme

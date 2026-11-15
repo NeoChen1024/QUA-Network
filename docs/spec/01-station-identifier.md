@@ -87,9 +87,11 @@ representable. Callsign validity is a separate matter.
 
 ## 7. Byte order
 
-**[open]** The byte order of the identifier inside a PDU, to be fixed with
-the header layout. Where the identifier is the input of a hash, it is the
-8 bytes in big-endian order (RFC 5.9).
+**[agreed]** In a PDU, the identifier is 8 bytes in little-endian order
+([06-numbers-units-text](06-numbers-units-text.md) section 2).
+
+**[agreed]** Where the identifier is the input of the hop hash, the input
+is these 8 bytes, as they are in a PDU (RFC 5.9).
 
 ## 8. Mapping to an AX.25 address
 
@@ -128,6 +130,5 @@ Each value was checked by decoding it back to its text form, and
 - Whether the SSID positions use base 36, with a table that lacks the
   excluded symbol, so that the two SSID rules of section 5 become
   structural. The cost is a mixed radix.
-- The byte order of section 7.
 - The AX.25 encapsulation case of section 8.
 - Vectors for values that a decoder must reject.

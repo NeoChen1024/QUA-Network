@@ -30,6 +30,19 @@ It does not specify these:
 **[agreed]** A quantity is an integer with a fixed scale, or it is a
 decimal number. The definition of a field states which of the two.
 
+**[agreed]** An integer of more than one byte is in little-endian order:
+its least significant byte comes first. This applies to every such
+integer of a PDU.
+
+**[agreed]** The rule is for the bytes of a PDU only. A text, a screen
+and this specification show a number in the usual way, with its most
+significant digit first. The number `0x1234` is the bytes `34 12`.
+
+This rule is about the order of bytes. A bit string is a different
+thing: the compressed forms of the icon and of a text fill each byte from
+its most significant bit ([02-icon](02-icon.md),
+[04-text-compression](04-text-compression.md)).
+
 **[agreed]** A position is in WGS84. No other datum is used.
 
 ## 3. Units

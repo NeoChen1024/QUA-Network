@@ -1,8 +1,8 @@
 [
-  {"text": "N0CALL", "identifier": "0000000E5BEBEB3D", "hash": "A8E2C0"},
-  {"text": "N0CALL-7", "identifier": "0000000E5BEBEB45", "hash": "FF0D58"},
-  {"text": "N0CALL-15", "identifier": "8000021349190021", "hash": "4F68FE"},
-  {"text": "BV5AB-33", "identifier": "80000007B01E3AF5", "hash": "A40801"},
-  {"text": "PJ4/KA1ABC", "identifier": "01C577F1F48964A5", "hash": "902929"},
-  {"text": "YW18FIFA/MM-A", "identifier": "589FF5E2D11F7466", "hash": "6FF4AF"}
+  {"text": "N0CALL", "identifier": "0000000E5BEBEB3D", "identifier_bytes": "3DEBEB5B0E000000", "hash": "8ACFF6", "hash_bytes": "F6CF8A"},
+  {"text": "N0CALL-7", "identifier": "0000000E5BEBEB45", "identifier_bytes": "45EBEB5B0E000000", "hash": "C76C33", "hash_bytes": "336CC7"},
+  {"text": "N0CALL-15", "identifier": "8000021349190021", "identifier_bytes": "2100194913020080", "hash": "D6B6EE", "hash_bytes": "EEB6D6"},
+  {"text": "BV5AB-33", "identifier": "80000007B01E3AF5", "identifier_bytes": "F53A1EB007000080", "hash": "F89C9C", "hash_bytes": "9C9CF8"},
+  {"text": "PJ4/KA1ABC", "identifier": "01C577F1F48964A5", "identifier_bytes": "A56489F4F177C501", "hash": "E05390", "hash_bytes": "9053E0"},
+  {"text": "YW18FIFA/MM-A", "identifier": "589FF5E2D11F7466", "identifier_bytes": "66741FD1E2F59F58", "hash": "65DF98", "hash_bytes": "98DF65"}
 ]

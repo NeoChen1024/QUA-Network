@@ -980,7 +980,24 @@ of date.
 
 #### Choice of preset
 
-**[open]** Not decided. The reference implementation defines 17 presets
+**[agreed]** The candidates are `USX_PSET_DFLT` and `USX_PSET_NO_DICT`.
+The author narrowed the choice to these two after the measurement of
+section 15, step 11. **[open]** Which of the two.
+
+**[proposed]** The specification allows one preset for every string.
+Approach B below is then not used. In the measurement, the best preset
+for each string is only a little better than the best single preset, and
+that figure does not count the marker
+([`docs/research/01-free-text.md`](../research/01-free-text.md)).
+
+**[proposed]** `USX_PSET_DFLT` is the better of the two candidates
+([`docs/research/02-unishox2-reading.md`](../research/02-unishox2-reading.md)).
+The decoders of the two differ little, and an encoder for either can
+leave out the search for a repeat, because the specification does not pin
+an encoder.
+
+The text below records the choice as it was before the measurement. The
+reference implementation defines 17 presets
 (`USX_PSET_DFLT`, `USX_PSET_ALPHA_ONLY`, `USX_PSET_FAVOR_ALPHA`,
 `USX_PSET_NO_DICT`, `USX_PSET_URL` and others). Three ways to use them:
 
@@ -994,7 +1011,7 @@ Every compressed string also has the length byte of this section. Whether
 the preset number is part of the length byte is open (section 14,
 question 16).
 
-**B is the leading candidate. It is not fixed.** A comment field holds URLs,
+**B was the leading candidate before the measurement.** A comment field holds URLs,
 English sentences, Chinese, frequencies and more, so a preset fixed by
 field type is barely a choice. Selecting per string also removes the
 language-bias concern: a preset with English fragments is used only on
@@ -1028,19 +1045,19 @@ Other considerations, whichever approach is taken:
   languages. A text preset builds in English fragments, which do nothing
   for Chinese or Japanese comments.
 - `USX_PSET_NO_DICT` is described in the source as the preset for input
-  with no repeating sequences. It appears to disable back-references. If
-  so, it removes the one part of the encoder where a matching strategy has
-  to be chosen, which makes an encoder simpler to write. Repeats inside a
-  comment of a few dozen bytes are rare, so the loss should be small. Both
-  points are to be confirmed by reading the encoder and by measurement.
+  with no repeating sequences. It has no code for a back-reference, so its
+  encoder has no search for a repeat (read at commit `6ec2ff0`). On the
+  capture, it gives a slightly larger size than the default preset. The
+  two research reports above have the reading and the figures.
 - Unishox2 also accepts custom presets. A preset built from APRS traffic
   would be a small dictionary that ages, which the no-dictionary rule
   excludes.
 
-The decision waits for the corpus measurement (section 15): the total
+The decision waited for the corpus measurement (section 15): the total
 length with the best preset per string, against the total with the single
 best preset overall. A difference of a percent or two does not justify the
-extra rules.
+extra rules. The measurement is now made
+([`docs/research/01-free-text.md`](../research/01-free-text.md)).
 
 #### Risk to manage
 
@@ -1057,10 +1074,10 @@ redundancy is better removed by a dense TLV encoding, and it needed a
 mandatory method identifier in the header and a decompression step at every
 filtering gateway, for little expected gain.
 
-Related, and possibly a larger saving: a station need not send the same
-comment in every beacon. The specification can recommend that unchanged text
-is sent every Nth beacon. Each packet stays self-contained; a receiver that
-remembers the last comment does so for display only.
+Related, and a larger saving: a station need not send the same comment
+in every beacon. In the measurement, most comments are equal to the
+comment before from the same station. The PDU types of 5.11 use this: the
+text is in the station information PDU, which a station sends seldom.
 
 ### 5.8 Callsign encoding
 
@@ -1854,6 +1871,7 @@ count they came from.
 | Payload length by data type | `qua-length-stats` |
 | Sending software and devices by destination callsign | `qua-tocall-stats` |
 | Source SSID classes | one-off script, not yet in the package |
+| Repetition of free text, and its size under each Unishox2 preset | `qua-legacy-text` |
 
 ### 13.3 Observations
 
@@ -1861,6 +1879,9 @@ These are the qualitative results the design relies on. They held in the
 runs made so far and are to be re-checked against a current run before
 anything is decided on them.
 
+- Most comments and status texts are equal to the text before from the
+  same station. To send a text only when it changes saves more than to
+  compress it (`docs/research/01-free-text.md`).
 - A 255-byte limit excludes a negligible share of RF payloads, before any
   re-encoding. Judging by per-type maxima, most of what it excludes is
   user-defined (`{`) packets.
@@ -1951,10 +1972,12 @@ anything is decided on them.
 14. Recommended sizes per packet class (6.3).
 15. The byte limit of the Unicode symbol form, proposed as 8 (5.6).
 16. Unishox2 (5.7):
-    - Are presets chosen per string (the leading candidate), or is one
-      preset pinned? Which presets are allowed? Whether presets are used
-      at all is not decided. It waits for the measurement of step 11 in
-      section 15, because the strings of the corpus are not tested yet.
+    - Which preset: `USX_PSET_DFLT` or `USX_PSET_NO_DICT`? The author
+      narrowed the choice to these two. One preset for every string is
+      proposed (5.7).
+    - Which parts of the Unishox2 format does the specification make
+      invalid, if any? `docs/research/02-unishox2-reading.md` lists the
+      parts.
     - How is the decoder specified independently of the reference
       implementation? Does a reduced implementation with only the allowed
       presets replace the reference implementation?
@@ -2076,7 +2099,8 @@ anything is decided on them.
     Cyrillic and others). Record the best preset for each string, and
     compare the total with per-string selection against the total with the
     single best preset. Also measure how often a station repeats its
-    previous comment unchanged.
+    previous comment unchanged. Done for one capture window:
+    `docs/research/01-free-text.md`.
 12. Test the native HDLC binding on real equipment: send frames whose first
     byte has the low bit set through Dire Wolf and through hardware KISS
     TNCs, and confirm that they are transmitted and received intact, and

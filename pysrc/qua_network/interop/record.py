@@ -8,7 +8,8 @@ of docs/legacy (values.py) and converts each value to its record unit
 weather body that of docs/interop/03-weather.md. The telemetry body and
 the telemetry definition body are those of docs/interop/04-telemetry.md.
 The status body is that of docs/interop/05-status.md. The message body and
-the bulletin body are those of docs/interop/06-message.md.
+the bulletin body are those of docs/interop/06-message.md. The frequency
+body is that of docs/interop/07-frequency.md.
 """
 
 import calendar
@@ -74,6 +75,12 @@ from qua_network.interop.values import (
     val_ext_phg,
     val_ext_phgr,
     val_ext_rng,
+    val_freq,
+    val_freq_dstar,
+    val_freq_offset,
+    val_freq_range,
+    val_freq_rx,
+    val_freq_tone,
     val_item_state,
     val_lat,
     val_lat_amb,
@@ -166,6 +173,12 @@ UNITS = {
     "raw": lambda n, w: (n, w),
     # 05-status section 3.1.
     "watt.erp": lambda k, w: (10 * k * k, 10 * (2 * k + 1)),
+    # 07-frequency section 3.1.
+    "kHz": lambda n, w: (n / 1000, w / 1000),
+    "MHz": lambda n, w: (n, w),
+    "10kHz": lambda n, w: (n / 100, w / 100),
+    "Hz": lambda n, w: (n, w),
+    "km": lambda n, w: (n, w),
 }
 
 
@@ -263,6 +276,15 @@ READ = frozenset(
         "nws.kw",
         "nws.level",
         "nws.ref",
+        "freq.lead",
+        "freq.mhz",
+        "freq.uw",
+        "freq.ghz",
+        "freq.rx",
+        "freq.tone",
+        "freq.offset",
+        "freq.range",
+        "freq.dstar",
         "time.dhm",
         "time.hms",
         "lat",
@@ -337,6 +359,20 @@ STATUS_ORDER = ("locator", "symbol", "text", "beam_heading", "beam_power", "noar
 # 06-message sections 3 and 4.
 MSG_ORDER = ("addressee", "kind", "text", "id", "reply_ack", "ack_id", "noarchive")
 BLN_ORDER = ("kind", "id", "group", "level", "text", "reference", "noarchive")
+# 07-frequency section 3.
+FREQ_ORDER = (
+    "frequency",
+    "rx_frequency",
+    "tone_kind",
+    "tone",
+    "dcs",
+    "narrow",
+    "offset",
+    "range",
+    "dstar",
+    "dstar_repeater",
+    "dstar_module",
+)
 MSG_ID_RULES = ("msg.id.open", "msg.id", "msg.id.mm", "msg.id.close", "msg.id.aa")
 # Keyword token -> (kind, field of the body, item token, most fields).
 TLM_LISTS = {
@@ -367,7 +403,8 @@ FIELD_ORDER += tuple("telemetry." + name for name in TLM_ORDER)
 FIELD_ORDER += tuple("telemetry_definition." + name for name in TLM_DEF_ORDER)
 FIELD_ORDER += tuple("status." + name for name in STATUS_ORDER)
 FIELD_ORDER += tuple("message." + name for name in MSG_ORDER)
-FIELD_ORDER += tuple("bulletin." + name for name in BLN_ORDER) + ("report_time",)
+FIELD_ORDER += tuple("bulletin." + name for name in BLN_ORDER)
+FIELD_ORDER += tuple("frequency." + name for name in FREQ_ORDER) + ("report_time",)
 _DEST_CHILDREN = ("mice.dest.a", "mice.dest.b", "mice.dest.c", "mice.dest.ns", "mice.dest.lonoff", "mice.dest.we")
 _DEST_RULES = frozenset(("dest.mice", "mice.dest") + _DEST_CHILDREN)
 _LON_DEST_RULES = frozenset(("dest.mice", "mice.dest", "mice.dest.lonoff", "mice.dest.we"))
@@ -382,9 +419,11 @@ class Pre:
     findings that concern it with their effects, its provenance, and the
     reasons when the value rule gives no value."""
 
-    __slots__ = ("payload", "judged", "frm", "reasons", "in_range", "notes")
+    __slots__ = ("payload", "judged", "frm", "reasons", "in_range", "notes", "extra")
 
-    def __init__(self, payload, judged=(), frm=(), reasons=(), in_range=True, notes=()):
+    def __init__(self, payload, judged=(), frm=(), reasons=(), in_range=True, notes=(), extra=None):
+        # extra: members that a value object has in addition to its kind.
+        self.extra = extra
         self.payload = payload
         self.judged = list(judged)
         self.frm = list(frm)
@@ -457,6 +496,8 @@ class Decoder:
                 o["from"] = pre.frm
             return o
         o = quantity(pre.payload) if isinstance(pre.payload, Q) else dict(pre.payload)
+        if pre.extra:
+            o.update(pre.extra)
         if not inner:
             o["from"] = pre.frm
         if worst == COMPUTABLE:
@@ -488,7 +529,7 @@ class Decoder:
         }
         if self.outer is not None:
             out["outer"] = self.outer
-        body = obj = wx = tlm = tdef = status = msg = bln = None
+        body = obj = wx = tlm = tdef = status = msg = bln = freq = None
         if not scan.unknown_format:
             pre = wpre = tpre = None
             self.weather = self.format in WEATHER_FORMATS or self.format == "item.dti" and self._item_weather()
@@ -517,6 +558,10 @@ class Decoder:
                 msg = self._lists(self._message(), "message", MSG_ORDER)
             if self.format in ("bln.dti", "nws.dti"):
                 bln = self._lists(self._bulletin(), "bulletin", BLN_ORDER)
+            # 07-frequency section 2: only in a record with another body.
+            fpre = self._frequency() if any(b is not None for b in (body, status)) else None
+            if fpre:
+                freq = self._lists(fpre, "frequency", FREQ_ORDER)
         bodies = (
             ("object", obj),
             ("position", body),
@@ -526,6 +571,7 @@ class Decoder:
             ("status", status),
             ("message", msg),
             ("bulletin", bln),
+            ("frequency", freq),
         )
         has_body = any(b is not None for _, b in bodies)
         out["uses"] = [name for name, b in bodies if b is not None]
@@ -1051,6 +1097,54 @@ class Decoder:
         ref = self._number("nws.ref", sep, a=1)
         if ref is not None:
             w["reference"] = ref
+        return w
+
+    # --- Frequency body (07-frequency section 3) ---------------------------
+
+    def _frequency(self):
+        """The frequency body, before the mode. It is empty if the text has
+        no frequency specification."""
+        line = self.line
+
+        def item(t):
+            # The token of an item includes its leading SP, if it has one.
+            b = line[t.start : t.end]
+            return b[1:] if b[:1] == b" " else b
+
+        w = {}
+        f = self.tok("freq.mhz") or self.tok("freq.uw") or self.tok("freq.ghz")
+        if f is not None:
+            # A receiver ignores the case of MHz: its syntax finding is kept.
+            w["frequency"] = Pre(val_freq(f.rule, line[f.start : f.end]), (), [_ref(f)])
+        nofreq = () if f is not None else ("amb.freq.nofreq",)
+        t = self.tok("freq.rx")
+        if t is not None:
+            w["rx_frequency"] = Pre(val_freq_rx(item(t)), (), [_ref(t)])
+        t = self.tok("freq.tone")
+        if t is not None:
+            kind, tone, dcs, narrow, row = val_freq_tone(item(t))
+            w["tone_kind"] = Pre({"code": kind}, (), [_ref(t)], notes=nofreq)
+            if tone is not None:
+                doubt = [(row, COMPUTABLE)] if row else ()
+                w["tone"] = Pre(tone, doubt, [_ref(t)], notes=() if kind == "burst" else ("amb.val.tone",))
+            if dcs is not None:
+                w["dcs"] = Pre({"bytes": text(dcs)}, (), [_ref(t)])
+            if narrow:
+                w["narrow"] = Pre({"flag": True}, (), [_ref(t)])
+        t = self.tok("freq.offset")
+        if t is not None:
+            judged = [(x, COMPUTABLE) for x in self.on(("freq.offset",), t) if x.kind == "value"]
+            w["offset"] = Pre(val_freq_offset(item(t)), judged, [_ref(t)], notes=nofreq)
+        for t in self.toks("freq.range"):
+            direction, q = val_freq_range(item(t))
+            w.setdefault("range", []).append(Pre(q, (), [_ref(t)], notes=nofreq, extra={"dir": direction}))
+        t = self.tok("freq.dstar")
+        if t is not None:
+            w["dstar"] = Pre({"flag": True}, (), [_ref(t)])
+            rpt = val_freq_dstar(line[t.start : t.end])
+            if rpt is not None:
+                w["dstar_repeater"] = Pre({"bytes": text(rpt[0])}, (), [_ref(t)])
+                w["dstar_module"] = Pre({"bytes": text(rpt[1])}, (), [_ref(t)])
         return w
 
     # --- Status body (05-status section 3) --------------------------------

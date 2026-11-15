@@ -45,8 +45,8 @@ packet. A status report with no text has no `text`.
 **[proposed]** `text` has every byte of the status text. The bytes of the
 beam heading, of a frequency and of `!x!` are also in `text`.
 
-**[proposed]** A frequency in the text has no value rule yet. Its tokens
-are in `undecoded`.
+**[proposed]** A frequency in the text gives the frequency body
+([07-frequency](07-frequency.md)). The status body does not change.
 
 ### 3.1 Units
 

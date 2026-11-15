@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """Value rules of the value files of docs/legacy (10-values.md,
 11-values-object.md, 12-values-weather.md, 13-values-telemetry.md,
-14-values-status.md and 15-values-message.md), as integer arithmetic on
+14-values-status.md, 15-values-message.md and 16-values-frequency.md),
+as integer arithmetic on
 token bytes.
 
 Each function named ``val_*`` is the value rule with the same ID (dots
@@ -797,3 +798,72 @@ def effect_msg_number(f):
     if f.kind == "syntax":
         return NONE
     return COMPUTABLE if f.kind in ("value", "unstated") else KEPT
+
+
+# --- 16-values-frequency ------------------------------------------------------
+
+# val.freq.uw: the letter gives the frequency in hundreds of megahertz.
+UW_HUNDREDS = dict(zip(b"ABCDEFGHIJKLMNO", (12, 23, 24, 34, 56, 57, 58, 101, 102, 103, 104, 105, 240, 241, 242)))
+RANGE_DIRS = {0x52: "all", 0x4E: "north", 0x53: "south", 0x45: "east", 0x57: "west"}
+TONE_KINDS = {0x54: "tone", 0x43: "ctcss", 0x44: "dcs"}
+# val.freq.tone: the tones of the list of 16-values-frequency section 4, in
+# tenths of a hertz, by their whole part.
+_TONES = (670, 693, 719, 744, 770, 797, 825, 854, 885, 915, 948, 974, 1000, 1035, 1072, 1109, 1148, 1188, 1230, 1273)
+_TONES += (1318, 1365, 1413, 1462, 1514, 1567, 1622, 1679, 1738, 1799, 1862, 1928, 2035, 2107, 2181, 2257, 2336, 2418, 2503)
+# The 12 common tones that are not in the standard.
+_TONES += (1500, 1598, 1655, 1713, 1773, 1835, 1899, 1966, 1995, 2065, 2291, 2541)
+TONE_TENTHS = {t // 10: t for t in _TONES}
+TONE0 = "amb.val.tone0"
+TONE_IN_TENTHS = "amb.val.tonetenths"
+TONE_RANGE = "amb.val.tonerange"
+
+
+def val_freq(rule, b):
+    """val.freq.mhz, val.freq.uw and val.freq.ghz."""
+    if rule == "freq.ghz":
+        return Q("MHz", 1000 * int(b[0:3].replace(b" ", b"0")) + int(b[4:7]))
+    mhz = int(b[0:3]) if rule == "freq.mhz" else 100 * UW_HUNDREDS[b[0]] + int(b[1:3])
+    if b[6] == 0x20:
+        return Q("kHz", 1000 * mhz + 10 * int(b[4:6]), 10)
+    return Q("kHz", 1000 * mhz + int(b[4:7]))
+
+
+def val_freq_rx(b):
+    return Q("kHz", 1000 * int(b[0:3]) + int(b[4:7]))
+
+
+def val_freq_tone(b):
+    """(kind, tone frequency or None, DCS code or None, narrow, the
+    catalogue row that makes the tone computable or None)."""
+    narrow = 0x61 <= b[0] <= 0x7A
+    if b[1:] == b"off":
+        return "off", None, None, narrow, None
+    if b[1:] == b"750":
+        return "burst", Q("Hz", 1750), None, narrow, None
+    kind = TONE_KINDS[b[0] & 0xDF]
+    if kind == "dcs":
+        return kind, None, b[1:4], narrow, None
+    n = int(b[1:4])
+    if n in TONE_TENTHS:
+        return kind, Q("Hz", TONE_TENTHS[n], 1, 10), None, narrow, None
+    if n == 0:
+        return kind, Q("Hz", 0), None, narrow, TONE0
+    if n in _TONES:
+        return kind, Q("Hz", n, 1, 10), None, narrow, TONE_IN_TENTHS
+    # A number that is not in the list is a value only from 60 to 300.
+    return kind, Q("Hz", n), None, narrow, None if 60 <= n <= 300 else TONE_RANGE
+
+
+def val_freq_offset(b):
+    n = int(b[1:4])
+    return Q("10kHz", -n if b[0] == 0x2D else n)
+
+
+def val_freq_range(b):
+    """(direction, range)."""
+    return RANGE_DIRS[b[0]], Q("mile" if b[3] == 0x6D else "km", int(b[1:3]))
+
+
+def val_freq_dstar(b):
+    """(repeater, module) of the form of 15 bytes, or None."""
+    return (b[7:13].rstrip(b" "), b[14:15]) if len(b) == 15 else None

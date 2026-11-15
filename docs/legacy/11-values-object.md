@@ -30,8 +30,9 @@ These parts are outside this file:
   ([05 sections 4 and 5](05-object-item.md#4-area-objects));
 - weather and storm data on an Object or an Item
   ([05 section 7](05-object-item.md#7-weather-and-storm-data-on-objects));
-- a frequency in the name or in the comment
-  ([09 section 7](09-other.md#7-frequency-specification)).
+- a frequency in the comment
+  ([16-values-frequency](16-values-frequency.md)), and a frequency in the
+  name.
 
 ## 2. Conventions
 

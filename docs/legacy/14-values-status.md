@@ -17,7 +17,7 @@ These parts are outside this file:
 
 - the position of a locator (section 4);
 - a frequency in the status text
-  ([09 section 7](09-other.md#7-frequency-specification));
+  ([16-values-frequency](16-values-frequency.md));
 - the status text of Mic-E. It is the comment of a position
   ([10-values section 9](10-values.md#9-fields-in-a-comment)).
 

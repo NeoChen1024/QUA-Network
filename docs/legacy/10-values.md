@@ -28,8 +28,9 @@ reports. [13-values-telemetry](13-values-telemetry.md) gives the values
 of telemetry, the base-91 block in a comment included.
 [14-values-status](14-values-status.md) gives the values of status
 reports. [15-values-message](15-values-message.md) gives the values of
-messages and bulletins. The area descriptor, locators,
-frequencies and the symbols in the address fields are also outside this
+messages and bulletins. [16-values-frequency](16-values-frequency.md)
+gives the values of the frequency specification. The area descriptor,
+locators and the symbols in the address fields are also outside this
 file.
 
 [README section 3.1](README.md#31-general-rules) states how the general
@@ -425,8 +426,8 @@ None.
 
 ## 13. Open items
 
-- Values of the area descriptor, locators, frequencies and the
-  symbols in the address fields
+- Values of the area descriptor, locators and the symbols in the
+  address fields
   ([01 section 11](01-frame.md#11-open-items)).
 - A list of the expected values of the worked examples of APRS12c, by page
   and digest, as [examples.json](examples.json) does for verdicts. The

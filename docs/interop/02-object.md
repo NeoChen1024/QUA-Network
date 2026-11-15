@@ -82,8 +82,10 @@ tests `live`.
 **[proposed]** These tokens of an Object or an Item are in `undecoded`:
 
 - the area descriptor (`ext.area` and its children);
-- a frequency in the comment;
 - storm data.
+
+A frequency in the comment gives the frequency body
+([07-frequency](07-frequency.md)).
 
 A weather report on an Object or an Item also has the weather body
 ([03-weather](03-weather.md)). A record of the obsolete Object format has

@@ -9,7 +9,8 @@ formats have a body: position reports, DF reports, Mic-E, Objects, Items
 (docs/interop/02-object.md), weather reports (docs/interop/03-weather.md),
 telemetry and telemetry definition messages (docs/interop/04-telemetry.md),
 status reports (docs/interop/05-status.md), messages and bulletins
-(docs/interop/06-message.md).
+(docs/interop/06-message.md), and the frequency specification in a text
+(docs/interop/07-frequency.md).
 
 With --stats no record is written. Instead the tool counts, over all input
 files: packets, records by format and uses, and for each field of each
@@ -29,7 +30,17 @@ from functools import partial
 import click
 from tqdm import tqdm
 
-from qua_network.interop.record import BLN_ORDER, MODES, MSG_ORDER, STATUS_ORDER, TLM_DEF_ORDER, TLM_ORDER, WX_ORDER, decode
+from qua_network.interop.record import (
+    BLN_ORDER,
+    FREQ_ORDER,
+    MODES,
+    MSG_ORDER,
+    STATUS_ORDER,
+    TLM_DEF_ORDER,
+    TLM_ORDER,
+    WX_ORDER,
+    decode,
+)
 from qua_network.parallel import jobs_option, map_files
 from qua_network.tnc2 import log_files, read_records, split_record
 
@@ -85,6 +96,7 @@ BODY_FIELDS = {
     "status": STATUS_ORDER,
     "message": MSG_ORDER,
     "bulletin": BLN_ORDER,
+    "frequency": FREQ_ORDER,
 }
 
 

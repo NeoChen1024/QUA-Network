@@ -18,7 +18,7 @@ ENTRY = 3
 
 class PduError(ValueError):
     """The bytes are not a valid PDU. reason is one of: `not a PDU`,
-    `source length`, `short`, `checksum`, `trailer`."""
+    `source length`, `short`, `size`, `checksum`, `trailer`."""
 
     def __init__(self, reason, message):
         super().__init__(message)
@@ -27,16 +27,16 @@ class PduError(ValueError):
 
 class NotSentOn(ValueError):
     """A relay does not send the PDU on. reason is one of: `invalid`,
-    `no hop remains`, `own entry`, `size`."""
+    `no hop remains`, `own entry`."""
 
     def __init__(self, reason, message):
         super().__init__(message)
         self.reason = reason
 
 
-def parse(data, tag_length=None):
+def parse(data, tag_length=None, limit=None):
     """The fields of the PDU at the start of data, as a dict. Bytes after
-    the PDU are padding."""
+    the PDU are padding. limit, if given, is the PDU limit in bytes."""
     if not data or not data[0] & 1:
         raise PduError("not a PDU", "the least significant bit of the first byte is not 1")
     if len(data) < HEADER:
@@ -55,6 +55,8 @@ def parse(data, tag_length=None):
     length = control_at + 1 + ENTRY * entry_count + CHECKSUM
     if len(data) < length:
         raise PduError("short", "fewer bytes than the length of the PDU")
+    if limit is not None and length > limit:
+        raise PduError("size", "the PDU is larger than the PDU limit")
     if crc32c(data[: length - CHECKSUM]) != int.from_bytes(data[length - CHECKSUM : length], "little"):
         raise PduError("checksum", "the checksum is not the CRC-32C of the bytes before it")
     hop_limit = data[1] >> 5
@@ -94,7 +96,7 @@ def relay(data, relay_identifier, limit, not_radio=False, tag_length=None):
     not_radio is true if the relay got the PDU over a path that is not
     radio and transmits it on radio."""
     try:
-        pdu = parse(data, tag_length)
+        pdu = parse(data, tag_length, limit)
     except PduError as e:
         raise NotSentOn("invalid", str(e)) from None
     if pdu["hops_remaining"] < 1:
@@ -104,8 +106,6 @@ def relay(data, relay_identifier, limit, not_radio=False, tag_length=None):
         raise NotSentOn("own entry", "the hash of the relay is one of the entries")
     before = bytes(data[: pdu["source_length"] + len(pdu["tag"])])
     room = (limit - len(before) - 1 - CHECKSUM) // ENTRY
-    if room < 0:
-        raise NotSentOn("size", "the PDU with no entry is larger than the PDU limit")
     # The newest entries that fit; the entry of the relay is the newest.
     entries = (pdu["entries"] + [own])[-room:] if room else []
     control = (data[len(before)] & 0xC0) | (0x80 if not_radio else 0) | (len(entries) << 3) | (pdu["hops_remaining"] - 1)

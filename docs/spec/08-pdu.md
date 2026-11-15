@@ -176,6 +176,10 @@ of these numbers:
 
 **[agreed]** A receiver reads and checks only these bytes.
 
+**[agreed]** A PDU that is larger than the PDU limit of RFC 6.1 is
+invalid. A receiver or a relay drops it. Padding does not count for the
+limit.
+
 **[agreed]** A receiver ignores the bytes that a link gives after the
 PDU. A link can therefore add padding after a PDU.
 
@@ -246,6 +250,7 @@ The keys of a valid PDU:
 | `entries` | The entries, each as a number in 6 hexadecimal digits |
 | `length` | The length of the PDU in bytes |
 | `padding` | The bytes after the PDU |
+| `limit` | In some vectors: the PDU limit in bytes. The value of the limit is open (RFC 6.1), so a vector that needs one states it. |
 
 The values of `invalid`:
 
@@ -254,6 +259,7 @@ The values of `invalid`:
 | `not a PDU` | The least significant bit of the first byte is 0, or there are no bytes (section 4.1). |
 | `source length` | The source length is less than 14 (section 4.4). |
 | `short` | The link gives fewer bytes than the length of the PDU (section 7). |
+| `size` | The PDU is larger than `limit` (section 7). |
 | `checksum` | The checksum is wrong (section 8). |
 | `trailer` | The trailer is not valid ([09-hop-trace](09-hop-trace.md) section 4). |
 

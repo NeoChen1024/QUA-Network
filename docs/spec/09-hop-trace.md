@@ -144,6 +144,10 @@ subtracts 1 from the hops remaining.
 **[proposed]** A relay drops only as many entries as are necessary. A
 relay MUST NOT drop an entry for a different reason.
 
+**[agreed]** A PDU that a relay received is not larger than the PDU
+limit ([08-pdu](08-pdu.md) section 7). A relay therefore drops one entry
+at most.
+
 ### 7.2 A path that is not radio
 
 **[agreed]** A station sets the bit Not Radio when it transmits on radio
@@ -195,5 +199,3 @@ and PDUs whose trailer is not valid.
 ## 9. Open items
 
 - **[open]** The use of the reserved bit of the control byte.
-- **[open]** What a relay does with a PDU that is larger than the PDU
-  limit with no entry.

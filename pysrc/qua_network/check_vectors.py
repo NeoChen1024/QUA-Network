@@ -119,7 +119,7 @@ def check_text_compression(v):
 def check_pdu(v):
     data = bytes.fromhex(v["bytes"])
     try:
-        got = pdu.parse(data)
+        got = pdu.parse(data, limit=v.get("limit"))
     except pdu.PduError as e:
         if "invalid" not in v:
             return f"parser rejects it: {e}"
@@ -131,7 +131,7 @@ def check_pdu(v):
     for key in ("tlv", "padding"):
         got[key] = got[key].hex().upper()
     for key, want in v.items():
-        if key not in ("bytes", "note") and got[key] != want:
+        if key not in ("bytes", "note", "limit") and got[key] != want:
             return f"{key} is {got[key]}"
     return None
 

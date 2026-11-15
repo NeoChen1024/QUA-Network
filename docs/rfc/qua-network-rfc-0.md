@@ -1359,6 +1359,8 @@ section 15, step 11 gives how often stations send the same comment again.
   240 bytes, leaving 15 for the envelope) is fixed when the LoRa and FSK
   bindings are drafted.
 - The uncompressed form of the PDU also fits the limit (5.7).
+- A receiver or a relay drops a PDU that is larger than the limit.
+  `docs/spec/08-pdu.md` section 7 has the rule.
 - Existing traffic supports this: all but a very small share of RF-origin
   APRS payloads are 255 bytes or shorter (section 13), so the limit matches
   what 1200 baud networks carry today.

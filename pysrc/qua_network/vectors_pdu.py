@@ -114,14 +114,19 @@ def pdu_vectors(ids):
     b = _Builder(ids)
     out = []
 
-    def ok(note, **kw):
+    def ok(note, limit=None, **kw):
         v = b.fields(**kw)
+        if limit is not None:
+            v["limit"] = limit
         v["note"] = note
         out.append(v)
         return bytes.fromhex(v["bytes"])
 
-    def bad(note, data, reason):
-        out.append({"bytes": data.hex().upper(), "invalid": reason, "note": note})
+    def bad(note, data, reason, limit=None):
+        v = {"bytes": data.hex().upper(), "invalid": reason}
+        if limit is not None:
+            v["limit"] = limit
+        out.append(v | {"note": note})
 
     common = dict(src="N0CALL-15", seq=0x1234, hop=3, tlv=TLV, typ=1)
     seven = ["N0CALL-7", "N0CALL-15", "BV5AB-33", "PJ4/KA1ABC", "YW18FIFA/MM-A", "N0CALL-7", "BV5AB-33"]
@@ -140,6 +145,9 @@ def pdu_vectors(ids):
     ok(note, src="N0CALL", seq=8, hop=2, remaining=1, entries=["N0CALL-7"], not_radio=1, tres=1)
     ok("3 bytes of padding after the PDU", **common, padding=bytes.fromhex("000000"))
     ok("padding that is not 0", **common, remaining=2, entries=["N0CALL-7"], padding=bytes.fromhex("A55AFF"))
+    ok("a PDU of 24 bytes with a PDU limit of 24", limit=24, **common)
+    ok("padding does not count for the PDU limit", limit=24, **common, padding=bytes.fromhex("000000"))
+    ok("a PDU of 27 bytes with a PDU limit of 27", limit=27, **common, remaining=2, entries=["N0CALL-7"])
 
     sp = b.source_part("N0CALL-15", 0x1234, 3, TLV, 1)
     bad("no bytes", b"", "not a PDU")
@@ -160,6 +168,8 @@ def pdu_vectors(ids):
     bad("the hops remaining are 4, and the hop limit is 3", b.close(sp + b.trailer(4)), "trailer")
     bad("the entry count is 2, and 1 hop is taken", b.close(sp + b.trailer(2, ["N0CALL-7", "BV5AB-33"])), "trailer")
     bad("the entry count is 1, and no hop is taken", b.close(sp + b.trailer(3, ["N0CALL-7"])), "trailer")
+    bad("a PDU of 24 bytes with a PDU limit of 23", p_tlv, "size", limit=23)
+    bad("a PDU of 27 bytes, with 1 entry, and a PDU limit of 24", b.close(sp + b.trailer(2, ["N0CALL-7"])), "size", limit=24)
     return out
 
 
@@ -193,7 +203,8 @@ def relay_vectors(ids):
     rel("a relay does not send the padding on", r0 + bytes.fromhex("A55AFF"), "N0CALL-7", LIMIT, r1)
     rel("room for 2 entries: the relay drops the oldest entry", r2, "PJ4/KA1ABC", base + 6, two)
     rel("room for 2 entries and 2 bytes more: the same result", r2, "PJ4/KA1ABC", base + 8, two)
-    rel("room for 1 entry: only the entry of the relay stays", r2, "PJ4/KA1ABC", base + 3, close(sp + trailer(0, ["PJ4/KA1ABC"])))
+    one = close(sp + trailer(1, ["BV5AB-33"]))
+    rel("room for 1 entry: only the entry of the relay stays", one, "PJ4/KA1ABC", base + 3, close(sp + trailer(0, ["PJ4/KA1ABC"])))
     rel("room for no entry: the trailer has only the control byte", r0, "N0CALL-7", base, close(sp + trailer(2)))
     rel("room for no entry, 2 bytes free", r0, "N0CALL-7", base + 2, close(sp + trailer(2)))
     note = "the trace is already truncated; the relay adds its entry"
@@ -211,4 +222,6 @@ def relay_vectors(ids):
     rel("the checksum is not good", bytes(flipped), "BV5AB-33", LIMIT, None, "invalid")
     note = "the trailer is not valid: the hops remaining are more than the hop limit"
     rel(note, close(sp + trailer(4)), "N0CALL-7", LIMIT, None, "invalid")
+    rel("the PDU is larger than the PDU limit with no entry", r0, "N0CALL-7", base - 1, None, "invalid")
+    rel("the PDU as received is larger than the PDU limit", r2, "PJ4/KA1ABC", base + 3, None, "invalid")
     return out

@@ -1355,18 +1355,23 @@ section 15, step 11 gives how often stations send the same comment again.
 - **[agreed]** That number is set by the 255-byte packet limit shared by
   common sub-GHz transceivers, including LoRa (Appendix A).
 - **[agreed]** The PDU limit is 255 bytes
-  ([`docs/spec/08-pdu.md`](../spec/08-pdu.md) section 7). A binding on such
-  a radio puts the PDU alone in the packet of the transceiver. It adds no
-  byte of its own to that packet.
+  ([`docs/spec/08-pdu.md`](../spec/08-pdu.md) section 7).
+- **[agreed]** The PDU limit applies to one PDU. It does not limit what a
+  link sends in one unit. If a link carries more than 255 bytes in one
+  unit, a binding can add bytes of its own. It can also pack several PDUs
+  in one unit, for example between the relays of a trunk (8.2).
+- On a transceiver whose packet has 255 bytes at most, the largest PDU
+  fills the packet. A binding for such a packet has no room for bytes of
+  its own.
 - An earlier proposal made the PDU limit lower (for example 240 bytes), to
   leave room for a link envelope. It was dropped. The documents of
   Appendix A show no envelope that takes bytes from the 255. A LoRa packet
   carries the payload alone. The length byte of an FSK packet does not
   count. The fields of an AX.25 frame are outside its information field.
-- What the decision gives up: a later binding cannot add bytes of its own
-  to a 255-byte packet. An example is forward error correction that a
-  binding adds in software. Such a binding needs a transceiver mode with a
-  larger packet, or it cannot carry the largest PDU.
+- What the decision gives up: a binding that adds bytes of its own needs
+  a link unit larger than 255 bytes. An example is forward error
+  correction that a binding adds in software. Some transceivers have a
+  mode with a larger packet (Appendix A).
 - The uncompressed form of the PDU also fits the limit (5.7).
 - A receiver or a relay drops a PDU that is larger than the limit.
   `docs/spec/08-pdu.md` section 7 has the rule.
@@ -1558,11 +1563,15 @@ by speed. It recommends a bitrate and lets the airtime budget do the rest.
   where each callsign was last heard and forward messages there, with a
   bounded fallback when the location is unknown.
 - **[proposed]** Trunks batch several PDUs per link frame.
-- **[open, deferred]** A packed format for high-speed links, in which a trunk
-  carries many PDUs in a denser combined encoding. This is a later concern
-  and is deliberately left undesigned. Whatever is chosen MUST unpack to the
-  original PDUs bit for bit, so that sequence numbers and authentication are
-  unaffected.
+- **[agreed]** The binding of a link decides the format in which the link
+  packs several PDUs in one unit. This RFC does not define one packed
+  format for all links. The PDU limit does not limit the unit (6.1).
+- **[proposed]** A packed format MUST unpack to the original PDUs bit for
+  bit. Sequence numbers and authentication then stay as the source made
+  them.
+- An earlier draft had one packed format for high-speed links as an open,
+  deferred item. It was dropped, because the format is now the decision of
+  each binding.
 
 ### 8.3 Internet gateways
 
@@ -1761,11 +1770,11 @@ before any of it is treated as sound.
     droppable class, a truncation flag and split authentication coverage, and
     it has no good answer for packets whose text is the content.
 20. Gateways segmenting or re-originating packets on behalf of a source.
-21. A link binding that adds bytes of its own to the 255-byte packet of a
-    transceiver. The PDU limit is equal to that packet limit (6.1), so the
-    largest PDU does not fit such a binding. An earlier form of this item
-    warned against a PDU limit equal to the packet limit. The check of
-    Appendix A found no envelope that needs the room.
+21. Reading the PDU limit as a limit on the unit that a link sends. The
+    limit applies to one PDU (6.1). A link with a larger unit can add
+    bytes of its own or pack several PDUs. An earlier form of this item
+    warned against a PDU limit equal to the packet limit of the radio.
+    The check of Appendix A found no envelope that needs the room.
 22. Behaviour derived from the display symbol.
 23. Designing for the hardware limits of legacy TNCs and handhelds.
 24. A specification that may be copied but not modified. Errata cannot be
@@ -1924,7 +1933,8 @@ anything is decided on them.
     retransmission.
 12. Regional variation in traffic mix, and whether the MTU decision should
     follow the worst region.
-13. Packed format for high-speed trunks (8.2). Deferred.
+13. Decided: the binding of a link decides its packed format (8.2). The
+    number stays, so that the other numbers do not change.
 14. Recommended sizes per packet class (6.3).
 15. The byte limit of the Unicode symbol form, proposed as 8 (5.6).
 16. Unishox2 (5.7). The preset is decided, and the specification file

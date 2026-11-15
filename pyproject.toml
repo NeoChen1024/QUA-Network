@@ -24,6 +24,7 @@ qua-legacy-examples = "qua_network.legacy_examples:cli"
 qua-legacy-decode = "qua_network.legacy_decode:cli"
 qua-legacy-compare = "qua_network.legacy_compare:cli"
 qua-legacy-text = "qua_network.legacy_text:cli"
+qua-legacy-usx-check = "qua_network.legacy_usx_check:cli"
 
 [build-system]
 requires = ["setuptools>=77.0.3"]

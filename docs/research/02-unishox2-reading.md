@@ -143,6 +143,11 @@ measured.
 
 ## 6. Result
 
+After this report, the author chose `DFLT` as the only preset (RFC 5.7).
+The decoder specification is
+[`docs/spec/04-text-compression.md`](../spec/04-text-compression.md). The
+two items below are as the report first gave them.
+
 **[proposed]** `DFLT` is the better candidate.
 
 - The decoders of the two presets differ by about 14 lines and three

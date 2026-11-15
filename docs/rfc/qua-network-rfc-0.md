@@ -876,6 +876,11 @@ and two colours cost two bytes more than the shape alone.
 
 ### 5.7 Text compression
 
+The compressed form of a string is specified in
+[`docs/spec/04-text-compression.md`](../spec/04-text-compression.md). This
+section keeps the decisions on the use of compression, the reasons and the
+dropped alternatives.
+
 - **[agreed]** Compression saves airtime. It is not a way to send content
   that does not fit the PDU limit in its uncompressed form. The
   uncompressed form of a PDU MUST fit the PDU limit of section 6.
@@ -900,21 +905,24 @@ and two colours cost two bytes more than the shape alone.
   the sender compares the lengths.
 - **[agreed]** A decoder does not run an encoder. It does not reject a
   field because the sender did not choose the shortest form.
-- **[open]** Which malformed compressed strings a decoder rejects
-  (section 14, question 16).
+- **[agreed]** The specification file lists each compressed string that
+  is invalid (its section 7). A decoder gives no text for an invalid
+  string.
+- **[open]** What a receiver does with a field that holds an invalid
+  string (section 14, question 16).
 - **[proposed]** Each text field carries a marker saying which form it holds:
-  passthrough or compressed. If per-string preset selection is adopted (see
-  "Choice of preset" below), the marker becomes a preset number, with 0 for
-  passthrough.
+  passthrough or compressed. There is one preset, so the marker is not a
+  preset number.
 - **[open]** How a text field carries the marker. A passthrough string has
-  no length byte, so the marker is not a byte of a passthrough string.
-  Whether the length byte holds the preset number is also open (section
-  14, question 16).
+  no length byte, so the marker is not a byte of a passthrough string
+  (section 14, question 16).
 - **[agreed]** The specification pins the exact decoder behaviour of every
   compressed form that it allows. It does not pin an encoder. Two
   independent decoders give the same string for the same field.
-- **[proposed]** The specification pins the allowed Unishox2 preset or
-  presets, and ships test vectors taken from real corpus strings.
+- **[agreed]** The specification allows one Unishox2 preset,
+  `USX_PSET_DFLT`, for every string (see "Choice of preset" below).
+- **[proposed]** The specification ships test vectors taken from real
+  corpus strings.
 - The canonical text form shows the uncompressed string. Compression is not
   visible in text.
 - The short Unicode symbol of 5.6 is not compressed; at 8 bytes or less
@@ -931,11 +939,14 @@ The trial rule of the sender was a requirement. The author changed it to a
 recommendation, together with the canonical encoder and for the same
 reason. The icon rule of 5.6 changed in the same way.
 
-**[open]** The details of Unishox2 in this section are still under study:
-the presets and the exact decoder. The author considers a reduced Unishox2
-implementation that has only the presets that this project can use. It
-would make the work simpler and let the specification freeze (section 14,
-question 16).
+**[agreed]** The project writes its own decoder and its own encoder for
+the one preset, from the specification file. The Unishox2 library does not
+define the format. It is the implementation that the decoder and the
+encoder are compared with.
+
+An earlier revision considered a reduced copy of the library, with only
+the presets that this project can use. One preset and an own
+implementation replace that idea.
 
 The first item of this section has these consequences:
 
@@ -980,84 +991,66 @@ of date.
 
 #### Choice of preset
 
-**[agreed]** The candidates are `USX_PSET_DFLT` and `USX_PSET_NO_DICT`.
-The author narrowed the choice to these two after the measurement of
-section 15, step 11. **[open]** Which of the two.
+**[agreed]** The preset is `USX_PSET_DFLT`, for every string. The
+specification has no other preset.
 
-**[proposed]** The specification allows one preset for every string.
-Approach B below is then not used. In the measurement, the best preset
-for each string is only a little better than the best single preset, and
-that figure does not count the marker
-([`docs/research/01-free-text.md`](../research/01-free-text.md)).
+The author decided this after the measurement of section 15, step 11 and
+the reading of the library
+([`docs/research/01-free-text.md`](../research/01-free-text.md),
+[`docs/research/02-unishox2-reading.md`](../research/02-unishox2-reading.md)).
+The reasons:
 
-**[proposed]** `USX_PSET_DFLT` is the better of the two candidates
-([`docs/research/02-unishox2-reading.md`](../research/02-unishox2-reading.md)).
-The decoders of the two differ little, and an encoder for either can
-leave out the search for a repeat, because the specification does not pin
-an encoder.
+- One preset needs no preset number in the field. It needs one decoder
+  definition and one set of test vectors.
+- In the measurement, the best preset for each string is only a little
+  better than the best single preset. That figure does not count the
+  marker.
+- The sequences of the default preset are punctuation. They are neutral
+  between languages.
+- The default preset can encode every text. Some presets have no code for
+  one or more of the character sets.
 
-The text below records the choice as it was before the measurement. The
-reference implementation defines 17 presets
-(`USX_PSET_DFLT`, `USX_PSET_ALPHA_ONLY`, `USX_PSET_FAVOR_ALPHA`,
-`USX_PSET_NO_DICT`, `USX_PSET_URL` and others). Three ways to use them:
+The reference implementation defines 17 presets. These alternatives were
+dropped:
 
-| Approach | Who decides | Extra bits |
-|---|---|---|
-| One preset for everything | The specification | none |
-| A. Preset fixed per field type | The specification | none |
-| B. Preset chosen per string | The sender | a small preset number per string |
+| Alternative | Why it was dropped |
+|---|---|
+| A. A preset fixed for each field type | A comment holds URLs, sentences, Chinese text and frequencies. The field type says little about the content. |
+| B. A preset that the sender chooses for each string, with a preset number in the field | It was the leading candidate before the measurement. The gain is small. Each allowed preset needs a decoder definition, test vectors and bits for the number. |
+| A canonical choice in B: the shortest result, and the lowest number on a tie | The decoder had to run the rule again. The author dropped it with the canonical encoder above. |
+| `USX_PSET_NO_DICT` | It has no code for a back-reference. Its decoder is only a little smaller. An encoder for the default preset can also leave out the search for a repeat. It gives a larger size in the measurement. |
+| A text preset with English fragments | The fragments do nothing for Chinese or Japanese text. |
+| A custom preset built from APRS traffic | It is a small dictionary that goes out of date. The no-dictionary rule excludes it. |
 
-Every compressed string also has the length byte of this section. Whether
-the preset number is part of the length byte is open (section 14,
-question 16).
+#### Rules of the decoder
 
-**B was the leading candidate before the measurement.** A comment field holds URLs,
-English sentences, Chinese, frequencies and more, so a preset fixed by
-field type is barely a choice. Selecting per string also removes the
-language-bias concern: a preset with English fragments is used only on
-strings where it actually wins.
+**[agreed]** The specification file has the rules. These are the
+reasons.
 
-If B is adopted, these rules apply (**[proposed]**):
+- **The length byte ends the string.** The library has no length. Its
+  decoder stops at an end code or at the end of the bits, and its encoder
+  often writes only a part of the end code. A decoder that stops at the
+  length of the text needs no end code.
+- **The decoder ignores the bits after the last code.** The library gives
+  only the length of its output in bytes. A sender that uses the library
+  does not know where the last code ends, so it cannot set these bits.
+- **Every input that the decoder cannot read is invalid.** The library
+  decoder stops on such an input and gives the output that it has. Two
+  decoders must give the same result for the same field.
+- **The text is UTF-8** (5.3). The library does not check the code points
+  that it writes. The specification makes a result that is not UTF-8
+  invalid.
+- **A back-reference cannot be longer than its distance.** The library
+  then copies bytes that it has not written yet.
 
-- The marker of each text field is the preset number, 0 meaning
-  passthrough.
-- The sender chooses the preset. A sender that wants the shortest result
-  compresses the string with every allowed preset and compares.
-- A decoder uses the preset that the marker gives. It does not check the
-  choice of the sender.
+**[agreed]** There is no rule for the value of the bits after the last
+code. A length byte that is too small is therefore not always invalid. If
+the codes that remain have fewer than 8 bits, the decoder gives a text
+that is too short. The author accepts this. A malformed input can give a
+wrong text, and integrity is not the task of the compression.
 
-An earlier revision made the choice canonical. The sender took the
-shortest result, and the lowest preset number on a tie. A decoder reran
-the rule and rejected any other choice. The author dropped this with the
-canonical encoder above, for the same reason.
-
-Costs of B:
-
-- The allowed set has to be small, three or four presets, so that the
-  marker is 2 bits. Each extra preset is one more compression pass for a
-  sender that compares, and one more set of conformance vectors.
-- Every allowed preset needs a decoder definition that is exact enough for
-  two implementations to give the same string.
-
-Other considerations, whichever approach is taken:
-
-- The default preset's sequences are punctuation and are neutral between
-  languages. A text preset builds in English fragments, which do nothing
-  for Chinese or Japanese comments.
-- `USX_PSET_NO_DICT` is described in the source as the preset for input
-  with no repeating sequences. It has no code for a back-reference, so its
-  encoder has no search for a repeat (read at commit `6ec2ff0`). On the
-  capture, it gives a slightly larger size than the default preset. The
-  two research reports above have the reading and the figures.
-- Unishox2 also accepts custom presets. A preset built from APRS traffic
-  would be a small dictionary that ages, which the no-dictionary rule
-  excludes.
-
-The decision waited for the corpus measurement (section 15): the total
-length with the best preset per string, against the total with the single
-best preset overall. A difference of a percent or two does not justify the
-extra rules. The measurement is now made
-([`docs/research/01-free-text.md`](../research/01-free-text.md)).
+A rule for the last bits was considered and dropped. It closes this case,
+but then a sender cannot use the library as it is.
 
 #### Risk to manage
 
@@ -1067,6 +1060,11 @@ specification therefore has to state the decoder precisely, or cite the
 published Unishox2 description and back it with test vectors. The encoder
 does not have to give the same bytes on every platform. No decoder
 compares bytes, and the signature covers the uncompressed form (5.5).
+
+The specification file now states the decoder. The tool
+`qua-legacy-usx-check` compares a decoder and an encoder written from the
+file with the library, on the free text of the corpus
+([`docs/research/03-text-compression-check.md`](../research/03-text-compression-check.md)).
 
 An earlier revision considered compressing the whole body, TLV structure
 included. It was dropped: binary values barely compress, structural
@@ -1872,6 +1870,7 @@ count they came from.
 | Sending software and devices by destination callsign | `qua-tocall-stats` |
 | Source SSID classes | one-off script, not yet in the package |
 | Repetition of free text, and its size under each Unishox2 preset | `qua-legacy-text` |
+| Agreement of the text compression with the Unishox2 library, and the use of each optional part of the format | `qua-legacy-usx-check` |
 
 ### 13.3 Observations
 
@@ -1971,21 +1970,14 @@ anything is decided on them.
 13. Packed format for high-speed trunks (8.2). Deferred.
 14. Recommended sizes per packet class (6.3).
 15. The byte limit of the Unicode symbol form, proposed as 8 (5.6).
-16. Unishox2 (5.7):
-    - Which preset: `USX_PSET_DFLT` or `USX_PSET_NO_DICT`? The author
-      narrowed the choice to these two. One preset for every string is
-      proposed (5.7).
+16. Unishox2 (5.7). The preset is decided, and the specification file
+    `docs/spec/04-text-compression.md` states the decoder. These remain:
     - Which parts of the Unishox2 format does the specification make
-      invalid, if any? `docs/research/02-unishox2-reading.md` lists the
-      parts.
-    - How is the decoder specified independently of the reference
-      implementation? Does a reduced implementation with only the allowed
-      presets replace the reference implementation?
-    - Which malformed compressed strings does a decoder reject? What does
-      it do when the length byte gives a wrong length?
-    - How does a text field mark its form and its preset, and is the
-      preset number part of the length byte? A preset number there leaves
-      fewer bits for the length.
+      invalid, if any? The candidates are the templates, the UUID and
+      the hexadecimal digits (section 10 of the file).
+    - What does a receiver do with a field that holds an invalid
+      compressed string?
+    - How does a text field mark its form, passthrough or compressed?
     - What does a receiver do with a PDU whose uncompressed form does not
       fit the PDU limit?
 17. Use of the unused identifier values: the all-zero identifier, and
@@ -2107,8 +2099,10 @@ anything is decided on them.
     that legacy APRS software on the channel ignores them.
 13. Extend the icon measurement of 5.6 to the APRS symbol table drawn at
     16 by 16.
-14. Study a reduced Unishox2 implementation that has only the presets that
-    QUA Network can use (5.7; section 14, question 16).
+14. Text compression (5.7; section 14, question 16). Done: the
+    specification file, and a decoder and an encoder written from it,
+    compared with the library on the corpus. Next: test vectors in
+    `vectors/`, and the open items of the file.
 15. When the formats of the decimal number of 5.3 are settled, move it
     to `docs/spec/` and write test vectors. Include encodings that a
     decoder rejects (section 14, question 24).
@@ -2201,6 +2195,10 @@ commands.
 - `qua-legacy-text`: measures the free text of the corpus: how often a
   station sends the same text again, and the size of each text under each
   preset of Unishox2 (section 15, step 11).
+- `qua-legacy-usx-check`: compares the decoder and the encoder of
+  `usx.py` with the Unishox2 library, on the free text of the corpus. It
+  also changes the compressed strings and compares what the two decoders
+  do with them (5.7).
 - `qua-legacy-examples`: collects the example packets of APRS12c from
   the working copy under `work/` and checks the verdict of each against
   a project-owned expectation list, which names the examples by page and

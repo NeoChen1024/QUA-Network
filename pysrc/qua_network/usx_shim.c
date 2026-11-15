@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// Shim for qua-legacy-text: one call compresses a string with every preset
-// of Unishox2. The tool compiles this file together with unishox2.c of the
-// submodule 3rdparty/Unishox2. It includes the public header of the
-// library and holds no code of it.
+// Shim for qua-legacy-text and qua-legacy-usx-check: one call compresses a
+// string with every preset of Unishox2. The tool compiles this file
+// together with unishox2.c of the submodule 3rdparty/Unishox2. It includes
+// the public header of the library and holds no code of it.
 //
 // Build flag: -DUNISHOX_API_WITH_OUTPUT_LEN=1, so that the library checks
 // the length of the output buffer.
@@ -63,4 +63,14 @@ void qua_usx_all(const char *in, int len, int *lens) {
         int m = decompress(i, packed, n, back, QUA_USX_BUF);
         lens[i] = (m == len && memcmp(in, back, (size_t)len) == 0) ? n : -2;
     }
+}
+
+// The default preset alone, for qua-legacy-usx-check. Each returns the value of
+// the library call.
+int qua_usx_dflt_compress(const char *in, int len, char *out, int olen) {
+    return unishox2_compress(in, len, out, olen, USX_PSET_DFLT);
+}
+
+int qua_usx_dflt_decompress(const char *in, int len, char *out, int olen) {
+    return unishox2_decompress(in, len, out, olen, USX_PSET_DFLT);
 }

@@ -301,16 +301,212 @@ are to be checked against them.
 
 ### 5.3 Numeric and text rules
 
-- **[agreed]** No floating point on the wire. All quantities are integers with
-  a fixed scale, for example latitude and longitude as int32 in units of
-  1e-7 degree, altitude as a signed integer in centimetres.
-- **[agreed]** SI units and WGS84 only.
+- **[agreed]** No binary floating point on the wire. A quantity is an
+  integer with a fixed scale, for example latitude and longitude as int32
+  in units of 1e-7 degree, or it is a decimal number (below).
+- **[agreed]** WGS84 only.
+- **[agreed]** A quantity is in its SI unit, unless that unit is not
+  practical for the quantity. Then the specification gives the quantity a
+  practical unit. Practical use is more important than agreement with the
+  SI.
+- **[agreed]** A practical unit can differ from the SI unit by a decimal
+  prefix, by a factor that is not a power of ten, or by an offset.
+- **[agreed]** Temperature is in degrees Celsius, not in kelvin.
+- **[agreed]** Speed is in kilometres per hour, not in metres per second.
+- **[agreed]** Pressure is in hectopascals, not in pascals.
+- **[proposed]** Speed is a decimal number (below), not an integer with a
+  fixed scale. An aircraft exceeds 255 km/h, the range of one byte.
+- **[proposed]** Wind speed is a speed. It is in kilometres per hour too.
+- **[proposed]** One quantity has one unit. The specification fixes it, and
+  a sender cannot choose another. No field holds a prefix.
+- **[proposed]** The SI unit is not practical if, for the usual values of
+  the quantity, it needs more bytes or gives text that is hard to read.
+- **[proposed]** A practical unit is a unit of daily metric use. The mile
+  per hour, the knot and the degree Fahrenheit are not practical units in
+  this sense.
 - **[agreed]** Time is an integer count from a fixed epoch in UTC.
 - **[proposed]** Precision or uncertainty is an explicit field. Blanked digits
   are not used.
 - **[agreed]** Strings are UTF-8.
 - **[agreed]** Telemetry is self-describing or refers to a registered schema.
   A value MUST NOT depend on a separate definition packet having been heard.
+- **[proposed]** A gateway that translates a legacy value to a unit of this
+  section rounds the value. A reasonable loss is acceptable (3.2). The
+  rounding rule is not written (section 14, question 10).
+
+An earlier revision allowed no floating point of any kind. Every quantity
+was an integer with a fixed scale, and altitude was a signed integer in
+centimetres. The author replaced it when the decimal number was added.
+
+An earlier revision allowed SI units only. The author replaced it. The
+reason is that the SI unit is not always the practical one. An air
+temperature in kelvin is harder to read than one in degrees Celsius. In
+the decimal number below, it also needs one more byte: 25.3 °C has the
+significand 253, and 298.45 K has the significand 29845, which does not
+fit 12 bits.
+
+A first decision of this revision kept speed in metres per second. The
+author replaced it. Kilometres per hour is the unit of daily use. Its step
+of 1 also fits a vehicle speed: in metres per second, a step of 0.1 is
+finer than needed and a step of 1 is too coarse. A client can show a speed
+in another unit.
+
+1 knot is exactly 1.852 km/h. A whole number of knots or of miles per
+hour, rounded to a whole number of kilometres per hour, converts back to
+the same number. The rounding error is 0.5 km/h at most, which is 0.27
+knot or 0.31 mile per hour (derived).
+
+Pressure in hectopascals and in pascals needs the same bytes, because the
+exponent of the decimal number holds the prefix. The reason for the
+hectopascal is the text form: `1013.2` is easier to read than `101320`.
+
+With two units for one quantity, one value has two encodings: 1000 pF and
+0.001 µF. This is the reason for the one-unit rule.
+
+#### Decimal number
+
+The integer rule above fits a quantity with a known range and one
+resolution. It does not fit a quantity with a wide range, such as speed or
+altitude. It also does not fit a telemetry value with no registered
+schema, because that value has no fixed scale. The decimal number is for
+these cases.
+
+- **[agreed]** A decimal number is a significand `m` and an exponent `e`.
+  Its value is `m` × 10^`e`. The definition of a field states whether the
+  field is a decimal number or an integer with a fixed scale.
+- **[agreed]** Altitude is a decimal number, in metres.
+- **[agreed]** A decimal number has one of four formats. Each is in
+  big-endian order, with `e` before `m`. `e` and `m` are two's-complement
+  integers. No format is longer than 4 bytes.
+
+  | Bytes | Bits of `e` | Range of `e` | Bits of `m` | Range of `m` |
+  |---|---|---|---|---|
+  | 1 | 4 | −8 to 7 | 4 | −8 to 7 |
+  | 2 | 4 | −8 to 7 | 12 | −2048 to 2047 |
+  | 3 | 4 | −8 to 7 | 20 | −524288 to 524287 |
+  | 4 | 8 | −128 to 127 | 24 | −8388608 to 8388607 |
+
+- **[agreed]** The length of the TLV gives the format.
+- **[agreed]** A TLV therefore holds one decimal number at most, and the
+  number is the last field of the TLV.
+- **[agreed]** Zero has one encoding: one byte, with `m` 0 and `e` 0. For
+  every other finite value, `m` MUST NOT be a multiple of 10.
+- **[agreed]** A sender MUST use the shortest format that holds `m` and
+  `e`.
+- **[agreed]** The format has two special values, in the 1-byte format
+  only. The byte `70` (`m` 0, `e` 7) is positive infinity. The byte `80`
+  (`m` 0, `e` −8) is negative infinity.
+- **[agreed]** Positive infinity states that the value is greater than
+  every value that the sender can give. Negative infinity states that it
+  is less than every such value. An infinity is not an error code.
+- **[agreed]** The definition of a field states whether the field allows
+  an infinity.
+- **[agreed]** A decoder MUST reject an infinity in a field that does not
+  allow it.
+- **[agreed]** The format has no "not a number".
+- **[agreed]** The other 13 encodings of 1 byte with `m` 0 stay invalid.
+  The specification does not reserve them for a later use.
+- **[agreed]** A sender that has no value omits the TLV.
+- **[agreed]** A decoder MUST reject a decimal number that is not in this
+  form. The cases are these:
+  - `m` is a multiple of 10 and is not 0;
+  - `m` is 0, and the bytes are not `00`, `70` or `80`;
+  - a shorter format holds `m` and `e`.
+- **[agreed]** If `e` is from −8 to 7, the text form is the plain decimal
+  value, with no exponent notation: `25.3`, `-12.7`, `0.12`, `85000`.
+- **[agreed]** The plain form has no `+` sign. Its integer part is `0`, or
+  starts with a digit from 1 to 9. Its fraction has 8 digits at most and
+  does not end in `0`. The text `-0` is invalid.
+- **[agreed]** If `e` is outside −8 to 7, the text form is `m`, the
+  letter `e` and the exponent, each as an integer: `3e9`, `-15e-12`. Such a
+  value has no plain form.
+- **[agreed]** The text form of positive infinity is `inf`. The text
+  form of negative infinity is `-inf`.
+- **[agreed]** A parser MUST reject a text that breaks these rules, or
+  whose value has no encoding.
+
+With these rules, one value has one encoding and one text form. `m` and
+`e` are unique for a value, because `m` has no factor of 10. The
+conversion to text moves the decimal point and needs no rounding.
+
+In the formats of 1 to 3 bytes, the first hexadecimal digit is `e`. The
+bytes `F0 FD` have `e` = −1 and `m` = 253, the value 25.3.
+
+Examples, derived by hand. They are not test vectors.
+
+| Value | `m` | `e` | Bytes |
+|---|---|---|---|
+| 0 | 0 | 0 | 1 |
+| 100 | 1 | 2 | 1 |
+| 25.3 | 253 | −1 | 2 |
+| −12.7 | −127 | −1 | 2 |
+| 853.4 | 8534 | −1 | 3 |
+| 1013.2 | 10132 | −1 | 3 |
+| 10668.25 | 1066825 | −2 | 4 |
+| 3 × 10^9 | 3 | 9 | 4 |
+| positive infinity | 0 | 7 | 1 |
+| negative infinity | 0 | −8 | 1 |
+
+An infinity covers a sensor at the end of its range, and a quantity that
+is infinite, such as the standing wave ratio of an open line. The two
+infinities keep the order of values: every finite value is between them.
+"Not a number" does not, and a sender with no value omits the TLV. This is
+why the format has the first and not the second.
+
+The two infinities use encodings that are invalid without them, so no
+finite value is lost. Each has one encoding. A later minor version cannot
+add a special value, because a decoder of this version rejects the
+encoding (section 14, question 23). The decision is therefore made now.
+
+The author does not reserve the other 13 encodings, for two reasons. An integer with a fixed scale has no code for an absent value, so
+a code in the decimal number would serve one kind of number only. A code
+in the manner of "not a number" is also easy to misuse.
+
+An earlier proposal of this revision had no special value. The author
+added the infinities. The author first considered the 4-byte format for
+them. One format is sufficient for a single encoding, and the 1-byte
+format costs 3 bytes less.
+
+The largest significand of the 4-byte format has 7 digits. A value with
+more significant digits has no encoding. The author accepts this limit. A
+value that large does not need a resolution that fine: an altitude above
+83 km does not need centimetres.
+
+Dropped: a 4-byte format with a 6-bit exponent and a 26-bit significand,
+and a format of 5 bytes or more. The first is not aligned to bytes. The
+second has no known use.
+
+The plain text form stops at an exponent of −8 or 7. Outside that range,
+the plain form of a value can have more than 100 digits, so the text uses
+exponent notation.
+
+An earlier proposal of this revision had 2 and 3 bytes only. To keep
+large values in range, it let `m` be a multiple of 10 if `e` was 7. The
+4-byte format replaces that exception: a value with an exponent above 7
+uses it. The author asked for the larger exponent, to record very large
+values.
+
+Prior work: IEEE 11073-20601 defines the SFLOAT type, with the same 4-bit
+decimal exponent and 12-bit significand in 2 bytes. It reserves five
+significand values for special values such as "not a number". This
+statement comes from two secondary sources, read on 2026-11-15: the HL7
+Personal Health Device implementation guide, and the documentation of the
+Nordic nRF Connect SDK 2.3.0. The standard itself was not read. The same
+standard defines a FLOAT type of 4 bytes. That it has an 8-bit exponent
+and a 24-bit significand is recalled, not read.
+
+Dropped: binary floating point in 16 bits, as bfloat16 or as IEEE 754
+binary16. Three reasons:
+
+- A decimal text and a binary value do not map one-to-one (5.4). The
+  specification would need a rule for the shortest decimal text, and a
+  parser would have to reject every other text. A signature check from a
+  text log (5.5) would then depend on that conversion in every
+  implementation.
+- bfloat16 has 8 significant bits. Between 512 and 1024 its step is
+  2^9 / 2^7 = 4, so it cannot hold a pressure to 1 hPa.
+- binary16 has 11 significant bits, and its largest value is
+  (2 − 2^−10) × 2^15 = 65504. A light level of 85000 lx does not fit.
 
 ### 5.4 Canonical text representation
 
@@ -354,7 +550,7 @@ are to be checked against them.
 A non-normative sketch of what a position report might look like:
 
 ```
-QUA1 N0CALL-9 seq=1042 hop=2 pos=24.2500000,120.6700000 alt=152.00 sym=/> cmt="mobile"
+QUA1 N0CALL-9 seq=1042 hop=2 pos=24.2500000,120.6700000 alt=152 sym=/> cmt="mobile"
 ```
 
 An earlier revision claimed the mapping for every PDU, compressed fields
@@ -1422,7 +1618,7 @@ before any of it is treated as sound.
 1. Application data in link-layer fields (Mic-E, WIDEn-N).
 2. More than one valid encoding of the same content, other than the field
    compression of 5.2.
-3. Floating point on the wire.
+3. Binary floating point on the wire.
 4. Decoding that depends on state from other packets.
 5. Fragmentation on a broadcast access channel.
 6. Whole-packet hashes as the deduplication key when a field changes in
@@ -1463,6 +1659,10 @@ before any of it is treated as sound.
     It is too strict, and it makes the rules too complex.
 31. Compression used to send content that does not fit the size limit in
     its uncompressed form.
+32. Two units for one quantity. One value then has two encodings.
+33. A unit chosen for agreement with the SI where another unit is the
+    practical one.
+34. A special value of a number used as an error code.
 
 ## 13. Measurements from the APRS-IS corpus
 
@@ -1578,7 +1778,8 @@ anything is decided on them.
     gateway translate? What does it do with a legacy packet that has no QUA
     Network form? How is a translated packet marked? Who is the source of a
     translated PDU, and who issues its sequence number (6.5)?
-    `docs/interop/` holds the work on the translation.
+    How does a gateway round a value, and how much loss is reasonable
+    (5.3)? `docs/interop/` holds the work on the translation.
 11. Message reliability: acknowledgement, retry policy and segment
     retransmission.
 12. Regional variation in traffic mix, and whether the MTU decision should
@@ -1624,6 +1825,24 @@ anything is decided on them.
       get a meaning in a later minor version. Which values does the
       specification reserve as "ignore" instead? This waits for the
       definition of the formats.
+24. Decimal number and units (5.3):
+    - The rule against a multiple of 10 removes the digit count as a
+      statement of resolution. Is that correct, given the precision item
+      of 5.3?
+    - Which other fields are decimal numbers? Altitude is agreed and speed
+      is proposed. The weather values are candidates.
+    - Which fields allow an infinity?
+    - A TLV holds one decimal number at most, and no number has a code
+      for an absent value. How does a telemetry TLV hold several values,
+      and how does it show that one value is absent?
+    - What states the unit of a telemetry value: the tag, or a unit code
+      in the value? This belongs with the tag table (question 1).
+    - Which other quantities get a practical unit? Dose rate, electric
+      charge and capacitance are candidates.
+    - The record of `docs/interop/` gives speed in metres per second,
+      temperature in kelvin and pressure in pascals. The record is not a
+      wire format, so the units can differ. Does the record change to the
+      units of 5.3?
 
 ## 15. Next steps
 
@@ -1680,6 +1899,11 @@ anything is decided on them.
     16 by 16.
 14. Study a reduced Unishox2 implementation that has only the presets that
     QUA Network can use (5.7; section 14, question 16).
+15. When the formats of the decimal number of 5.3 are settled, move it
+    to `docs/spec/` and write test vectors. Include encodings that a
+    decoder rejects (section 14, question 24).
+16. List the quantities that the protocol carries, each with its unit
+    (5.3). This goes with the tag table of step 6.
 
 ## Appendix A. Transceiver packet limits
 

@@ -12,6 +12,7 @@ from qua_network import identifier
 from qua_network.crc import crc32c
 
 HEADER = 14
+LIMIT = 255  # the PDU limit
 CHECKSUM = 4
 ENTRY = 3
 
@@ -34,9 +35,9 @@ class NotSentOn(ValueError):
         self.reason = reason
 
 
-def parse(data, tag_length=None, limit=None):
+def parse(data, tag_length=None):
     """The fields of the PDU at the start of data, as a dict. Bytes after
-    the PDU are padding. limit, if given, is the PDU limit in bytes."""
+    the PDU are padding."""
     if not data or not data[0] & 1:
         raise PduError("not a PDU", "the least significant bit of the first byte is not 1")
     if len(data) < HEADER:
@@ -55,7 +56,7 @@ def parse(data, tag_length=None, limit=None):
     length = control_at + 1 + ENTRY * entry_count + CHECKSUM
     if len(data) < length:
         raise PduError("short", "fewer bytes than the length of the PDU")
-    if limit is not None and length > limit:
+    if length > LIMIT:
         raise PduError("size", "the PDU is larger than the PDU limit")
     if crc32c(data[: length - CHECKSUM]) != int.from_bytes(data[length - CHECKSUM : length], "little"):
         raise PduError("checksum", "the checksum is not the CRC-32C of the bytes before it")
@@ -91,12 +92,12 @@ def parse(data, tag_length=None, limit=None):
     }
 
 
-def relay(data, relay_identifier, limit, not_radio=False, tag_length=None):
-    """The PDU that the relay sends on. limit is the PDU limit in bytes.
+def relay(data, relay_identifier, not_radio=False, tag_length=None):
+    """The PDU that the relay sends on.
     not_radio is true if the relay got the PDU over a path that is not
     radio and transmits it on radio."""
     try:
-        pdu = parse(data, tag_length, limit)
+        pdu = parse(data, tag_length)
     except PduError as e:
         raise NotSentOn("invalid", str(e)) from None
     if pdu["hops_remaining"] < 1:
@@ -105,7 +106,7 @@ def relay(data, relay_identifier, limit, not_radio=False, tag_length=None):
     if own in pdu["entries"]:
         raise NotSentOn("own entry", "the hash of the relay is one of the entries")
     before = bytes(data[: pdu["source_length"] + len(pdu["tag"])])
-    room = (limit - len(before) - 1 - CHECKSUM) // ENTRY
+    room = (LIMIT - len(before) - 1 - CHECKSUM) // ENTRY
     # The newest entries that fit; the entry of the relay is the newest.
     entries = (pdu["entries"] + [own])[-room:] if room else []
     control = (data[len(before)] & 0xC0) | (0x80 if not_radio else 0) | (len(entries) << 3) | (pdu["hops_remaining"] - 1)

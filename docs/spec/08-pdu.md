@@ -32,7 +32,7 @@ It does not specify these:
 
 | Term | Meaning |
 |---|---|
-| PDU | The whole unit: the source part, the authentication tag if there is one, the trailer and the checksum. The PDU limit of RFC section 6 applies to it. |
+| PDU | The whole unit: the source part, the authentication tag if there is one, the trailer and the checksum. The PDU limit of section 7 applies to it. |
 | Source part | The header and the TLV area. |
 | Source length | The length of the source part in bytes. It is a field of the header. |
 | Trailer | The hop trace of [09-hop-trace](09-hop-trace.md): the control byte and the entries. |
@@ -176,9 +176,13 @@ of these numbers:
 
 **[agreed]** A receiver reads and checks only these bytes.
 
-**[agreed]** A PDU that is larger than the PDU limit of RFC 6.1 is
-invalid. A receiver or a relay drops it. Padding does not count for the
-limit.
+**[agreed]** The PDU limit is 255 bytes. A PDU that is larger than the
+PDU limit is invalid. A receiver or a relay drops it. Padding does not
+count for the limit.
+
+A source part therefore has 250 bytes at most, and a TLV area has 236
+bytes at most. An authentication tag makes both numbers smaller by its
+length.
 
 **[agreed]** A receiver ignores the bytes that a link gives after the
 PDU. A link can therefore add padding after a PDU.
@@ -250,7 +254,6 @@ The keys of a valid PDU:
 | `entries` | The entries, each as a number in 6 hexadecimal digits |
 | `length` | The length of the PDU in bytes |
 | `padding` | The bytes after the PDU |
-| `limit` | In some vectors: the PDU limit in bytes. The value of the limit is open (RFC 6.1), so a vector that needs one states it. |
 
 The values of `invalid`:
 
@@ -259,7 +262,7 @@ The values of `invalid`:
 | `not a PDU` | The least significant bit of the first byte is 0, or there are no bytes (section 4.1). |
 | `source length` | The source length is less than 14 (section 4.4). |
 | `short` | The link gives fewer bytes than the length of the PDU (section 7). |
-| `size` | The PDU is larger than `limit` (section 7). |
+| `size` | The PDU is larger than the PDU limit (section 7). |
 | `checksum` | The checksum is wrong (section 8). |
 | `trailer` | The trailer is not valid ([09-hop-trace](09-hop-trace.md) section 4). |
 

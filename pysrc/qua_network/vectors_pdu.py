@@ -12,9 +12,14 @@ them.
 import struct
 
 HEADER = 14
-LIMIT = 240  # a PDU limit for the relay vectors; the value of the specification is open
 HOP_HASH_TEXTS = ("N0CALL", "N0CALL-7", "N0CALL-15", "BV5AB-33", "PJ4/KA1ABC", "YW18FIFA/MM-A")
 TLV = bytes.fromhex("12AABB3101")  # two TLVs in the syntax of 03-tlv: tag 1 with 2 bytes, tag 4 with 1 byte
+
+
+def tlv_area(n):
+    """A TLV area of n bytes, from 15 to 257: one TLV with the tag 1."""
+    return bytes((0x1D, n - 15)) + bytes(i % 251 for i in range(n - 2))
+
 
 _TABLE = []
 for _i in range(256):
@@ -114,19 +119,14 @@ def pdu_vectors(ids):
     b = _Builder(ids)
     out = []
 
-    def ok(note, limit=None, **kw):
+    def ok(note, **kw):
         v = b.fields(**kw)
-        if limit is not None:
-            v["limit"] = limit
         v["note"] = note
         out.append(v)
         return bytes.fromhex(v["bytes"])
 
-    def bad(note, data, reason, limit=None):
-        v = {"bytes": data.hex().upper(), "invalid": reason}
-        if limit is not None:
-            v["limit"] = limit
-        out.append(v | {"note": note})
+    def bad(note, data, reason):
+        out.append({"bytes": data.hex().upper(), "invalid": reason, "note": note})
 
     common = dict(src="N0CALL-15", seq=0x1234, hop=3, tlv=TLV, typ=1)
     seven = ["N0CALL-7", "N0CALL-15", "BV5AB-33", "PJ4/KA1ABC", "YW18FIFA/MM-A", "N0CALL-7", "BV5AB-33"]
@@ -145,9 +145,16 @@ def pdu_vectors(ids):
     ok(note, src="N0CALL", seq=8, hop=2, remaining=1, entries=["N0CALL-7"], not_radio=1, tres=1)
     ok("3 bytes of padding after the PDU", **common, padding=bytes.fromhex("000000"))
     ok("padding that is not 0", **common, remaining=2, entries=["N0CALL-7"], padding=bytes.fromhex("A55AFF"))
-    ok("a PDU of 24 bytes with a PDU limit of 24", limit=24, **common)
-    ok("padding does not count for the PDU limit", limit=24, **common, padding=bytes.fromhex("000000"))
-    ok("a PDU of 27 bytes with a PDU limit of 27", limit=27, **common, remaining=2, entries=["N0CALL-7"])
+    big = dict(src="N0CALL-15", seq=0x1234, hop=3, typ=1)
+    ok("a PDU of 255 bytes, the PDU limit: the source part has 250 bytes", **big, tlv=tlv_area(236))
+    ok("padding does not count for the PDU limit", **big, tlv=tlv_area(236), padding=bytes.fromhex("000000"))
+    ok(
+        "a PDU of 255 bytes with 1 entry: the source part has 247 bytes",
+        **big,
+        tlv=tlv_area(233),
+        remaining=2,
+        entries=["N0CALL-7"],
+    )
 
     sp = b.source_part("N0CALL-15", 0x1234, 3, TLV, 1)
     bad("no bytes", b"", "not a PDU")
@@ -168,8 +175,13 @@ def pdu_vectors(ids):
     bad("the hops remaining are 4, and the hop limit is 3", b.close(sp + b.trailer(4)), "trailer")
     bad("the entry count is 2, and 1 hop is taken", b.close(sp + b.trailer(2, ["N0CALL-7", "BV5AB-33"])), "trailer")
     bad("the entry count is 1, and no hop is taken", b.close(sp + b.trailer(3, ["N0CALL-7"])), "trailer")
-    bad("a PDU of 24 bytes with a PDU limit of 23", p_tlv, "size", limit=23)
-    bad("a PDU of 27 bytes, with 1 entry, and a PDU limit of 24", b.close(sp + b.trailer(2, ["N0CALL-7"])), "size", limit=24)
+    bad(
+        "a PDU of 256 bytes: the source part has 251 bytes",
+        b.close(b.source_part("N0CALL-15", 0x1234, 3, tlv_area(237), 1) + b.trailer(3)),
+        "size",
+    )
+    over = b.close(b.source_part("N0CALL-15", 0x1234, 3, tlv_area(236), 1) + b.trailer(2, ["N0CALL-7"]))
+    bad("a PDU of 258 bytes: the source part has 250 bytes, and there is 1 entry", over, "size")
     return out
 
 
@@ -177,8 +189,8 @@ def relay_vectors(ids):
     b = _Builder(ids)
     out = []
 
-    def rel(note, received, relay, limit, sent, reason=None, not_radio=False):
-        v = {"relay": relay, "limit": limit, "received": received.hex().upper()}
+    def rel(note, received, relay, sent, reason=None, not_radio=False):
+        v = {"relay": relay, "received": received.hex().upper()}
         if not_radio:
             v["not_radio"] = True
         if sent is None:
@@ -189,39 +201,52 @@ def relay_vectors(ids):
         v["note"] = note
         out.append(v)
 
+    def sized(n):
+        """A source part of n bytes."""
+        return b.source_part("N0CALL-15", 0x1234, 3, tlv_area(n - HEADER), 1)
+
     sp = b.source_part("N0CALL-15", 0x1234, 3, TLV, 1)
     close, trailer = b.close, b.trailer
     r0 = close(sp + trailer(3))
     r1 = close(sp + trailer(2, ["N0CALL-7"]))
     r2 = close(sp + trailer(1, ["N0CALL-7", "BV5AB-33"]))
     r3 = close(sp + trailer(0, ["N0CALL-7", "BV5AB-33", "PJ4/KA1ABC"]))
-    two = close(sp + trailer(0, ["BV5AB-33", "PJ4/KA1ABC"]))
-    base = len(sp) + 1 + 4  # the PDU with no entry
-    rel("the first relay adds its entry", r0, "N0CALL-7", LIMIT, r1)
-    rel("the second relay", r1, "BV5AB-33", LIMIT, r2)
-    rel("the third relay; no hop remains after it", r2, "PJ4/KA1ABC", LIMIT, r3)
-    rel("a relay does not send the padding on", r0 + bytes.fromhex("A55AFF"), "N0CALL-7", LIMIT, r1)
-    rel("room for 2 entries: the relay drops the oldest entry", r2, "PJ4/KA1ABC", base + 6, two)
-    rel("room for 2 entries and 2 bytes more: the same result", r2, "PJ4/KA1ABC", base + 8, two)
-    one = close(sp + trailer(1, ["BV5AB-33"]))
-    rel("room for 1 entry: only the entry of the relay stays", one, "PJ4/KA1ABC", base + 3, close(sp + trailer(0, ["PJ4/KA1ABC"])))
-    rel("room for no entry: the trailer has only the control byte", r0, "N0CALL-7", base, close(sp + trailer(2)))
-    rel("room for no entry, 2 bytes free", r0, "N0CALL-7", base + 2, close(sp + trailer(2)))
+    rel("the first relay adds its entry", r0, "N0CALL-7", r1)
+    rel("the second relay", r1, "BV5AB-33", r2)
+    rel("the third relay; no hop remains after it", r2, "PJ4/KA1ABC", r3)
+    rel("a relay does not send the padding on", r0 + bytes.fromhex("A55AFF"), "N0CALL-7", r1)
+    for n, note in ((244, "a PDU of 255 bytes with 2 entries"), (242, "a PDU of 253 bytes with 2 entries")):
+        received = close(sized(n) + trailer(1, ["N0CALL-7", "BV5AB-33"]))
+        sent = close(sized(n) + trailer(0, ["BV5AB-33", "PJ4/KA1ABC"]))
+        rel(note + ": the relay drops the oldest entry", received, "PJ4/KA1ABC", sent)
+    received = close(sized(247) + trailer(1, ["BV5AB-33"]))
+    rel(
+        "a PDU of 255 bytes with 1 entry: only the entry of the relay stays",
+        received,
+        "PJ4/KA1ABC",
+        close(sized(247) + trailer(0, ["PJ4/KA1ABC"])),
+    )
+    note = "a PDU of 255 bytes with no entry: the trailer has only the control byte"
+    rel(note, close(sized(250) + trailer(3)), "N0CALL-7", close(sized(250) + trailer(2)))
+    note = "a PDU of 253 bytes with no entry: 2 bytes are free, and an entry has 3"
+    rel(note, close(sized(248) + trailer(3)), "N0CALL-7", close(sized(248) + trailer(2)))
     note = "the trace is already truncated; the relay adds its entry"
-    rel(note, close(sp + trailer(1, ["BV5AB-33"])), "PJ4/KA1ABC", LIMIT, two)
+    rel(note, close(sp + trailer(1, ["BV5AB-33"])), "PJ4/KA1ABC", close(sp + trailer(0, ["BV5AB-33", "PJ4/KA1ABC"])))
     note = "the relay got the PDU over a path that is not radio: it sets the bit Not Radio"
-    rel(note, r0, "N0CALL-7", LIMIT, close(sp + trailer(2, ["N0CALL-7"], not_radio=1)), not_radio=True)
+    rel(note, r0, "N0CALL-7", close(sp + trailer(2, ["N0CALL-7"], not_radio=1)), not_radio=True)
     received = close(sp + trailer(2, ["N0CALL-7"], not_radio=1, res=1))
     sent = close(sp + trailer(1, ["N0CALL-7", "BV5AB-33"], not_radio=1, res=1))
-    rel("the relay keeps the bit Not Radio and copies the reserved bit", received, "BV5AB-33", LIMIT, sent)
-    rel("the hops remaining are 0", r3, "YW18FIFA/MM-A", LIMIT, None, "no hop remains")
-    rel("the hop limit is 0", close(b.source_part("N0CALL", 0, 0) + trailer(0)), "N0CALL-7", LIMIT, None, "no hop remains")
-    rel("the hash of the relay is one of the entries", r2, "N0CALL-7", LIMIT, None, "own entry")
+    rel("the relay keeps the bit Not Radio and copies the reserved bit", received, "BV5AB-33", sent)
+    rel("the hops remaining are 0", r3, "YW18FIFA/MM-A", None, "no hop remains")
+    rel("the hop limit is 0", close(b.source_part("N0CALL", 0, 0) + trailer(0)), "N0CALL-7", None, "no hop remains")
+    rel("the hash of the relay is one of the entries", r2, "N0CALL-7", None, "own entry")
     flipped = bytearray(r1)
     flipped[15] ^= 0x01
-    rel("the checksum is not good", bytes(flipped), "BV5AB-33", LIMIT, None, "invalid")
+    rel("the checksum is not good", bytes(flipped), "BV5AB-33", None, "invalid")
     note = "the trailer is not valid: the hops remaining are more than the hop limit"
-    rel(note, close(sp + trailer(4)), "N0CALL-7", LIMIT, None, "invalid")
-    rel("the PDU is larger than the PDU limit with no entry", r0, "N0CALL-7", base - 1, None, "invalid")
-    rel("the PDU as received is larger than the PDU limit", r2, "PJ4/KA1ABC", base + 3, None, "invalid")
+    rel(note, close(sp + trailer(4)), "N0CALL-7", None, "invalid")
+    rel("a PDU of 256 bytes with no entry", close(sized(251) + trailer(3)), "N0CALL-7", None, "invalid")
+    rel(
+        "a PDU of 258 bytes with 2 entries", close(sized(247) + trailer(1, ["N0CALL-7", "BV5AB-33"])), "PJ4/KA1ABC", None, "invalid"
+    )
     return out

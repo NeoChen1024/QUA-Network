@@ -19,7 +19,7 @@ It does not specify these:
 - The place of the trailer in a PDU, the header and the checksum
   ([08-pdu](08-pdu.md)).
 - The station identifier ([01-station-identifier](01-station-identifier.md)).
-- The MTU (RFC 6.1) and deduplication (RFC 6.2).
+- The PDU limit ([08-pdu](08-pdu.md) section 7) and deduplication (RFC 6.2).
 - Gateway provenance (RFC 8.3).
 - The text form of the trace (RFC 5.4).
 
@@ -105,7 +105,7 @@ limit. It writes 0 in every other bit of the control byte.
 
 **[agreed]** The specification does not make a source leave room for
 entries. The PDU as sent, with its trailer of 1 byte, fits the PDU limit
-of RFC 6.1.
+([08-pdu](08-pdu.md) section 7).
 
 ## 7. Relay
 
@@ -133,7 +133,8 @@ trailer does not fit, the oldest entries are dropped. The trailer keeps
 the most recent hops.
 
 **[agreed]** If the PDU with the new entry is larger than the PDU limit
-of RFC 6.1, the relay keeps only the newest entries that fit. The entry
+([08-pdu](08-pdu.md) section 7), the relay keeps only the newest entries
+that fit. The entry
 of the relay is the newest. The relay drops the other entries, the oldest
 first.
 
@@ -145,8 +146,7 @@ subtracts 1 from the hops remaining.
 relay MUST NOT drop an entry for a different reason.
 
 **[agreed]** A PDU that a relay received is not larger than the PDU
-limit ([08-pdu](08-pdu.md) section 7). A relay therefore drops one entry
-at most.
+limit. A relay therefore drops one entry at most.
 
 ### 7.2 A path that is not radio
 
@@ -185,7 +185,6 @@ these keys:
 |---|---|
 | `received` | The bytes that the relay received |
 | `relay` | The text form of the identifier of the relay |
-| `limit` | The PDU limit in bytes. Its value is open (RFC 6.1), so each vector states one. |
 | `not_radio` | If true, the relay got the PDU over a path that is not radio, and it transmits on radio (section 7.2) |
 | `sent` | The bytes that the relay sends, or `null` if it does not send the PDU on |
 | `reason` | Why the relay does not send the PDU on: `invalid`, `no hop remains` or `own entry` (section 7) |

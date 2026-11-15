@@ -1354,10 +1354,19 @@ section 15, step 11 gives how often stations send the same comment again.
   the same number.
 - **[agreed]** That number is set by the 255-byte packet limit shared by
   common sub-GHz transceivers, including LoRa (Appendix A).
-- **[proposed]** The link envelope on such a radio comes out of the same 255
-  bytes, so the PDU limit is somewhat lower. The exact value (for example
-  240 bytes, leaving 15 for the envelope) is fixed when the LoRa and FSK
-  bindings are drafted.
+- **[agreed]** The PDU limit is 255 bytes
+  ([`docs/spec/08-pdu.md`](../spec/08-pdu.md) section 7). A binding on such
+  a radio puts the PDU alone in the packet of the transceiver. It adds no
+  byte of its own to that packet.
+- An earlier proposal made the PDU limit lower (for example 240 bytes), to
+  leave room for a link envelope. It was dropped. The documents of
+  Appendix A show no envelope that takes bytes from the 255. A LoRa packet
+  carries the payload alone. The length byte of an FSK packet does not
+  count. The fields of an AX.25 frame are outside its information field.
+- What the decision gives up: a later binding cannot add bytes of its own
+  to a 255-byte packet. An example is forward error correction that a
+  binding adds in software. Such a binding needs a transceiver mode with a
+  larger packet, or it cannot carry the largest PDU.
 - The uncompressed form of the PDU also fits the limit (5.7).
 - A receiver or a relay drops a PDU that is larger than the limit.
   `docs/spec/08-pdu.md` section 7 has the rule.
@@ -1752,8 +1761,11 @@ before any of it is treated as sound.
     droppable class, a truncation flag and split authentication coverage, and
     it has no good answer for packets whose text is the content.
 20. Gateways segmenting or re-originating packets on behalf of a source.
-21. A PDU limit equal to the radio's frame limit, leaving no room for the
-    link envelope.
+21. A link binding that adds bytes of its own to the 255-byte packet of a
+    transceiver. The PDU limit is equal to that packet limit (6.1), so the
+    largest PDU does not fit such a binding. An earlier form of this item
+    warned against a PDU limit equal to the packet limit. The check of
+    Appendix A found no envelope that needs the room.
 22. Behaviour derived from the display symbol.
 23. Designing for the hardware limits of legacy TNCs and handhelds.
 24. A specification that may be copied but not modified. Errata cannot be
@@ -1883,7 +1895,8 @@ anything is decided on them.
 1. TLV container: the size of the tag space, whether tag bits tell a
    receiver what to do with an unknown TLV, and the tag table of each
    PDU type (5.2, 5.11).
-2. The exact PDU limit below 255 bytes, given the link envelope (6.1).
+2. Decided: the PDU limit is 255 bytes (6.1). The number stays, so that
+   the other numbers do not change.
 3. The airtime budget: its value, its window, and how it is expressed per PHY
    (6.3).
 4. The recommended bitrate and the reference LoRa setting: SF9 at 250 kHz
@@ -2057,31 +2070,66 @@ anything is decided on them.
 
 ## Appendix A. Transceiver packet limits
 
-Recalled from datasheets during the discussion and **not yet verified**.
-Check each figure before relying on it.
+The column "Source" states where each row comes from. "Read" means that
+the figures were read in that document on 2026-11-16. A row that is
+"recalled" is **not verified**. Check it before relying on it.
 
-| Transceiver | Mode | FIFO | Single-packet limit |
-|---|---|---|---|
-| SX127x | LoRa | 256 B | 255 B |
-| SX127x | FSK/OOK | 64 B | 2047 B with FIFO refill |
-| SX126x, LR11xx | LoRa | 256 B | 255 B |
-| SX1231 / RFM69 | FSK | 66 B | 255 B, refill above 66 B |
-| CC1101 | FSK | 64 B | 255 B, or infinite-length mode |
-| CC1120 / CC1200 | FSK | 128 B | 255 B, or infinite-length mode |
-| CC13x2 | proprietary, 802.15.4g | configurable | 255 B typical, 2047 B in 802.15.4g |
-| Si446x | FSK | 64 B | 8191 B with refill |
-| AX5043 | FSK | 256 B | 255 B |
-| AT86RF212B | 802.15.4 | n/a | 127 B PSDU |
-| nRF905 | GFSK | 32 B | 32 B |
+| Transceiver | Mode | Buffer | Largest payload of one packet | Source |
+|---|---|---|---|---|
+| SX127x | LoRa | 256 B data buffer | 255 B | Read: SX1276/77/78/79 datasheet, Rev. 7, May 2020 |
+| SX127x | FSK/OOK | 64 B FIFO | 255 B in variable-length mode, 2047 B in fixed-length mode, no limit in unlimited-length mode | Read: the same datasheet |
+| SX126x | LoRa | 256 B data buffer | 255 B | Read: SX1261/2 datasheet, Rev. 1.2 |
+| SX126x | GFSK | 256 B data buffer | 255 B; 254 B with address filtering | Read: the same datasheet |
+| LR11xx | LoRa | | 255 B | Recalled |
+| RFM69 (SX1231) | FSK | 66 B FIFO | 255 B; 64 B with AES; no limit in unlimited-length mode | Read: RFM69HCW datasheet, V1.1 |
+| CC1101 | FSK | 64 B FIFO for each direction | 255 B, or infinite-length mode | Read: SWRS061I |
+| CC112x, CC120x | FSK | 128 B FIFO for each direction | 255 B, or infinite-length mode | Read: user's guides SWRU295E and SWRU346B |
+| CC13x2 | proprietary, 802.15.4g | configurable | 255 B typical, 2047 B in 802.15.4g | Recalled |
+| Si446x | FSK | 64 B FIFO for each direction | 8191 B with FIFO refill | FIFO read: Si4460 datasheet, Rev 1.0. The limit is recalled; a copy of the API reference gives a field length of 13 bits |
+| AX5043 | FSK | 256 B FIFO | 255 B with the built-in length logic; larger with firmware | Read: programming manual AND9347/D, Rev. 5 |
+| AT86RF212B | 802.15.4 | 128 B frame buffer | 127 B PSDU | Read: datasheet 42002E |
+| nRF905 | GFSK | | 32 B | Read: product specification, revision 1.1 |
 
 The recurring 255 comes from an 8-bit length field and a 256-byte buffer. It
 is a property of the host interface, not of the radio channel.
 
+The length byte of a variable-length packet. In the documents that were
+read, the 255 bytes do not include the length byte: SX127x in FSK mode,
+RFM69, CC1101, CC112x, CC120x and SX126x in GFSK mode. A payload of 255
+bytes therefore fits each of them. Two options take one byte from the
+255, and this protocol needs neither: address filtering on the SX126x,
+and the address byte of the CC112x and CC120x.
+
+Forward error correction in the transceiver:
+
+- In LoRa, the error coding is part of the modulation. It takes no byte
+  of the payload (read: SX1276 datasheet).
+- The FEC of the CC1101 works only in fixed packet length mode (read).
+- With the FEC of the CC120x, the whole packet is 128 bytes at most,
+  because the host cannot read the RX FIFO during reception (read).
+- FEC that a link binding adds in software takes its parity bytes from
+  the 255 bytes of the transceiver. No binding of this RFC defines such
+  FEC yet.
+
 Reading this table against the single MTU of section 6.1: every device except
 the last two can send a 255-byte packet. Those with a 64 to 128 byte FIFO
-need a driver that refills the FIFO during transmission. The 802.15.4 radio
-(127 bytes) and the nRF905 (32 bytes) fall below the MTU. They need
-link-level fragmentation in their own binding or are out of scope (6.4).
+need a driver that refills the FIFO during transmission. The AX5043 needs
+the same, because its FIFO of 256 bytes also holds the chunk headers. The
+802.15.4 radio (127 bytes) and the nRF905 (32 bytes) fall below the MTU.
+They need link-level fragmentation in their own binding or are out of
+scope (6.4).
+
+Two more figures for the bindings of section 7:
+
+- The information field of an AX.25 frame has a default maximum of 256
+  octets (read: AX.25 version 2.2, July 1998). The address, control and
+  PID fields are outside it. The AX.25 encapsulation of 7.2 therefore
+  carries a PDU of 255 bytes.
+- The LoRa APRS convention puts 3 bytes before the text of a packet: `<`,
+  `FF` and `01`. This comes from the wiki of a third-party firmware and
+  was not read in the firmware source. The byte `<` is `3C`, so its least
+  significant bit is 0, and the first-byte rule of 5.1 tells the two
+  apart.
 
 ## Appendix B. Approximate link throughput
 

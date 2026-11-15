@@ -234,12 +234,12 @@ removes that word for the PDU.
 
 - **[agreed]** The header is minimal. No application data may be placed in
   link-layer address fields.
-- **[proposed]** Header contents: protocol version (5.10), flags, source
+- **[agreed]** Header contents: protocol version (5.10), flags, source
   callsign and SSID (encoded as in 5.8), a per-source sequence number, hop
   limit, and source length. Everything else is a TLV.
 - **[agreed]** The header also has the type of the PDU. One PDU has one
   type (5.11).
-- **[proposed]** The header is 14 bytes, in this layout:
+- **[agreed]** The header is 14 bytes, in this layout:
 
   | Offset | Bytes | Field |
   |---|---|---|
@@ -265,7 +265,7 @@ removes that word for the PDU.
   | Translated | A gateway made the PDU from a legacy packet (section 14, question 10). |
   | Authenticated | The PDU has an authentication tag (section 10). |
 
-- **[proposed]** In the second byte, from the most significant bit down:
+- **[agreed]** In the second byte, from the most significant bit down:
   the hop limit in 3 bits, then the flags No Internet, Translated and
   Authenticated, then 2 reserved bits. A source writes 0 in a reserved
   bit. A receiver ignores a reserved bit.
@@ -293,7 +293,7 @@ removes that word for the PDU.
   the PDU is invalid.
 - **[agreed]** Padding is not part of the PDU. The checksum does not
   cover it, and a relay does not send the padding that it received.
-- **[proposed]** The header carries the hop limit chosen by the source,
+- **[agreed]** The header carries the hop limit chosen by the source,
   not a count that relays decrement; the number of hops used is read from
   the trailer (5.9).
 - **[agreed]** The PDU carries its own frame checksum, CRC-32C (Castagnoli),
@@ -313,7 +313,7 @@ removes that word for the PDU.
     CRC-32 for its better error-detection properties at short lengths; the
     exact Hamming distance figures are to be confirmed against Koopman's
     tables.
-- **[proposed]** The checksum is always present, including in authenticated
+- **[agreed]** The checksum is always present, including in authenticated
   PDUs. A TESLA MAC cannot be verified until its key is disclosed later
   (10.4), so relays and receivers need a check they can evaluate at once.
 - **[agreed]** Every integer of more than one byte in a PDU is in
@@ -322,7 +322,7 @@ removes that word for the PDU.
   section 2). This includes the source identifier, the sequence number
   and the checksum. A text or a screen still shows a number with its most
   significant digit first.
-- **[proposed]** The least significant bit of the first byte of a PDU is 1.
+- **[agreed]** The least significant bit of the first byte of a PDU is 1.
   In AX.25 the first byte of a frame is an address byte whose low bit, the
   extension bit, is always 0. An AX.25 parser therefore sees an address
   field of length 1, which is not a multiple of 7, and rejects the frame,
@@ -2071,8 +2071,7 @@ anything is decided on them.
       wire format, so the units can differ. Does the record change to the
       units of 5.3?
 25. Header (5.1):
-    - The positions of the flags in the second byte, and the use of the
-      two reserved bits.
+    - The use of the two reserved bits of the second byte.
     - The algorithm and the length of the authentication tag (section
       10).
     - The exact rule for the flag No Internet: which stations obey it,
@@ -2158,7 +2157,7 @@ anything is decided on them.
     the tag table of step 6.
 17. Move the topics of section 5 to `docs/spec/`, when most of the items
     of a topic are not open. Done: 5.3, in two files, and 5.10. Next:
-    5.1 when its layout is decided. 5.4 and 5.5 stay in the RFC for now.
+    5.1; its layout is decided. 5.4 and 5.5 stay in the RFC for now.
 
 ## Appendix A. Transceiver packet limits
 

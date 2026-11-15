@@ -7,8 +7,9 @@ record per line (01-record section 8). The logged time of a corpus record
 is the received time, with the resolution 0.001 s (section 2). These
 formats have a body: position reports, DF reports, Mic-E, Objects, Items
 (docs/interop/02-object.md), weather reports (docs/interop/03-weather.md),
-telemetry and telemetry definition messages (docs/interop/04-telemetry.md)
-and status reports (docs/interop/05-status.md).
+telemetry and telemetry definition messages (docs/interop/04-telemetry.md),
+status reports (docs/interop/05-status.md), messages and bulletins
+(docs/interop/06-message.md).
 
 With --stats no record is written. Instead the tool counts, over all input
 files: packets, records by format and uses, and for each field of each
@@ -28,7 +29,7 @@ from functools import partial
 import click
 from tqdm import tqdm
 
-from qua_network.interop.record import MODES, STATUS_ORDER, TLM_DEF_ORDER, TLM_ORDER, WX_ORDER, decode
+from qua_network.interop.record import BLN_ORDER, MODES, MSG_ORDER, STATUS_ORDER, TLM_DEF_ORDER, TLM_ORDER, WX_ORDER, decode
 from qua_network.parallel import jobs_option, map_files
 from qua_network.tnc2 import log_files, read_records, split_record
 
@@ -82,6 +83,8 @@ BODY_FIELDS = {
     "telemetry": TLM_ORDER,
     "telemetry_definition": TLM_DEF_ORDER,
     "status": STATUS_ORDER,
+    "message": MSG_ORDER,
+    "bulletin": BLN_ORDER,
 }
 
 

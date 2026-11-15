@@ -18,7 +18,8 @@ Objects, Items and complete weather reports. [02-object.md](02-object.md)
 specifies the object body. [03-weather.md](03-weather.md) specifies the
 weather body. [04-telemetry.md](04-telemetry.md) specifies the telemetry
 body and the telemetry definition body. [05-status.md](05-status.md)
-specifies the status body.
+specifies the status body. [06-message.md](06-message.md) specifies the
+message body and the bulletin body.
 The other uses get their bodies later ([README section 5](README.md#5-open-items)).
 
 ## 2. Input
@@ -35,7 +36,8 @@ the value rules of the value files of docs/legacy to the tokens
 [11-values-object](../legacy/11-values-object.md),
 [12-values-weather](../legacy/12-values-weather.md),
 [13-values-telemetry](../legacy/13-values-telemetry.md),
-[14-values-status](../legacy/14-values-status.md)). It MUST NOT read a value from bytes outside the tokens that the value rule
+[14-values-status](../legacy/14-values-status.md),
+[15-values-message](../legacy/15-values-message.md)). It MUST NOT read a value from bytes outside the tokens that the value rule
 names.
 
 **[proposed]** If the line is a third-party packet, the record describes
@@ -184,14 +186,14 @@ have the same unit.
   or dB, S-points and beacons per hour.
 - Humidity is in percent ([03-weather section 3.1](03-weather.md#31-units)).
 
-**[agreed]** A quantity keeps its resolution. The resolution is
-information of the packet, not a form of its bytes.
 **[agreed]** One quantity has one record unit in every body. A quantity
 is one kind of use, as in RFC 5.3. Height, range and rain are lengths, and
 they are three quantities.
 
 **[proposed]** No value object names a unit or a prefix.
 
+**[agreed]** A quantity keeps its resolution. The resolution is
+information of the packet, not a form of its bytes.
 
 **[agreed]** The conversion to the record unit is in this file. 10-values
 keeps the units of APRS12c, because it is the interpretation of APRS12c.
@@ -200,13 +202,13 @@ An earlier draft gave each quantity as the integer count of 10-values,
 with its unit and its step. The author dropped it, for the reasons in the
 first item of this section.
 
-**[proposed]** 10-values gives most quantities as an integer count with a
-step in counts. This file calls the count `n` and the step `w`. For a
 An earlier draft gave each quantity in an SI unit: speed in metres per
 second, temperature in kelvin, pressure in pascals, and range, rain and
 snowfall in metres. RFC 5.3 then allowed a practical unit. The author
 asked for the units of RFC 5.3 in the record.
 
+**[proposed]** 10-values gives most quantities as an integer count with a
+step in counts. This file calls the count `n` and the step `w`. For a
 non-linear unit, this file calls the code `k`: the integer that the
 formula of 10-values takes. The record computes `v` and `res` with the
 table below. If 10-values states no step for a value, the step is 1.
@@ -357,7 +359,7 @@ codes, flags, byte strings and the fields of a timestamp.
 | `destination` | Byte string | The bytes of `addr.dest`, or of `tp.dest`. |
 | `path` | List of byte strings | One item for each path entry, in order: the bytes between the separators, with the `'*'` if the entry has one. For a third-party packet, the entries of `tp.net` and `tp.gate`. |
 | `outer` | Object | Only for a third-party packet: `source`, `destination` and `path` of the outer header. |
-| `uses` | List of strings | The names of the uses of the packet. Each name is the key of a body. The names are `"object"`, `"position"`, `"weather"`, `"telemetry"`, `"telemetry_definition"` and `"status"`, in this order. The list is empty if the record has no body. |
+| `uses` | List of strings | The names of the uses of the packet. Each name is the key of a body. The names are `"object"`, `"position"`, `"weather"`, `"telemetry"`, `"telemetry_definition"`, `"status"`, `"message"` and `"bulletin"`, in this order. The list is empty if the record has no body. |
 | `format` | String | The rule ID of the identifier token, for example `pos.dti`, `mice.dti` or `wx.pos`. |
 | `verdict` | String or `null` | The verdict of the tokenizer. `null` if the tokenizer has no reader for the format. |
 | `findings` | List | Every finding of the tokenizer, as `[rule, kind, offset]`. |
@@ -368,6 +370,8 @@ codes, flags, byte strings and the fields of a timestamp.
 | `telemetry` | Object | The telemetry body ([04-telemetry](04-telemetry.md)). Present for a telemetry report and for a packet with a base-91 block. |
 | `telemetry_definition` | Object | The telemetry definition body ([04-telemetry](04-telemetry.md#4-telemetry-definition-body)). Present if the identifier is `tlm.def.dti`. |
 | `status` | Object | The status body ([05-status](05-status.md)). Present if the identifier is `stat.dti`. |
+| `message` | Object | The message body ([06-message](06-message.md)). Present if the identifier is `msg.dti`. |
+| `bulletin` | Object | The bulletin body ([06-message](06-message.md#4-bulletin-body)). Present if the identifier is `bln.dti` or `nws.dti`. |
 | `notes` | List | Section 4.5. |
 | `undecoded` | List | Each token of the information field that no value rule reads, as `[rule, start, end]`. The bytes are in `line`. The list includes such tokens inside `cmt.text`. `cmt.text` itself is in the body. Residue is listed. |
 
@@ -744,8 +748,8 @@ differ between the modes:
 - **[open]** The other uses, the encoder, the gateway mapping and the
   differential tests ([README section 5](README.md#5-open-items)).
 - **[proposed]** The order of the names in `uses`: `object`, `position`,
-  `weather`, `telemetry`, `telemetry_definition`, `status`, then each
-  later use.
+  `weather`, `telemetry`, `telemetry_definition`, `status`, `message`,
+  `bulletin`.
 - **[open]** Whether `source` also gives a QUA Network identifier
   ([spec 01 section 8](../spec/01-station-identifier.md#8-mapping-to-an-ax25-address)).
 - **[open]** `fix` exists only for the compressed format and Mic-E. A

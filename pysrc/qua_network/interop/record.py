@@ -7,7 +7,8 @@ of docs/legacy (values.py) and converts each value to its record unit
 (section 2). The object body is that of docs/interop/02-object.md, and the
 weather body that of docs/interop/03-weather.md. The telemetry body and
 the telemetry definition body are those of docs/interop/04-telemetry.md.
-The status body is that of docs/interop/05-status.md.
+The status body is that of docs/interop/05-status.md. The message body and
+the bulletin body are those of docs/interop/06-message.md.
 """
 
 import calendar
@@ -38,6 +39,7 @@ from qua_network.interop.values import (
     effect_mice_dc,
     effect_mice_dest,
     effect_mice_lon,
+    effect_msg_number,
     effect_obj_name,
     effect_obj_state,
     effect_sym,
@@ -243,6 +245,24 @@ READ = frozenset(
         "stat.dti",
         "grid.loc",
         "stat.beam",
+        "msg.dti",
+        "msg.id.open",
+        "msg.id",
+        "msg.id.mm",
+        "msg.id.close",
+        "msg.id.aa",
+        "msg.ack.kw",
+        "msg.rej.kw",
+        "msg.ack.num",
+        "bln.dti",
+        "nws.dti",
+        "bln.kw",
+        "bln.num",
+        "bln.ann",
+        "bln.group",
+        "nws.kw",
+        "nws.level",
+        "nws.ref",
         "time.dhm",
         "time.hms",
         "lat",
@@ -314,6 +334,10 @@ TLM_ORDER = ("sequence", "analog", "digital", "comment")
 TLM_DEF_ORDER = ("station", "kind", "names", "units", "coefficients", "sense", "title")
 # 05-status section 3.
 STATUS_ORDER = ("locator", "symbol", "text", "beam_heading", "beam_power", "noarchive")
+# 06-message sections 3 and 4.
+MSG_ORDER = ("addressee", "kind", "text", "id", "reply_ack", "ack_id", "noarchive")
+BLN_ORDER = ("kind", "id", "group", "level", "text", "reference", "noarchive")
+MSG_ID_RULES = ("msg.id.open", "msg.id", "msg.id.mm", "msg.id.close", "msg.id.aa")
 # Keyword token -> (kind, field of the body, item token, most fields).
 TLM_LISTS = {
     "tlm.parm": ("parm", "names", "tlm.parm.name", 13),
@@ -341,7 +365,9 @@ FIELD_ORDER = (
 FIELD_ORDER += tuple("weather." + name for name in WX_ORDER)
 FIELD_ORDER += tuple("telemetry." + name for name in TLM_ORDER)
 FIELD_ORDER += tuple("telemetry_definition." + name for name in TLM_DEF_ORDER)
-FIELD_ORDER += tuple("status." + name for name in STATUS_ORDER) + ("report_time",)
+FIELD_ORDER += tuple("status." + name for name in STATUS_ORDER)
+FIELD_ORDER += tuple("message." + name for name in MSG_ORDER)
+FIELD_ORDER += tuple("bulletin." + name for name in BLN_ORDER) + ("report_time",)
 _DEST_CHILDREN = ("mice.dest.a", "mice.dest.b", "mice.dest.c", "mice.dest.ns", "mice.dest.lonoff", "mice.dest.we")
 _DEST_RULES = frozenset(("dest.mice", "mice.dest") + _DEST_CHILDREN)
 _LON_DEST_RULES = frozenset(("dest.mice", "mice.dest", "mice.dest.lonoff", "mice.dest.we"))
@@ -462,7 +488,7 @@ class Decoder:
         }
         if self.outer is not None:
             out["outer"] = self.outer
-        body = obj = wx = tlm = tdef = status = None
+        body = obj = wx = tlm = tdef = status = msg = bln = None
         if not scan.unknown_format:
             pre = wpre = tpre = None
             self.weather = self.format in WEATHER_FORMATS or self.format == "item.dti" and self._item_weather()
@@ -487,6 +513,10 @@ class Decoder:
                 tdef = self._lists(self._definition(), "telemetry_definition", TLM_DEF_ORDER)
             if self.format == "stat.dti":
                 status = self._lists(self._status(), "status", STATUS_ORDER)
+            if self.format == "msg.dti":
+                msg = self._lists(self._message(), "message", MSG_ORDER)
+            if self.format in ("bln.dti", "nws.dti"):
+                bln = self._lists(self._bulletin(), "bulletin", BLN_ORDER)
         bodies = (
             ("object", obj),
             ("position", body),
@@ -494,6 +524,8 @@ class Decoder:
             ("telemetry", tlm),
             ("telemetry_definition", tdef),
             ("status", status),
+            ("message", msg),
+            ("bulletin", bln),
         )
         has_body = any(b is not None for _, b in bodies)
         out["uses"] = [name for name, b in bodies if b is not None]
@@ -855,19 +887,9 @@ class Decoder:
         line = self.line
         # msg.sep: the text still starts at its fixed place.
         sep = [(f, COMPUTABLE) for f in self._in_info("msg.sep", "syntax")]
-        w = {}
-        t = self.tok("msg.addr.name")
-        addr = self.tok("msg.addr")
-        fs = [
-            f
-            for f in self.findings
-            if f.rule in ("msg.addr", "msg.addr.name") and addr is not None and addr.start <= f.offset <= addr.end
-        ]
-        judged = [(f, effect_tlm_station(f)) for f in fs] + sep
-        if t is None:
-            w["station"] = Pre(None, judged or [(f, NONE) for f in self.stop()])
-        else:
-            w["station"] = Pre({"bytes": text(line[t.start : t.end])}, judged, [_ref(t)])
+        w = {"station": self._addressee(sep)}
+        # No value rule of this body reads the message number.
+        self.unread.update(t for r in MSG_ID_RULES for t in self.toks(r))
         lst = next((t for r in TLM_LISTS for t in self.toks(r)), None)
         if lst is not None:
             kind, field, item, most = TLM_LISTS[lst.rule]
@@ -922,6 +944,114 @@ class Decoder:
                 break
             a, k = c, k + 1
         return out
+
+    def _addressee(self, sep):
+        """val.msg.addr and val.tlm.def.station: the name of the addressee."""
+        t = self.tok("msg.addr.name")
+        addr = self.tok("msg.addr")
+        fs = [
+            f
+            for f in self.findings
+            if f.rule in ("msg.addr", "msg.addr.name") and addr is not None and addr.start <= f.offset <= addr.end
+        ]
+        judged = [(f, effect_tlm_station(f)) for f in fs] + sep
+        if t is None:
+            return Pre(None, judged or [(f, NONE) for f in self.stop()])
+        return Pre({"bytes": text(self.line[t.start : t.end])}, judged, [_ref(t)])
+
+    # --- Message and bulletin bodies (06-message sections 3 and 4) ---------
+
+    def _text(self, w, rule, sep):
+        """The text of a message or a bulletin, and its no-archive flag."""
+        t = self.tok(rule)
+        if t is not None:
+            self.read.add(t)
+            w["text"] = Pre({"bytes": text(self.line[t.start : t.end])}, list(sep), [_ref(t)])
+        t = self.tok("cmt.noarchive")
+        if t is not None:
+            w["noarchive"] = Pre({"flag": True}, list(sep), [_ref(t)])
+
+    def _number(self, rule, sep, extra=(), a=0, cut=False):
+        """A number from the token of rule, from its byte a; cut stops it
+        before a '}'. None if the packet has no such token."""
+        t = self.tok(rule)
+        if t is None:
+            return None
+        b = self.line[t.start + a : t.end]
+        if cut:
+            b = b.split(b"}")[0]
+        judged = [(f, effect_msg_number(f)) for f in self.on((rule,), t)] + list(extra) + sep
+        return Pre({"bytes": text(b)}, judged, [_ref(t)])
+
+    def _message(self):
+        """The message body, before the mode."""
+        sep = [(f, COMPUTABLE) for f in self._in_info("msg.sep", "syntax")]
+        w = {"addressee": self._addressee(sep)}
+        kw = self.tok("msg.ack.kw") or self.tok("msg.rej.kw")
+        if kw is not None:
+            w["kind"] = Pre({"code": kw.rule[4:7]}, list(sep), [_ref(kw)])
+            num = self._number("msg.ack.num", sep, cut=True)
+            w["id"] = num if num is not None else self.missing()
+            return w
+        w["kind"] = Pre({"code": "message"}, list(sep), [[self.format, self.info_start, self.info_start + 1]])
+        # Without the separator, the start of the text is not certain.
+        sep = [(f, NONE) for f, _ in sep]
+        self._text(w, "msg.text", sep)
+        if self.tok("msg.id.open") is None:
+            return w
+        close = self.tok("msg.id.close")
+        # A number longer than 5 bytes: the finding is on the reply-ack
+        # field that holds its sixth byte.
+        long_ = [
+            (f, COMPUTABLE)
+            for f in self.findings
+            if f.kind == "value"
+            and f.rule in ("msg.id.mm", "msg.id.close", "msg.id.aa")
+            and self.info_start <= f.offset <= self.info_end
+        ]
+        num = self._number("msg.id.mm" if close is not None else "msg.id", sep, long_)
+        if num is None:
+            fs = [f for r in ("msg.id", "msg.id.mm") for f in self._in_info(r, "syntax")]
+            num = Pre(None, [(f, NONE) for f in fs] or [(f, NONE) for f in self.stop()])
+        w["id"] = num
+        if close is not None:
+            w["reply_ack"] = Pre({"flag": True}, list(sep), [_ref(close)])
+            aa = self._number("msg.id.aa", sep, long_)
+            if aa is not None:
+                w["ack_id"] = aa
+        return w
+
+    def _bulletin(self):
+        """The bulletin body, before the mode."""
+        sep = [(f, COMPUTABLE) for f in self._in_info("msg.sep", "syntax")]
+        nws = self.format == "nws.dti"
+        bad = [(f, NONE) for r in ("bln.addr", "nws.addr") for f in self._in_info(r, "syntax")]
+        gone = Pre(None, bad or [(f, NONE) for f in self.stop()])
+        w = {}
+        if nws:
+            w["kind"] = Pre({"code": "nws"}, list(sep), [[self.format, self.info_start, self.info_start + 1]])
+            level = self._number("nws.level", sep)
+            if level is not None:
+                # The list of severity words is open: unstated is kept.
+                level.judged = [(f, e if isinstance(f, str) or f.kind != "unstated" else KEPT) for f, e in level.judged]
+            w["level"] = level if level is not None else gone
+        else:
+            t = self.tok("bln.num") or self.tok("bln.ann")
+            if t is None:
+                w["kind"] = w["id"] = gone
+            else:
+                kind = "bulletin" if t.rule == "bln.num" else "announcement"
+                w["kind"] = Pre({"code": kind}, list(sep), [_ref(t)])
+                w["id"] = Pre({"bytes": text(self.line[t.start : t.end])}, list(sep), [_ref(t)])
+            group = self._number("bln.group", sep)
+            if group is not None:
+                w["group"] = group
+        sep = [(f, NONE) for f, _ in sep]
+        self._text(w, "nws.text" if nws else "bln.text", sep)
+        ref = self._number("nws.ref", sep, a=1)
+        if ref is not None:
+            w["reference"] = ref
+        return w
 
     # --- Status body (05-status section 3) --------------------------------
 

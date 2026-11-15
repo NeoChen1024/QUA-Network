@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """Value rules of the value files of docs/legacy (10-values.md,
-11-values-object.md, 12-values-weather.md, 13-values-telemetry.md and
-14-values-status.md), as integer arithmetic on token bytes.
+11-values-object.md, 12-values-weather.md, 13-values-telemetry.md,
+14-values-status.md and 15-values-message.md), as integer arithmetic on
+token bytes.
 
 Each function named ``val_*`` is the value rule with the same ID (dots
 become underscores). It takes the bytes of the tokens that the column
@@ -763,9 +764,8 @@ def effect_tlm_analog(f):
 
 
 def effect_tlm_station(f):
-    if f.kind == "syntax":
-        return NONE
-    return COMPUTABLE if f.kind == "unstated" else KEPT
+    """An addressee name: its bytes are certain, so unstated is kept."""
+    return NONE if f.kind == "syntax" else KEPT
 
 
 def effect_tlm_text(f, long_kept=False):
@@ -787,3 +787,13 @@ def val_stat_beam(b):
     """val.stat.beam: (heading, power) of the three bytes of stat.beam."""
     h = b[1] - 0x30 if _is_digit(b[1]) else b[1] - 0x37
     return Q("deg", 10 * h, 10), Q("watt.erp", b[2] - 0x30)
+
+
+# --- 15-values-message section 6: effect of one finding ---------------------
+
+
+def effect_msg_number(f):
+    """A message number, a reply-ack field or a reference identifier."""
+    if f.kind == "syntax":
+        return NONE
+    return COMPUTABLE if f.kind in ("value", "unstated") else KEPT

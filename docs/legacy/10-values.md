@@ -27,7 +27,8 @@ Items. It uses the value rules of this file for their position.
 reports. [13-values-telemetry](13-values-telemetry.md) gives the values
 of telemetry, the base-91 block in a comment included.
 [14-values-status](14-values-status.md) gives the values of status
-reports. Messages are outside this file. The area descriptor, locators,
+reports. [15-values-message](15-values-message.md) gives the values of
+messages and bulletins. The area descriptor, locators,
 frequencies and the symbols in the address fields are also outside this
 file.
 
@@ -424,8 +425,7 @@ None.
 
 ## 13. Open items
 
-- Values of the other formats: messages.
-  Also the area descriptor, locators, frequencies and the
+- Values of the area descriptor, locators, frequencies and the
   symbols in the address fields
   ([01 section 11](01-frame.md#11-open-items)).
 - A list of the expected values of the worked examples of APRS12c, by page

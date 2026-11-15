@@ -477,6 +477,7 @@ not copy the code, because several of these projects are GPL.
 | [12-values-weather.md](12-values-weather.md) | Values of weather reports: wind, the weather fields, the software and unit codes, the MDHM timestamp. | `val` |
 | [13-values-telemetry.md](13-values-telemetry.md) | Values of telemetry: the telemetry report, the base-91 block, the definition messages. | `val` |
 | [14-values-status.md](14-values-status.md) | Values of status reports: the text, the beam heading and power, the locator. | `val` |
+| [15-values-message.md](15-values-message.md) | Values of messages, acknowledgements, rejections and bulletins. | `val` |
 | [examples.json](examples.json) | The expected verdict and findings of each example packet of APRS12c, by page and digest. | — |
 
 ## 6. Open items

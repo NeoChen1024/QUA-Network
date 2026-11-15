@@ -4,7 +4,7 @@
 |---|---|
 | Status | Draft. Not frozen. Items carry the labels **[proposed]** and **[open]** with the meaning that the RFC gives them. An **[agreed]** item is a decision of the author. |
 | Rationale | [RFC draft 0](../rfc/qua-network-rfc-0.md): section 3.2, section 14 question 10, Appendix E |
-| Reading of APRS12c | [docs/legacy](../legacy/README.md), in particular its value files: [10-values.md](../legacy/10-values.md), [11-values-object.md](../legacy/11-values-object.md), [12-values-weather.md](../legacy/12-values-weather.md), [13-values-telemetry.md](../legacy/13-values-telemetry.md), [14-values-status.md](../legacy/14-values-status.md) |
+| Reading of APRS12c | [docs/legacy](../legacy/README.md), in particular its value files: [10-values.md](../legacy/10-values.md), [11-values-object.md](../legacy/11-values-object.md), [12-values-weather.md](../legacy/12-values-weather.md), [13-values-telemetry.md](../legacy/13-values-telemetry.md), [14-values-status.md](../legacy/14-values-status.md), [15-values-message.md](../legacy/15-values-message.md) |
 
 ## 1. Purpose
 
@@ -59,7 +59,7 @@ use these terms:
 |---|---|
 | legacy packet | A packet of the APRS network, as a TNC2 line or as an AX.25 frame. |
 | record | The output of the decoder for one legacy packet. |
-| use | What a part of a record is for: position, message, telemetry, telemetry definition, weather, object or status. A use is not a legacy format. One packet can have more than one use. A record names its uses in `uses`. |
+| use | What a part of a record is for: position, message, bulletin, telemetry, telemetry definition, weather, object or status. A use is not a legacy format. One packet can have more than one use. A record names its uses in `uses`. |
 | envelope | The fields that every record has. |
 | body | The fields of one use, for example the position body. A record has one body for each use of the packet. |
 | the decoder | The tool that makes records. It runs the tokenizer and applies the value files of docs/legacy. |
@@ -80,12 +80,13 @@ use these terms:
 | [03-weather.md](03-weather.md) | The weather body, for positionless and complete weather reports. |
 | [04-telemetry.md](04-telemetry.md) | The telemetry body, for telemetry reports and base-91 blocks, and the telemetry definition body. |
 | [05-status.md](05-status.md) | The status body, for status reports. |
+| [06-message.md](06-message.md) | The message body, for messages, acknowledgements and rejections, and the bulletin body. |
 
 ## 5. Open items
 
 This directory defers these items. Each is **[open]**.
 
-- The body of the last use: message. Each gets a file in this directory and needs value rules
+- The frequency in a comment and in a status text. Each gets a file in this directory and needs value rules
   in docs/legacy first. The frequency in a comment follows as fields of
   the position body.
 - **[agreed]** These formats get no body until a use needs them:

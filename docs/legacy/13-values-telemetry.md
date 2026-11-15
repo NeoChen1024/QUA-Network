@@ -155,7 +155,7 @@ token that has no row has only findings with the effect `kept`.
 | `tlm.analog` | `syntax` | The value of that token | `none` |
 | `tlm.digital` | `syntax` | Digital values | `none` |
 | `msg.addr`, `msg.addr.name` | `syntax` | Station | `none` |
-| `msg.addr.name` | `unstated` (a byte other than a letter, a digit or `'-'`) | Station | `computable`: all bytes of the token |
+| `msg.addr.name` | `unstated` (a byte other than a letter, a digit or `'-'`) | Station | **[agreed]** `kept`, as [15-values-message section 6](15-values-message.md#6-effect-of-findings) gives for an addressee |
 | `msg.sep` | `syntax` | Station and every value of the text | `computable` |
 | `msg.text` | `value` (the text is too long) | All | `kept` |
 | `tlm.parm.name`, `tlm.unit.label` | `syntax` in the field (a byte that is not a text byte) | That name, unit or label | `none` |
@@ -216,5 +216,6 @@ None.
   [11-values-object](11-values-object.md#6-effect-of-findings) does for
   an Item name.
 - The effect of `ambiguous` on `tlm.b91`.
-- The message identifier of a definition message has no value rule yet.
-  The value file of messages will give it.
+- The message identifier of a definition message. No value rule of this
+  file reads it. [15-values-message](15-values-message.md) gives the
+  value rule for a message.

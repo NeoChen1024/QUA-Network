@@ -25,7 +25,7 @@ N0CALL>APZ001:>IO91SX/- My house
 
 ## Frequency
 
-Run r2, path `status.text`:
+Run r5, path `status.text`:
 
 | Parser | `agree` | `differ` |
 |---|---|---|

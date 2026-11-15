@@ -73,14 +73,14 @@ numbered file. An entry has these parts, as RFC Appendix E.3 lists them:
 
 | Run | Input files | Packets | Mode of the decoder | Decoder and tool at commit |
 |---|---|---|---|---|
-| r2 | `aprsis-20261104-03.log` to `aprsis-20261114-11.log`, 249 files | 84,560,319 | permissive | `6f138d7` |
+| r5 | `aprsis-20261104-03.log` to `aprsis-20261114-11.log`, 249 files | 84,560,319 | permissive | `25507fe` |
 
 **[proposed]** A run counts packets for each path, not for each cause.
 An entry gives the counts of its paths. The cause is what the inspected
 examples of the run show and what the code of the parser says. The count
 of one cause alone is not measured.
 
-The classes of run r2 are:
+The classes of run r5 are:
 
 | Parser | `both` | `ours-only` | `theirs-only` | `neither` |
 |---|---|---|---|---|
@@ -108,7 +108,7 @@ The classes of run r2 are:
 - **[open]** A category for a format that APRS12c specifies and that a
   parser does not decode. RFC Appendix E.2 has none.
 - **[open]** The other parsers of RFC Appendix E.1.
-- **[open]** Run r2 shows these differences too. They have no entry yet,
+- **[open]** Run r5 shows these differences too. They have no entry yet,
   and no person has read the code for them:
   - the messaging flag of Mic-E, which only the record gives;
   - a Mic-E course of 0 and the pair `000/000`, for which `fap` gives the
@@ -119,6 +119,7 @@ The classes of run r2 are:
   - a telemetry report with more than eight digital bits;
   - a packet with bytes before the `!`, which `fap` decodes as a
     position;
-  - raw weather reports and raw NMEA sentences, which `fap` decodes;
+  - raw weather reports and raw NMEA sentences, which `fap` decodes and
+    for which the record has no body;
   - a snowfall field, which `pythonlib` can read as the wind speed;
   - a compressed altitude together with an altitude in the comment.

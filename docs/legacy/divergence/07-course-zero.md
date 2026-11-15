@@ -24,7 +24,7 @@ N0CALL>APZ001:!/5L!!<*e7>!P[
 
 ## Frequency
 
-Run r2, path `position.course`:
+Run r5, path `position.course`:
 
 | Parser | `agree` | `differ` |
 |---|---|---|

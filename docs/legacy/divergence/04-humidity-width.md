@@ -3,9 +3,9 @@
 ## Description
 
 The humidity field is `h` and two digits. Some senders write three
-digits, for example `h100`. `pythonlib` reads two digits. `fap` reads up
-to three digits. The record reads two digits, with an exception for
-`100`.
+digits, for example `h100` or `h078`. `pythonlib` reads two digits.
+`fap` reads up to three digits. The record reads two digits, with two
+exceptions: `100`, and three digits that start with `0`.
 
 ## Category
 
@@ -27,26 +27,46 @@ N0CALL>APZ001:!4903.50N/07201.75W_220/004g005t077h100b10190
 An earlier draft of the record gave the humidity 10 % in both modes,
 with no finding. The bytes `0b10190` were the comment.
 
+```
+N0CALL>APZ001:!4903.50N/07201.75W_220/004g005t077h078b10190
+```
+
+| Side | Humidity | Pressure |
+|---|---|---|
+| Record, strict mode | No value | No value |
+| Record, permissive mode | 78 %, with a mark | 1019 hPa, with a mark |
+| `fap` | 78 % | 1019.0 hPa |
+| `pythonlib` | 7 % | No value. The comment is `8b10190`. |
+
+An earlier draft of the record gave the humidity 7 % for this packet in
+both modes, with no finding.
+
 ## Frequency
 
-Run r2:
+Run r5:
 
 | Parser | Path | `agree` | `differ` | `ours-only` | `theirs-only` |
 |---|---|---|---|---|---|
-| `fap` | `weather.humidity` | 7,998,793 | 50,735 | 13,535 | 603,032 |
-| `fap` | `weather.pressure` | 7,883,539 | 0 | 7,468 | 855,952 |
-| `pythonlib` | `weather.humidity` | 7,872,443 | 183,045 | 7,215 | 483,812 |
+| `fap` | `weather.humidity` | 8,039,711 | 0 | 13,535 | 612,849 |
+| `fap` | `weather.pressure` | 7,941,960 | 0 | 8,651 | 797,531 |
+| `pythonlib` | `weather.humidity` | 7,814,882 | 230,789 | 7,215 | 493,629 |
 
 The `theirs-only` counts include
-[div.compressed-wind](10-compressed-wind.md).
+[div.compressed-wind](10-compressed-wind.md). They also include the
+bytes `h000`, for which both parsers give 100 and the record gives no
+value.
 
-In this run, the record reads `h100` as the decision below says. The
-inspected examples show these causes:
+In this run, the record reads three digits as the decision below says.
+The inspected examples of `pythonlib`, `differ` show two causes:
 
-- `pythonlib`, `differ`: the bytes `h100`. The record gives 100, and the
-  parser gives 10.
-- `fap`, `differ`: three digits that start with `0`, for example `h078`.
-  The record gives 7, and the parser gives 78.
+- the bytes `h100`: the record gives 100, and the parser gives 10;
+- three digits that start with `0`, for example `h078`: the record
+  gives 78, and the parser gives 7.
+
+An earlier run on the same input, with the decoder at `6f138d7`, had
+the rule for `h100` only. In that run, `fap` had the
+outcome `differ` for 50,735 humidity values. The inspected examples were
+three digits that start with `0`.
 
 ## Behaviour
 
@@ -74,5 +94,10 @@ p. 84/64: `h` and two digits, and `00` is 100 %. The row is
   with a mark.
 - **[agreed]** The fields after `h100` have the same effect
   ([12-values-weather section 6](../12-values-weather.md#6-effect-of-findings)).
-- **[open]** Another humidity with three digits, for example `h078`. The
-  record reads two digits.
+- **[agreed]** The tokenizer reads three digits that start with `0`, for
+  example `h078`, in the same way. In permissive mode, the humidity is
+  the number of the three digits, with a mark.
+- **[proposed]** `h000` gives no humidity in both modes. The number 0 is
+  below the range. `fap` gives 100 for these bytes.
+- **[agreed]** For every other humidity with three digits, the record
+  reads two digits.

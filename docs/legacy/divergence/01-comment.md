@@ -29,12 +29,12 @@ N0CALL>APZ001:!4903.50N/07201.75W#PHG5132/Digi text/A=000100
 
 ## Frequency
 
-Run r2, path `position.comment`:
+Run r5, path `position.comment`:
 
 | Parser | `agree` | `differ` | `ours-only` | `theirs-only` |
 |---|---|---|---|---|
-| `fap` | 53,420,382 | 3,422,287 | 615,842 | 1,506,476 |
-| `pythonlib` | 51,749,590 | 5,198,320 | 39,748 | 2,633,548 |
+| `fap` | 53,445,952 | 3,390,121 | 586,394 | 1,513,072 |
+| `pythonlib` | 51,702,788 | 5,210,261 | 38,565 | 2,668,409 |
 
 These counts include other causes. The inspected examples show these:
 

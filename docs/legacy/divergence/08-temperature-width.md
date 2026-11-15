@@ -24,7 +24,7 @@ N0CALL>APZ001:!4903.50N/07201.75W_220/004g005t0122r000
 
 ## Frequency
 
-Run r2, path `weather.temperature`:
+Run r5, path `weather.temperature`:
 
 | Parser | `agree` | `differ` |
 |---|---|---|

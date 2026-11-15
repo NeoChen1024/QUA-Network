@@ -27,7 +27,7 @@ N0CALL>APZ001::N0CALL-9 :ack1}
 
 ## Frequency
 
-Run r2:
+Run r5:
 
 | Parser | Path | `agree` | `differ` |
 |---|---|---|---|

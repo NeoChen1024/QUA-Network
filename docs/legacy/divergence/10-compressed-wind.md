@@ -28,12 +28,12 @@ The record has the use `weather` with no field. Its comment is
 
 ## Frequency
 
-Run r2, outcome `theirs-only`:
+Run r5, outcome `theirs-only`:
 
 | Parser | `weather.temperature` | `weather.humidity` | `weather.pressure` |
 |---|---|---|---|
-| `fap` | 687,903 | 603,032 | 855,952 |
-| `pythonlib` | 578,843 | 483,812 | 556,249 |
+| `fap` | 687,903 | 612,849 | 797,531 |
+| `pythonlib` | 578,843 | 493,629 | 556,249 |
 
 The counts for `fap` include
 [div.humidity-width](04-humidity-width.md).

@@ -26,7 +26,7 @@ All sides give the ambiguity level 2.
 
 ## Frequency
 
-Run r2:
+Run r5:
 
 | Parser | Path | `agree` | `differ` |
 |---|---|---|---|

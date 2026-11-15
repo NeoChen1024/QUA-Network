@@ -25,7 +25,7 @@ N0CALL>APZ001:!4903.50N/07201.75W_220/004g005t077
 
 ## Frequency
 
-Run r2:
+Run r5:
 
 | Parser | Path | `agree` | `differ` | `ours-only` | `theirs-only` |
 |---|---|---|---|---|---|

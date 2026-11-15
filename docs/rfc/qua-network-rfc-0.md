@@ -1107,94 +1107,43 @@ or separator, which needed several rejection rules to be canonical.
 
 ### 5.9 Hop trace
 
-Each station that relays a PDU records itself in a trailer near the end of
-the frame.
+The trailer is specified in
+[`docs/spec/09-hop-trace.md`](../spec/09-hop-trace.md). This section keeps
+a summary, the reasons and the dropped alternatives.
 
-```
-| header | TLVs | auth tag | control | entry, entry, ... | CRC-32C |
-  written by the source      the trailer, written by relays  recomputed by relays
-```
+Summary: each station that relays a PDU records itself in the trailer,
+which comes before the checksum. The trailer is one control byte and one
+entry of 3 bytes for each relay. The control byte has a bit for a path
+that is not radio, a reserved bit, the entry count and the hops
+remaining. An entry is the 24 least significant bits of the CRC-32C of
+the identifier of the relay. A relay adds its entry, lowers the hops
+remaining and computes the checksum again. If the PDU no longer fits the
+MTU, the relay drops the oldest entries.
 
-- **[agreed]** A relay appends one entry. No entry is reserved in advance,
-  so a PDU that is never relayed carries a trailer of one byte.
-- **[agreed]** An entry is a 24-bit hash of the relay's identifier. The
-  hash function is CRC-32C, with the parameters of 5.1. Its input is the 8
-  bytes of the identifier of 5.8, as they are in a PDU.
-- **[agreed]** The entry is the 24 least significant bits of that
-  CRC-32C. In the trailer it is 3 bytes in little-endian order.
-- **[agreed]** A hash is sufficient identification because every relay also
+Reasons:
+
+- No entry is reserved in advance, so a PDU that is never relayed carries
+  a trailer of one byte.
+- A hash is sufficient identification because every relay also
   transmits its full identifier periodically in its own beacons. FT8 works
   the same way: a non-standard callsign is sent in full in some messages
-  and referred to by a 10, 12 or 22-bit hash in others.
-- A receiver resolves an entry against the stations it has heard. An entry
-  it cannot resolve is shown as the hash. Gateways and network-wide
-  services can resolve all of them.
+  and referred to by a 10, 12 or 22-bit hash in others. Gateways and
+  network-wide services can resolve all the entries.
 - With about 100 relays in range, the chance that any two share a 24-bit
   hash is about 0.03%.
-
-The trailer:
-
-- **[agreed]** The trailer has a fixed layout and is not a TLV: one control
-  byte, then the entries of 3 bytes each in the order of the hops. Every
-  frame has a trailer; the source writes the control byte. It
-  replaces an earlier design in which the trace was a TLV at the end of the
-  frame, outside the checksum and protected only by whatever check the
-  link had.
-- **[agreed]** The trailer is covered by the one checksum of the frame
-  (5.1), which comes after it. A link cannot be assumed to have a check of
-  its own: a PDU sent as the bare payload of a LoRa or FSK packet has only
-  what this format gives it.
-- **[agreed]** The control byte, from the most significant bit down:
-
-  | Bits | Field |
-  |---|---|
-  | 1 | Set if the PDU has crossed a path that is not radio. |
-  | 1 | Reserved. |
-  | 3 | Entry count: the number of entries in this trailer. |
-  | 3 | Hops remaining. |
-
-- **[agreed]** The entries may be fewer than the hops taken. When a trailer
-  no longer fits, the oldest entries are dropped and the trailer keeps the
-  identity of the most recent hops only.
-- **[agreed]** The entry count is always the number of entries present,
-  whether or not any were dropped. The trailer is 1 byte plus 3 for each
-  entry, so a frame can be taken apart without knowing its length from the
-  link. The hops taken are the hop limit of the header minus the hops
-  remaining, and the trace is truncated when the entry count is less than
-  that.
-- **[proposed]** A source writes a control byte with the hops remaining
-  equal to its hop limit and every other bit 0.
-- **[proposed]** A frame is invalid if the hops remaining are more than the
-  hop limit, or the entry count is more than the hops taken.
-- **[proposed]** With 3 bits of hops remaining, the hop limit is at most 7.
-- **[proposed]** A relay copies the reserved bit, and a receiver ignores
-  it.
-- **[agreed]** A station sets the first bit when it transmits on radio a
-  PDU that it received over a path that is not radio. **[proposed]** It
-  acts as a relay in doing so and adds its entry. No station clears the
-  bit.
-- **[agreed]** A gateway that carries a PDU from radio to the Internet does
-  not touch the frame. What it knows about the reception belongs to
-  gateway provenance (8.3).
-
-Relaying, all **[proposed]**:
-
-- A relay forwards a PDU only if the checksum is good, the trailer is
-  valid, at least one hop remains, and its own hash is not among the
-  entries. The last condition is a second guard against loops,
-  after deduplication.
-- To forward, it appends its entry, lowers the hops remaining by one and
-  recomputes the checksum. It changes nothing before the trailer.
-- If the frame with the new entry would exceed the MTU of 6.1, the relay
-  first drops entries from the front of the trace, oldest first, and only
-  as many as are needed. It MUST NOT drop entries for any other reason.
-- A source that sets a hop limit above 0 MUST leave room for one entry:
-  the size of the PDU as sent plus 3 bytes MUST NOT exceed the MTU of 6.1.
-  It SHOULD leave room for the whole path, 3 bytes for each hop of its
-  limit, which is 21 bytes at a limit of 7. Any relay on
-  the path can then always forward, and none has to truncate.
-- The limit on the uncompressed form already counts the whole path (5.5).
-  How that rule and the two rules above fit together is to be reviewed.
+- The trailer has a fixed layout and is not a TLV. It replaces an earlier
+  design in which the trace was a TLV at the end of the frame, outside the
+  checksum and protected only by whatever check the link had.
+- The trailer is covered by the one checksum of the frame (5.1), which
+  comes after it. A link cannot be assumed to have a check of its own: a
+  PDU sent as the bare payload of a LoRa or FSK packet has only what this
+  format gives it.
+- The entry count is always the number of entries present, whether or not
+  any were dropped. The trailer is 1 byte plus 3 for each entry, so a
+  frame can be taken apart without knowing its length from the link (5.1).
+- The header layout gives the hop limit 3 bits (5.1). An earlier item of
+  this section stated the limit of 7 as a result of the 3 bits of the
+  hops remaining. The header layout now states it.
 
 Properties to keep in mind:
 
@@ -1271,21 +1220,6 @@ that is not in the repository: 703,040 identifiers from four prefixes, a
 digit and three letters. The 24-bit CRC-32C value gave 11,471 pairs with
 the same entry, and BLAKE3 gave 14,752. A random function gives about
 14,730 (derived: the count of pairs divided by 2^24).
-
-Test vectors:
-
-| Identifier | Bytes in a PDU | Hop hash | Bytes in the trailer |
-|---|---|---|---|
-| `N0CALL` | `3D EB EB 5B 0E 00 00 00` | `0x8ACFF6` | `F6 CF 8A` |
-| `N0CALL-7` | `45 EB EB 5B 0E 00 00 00` | `0xC76C33` | `33 6C C7` |
-| `N0CALL-15` | `21 00 19 49 13 02 00 80` | `0xD6B6EE` | `EE B6 D6` |
-| `BV5AB-33` | `F5 3A 1E B0 07 00 00 80` | `0xF89C9C` | `9C 9C F8` |
-| `PJ4/KA1ABC` | `A5 64 89 F4 F1 77 C5 01` | `0xE05390` | `90 53 E0` |
-| `YW18FIFA/MM-A` | `66 74 1F D1 E2 F5 9F 58` | `0x65DF98` | `98 DF 65` |
-
-This table is a copy of `vectors/hop-hash.json`. A script that is
-separate from the package computed the values, with a table-driven
-CRC-32C that gives the check value of 5.1.
 
 ### 5.10 Versions
 
@@ -2089,8 +2023,8 @@ anything is decided on them.
     in section 3 of `docs/spec/06-numbers-units-text.md`. This goes with
     the tag table of step 6.
 17. Move the topics of section 5 to `docs/spec/`, when most of the items
-    of a topic are not open. Done: 5.1, 5.3 in two files, and 5.10. Not
-    moved yet: 5.9 and 5.11. 5.4 and 5.5 stay in the RFC for now.
+    of a topic are not open. Done: 5.1, 5.3 in two files, 5.9 and 5.10.
+    Not moved yet: 5.11. 5.4 and 5.5 stay in the RFC for now.
 
 ## Appendix A. Transceiver packet limits
 
@@ -2150,9 +2084,8 @@ commands.
   callsign, resolved against the aprs-deviceid database.
 - `qua-corpus-import`: converts the raw hourly files to Parquet without
   loss, for faster repeated measurement.
-- `qua-check-vectors`: recomputes the test vectors of 5.1 and 5.9 and of
-  the station identifier and icon specifications from `vectors/` and
-  compares.
+- `qua-check-vectors`: recomputes the test vectors of the specification
+  files from `vectors/` and compares.
 - `qua-icon-stats`: size of the candidate icon bitmap forms on the glyphs
   of BDF fonts.
 - `qua-icon-encode`: encodes a 16 by 16 picture as an icon bitmap field,

@@ -19,8 +19,8 @@ does not assign tags or define the content of any TLV.
 meaning only together with the type of the PDU.
 
 The TLV area follows the header ([08-pdu](08-pdu.md)). Its length
-follows from the source length. The hop trace (RFC 5.9) is not part of
-it.
+follows from the source length. The hop trace
+([09-hop-trace](09-hop-trace.md)) is not part of it.
 
 ## 2. A TLV
 

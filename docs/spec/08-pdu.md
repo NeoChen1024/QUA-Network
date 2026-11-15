@@ -21,7 +21,8 @@ It does not specify these:
 - The station identifier ([01-station-identifier](01-station-identifier.md)).
 - The TLV area ([03-tlv](03-tlv.md)).
 - The types of a PDU (RFC 5.11).
-- The content of the trailer, and what a relay does (RFC 5.9).
+- The content of the trailer, and what a relay does
+  ([09-hop-trace](09-hop-trace.md)).
 - The authentication tag (RFC section 10).
 - Deduplication (RFC 6.2).
 
@@ -34,7 +35,7 @@ It does not specify these:
 | PDU | The whole unit: the source part, the authentication tag if there is one, the trailer and the checksum. The PDU limit of RFC section 6 applies to it. |
 | Source part | The header and the TLV area. |
 | Source length | The length of the source part in bytes. It is a field of the header. |
-| Trailer | The hop trace of RFC 5.9: the control byte and the entries. |
+| Trailer | The hop trace of [09-hop-trace](09-hop-trace.md): the control byte and the entries. |
 | Padding | Bytes that a link gives after a PDU. Padding is not part of the PDU. |
 
 ## 3. Parts of a PDU
@@ -96,7 +97,7 @@ The version byte gives this bit.
 
 **[agreed]** The hop limit is the limit that the source chose. A relay
 does not change it. The trailer gives the number of hops that remain
-(RFC 5.9).
+([09-hop-trace](09-hop-trace.md) section 4).
 
 **[agreed]** The flags have these meanings:
 
@@ -120,7 +121,7 @@ does not count the authentication tag, the trailer or the checksum.
 
 **[agreed]** The TLV area ends where the source length ends.
 
-**[proposed]** If the source length is less than 14, the PDU is invalid.
+**[agreed]** If the source length is less than 14, the PDU is invalid.
 
 ### 4.5 Source identifier
 
@@ -167,7 +168,7 @@ of these numbers:
 - the length of the authentication tag, if the flag Authenticated is set;
 - 1 for the control byte of the trailer;
 - 3 for each entry of the trailer; the control byte gives the entry count
-  (RFC 5.9);
+  ([09-hop-trace](09-hop-trace.md) section 4);
 - 4 for the checksum.
 
 **[agreed]** A receiver reads and checks only these bytes.
@@ -227,6 +228,4 @@ These are also in the RFC (section 14, question 25).
   it, and whether it also applies to a trunk (RFC 8.2).
 - **[open]** How long a relay or a receiver keeps a deduplication entry
   (RFC 6.2).
-- **[proposed]** The rule on a source length of less than 14 (section
-  4.4).
 - **[open]** Test vectors for a whole PDU.

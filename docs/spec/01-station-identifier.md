@@ -91,7 +91,8 @@ representable. Callsign validity is a separate matter.
 ([06-numbers-units-text](06-numbers-units-text.md) section 2).
 
 **[agreed]** Where the identifier is the input of the hop hash, the input
-is these 8 bytes, as they are in a PDU (RFC 5.9).
+is these 8 bytes, as they are in a PDU
+([09-hop-trace](09-hop-trace.md) section 5).
 
 ## 8. Mapping to an AX.25 address
 

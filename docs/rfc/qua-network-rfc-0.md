@@ -215,11 +215,28 @@ substantial share of the mean frame (section 13).
 
 ### 5.1 Header
 
+**[agreed]** The parts of a PDU have these names:
+
+| Term | Meaning |
+|---|---|
+| PDU | The whole unit: the source part, the authentication tag if there is one, the trailer and the checksum. The PDU limit of section 6 applies to it. |
+| Source part | The header and the TLV area. |
+| Source length | The length of the source part in bytes. It is a field of the header. |
+| Trailer | The hop trace of 5.9. |
+
+```
+| header | TLVs | auth tag | control | entry, entry, ... | CRC-32C |
+|< source part >|          |<------ trailer ------>|
+```
+
+Some sections of this RFC still call the PDU a frame. A later revision
+removes that word for the PDU.
+
 - **[agreed]** The header is minimal. No application data may be placed in
   link-layer address fields.
 - **[proposed]** Header contents: protocol version (5.10), flags, source
   callsign and SSID (encoded as in 5.8), a per-source sequence number, hop
-  limit, and payload length. Everything else is a TLV.
+  limit, and source length. Everything else is a TLV.
 - **[agreed]** The header also has the type of the PDU. One PDU has one
   type (5.11).
 - **[proposed]** The header is 14 bytes, in this layout:
@@ -229,7 +246,7 @@ substantial share of the mean frame (section 13).
   | 0 | 1 | Version byte (5.10). |
   | 1 | 1 | Hop limit, 3 bits. Flags, 5 bits. |
   | 2 | 1 | Type (5.11). |
-  | 3 | 1 | Payload length. |
+  | 3 | 1 | Source length. |
   | 4 | 8 | Source identifier (5.8), in big-endian order. |
   | 12 | 2 | Sequence number, in big-endian order. |
 
@@ -252,13 +269,33 @@ substantial share of the mean frame (section 13).
   the hop limit in 3 bits, then the flags No Internet, Translated and
   Authenticated, then 2 reserved bits. A source writes 0 in a reserved
   bit. A receiver ignores a reserved bit.
-- **[open]** How a receiver finds the end of the TLV area in a PDU that
-  has an authentication tag. The payload length counts both.
-- **[proposed]** The header never changes in transit. It carries the hop
-  limit chosen by the source, not a count that relays decrement; the number
-  of hops used is read from the trailer (5.9). The payload length counts
-  the header, the TLVs and any authentication tag, and excludes the
-  trailer and the checksum.
+- **[agreed]** The source length counts the header and the TLV area. It
+  does not count the authentication tag, the trailer or the checksum. The
+  TLV area ends where the source length ends.
+- **[agreed]** If the flag Authenticated is set, an authentication tag
+  follows the TLV area. The algorithm of the tag is fixed, so the length
+  of the tag is fixed. **[open]** The algorithm and the length (section
+  10).
+- **[agreed]** No field holds an algorithm identifier. The protocol has
+  one kind of signature and one kind of key (10.6). A change of an
+  algorithm changes what a receiver does with a PDU, so by the rules of
+  5.10 it needs a new major version.
+- **[agreed]** In transit, only the trailer changes, and the checksum
+  with it. A relay does not change the source part or the authentication
+  tag.
+- **[agreed]** The length of a PDU follows from its content: the source
+  length, the length of the authentication tag if the flag is set, the
+  trailer of 1 byte and 3 bytes for each entry (5.9), and the checksum of
+  4 bytes. A receiver reads and checks only these bytes.
+- **[agreed]** A receiver ignores the bytes that a link gives after the
+  PDU. A link can therefore add padding after a PDU.
+- **[agreed]** If a link gives fewer bytes than the length of the PDU,
+  the PDU is invalid.
+- **[agreed]** Padding is not part of the PDU. The checksum does not
+  cover it, and a relay does not send the padding that it received.
+- **[proposed]** The header carries the hop limit chosen by the source,
+  not a count that relays decrement; the number of hops used is read from
+  the trailer (5.9).
 - **[agreed]** The PDU carries its own frame checksum, CRC-32C (Castagnoli),
   independent of any link-level check. There is one checksum, at the very
   end of the frame.
@@ -300,6 +337,23 @@ start and the time limit of an entry are the answer to this. Dropped: a
 sequence number of 32 bits. It costs 2 more bytes in every PDU. With
 these two rules, 16 bits are sufficient for deduplication. The sequence
 number alone does not prevent a replay (section 14, question 7).
+
+An earlier proposal let the source length count the authentication tag.
+A receiver then had no way to find the end of the TLV area. The author
+also considered a tag that is a TLV. It was dropped: it makes the form
+that the signature covers harder to build (5.5).
+
+The source length makes a PDU delimit itself. The syntax of the TLVs does
+not show where the TLV area ends, and the control byte is at the start of
+the trailer. With the source length and the entry count, a receiver takes
+a PDU apart without a length from the link (5.9). The link usually gives a
+length too. The rules above state what happens if the two differ
+(pitfall 35).
+
+A first decision of this revision made a PDU invalid if the link gave a
+different length, so a PDU could have no padding. The author replaced it.
+A link with packets of a fixed length has to fill the packet, and bytes
+after the PDU do not change how a receiver reads it.
 
 A frame that no relay has changed has 19 bytes that are not TLVs: the
 header of 14, the control byte of 5.9 and the checksum of 4. Each hop adds
@@ -585,7 +639,7 @@ same version.
 - **[agreed]** A PDU with an invalid compressed string has no
   uncompressed form. The check of its signature fails (5.7).
 - **[agreed]** In the uncompressed form, a string is passthrough and has
-  no length byte (5.7). Every TLV length and the payload length of 5.1 are
+  no length byte (5.7). Every TLV length and the source length of 5.1 are
   those of the uncompressed form. The other header fields are as sent.
 - **[agreed]** A receiver that verifies a signature first rebuilds the
   uncompressed form. A text log is sufficient for this, because the text
@@ -1280,7 +1334,7 @@ guarantees backward compatibility only inside one major version. A change
 that breaks compatibility, or that adds a compressed field format, needs a
 new major version. Every other change needs only a new minor version.
 The first version is 1.0. These rules on changes apply from the first
-freeze of the specification.
+freeze of the specification. Before it, the version is 0.0.
 
 An earlier proposal gave each number 4 bits. It was in conflict with the
 first-byte rule of 5.1: with the version in the first byte, the minor
@@ -1689,8 +1743,16 @@ before any of it is treated as sound.
   sharply during 2026, to the order of tens of thousands of physical qubits
   on proposed architectures. These are estimates for machines that do not yet
   exist. The trend still matters for a protocol meant to last decades.
-- **[agreed]** Signature and key fields carry an algorithm identifier. A
-  receiver treats an unknown algorithm as unsigned.
+- **[agreed]** The protocol has one kind of signature and one kind of
+  key. No field carries an algorithm identifier (5.1). A change of an
+  algorithm needs a new major version (5.10).
+
+  An earlier decision gave the signature fields and the key fields an
+  algorithm identifier. A receiver treated an unknown algorithm as
+  unsigned. The author dropped it. With one algorithm the identifier has
+  no use, and the authentication tag needs a fixed length (5.1). The cost
+  is that a cryptographic migration is a new major version, and the
+  protocol guarantees no compatibility between two major versions.
 - The TESLA layer is hash-based and is not affected by Shor's algorithm.
 - **[proposed]** Chain rollover is endorsed by the previous chain (a MAC under
   a key from the old chain) as well as by the signature, so that recovering a
@@ -1705,8 +1767,9 @@ before any of it is treated as sound.
 
 - **[agreed]** Specification first. The document defines both the wire format
   and the behaviour: routing, retries, channel access, beacon rates.
-- **[agreed]** Packet types, TLV tags and algorithm identifiers are allocated
-  from registries. Symbols need no registry of their own: the classic form
+- **[agreed]** Packet types and TLV tags are allocated
+  from registries. An earlier revision also listed algorithm identifiers;
+  the protocol no longer has them (10.6). Symbols need no registry of their own: the classic form
   is defined by APRS and the Unicode form by Unicode (5.6).
 - **[agreed]** No client-only features. Anything a user can do must be
   expressible as standard packets that every conformant client renders.
@@ -1753,7 +1816,8 @@ before any of it is treated as sound.
 16. Encryption by default, which removes passive monitoring and excludes
     amateur bands.
 17. No algorithm identifier, which makes a cryptographic migration a protocol
-    change.
+    change. The author accepts this cost in 10.6: the migration is a new
+    major version.
 18. Design decisions made without measurement against real traffic.
 19. Gateways altering packet content to fit a smaller link. It needs a
     droppable class, a truncation flag and split authentication coverage, and
@@ -1975,8 +2039,8 @@ anything is decided on them.
 25. Header (5.1):
     - The positions of the flags in the second byte, and the use of the
       two reserved bits.
-    - How a receiver finds the end of the TLV area in a PDU that has an
-      authentication tag.
+    - The algorithm and the length of the authentication tag (section
+      10).
     - The exact rule for the flag No Internet: which stations obey it,
       and whether it also applies to a trunk (8.2).
     - How long a relay or a receiver keeps a deduplication entry (6.2).

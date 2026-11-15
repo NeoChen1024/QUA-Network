@@ -29,6 +29,8 @@ implementations have the same version if both numbers are the same.
 minor version is 0. It is the version of the first freeze of the
 specification.
 
+**[agreed]** Before the first freeze, the version is 0.0.
+
 ## 3. Version byte
 
 **[agreed]** The header carries the major version and the minor version.
@@ -48,6 +50,7 @@ A comparison of two version bytes as numbers gives the order of the
 versions.
 
 The version byte of version 1.0 is `21`: the bits `001`, `0000` and `1`.
+The version byte of version 0.0 is `01`.
 
 ## 4. Compatibility
 
@@ -126,5 +129,3 @@ These are also in the RFC (section 14, question 23).
   meaning in a later minor version.
 - **[open]** What happens when one of the two fields of the version byte
   is full.
-- **[open]** The version byte of a PDU that follows a draft, before the
-  first freeze.

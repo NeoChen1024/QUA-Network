@@ -83,6 +83,7 @@ use these terms:
 | [06-message.md](06-message.md) | The message body, for messages, acknowledgements and rejections, and the bulletin body. |
 | [07-frequency.md](07-frequency.md) | The frequency body, for a frequency specification in a comment or a status text. |
 | [08-capabilities.md](08-capabilities.md) | The capabilities body, for station capabilities. |
+| [09-comparison.md](09-comparison.md) | The comparison of a record with the result of another parser. |
 
 ## 5. Open items
 
@@ -102,7 +103,10 @@ This directory defers these items. Each is **[open]**.
   5.2, 5.3, 5.6). This mapping depends on section 14 question 10 of the
   RFC.
 - Differential tests against existing parsers (RFC Appendix E, section 15
-  step 10). The comparison converts each parser output to the record.
+  step 10). [09-comparison](09-comparison.md) specifies the comparison
+  for the first two parsers. The divergence catalogue is in
+  [docs/legacy/divergence](../legacy/divergence/README.md). The other
+  parsers are open.
 - The station identifier of the source. Some legacy addresses have no
   clear QUA Network identifier ([spec 01](../spec/01-station-identifier.md)).
   Examples are `-01` against `-1`, lower case, and addresses that occur

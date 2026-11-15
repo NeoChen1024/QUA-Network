@@ -22,6 +22,7 @@ qua-legacy-tokenize = "qua_network.legacy_tokenize:cli"
 qua-legacy-fields = "qua_network.legacy_fields:cli"
 qua-legacy-examples = "qua_network.legacy_examples:cli"
 qua-legacy-decode = "qua_network.legacy_decode:cli"
+qua-legacy-compare = "qua_network.legacy_compare:cli"
 
 [build-system]
 requires = ["setuptools>=77.0.3"]

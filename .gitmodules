@@ -16,3 +16,9 @@
 [submodule "3rdparty/aprs-symbol-index"]
 	path = 3rdparty/aprs-symbol-index
 	url = https://github.com/hessu/aprs-symbol-index
+[submodule "3rdparty/aprs-python"]
+	path = 3rdparty/aprs-python
+	url = https://github.com/rossengeorgiev/aprs-python.git
+[submodule "3rdparty/perl-aprs-fap"]
+	path = 3rdparty/perl-aprs-fap
+	url = https://github.com/hessu/perl-aprs-fap.git

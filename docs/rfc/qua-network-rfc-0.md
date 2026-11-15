@@ -319,6 +319,9 @@ are to be checked against them.
 - **[agreed]** Wind speed is a speed. It is in kilometres per hour too.
 - **[agreed]** One quantity has one unit. The specification fixes it, and
   a sender cannot choose another. No field holds a prefix.
+- **[agreed]** A quantity in this rule is one kind of use, not one
+  physical dimension. Altitude, range and rain depth are lengths, and they
+  are three quantities.
 - **[agreed]** The SI unit is not practical if, for the usual values of
   the quantity, it needs more bytes or gives text that is hard to read.
 - **[agreed]** A practical unit is a unit of daily metric use. The mile

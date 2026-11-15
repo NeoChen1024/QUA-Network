@@ -113,7 +113,7 @@ MODES = ("strict", "permissive")
 
 @lru_cache(maxsize=None)
 def _knot_cmp(k):
-    return (108**k - 100**k) * 1852 / (100**k * 3600), 8 * 108**k * 1852 / (100 ** (k + 1) * 3600)
+    return (108**k - 100**k) * 1852 / (100**k * 1000), 8 * 108**k * 1852 / (100 ** (k + 1) * 1000)
 
 
 @lru_cache(maxsize=None)
@@ -123,7 +123,7 @@ def _foot_cmp(k):
 
 @lru_cache(maxsize=None)
 def _mile_cmp(k):
-    return 2 * 108**k * 1609344 / (100**k * 1000), 16 * 108**k * 1609344 / (100 ** (k + 1) * 1000)
+    return 2 * 108**k * 1609344 / (100**k * 1000000), 16 * 108**k * 1609344 / (100 ** (k + 1) * 1000000)
 
 
 def _same(v):
@@ -138,27 +138,27 @@ UNITS = {
     "deg/190463": lambda n, w: (n / 190463, w / 190463),
     "deg": lambda n, w: (n, w),
     "dir45": lambda k, w: (45 * k, 45),
-    "knot": lambda n, w: (n * 1852 / 3600, w * 1852 / 3600),
+    "knot": lambda n, w: (n * 1852 / 1000, w * 1852 / 1000),
     "knot.cmp": lambda k, w: _knot_cmp(k),
     "foot": lambda n, w: (n * 3048 / 10000, w * 3048 / 10000),
     "foot.cmp": lambda k, w: _foot_cmp(k),
     "foot.phg": lambda k, w: _same(10 * 2**k * 3048 / 10000),
     "metre": lambda n, w: (n, w),
-    "mile": lambda n, w: (n * 1609344 / 1000, w * 1609344 / 1000),
+    "mile": lambda n, w: (n * 1609344 / 1000000, w * 1609344 / 1000000),
     "mile.cmp": lambda k, w: _mile_cmp(k),
-    "mile.df": lambda k, w: _same(2**k * 1609344 / 1000),
+    "mile.df": lambda k, w: _same(2**k * 1609344 / 1000000),
     "watt.phg": lambda k, w: (k * k, 2 * k + 1),
     "dBi": lambda n, w: (n, w),
     "dB": lambda n, w: (n, w),
     "S": lambda n, w: (n, w),
     "per-hour": lambda n, w: (n, w),
     # 03-weather section 3.1.
-    "mph": lambda n, w: (n * 1609344 / 3600000, w * 1609344 / 3600000),
-    "degF": lambda n, w: ((n * 100 + 45967) / 180, w * 5 / 9),
-    "inch/100": lambda n, w: (n * 254 / 1000000, w * 254 / 1000000),
-    "inch": lambda n, w: (n * 254 / 10000, w * 254 / 10000),
+    "mph": lambda n, w: (n * 1609344 / 1000000, w * 1609344 / 1000000),
+    "degF": lambda n, w: ((n - 32) * 5 / 9, w * 5 / 9),
+    "inch/100": lambda n, w: (n * 254 / 1000, w * 254 / 1000),
+    "inch": lambda n, w: (n * 254 / 10, w * 254 / 10),
     "percent": lambda n, w: (n, w),
-    "hPa/10": lambda n, w: (n * 10, w * 10),
+    "hPa/10": lambda n, w: (n / 10, w / 10),
     "W/m2": lambda n, w: (n, w),
     # 04-telemetry section 3.1: a raw value has no record unit.
     "raw": lambda n, w: (n, w),

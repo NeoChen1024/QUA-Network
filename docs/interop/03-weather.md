@@ -47,15 +47,15 @@ the value rule in the last column.
 | Field | Kind | Content | Value rule |
 |---|---|---|---|
 | `wind_direction` | Quantity | Degrees clockwise from north. | `val.wx.wind`, `val.cmp.wind`, `val.wx.wdir` |
-| `wind_speed` | Quantity | Metres per second. | `val.wx.wind`, `val.cmp.wind`, `val.wx.wspd` |
-| `gust` | Quantity | Metres per second. | `val.wx.gust` |
-| `temperature` | Quantity | Kelvin. | `val.wx.temp` |
-| `rain_1h` | Quantity | Rain in the last hour, in metres. | `val.wx.rain1h` |
-| `rain_24h` | Quantity | Rain in the last 24 hours, in metres. | `val.wx.rain24h` |
-| `rain_midnight` | Quantity | Rain since midnight, in metres. | `val.wx.rainmid` |
-| `snow_24h` | Quantity | Snowfall in the last 24 hours, in metres. | `val.wx.snow` |
+| `wind_speed` | Quantity | Kilometres per hour. | `val.wx.wind`, `val.cmp.wind`, `val.wx.wspd` |
+| `gust` | Quantity | Kilometres per hour. | `val.wx.gust` |
+| `temperature` | Quantity | Degrees Celsius. | `val.wx.temp` |
+| `rain_1h` | Quantity | Rain in the last hour, in millimetres. | `val.wx.rain1h` |
+| `rain_24h` | Quantity | Rain in the last 24 hours, in millimetres. | `val.wx.rain24h` |
+| `rain_midnight` | Quantity | Rain since midnight, in millimetres. | `val.wx.rainmid` |
+| `snow_24h` | Quantity | Snowfall in the last 24 hours, in millimetres. | `val.wx.snow` |
 | `humidity` | Quantity | Percent. | `val.wx.hum` |
-| `pressure` | Quantity | Pascal. | `val.wx.baro` |
+| `pressure` | Quantity | Hectopascals. | `val.wx.baro` |
 | `luminosity` | Quantity | Watts per square metre. | `val.wx.lum` |
 | `software` | Code | The software code, as a byte string of one byte. | `val.wx.sw` |
 | `unit` | Bytes | The unit code. | `val.wx.unit` |
@@ -92,12 +92,20 @@ no `speed`. The wind field takes their place in the packet.
 
 ### 3.1 Units
 
-**[agreed]** The wind speed and the gust are in metres per second. The
-temperature is in kelvin. Rain and snowfall are in metres. The pressure is
-in pascal. The luminosity is in watts per square metre.
+**[agreed]** The wind speed and the gust are in kilometres per hour.
+The temperature is in degrees Celsius. The pressure is in hectopascals.
+These are the units of RFC 5.3
+([01-record section 4.3](01-record.md#43-units)).
 
-**[agreed]** Humidity is in percent. This is one more exception to the SI
-units of [01-record section 4.3](01-record.md#43-units).
+**[agreed]** Rain and snowfall are in millimetres. RFC 5.3 names no unit
+for them.
+
+**[agreed]** The luminosity is in watts per square metre. Humidity is in
+percent.
+
+An earlier draft gave the wind speed and the gust in metres per second,
+the temperature in kelvin, the pressure in pascals, and rain and snowfall
+in metres. The author asked for the units of RFC 5.3 in the record.
 
 **[agreed]** The speed of the wind field is in knots before the
 conversion
@@ -112,25 +120,23 @@ and 1 / 10^`f`. The record computes `v` and `res` with this table:
 | Unit of 12-values-weather | Record unit | `v` | `res` |
 |---|---|---|---|
 | degree | degree | `n` | `w` |
-| knot | metre per second | `n` · 1852 / 3600 | `w` · 1852 / 3600 |
-| 1.08^`k` − 1 knots (compressed wind) | metre per second | (1.08^`k` − 1) · 1852 / 3600 | 0.08 · 1.08^`k` · 1852 / 3600 |
-| mile per hour | metre per second | `n` · 0.44704 | `w` · 0.44704 |
-| degree Fahrenheit | kelvin | (`n` + 459.67) · 5 / 9 | `w` · 5 / 9 |
-| hundredth of an inch | metre | `n` · 0.000254 | `w` · 0.000254 |
-| inch | metre | `n` · 0.0254 | `w` · 0.0254 |
+| knot | kilometre per hour | `n` · 1.852 | `w` · 1.852 |
+| 1.08^`k` − 1 knots (compressed wind) | kilometre per hour | (1.08^`k` − 1) · 1.852 | 0.08 · 1.08^`k` · 1.852 |
+| mile per hour | kilometre per hour | `n` · 1.609344 | `w` · 1.609344 |
+| degree Fahrenheit | degree Celsius | (`n` − 32) · 5 / 9 | `w` · 5 / 9 |
+| hundredth of an inch | millimetre | `n` · 0.254 | `w` · 0.254 |
+| inch | millimetre | `n` · 25.4 | `w` · 25.4 |
 | percent | percent | `n` | `w` |
-| tenth of a hectopascal | pascal | `n` · 10 | `w` · 10 |
+| tenth of a hectopascal | hectopascal | `n` / 10 | `w` / 10 |
 | watt per square metre | watt per square metre | `n` | `w` |
 
 **[proposed]** The factors come from these sources:
 
-- Mile per hour: the units conversion table of APRS12c gives 0.44704 m/s
-  (p. 149/125).
-- Degree Fahrenheit: APRS12c gives C = (F − 32) · 5 / 9 (p. 149/125). The
-  kelvin is the degree Celsius plus 273.15, by the definition of the SI.
-  Thus K = (F + 459.67) · 5 / 9 (derived).
+- Mile per hour: the units conversion table of APRS12c gives the mile as
+  1.609344 km (p. 149/125).
+- Degree Fahrenheit: APRS12c gives C = (F − 32) · 5 / 9 (p. 149/125).
 - Inch: the table of APRS12c gives the foot as 0.3048 m. An inch is 1/12
-  foot, that is 0.0254 m (derived).
+  foot, that is 25.4 mm (derived).
 
 ### 3.2 Notes
 
@@ -189,14 +195,14 @@ p. 85/65. The record is in strict mode. The input gives no received time.
   "extensions": []},
  "weather": {
   "wind_direction": {"v": 220, "res": 1, "from": [["ext.dirspd", 34, 41]]},
-  "wind_speed": {"v": 2.057777777777778, "res": 0.5144444444444445, "from": [["ext.dirspd", 34, 41]]},
-  "gust": {"v": 2.2352, "res": 0.44704, "from": [["wx.gust", 41, 45]]},
-  "temperature": {"v": 298.15, "res": 0.5555555555555556, "from": [["wx.temp", 45, 49]]},
-  "rain_1h": {"v": 0, "res": 0.000254, "from": [["wx.rain1h", 49, 53]]},
-  "rain_24h": {"v": 0, "res": 0.000254, "from": [["wx.rain24h", 53, 57]]},
-  "rain_midnight": {"v": 0, "res": 0.000254, "from": [["wx.rainmid", 57, 61]]},
+  "wind_speed": {"v": 7.408, "res": 1.852, "from": [["ext.dirspd", 34, 41]]},
+  "gust": {"v": 8.04672, "res": 1.609344, "from": [["wx.gust", 41, 45]]},
+  "temperature": {"v": 25, "res": 0.5555555555555556, "from": [["wx.temp", 45, 49]]},
+  "rain_1h": {"v": 0, "res": 0.254, "from": [["wx.rain1h", 49, 53]]},
+  "rain_24h": {"v": 0, "res": 0.254, "from": [["wx.rain24h", 53, 57]]},
+  "rain_midnight": {"v": 0, "res": 0.254, "from": [["wx.rainmid", 57, 61]]},
   "humidity": {"v": 50, "res": 1, "from": [["wx.hum", 61, 64]]},
-  "pressure": {"v": 99000, "res": 10, "from": [["wx.baro", 64, 70]]},
+  "pressure": {"v": 990, "res": 0.1, "from": [["wx.baro", 64, 70]]},
   "software": {"code": "w", "from": [["wx.sw", 70, 71]]},
   "unit": {"bytes": "RSW", "from": [["wx.unit", 71, 74]]}},
  "notes": [["amb.val.datum", "position.datum"], ["err.wx.wind-units", "weather.wind_speed"],
@@ -207,10 +213,10 @@ p. 85/65. The record is in strict mode. The input gives no received time.
 
 The values are derived as follows:
 
-- `wind_speed`: 4 knots × 1852 / 3600 is 2.0578 m/s.
-- `gust`: 5 mph × 0.44704 is 2.2352 m/s.
-- `temperature`: (77 + 459.67) × 5 / 9 is 298.15 K, that is 25 °C.
-- `pressure`: 9900 tenths of a hectopascal is 99000 Pa.
+- `wind_speed`: 4 knots × 1.852 is 7.408 km/h.
+- `gust`: 5 mph × 1.609344 is 8.04672 km/h.
+- `temperature`: (77 − 32) × 5 / 9 is 25 °C.
+- `pressure`: 9900 tenths of a hectopascal is 990 hPa.
 - `classic`: the code `'_'` is 0x5F. In the primary table, the number is
   0x5F − 33 = 62.
 

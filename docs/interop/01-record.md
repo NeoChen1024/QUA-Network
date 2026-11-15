@@ -146,13 +146,38 @@ with no value is a no-value object without `ref`.
 
 ### 4.3 Units
 
-**[agreed]** The record gives each quantity in the record unit that the
-table below fixes. The record unit is an SI unit, with the exceptions
-below. QUA Network does not use the units of APRS, and in particular not
-its non-linear codes. The record states the value of a quantity, not the
-form of its bytes. Round-trip accuracy with APRS is not a goal.
+**[agreed]** The record gives each quantity in the record unit that this
+section fixes. QUA Network does not use the units of APRS, and in
+particular not its non-linear codes. The record states the value of a
+quantity, not the form of its bytes. Round-trip accuracy with APRS is not
+a goal.
 
-**[agreed]** The exceptions are these:
+**[agreed]** If RFC 5.3 names the unit of a quantity, the record unit is
+that unit:
+
+| Quantity | Record unit |
+|---|---|
+| Latitude, longitude | degree |
+| Altitude | metre |
+| Speed, wind speed, gust | kilometre per hour |
+| Temperature | degree Celsius |
+| Pressure | hectopascal |
+
+**[agreed]** RFC 5.3 names no unit for the other quantities of a record.
+For each, this file applies the rules of RFC 5.3: the SI unit, or a unit
+of daily metric use if the SI unit is not practical. Rain and snowfall
+have the same unit.
+
+| Quantity | Record unit | Rule of RFC 5.3 |
+|---|---|---|
+| Height above the average terrain | metre | SI unit |
+| Power | watt | SI unit |
+| Luminosity | watt per square metre | SI unit |
+| Time | second | SI unit |
+| Range | kilometre | Practical unit |
+| Rain, snowfall | millimetre | Practical unit |
+
+**[agreed]** These quantities keep the units below:
 
 - Angles are in degrees, not in radians.
 - Gain, signal strength and beacon rate keep the units of 10-values: dBi
@@ -161,6 +186,12 @@ form of its bytes. Round-trip accuracy with APRS is not a goal.
 
 **[agreed]** A quantity keeps its resolution. The resolution is
 information of the packet, not a form of its bytes.
+**[agreed]** One quantity has one record unit in every body. A quantity
+is one kind of use, as in RFC 5.3. Height, range and rain are lengths, and
+they are three quantities.
+
+**[proposed]** No value object names a unit or a prefix.
+
 
 **[agreed]** The conversion to the record unit is in this file. 10-values
 keeps the units of APRS12c, because it is the interpretation of APRS12c.
@@ -171,6 +202,11 @@ first item of this section.
 
 **[proposed]** 10-values gives most quantities as an integer count with a
 step in counts. This file calls the count `n` and the step `w`. For a
+An earlier draft gave each quantity in an SI unit: speed in metres per
+second, temperature in kelvin, pressure in pascals, and range, rain and
+snowfall in metres. RFC 5.3 then allowed a practical unit. The author
+asked for the units of RFC 5.3 in the record.
+
 non-linear unit, this file calls the code `k`: the integer that the
 formula of 10-values takes. The record computes `v` and `res` with the
 table below. If 10-values states no step for a value, the step is 1.
@@ -184,15 +220,15 @@ table below. If 10-values states no step for a value, the step is 1.
 | 1/190463 degree | degree | `n` / 190463 | `w` / 190463 |
 | degree | degree | `n` | `w` |
 | 45 · `k` degrees (directivity) | degree | 45 · `k` | 45 |
-| knot | metre per second | `n` · 1852 / 3600 | `w` · 1852 / 3600 |
-| 1.08^`k` − 1 knots (compressed speed) | metre per second | (1.08^`k` − 1) · 1852 / 3600 | 0.08 · 1.08^`k` · 1852 / 3600 |
+| knot | kilometre per hour | `n` · 1.852 | `w` · 1.852 |
+| 1.08^`k` − 1 knots (compressed speed) | kilometre per hour | (1.08^`k` − 1) · 1.852 | 0.08 · 1.08^`k` · 1.852 |
 | foot | metre | `n` · 0.3048 | `w` · 0.3048 |
 | 1.002^`k` feet (compressed altitude) | metre | 1.002^`k` · 0.3048 | 0.002 · 1.002^`k` · 0.3048 |
 | 10 · 2^`k` feet (PHG and DFS height) | metre | 10 · 2^`k` · 0.3048 | 10 · 2^`k` · 0.3048 |
 | metre | metre | `n` | `w` |
-| mile | metre | `n` · 1609.344 | `w` · 1609.344 |
-| 2 · 1.08^`k` miles (compressed range) | metre | 2 · 1.08^`k` · 1609.344 | 0.16 · 1.08^`k` · 1609.344 |
-| 2^`k` miles (DF range) | metre | 2^`k` · 1609.344 | 2^`k` · 1609.344 |
+| mile | kilometre | `n` · 1.609344 | `w` · 1.609344 |
+| 2 · 1.08^`k` miles (compressed range) | kilometre | 2 · 1.08^`k` · 1.609344 | 0.16 · 1.08^`k` · 1.609344 |
+| 2^`k` miles (DF range) | kilometre | 2^`k` · 1.609344 | 2^`k` · 1.609344 |
 | `k`² watts (PHG power) | watt | `k`² | 2 · `k` + 1 |
 | dBi | dBi | `n` | `w` |
 | dB | dB | `n` | `w` |
@@ -213,18 +249,19 @@ same way.
 A value in degrees says nothing about the datum. The position body gives
 the datum.
 
-**[agreed]** A mile is the statute mile, 1609.344 m. APRS12c names no
+**[agreed]** A mile is the statute mile, 1.609344 km. APRS12c names no
 kind of mile at the range fields. Its units conversion table gives the
 mile as 1.609344 km and lists the nautical mile separately (p. 149/125,
 [amb.val.miles](../legacy/10-values.md#amb.val.miles)).
 
 **[proposed]** The factors of the knot, the foot and the mile come from
 the units conversion table of APRS12c (p. 149/125). The table gives the
-knot as 0.51444 m/s with a repeating last digit. That is 1852 / 3600
-(derived).
+knot as 0.51444 m/s with a repeating last digit. That is 1852 / 3600 m/s,
+or 1.852 km/h (derived). RFC 5.3 gives the same factor.
 
-**[proposed]** A gateway that needs the integer scale of RFC 5.3 rounds
-the value. The rounding rule belongs to the gateway mapping
+**[proposed]** A gateway rounds `v` to the integer scale or to the decimal
+number of RFC 5.3. For a quantity that RFC 5.3 names, the gateway does not
+convert the unit. The rounding rule belongs to the gateway mapping
 ([README section 5](README.md#5-open-items)).
 
 ### 4.4 Provenance
@@ -424,7 +461,7 @@ record unit.
 | `datum` | Code | The `D` byte of the DAO as a byte string, or `"default"`. | `val.dao.datum` |
 | `altitude` | List of quantities | Every altitude of the packet, in metres. Each item also has `ref`: `"msl"` or `"unstated"`. | `val.cmt.alt`, `val.cmt.alt.neg`, `val.cmp.alt`, `val.mice.alt` |
 | `course` | Quantity | Course in degrees. | `val.ext.csespd`, `val.cmp.crs`, `val.mice.crs` |
-| `speed` | Quantity | Speed in metres per second. | `val.ext.csespd`, `val.cmp.spd`, `val.mice.spd` |
+| `speed` | Quantity | Speed in kilometres per hour. | `val.ext.csespd`, `val.cmp.spd`, `val.mice.spd` |
 | `symbol` | Object | `chars`: the table byte and the code byte, in that order, as a byte string. `classic`: the number of RFC 5.6 as an integer, if the symbol has one. `from`. | `val.sym` |
 | `messaging` | Flag | Messaging flag. Absent for an Object or an Item. | `val.pos.dti`, `val.mice.msgcap` |
 | `fix` | Code | Fix age: `"current"` or `"old"`. | `val.mice.dti`, `val.cmp.t` |
@@ -498,15 +535,15 @@ names in `values`, their kinds and their record units.
 | | `gain` | Quantity | dBi. |
 | | `directivity` | Quantity or Code | Degrees. The digit 0 gives the code `"omni"`. |
 | `val.ext.phgr` | `rate` | Quantity | Beacons per hour. |
-| `val.ext.rng` | `range` | Quantity | Metres. |
+| `val.ext.rng` | `range` | Quantity | Kilometres. |
 | `val.ext.dfs` | `strength` | Quantity | S-points. |
 | | `height`, `gain`, `directivity` | As `val.ext.phg` | The gain is in dB. |
 | `val.ext.brgnrq` | `bearing` | Quantity | Degrees. |
 | | `hits` | Code | The integer N. |
-| | `range` | Quantity | Metres. |
+| | `range` | Quantity | Kilometres. |
 | | `quality` | Code | The integer Q. |
 | | `station` | Code | `"fixed"` or `"moving"`. |
-| `val.cmp.rng` | `range` | Quantity | Metres. |
+| `val.cmp.rng` | `range` | Quantity | Kilometres. |
 | `val.cmp.t` | `source`, `origin` | Code | The NMEA source and the origin. |
 | `val.mice.msg` | `kind`, `index` | Code | The message kind and its number. |
 | `val.cmt.noarchive` | `noarchive` | Flag | `true`. |
@@ -559,7 +596,7 @@ example shows one record on several lines for reading.
   "datum": {"code": "default", "from": []},
   "altitude": [{"v": 376.1232, "res": 0.3048, "ref": "unstated", "from": [["cmt.alt", 62, 71]]}],
   "course": {"v": 88, "res": 1, "from": [["ext.csespd", 49, 56]]},
-  "speed": {"v": 18.52, "res": 0.5144444444444445, "from": [["ext.csespd", 49, 56]]},
+  "speed": {"v": 66.672, "res": 1.852, "from": [["ext.csespd", 49, 56]]},
   "symbol": {"chars": "/>", "classic": 29, "from": [["sym.table", 38, 39], ["sym.code", 48, 49]]},
   "messaging": {"flag": true, "from": [["pos.dti", 22, 23]]},
   "comment": {"bytes": " Test /A=001234", "from": [["cmt.text", 56, 71]]},
@@ -579,8 +616,8 @@ example shows one record on several lines for reading.
 - `altitude`: The count is 1234 feet, with step 1. `v` is 1234 · 0.3048
   m. `res` is 0.3048 m.
 - `course`: The count is 88 degrees, with step 1.
-- `speed`: The count is 36 knots, with step 1. `v` is 36 · 1852 / 3600 =
-  18.52 m/s. `res` is 1852 / 3600 m/s.
+- `speed`: The count is 36 knots, with step 1. `v` is 36 · 1.852 =
+  66.672 km/h. `res` is 1.852 km/h.
 - `utc`: 2026-11-09T23:45Z is nearer to the received time than the same
   day and time in October or December. `res` is one minute.
 - `symbol`: `'>'` is 62, and 62 − 33 = 29.
@@ -601,7 +638,7 @@ The block is the example of APRS12c p. 58/40.
   "lon": {"v": -72.75000393777269, "res": 5.250363587678447e-06, "from": [["cmp.lon", 20, 24]]},
   "datum": {"code": "default", "from": []},
   "course": {"v": 88, "res": 4, "from": [["cmp.cs.crs", 25, 27]]},
-  "speed": {"v": 18.639357371302193, "res": 1.532304145259731, "from": [["cmp.cs.crs", 25, 27]]},
+  "speed": {"v": 67.1016865366879, "res": 5.516294922935032, "from": [["cmp.cs.crs", 25, 27]]},
   "symbol": {"chars": "/>", "classic": 29, "from": [["cmp.table", 15, 16], ["cmp.code", 24, 25]]},
   "messaging": {"flag": true, "from": [["pos.dti", 14, 15]]},
   "fix": {"code": "current", "from": [["cmp.t", 27, 28]]},
@@ -620,8 +657,8 @@ The block is the example of APRS12c p. 58/40.
 - `course`: `'7'` − 33 = 22. The count is 4 · 22 = 88 degrees, with step
   4.
 - `speed`: `'P'` − 33 = 47 = `k`. 1.08^47 − 1 is about 36.232 knots. p.
-  57/39 gives 36.2 knots. `v` is (1.08^47 − 1) · 1852 / 3600 m/s. `res`
-  is 0.08 · 1.08^47 · 1852 / 3600 m/s.
+  57/39 gives 36.2 knots. `v` is (1.08^47 − 1) · 1.852 km/h. `res` is
+  0.08 · 1.08^47 · 1.852 km/h.
 - `cmp.t`: `'['` − 33 = 58, binary 111010: current fix, source RMC, origin
   2.
 - `report_time`: The packet has no timestamp. `utc` is the received time.
@@ -647,7 +684,7 @@ nine bytes of the information field are the example of the same page.
   "datum": {"code": "default", "from": []},
   "altitude": [{"v": 61, "res": 1, "ref": "msl", "from": [["mice.alt", 23, 27]]}],
   "course": {"v": 251, "res": 1, "from": [["mice.dc", 19, 20], ["mice.se", 20, 21]]},
-  "speed": {"v": 10.28888888888889, "res": 0.5144444444444445, "from": [["mice.sp", 18, 19], ["mice.dc", 19, 20]]},
+  "speed": {"v": 37.04, "res": 1.852, "from": [["mice.sp", 18, 19], ["mice.dc", 19, 20]]},
   "symbol": {"chars": "/j", "classic": 73, "from": [["mice.sym.table", 22, 23], ["mice.sym.code", 21, 22]]},
   "fix": {"code": "current", "from": [["mice.dti", 14, 15]]},
   "extensions": [{"rule": "val.mice.msg",
@@ -667,7 +704,7 @@ nine bytes of the information field are the example of the same page.
   `'Z'` has flag 1, so west. The count is −(112 · 6000 + 7 · 100) =
   −672700. `v` is −672700 / 6000 degree. `res` is as for `lat`.
 - `speed`: 10 · 82 + 6 div 10 = 820, minus 800: the count is 20 knots.
-  `v` is 20 · 1852 / 3600 m/s. `res` is 1852 / 3600 m/s.
+  `v` is 20 · 1.852 = 37.04 km/h. `res` is 1.852 km/h.
 - `course`: 100 · (6 mod 10) + 51 = 651, minus 400: 251 degrees.
 - `altitude`: `"4T` is 1 · 8281 + 19 · 91 + 51 = 10061, minus 10000: the
   count is 61 m, with step 1.

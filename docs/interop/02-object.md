@@ -108,7 +108,7 @@ in strict mode. The input gives no received time.
   "ambiguity": {"code": 0, "from": [["lat", 32, 40]]},
   "datum": {"code": "default", "from": []},
   "course": {"v": 88, "res": 1, "from": [["ext.csespd", 51, 58]]},
-  "speed": {"v": 18.52, "res": 0.5144444444444445, "from": [["ext.csespd", 51, 58]]},
+  "speed": {"v": 66.672, "res": 1.852, "from": [["ext.csespd", 51, 58]]},
   "symbol": {"chars": "/>", "classic": 29, "from": [["sym.table", 40, 41], ["sym.code", 50, 51]]},
   "extensions": []},
  "notes": [["amb.val.datum", "position.datum"]],
@@ -119,7 +119,7 @@ The values are derived as follows:
 
 - `lat`: 49° 03.50' N is 49 + 3.5 / 60 degrees. `res` is 1 / 6000 degree.
 - `lon`: 72° 01.75' W is −(72 + 1.75 / 60) degrees.
-- `speed`: 36 knots × 1852 / 3600 is 18.52 m/s. `res` is 1852 / 3600 m/s.
+- `speed`: 36 knots × 1.852 is 66.672 km/h. `res` is 1.852 km/h.
 - `classic`: the code `'>'` is 0x3E. In the primary table, the number is
   0x3E − 33 = 29.
 

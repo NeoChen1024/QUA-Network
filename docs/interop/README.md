@@ -39,7 +39,7 @@ legacy APRS network. It covers these parts:
 - This directory does not interpret APRS12c. [docs/legacy](../legacy/README.md)
   does, and the decoder follows it.
 - The record does not use the units of APRS12c. It gives each quantity in
-  a record unit, mostly an SI unit
+  a record unit. It is the unit of RFC 5.3, if the RFC names one
   ([01-record section 4.3](01-record.md#43-units)). It does not keep the
   integer counts of docs/legacy. The TNC2 line keeps the bytes.
 - The legacy AX.25 frame of the encoder is not the AX.25 encapsulation of

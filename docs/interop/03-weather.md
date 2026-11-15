@@ -111,11 +111,12 @@ no `speed`. The wind field takes their place in the packet.
 
 **[agreed]** The wind speed and the gust are in kilometres per hour.
 The temperature is in degrees Celsius. The pressure is in hectopascals.
-These are the units of RFC 5.3
-([01-record section 4.3](01-record.md#43-units)).
+These are the units of the specification
+([docs/spec/06-numbers-units-text](../spec/06-numbers-units-text.md#3-units);
+[01-record section 4.3](01-record.md#43-units)).
 
-**[agreed]** Rain and snowfall are in millimetres. RFC 5.3 names no unit
-for them.
+**[agreed]** Rain and snowfall are in millimetres. The specification
+names no unit for them.
 
 **[agreed]** The luminosity is in watts per square metre. Humidity is in
 percent.

@@ -19,7 +19,8 @@ It does not specify these:
 - Which fields are free text.
 - How a field states that its string is compressed. The tag of the field
   states it (RFC 5.7).
-- Which characters a text can have (RFC 5.3).
+- Which characters a text can have
+  ([06-numbers-units-text](06-numbers-units-text.md) section 6).
 
 Terms:
 

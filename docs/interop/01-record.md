@@ -158,8 +158,9 @@ particular not its non-linear codes. The record states the value of a
 quantity, not the form of its bytes. Round-trip accuracy with APRS is not
 a goal.
 
-**[agreed]** If RFC 5.3 names the unit of a quantity, the record unit is
-that unit:
+**[agreed]** If the specification names the unit of a quantity
+([docs/spec/06-numbers-units-text](../spec/06-numbers-units-text.md#3-units)),
+the record unit is that unit:
 
 | Quantity | Record unit |
 |---|---|
@@ -169,7 +170,8 @@ that unit:
 | Temperature | degree Celsius |
 | Pressure | hectopascal |
 
-**[agreed]** RFC 5.3 names no unit for the other quantities of a record.
+**[agreed]** The specification names no unit for the other quantities of
+a record.
 For each, this file applies the rules of RFC 5.3: the SI unit, or a unit
 of daily metric use if the SI unit is not practical. Rain and snowfall
 have the same unit.
@@ -193,8 +195,8 @@ have the same unit.
 - Humidity is in percent ([03-weather section 3.1](03-weather.md#31-units)).
 
 **[agreed]** One quantity has one record unit in every body. A quantity
-is one kind of use, as in RFC 5.3. Height, range and rain are lengths, and
-they are three quantities.
+is one kind of use, as in the specification. Height, range and rain are
+lengths, and they are three quantities.
 
 **[proposed]** No value object names a unit or a prefix.
 
@@ -268,8 +270,8 @@ knot as 0.51444 m/s with a repeating last digit. That is 1852 / 3600 m/s,
 or 1.852 km/h (derived). RFC 5.3 gives the same factor.
 
 **[proposed]** A gateway rounds `v` to the integer scale or to the decimal
-number of RFC 5.3. For a quantity that RFC 5.3 names, the gateway does not
-convert the unit. The rounding rule belongs to the gateway mapping
+number of the specification. For a quantity that the specification names,
+the gateway does not convert the unit. The rounding rule belongs to the gateway mapping
 ([README section 5](README.md#5-open-items)).
 
 ### 4.4 Provenance

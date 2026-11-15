@@ -16,8 +16,9 @@ the encodings that are invalid, and its text form.
 
 It does not specify these:
 
-- Which fields are decimal numbers (RFC 5.3).
-- The unit of a field (RFC 5.3).
+- Which fields are decimal numbers
+  ([06-numbers-units-text](06-numbers-units-text.md) section 3).
+- The unit of a field (the same section).
 - Which fields allow an infinity.
 
 ## 2. Value

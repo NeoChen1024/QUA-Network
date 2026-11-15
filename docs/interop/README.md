@@ -32,14 +32,15 @@ legacy APRS network. It covers these parts:
 **[proposed]** These statements limit this directory:
 
 - The record is not a QUA Network wire format. RFC 5.10 does not apply to
-  it. The rules of RFC 5.3 apply only to the PDUs that a gateway writes.
+  it. The rules of RFC 5.3 and of its specification files apply only to
+  the PDUs that a gateway writes.
 - The record is not a lossless model of legacy packets (RFC 3.2). It gives
   the values that each use needs. It keeps the TNC2 line, so a reader can
   trace a value to its bytes.
 - This directory does not interpret APRS12c. [docs/legacy](../legacy/README.md)
   does, and the decoder follows it.
 - The record does not use the units of APRS12c. It gives each quantity in
-  a record unit. It is the unit of RFC 5.3, if the RFC names one
+  a record unit. It is the unit of the specification, if it names one
   ([01-record section 4.3](01-record.md#43-units)). It does not keep the
   integer counts of docs/legacy. The TNC2 line keeps the bytes.
 - The legacy AX.25 frame of the encoder is not the AX.25 encapsulation of

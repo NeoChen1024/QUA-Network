@@ -356,46 +356,43 @@ are to be checked against them.
 
 ### 5.3 Numeric and text rules
 
-- **[agreed]** No binary floating point on the wire. A quantity is an
-  integer with a fixed scale, for example latitude and longitude as int32
-  in units of 1e-7 degree, or it is a decimal number (below).
-- **[agreed]** WGS84 only.
+The rules of this topic are specified in two files:
+
+- [`docs/spec/06-numbers-units-text.md`](../spec/06-numbers-units-text.md):
+  the form of a number, the unit of each quantity, time and text.
+- [`docs/spec/05-decimal-number.md`](../spec/05-decimal-number.md): the
+  decimal number.
+
+This section keeps the rules by which the specification chooses a unit,
+the reasons and the dropped alternatives.
+
+Summary: no field holds binary floating point. A quantity is an integer
+with a fixed scale, for example latitude and longitude as int32 in units
+of 1e-7 degree, or it is a decimal number (below). One quantity has one
+unit. Temperature is in degrees Celsius, speed is in kilometres per hour
+and pressure is in hectopascals. Strings are UTF-8.
+
+How the specification chooses a unit:
+
 - **[agreed]** A quantity is in its SI unit, unless that unit is not
   practical for the quantity. Then the specification gives the quantity a
   practical unit. Practical use is more important than agreement with the
   SI.
 - **[agreed]** A practical unit can differ from the SI unit by a decimal
   prefix, by a factor that is not a power of ten, or by an offset.
-- **[agreed]** Temperature is in degrees Celsius, not in kelvin.
-- **[agreed]** Speed is in kilometres per hour, not in metres per second.
-- **[agreed]** Pressure is in hectopascals, not in pascals.
-- **[agreed]** Speed is a decimal number (below), not an integer with a
-  fixed scale. An aircraft exceeds 255 km/h, the range of one byte.
-- **[agreed]** Wind speed is a speed. It is in kilometres per hour too.
-- **[agreed]** One quantity has one unit. The specification fixes it, and
-  a sender cannot choose another. No field holds a prefix.
-- **[agreed]** A quantity in this rule is one kind of use, not one
-  physical dimension. Altitude, range and rain depth are lengths, and they
-  are three quantities.
 - **[agreed]** The SI unit is not practical if, for the usual values of
   the quantity, it needs more bytes or gives text that is hard to read.
 - **[agreed]** A practical unit is a unit of daily metric use. The mile
   per hour, the knot and the degree Fahrenheit are not practical units in
   this sense.
-- **[agreed]** Time is an integer count from a fixed epoch in UTC.
-- **[proposed]** Precision or uncertainty is an explicit field. Blanked digits
-  are not used.
-- **[agreed]** Strings are UTF-8.
-- **[agreed]** The format does not forbid a character in a free-text
-  field. A text can hold control characters and other special characters.
-  An implementation MUST be prepared for every character in such a field.
-- **[proposed]** This applies when the implementation shows the text,
-  writes it to a log or gives it to a different program.
-- **[agreed]** Telemetry is self-describing or refers to a registered schema.
-  A value MUST NOT depend on a separate definition packet having been heard.
-- **[agreed]** A gateway that translates a legacy value to a unit of this
-  section rounds the value. A reasonable loss is acceptable (3.2). The
-  rounding rule is not written (section 14, question 10).
+- **[agreed]** Speed is a decimal number, not an integer with a fixed
+  scale. An aircraft exceeds 255 km/h, the range of one byte.
+
+Gateways:
+
+- **[agreed]** A gateway that translates a legacy value to a unit of the
+  specification rounds the value. A reasonable loss is acceptable (3.2).
+  The rounding rule is not written (section 14, question 10).
 
 An earlier revision allowed no floating point of any kind. Every quantity
 was an integer with a fixed scale, and altitude was a signed integer in
@@ -441,7 +438,6 @@ these cases.
 
 - **[agreed]** A decimal number is a significand `m` and an exponent `e`.
   Its value is `m` × 10^`e`.
-- **[agreed]** Altitude is a decimal number, in metres.
 - **[agreed]** A decimal number has a format of 2, 3 or 4 bytes. The
   length of the TLV gives the format. There is no format of 1 byte.
 - **[agreed]** One value has one encoding and one text form.
@@ -2093,12 +2089,12 @@ anything is decided on them.
 15. Decimal number (5.3). Done: the specification file
     `docs/spec/05-decimal-number.md`. Next: test vectors, with encodings
     that a decoder rejects (section 14, question 24).
-16. List the quantities that the protocol carries, each with its unit
-    (5.3). This goes with the tag table of step 6.
+16. List the quantities that the protocol carries, each with its unit,
+    in section 3 of `docs/spec/06-numbers-units-text.md`. This goes with
+    the tag table of step 6.
 17. Move the topics of section 5 to `docs/spec/`, when most of the items
-    of a topic are not open. The order: the rest of 5.3 in one file
-    (units, time and text), then 5.10, then 5.1 when its layout is
-    decided. 5.4 and 5.5 stay in the RFC for now.
+    of a topic are not open. Done: 5.3, in two files. Next: 5.10, then
+    5.1 when its layout is decided. 5.4 and 5.5 stay in the RFC for now.
 
 ## Appendix A. Transceiver packet limits
 

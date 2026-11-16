@@ -1952,6 +1952,9 @@ before any of it is treated as sound.
     "removed".
 38. A part of an adopted format that this protocol has no use for, kept
     because the format has it. Every decoder then has to implement it.
+39. The traffic mix of the old protocol read as the traffic mix of the
+    new one, or its mix of contents in one packet read as the list of
+    types of the new one (13.5).
 
 ## 13. Measurements from the APRS-IS corpus
 
@@ -1991,7 +1994,7 @@ count they came from.
 
 These are the qualitative results the design relies on. They held in the
 runs made so far and are to be re-checked against a current run before
-anything is decided on them.
+anything is decided on them. 13.5 states how to read the traffic mix.
 
 - Most comments and status texts are equal to the text before from the
   same station. To send a text only when it changes saves more than to
@@ -2048,6 +2051,23 @@ anything is decided on them.
   express also includes malformed sources and lower-case SSIDs, which were
   not separated.
 - Traffic mix may differ by weekday, season and event.
+
+### 13.5 How to read the traffic mix
+
+- **[agreed]** Many functions of APRS are not used well in existing
+  traffic. The share of each kind of traffic in the corpus therefore
+  does not state directly how stations will use this protocol.
+- **[agreed]** The corpus is evidence for the content of existing
+  packets: their sizes, their values and their errors. It is not
+  evidence for how often a function will be used here.
+- **[agreed]** A small share of a kind of traffic in the corpus is
+  not, alone, a reason to leave its function out of this protocol. A
+  large share is not, alone, a reason to design for that kind first.
+- **[agreed]** Some contents often occur together in the packets of the
+  corpus. This does not state that these contents belong in one PDU
+  type (5.11).
+- **[agreed]** A decision that depends on the traffic mix states this
+  limit next to the figure.
 
 ## 14. Open questions
 

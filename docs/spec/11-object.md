@@ -150,6 +150,36 @@ skips it ([03-tlv](03-tlv.md) section 4).
 An Object PDU has 28 bytes at least: 14 for the header, 9 for the TLV of
 the object identifier, 1 for the control byte and 4 for the checksum.
 
+### 5.1 The end and the order of PDUs
+
+[08-pdu](08-pdu.md) section 4.6 states when a PDU is older or newer than
+a kept PDU, and the time `T`.
+
+**[proposed]** A receiver that gets an Object PDU with the End TLV keeps
+the sequence number of that PDU for the time `T`. For the comparison,
+that PDU is the kept PDU of the object.
+
+**[proposed]** In that time, a PDU for the object that is older than the
+kept PDU does not make the object. A PDU that is newer makes the object
+again: the owner uses the identifier again.
+
+**[proposed]** An Object PDU with the End TLV does not remove a content
+PDU that is newer than it.
+
+### 5.2 Repetition and the life of an object
+
+**[proposed]** An owner SHOULD send the Object PDU with the End TLV more
+than one time, with a longer interval each time. Each is a new PDU with
+a new sequence number.
+
+**[proposed]** An owner that sends an Object PDU again at an interval
+can give a later end time each time. If the owner stops, the object ends
+at the last end time that it gave.
+
+**[proposed]** A receiver removes an object with no end time after a
+time of its own choice. A receiver that does not know the UTC time does
+the same for each object.
+
 ## 6. Example
 
 The station has the object `TYPHOON` with the description
@@ -225,13 +255,14 @@ do not import each other.
 
 - **[open]** What a receiver does with an Object PDU that is invalid.
   The question applies to every type (RFC section 14, question 27).
-- **[open]** How often an owner sends the Object PDU again, and how
-  many times it sends the Object PDU with the End TLV.
-- **[open]** When a receiver removes an object that has no End TLV and
-  no end time.
-- **[open]** A content PDU that arrives after the Object PDU with the
-  End TLV makes the object again (section 3). Whether a receiver
-  prevents this for a PDU that was sent before the end.
+- **[open]** How often an owner sends the Object PDU again. How many
+  times it sends the Object PDU with the End TLV, and at which
+  intervals (section 5.2).
+- **[open]** A recommended time after which a receiver removes an
+  object that has no End TLV and no end time (section 5.2).
+- **[open]** The values of the time `T` and of the window `W`
+  ([08-pdu](08-pdu.md) section 11).
+- **[open]** Test vectors for section 5.1.
 - **[open]** A limit for the length of the description.
 - **[open]** A field that states the kind of an object, from a standard
   list (RFC 5.11). The symbol of an object does not state its kind.

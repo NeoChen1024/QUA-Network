@@ -284,6 +284,36 @@ sequence number of 32 bits. It costs 2 more bytes in every PDU. With
 these two rules, 16 bits are sufficient for deduplication. The sequence
 number alone does not prevent a replay (section 14, question 7).
 
+The order of two PDUs (specification file, section 4.6). The network can
+deliver two PDUs of one source out of order. A receiver then must not
+replace a PDU with an older one. The idea is the author's: after a
+receiver has the sequence number `S`, it rejects a PDU with a number
+from `S` − `W` to `S` − 1. These points were added, and all of it is
+**[proposed]**:
+
+- The window `W` is small. A station that restarts takes a random
+  number. With a small window, that number is seldom in the window. The
+  usual comparison of serial numbers takes half of the number space as
+  "older". A restart then has one chance in two to be rejected.
+- The comparison is for each kept PDU and not for each source. One
+  source has one sequence for all its types and objects. A position
+  that arrives after a newer PDU of a different type is not old.
+- A relay does not compare. If it dropped an older number, a PDU that
+  takes a longer path would be lost.
+- The comparison has a time limit `T`. Without it, a station that
+  restarts with a number in the window is rejected until its numbers
+  pass `S`. With it, the loss ends after `T`.
+- `T` is one constant for three things: the life of a deduplication
+  entry (6.2), the time limit of the comparison, and the time for which
+  a receiver keeps the end of an object (5.11). Each is the longest time
+  that a PDU stays in the network.
+- `W` follows from `T`: it is not less than the number of PDUs that a
+  source can send in the time `T`. The airtime budget (6.3) gives that
+  number, so the two values are open.
+- This is not a protection against a replay. A station can send a false
+  source and a false sequence number. A false number can make a receiver
+  reject the true PDUs of that source, for the time `T` at most.
+
 An earlier proposal let the source length count the authentication tag.
 A receiver then had no way to find the end of the TLV area. The author
 also considered a tag that is a TLV. It was dropped: it makes the form
@@ -1463,9 +1493,24 @@ Why the object identifier is in a TLV:
   belongs to the station in the source field. The author states that
   this is the natural choice.
 
-The author put these questions aside for now: how often an owner sends
-an Object PDU again, and when a receiver removes an object that has no
-End TLV and no end time.
+The end and the life of an object, all **[proposed]**:
+
+- A content PDU that the owner sent before the end can arrive after the
+  Object PDU with the End TLV. Without a rule, it makes the object
+  again. The comparison of sequence numbers (5.1) prevents this: the
+  receiver keeps the sequence number of the end for the time `T`.
+- An Object PDU with the End TLV can be lost. The owner sends it more
+  than one time. Each is a new PDU, so a deduplication entry does not
+  stop it.
+- The end time serves as the life of an object with a beacon. The owner
+  gives a later end time with each Object PDU. If the beacon stops, the
+  object ends at the last end time. No other field is necessary.
+- A receiver with no UTC time, or an object with no end time, leaves
+  the choice to the receiver. The specification will give a recommended
+  time and no requirement.
+
+Still open: how often an owner sends an Object PDU again, how many
+times it sends the end, and the recommended time above.
 
 Dropped: the object name of an earlier revision, with no fixed form. It
 became the object identifier.
@@ -2175,6 +2220,8 @@ anything is decided on them. 13.5 states how to read the traffic mix.
     - The exact rule for the flag No Internet: which stations obey it,
       and whether it also applies to a trunk (8.2).
     - How long a relay or a receiver keeps a deduplication entry (6.2).
+      This is the time `T` of the order of two PDUs (5.1).
+    - The window `W` of the order of two PDUs (5.1).
 26. The envelope that carries gateway provenance next to a PDU (8.3).
 27. PDU types (5.11):
     - The list of types and the schema of each. The Position type and

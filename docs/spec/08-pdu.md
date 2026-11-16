@@ -152,6 +152,46 @@ in little-endian order.
 **[agreed]** A sequence number can therefore occur again. A relay or a
 receiver keeps a deduplication entry for a limited time only (RFC 6.2).
 
+#### Order of two PDUs
+
+These rules use two values: the window `W`, a count of sequence numbers,
+and the time `T`. Their values are open (section 11).
+
+**[proposed]** A receiver keeps the sequence number with each PDU that
+it keeps for a source or for an object (RFC 5.11).
+
+**[proposed]** A receiver compares a PDU that arrives with a kept PDU of
+the same source in this way. `S` is the sequence number of the kept PDU.
+`N` is the sequence number of the PDU that arrives. `d` is `S` − `N`,
+modulo 65536.
+
+| `d` | The PDU that arrives |
+|---|---|
+| 0 | Is a duplicate of the kept PDU. |
+| 1 to `W` | Is older than the kept PDU. |
+| Above `W` | Is newer than the kept PDU. |
+
+**[proposed]** The comparison applies only for the time `T` after the
+receiver got the kept PDU. After that time, each PDU that arrives is
+newer.
+
+**[proposed]** A PDU that is older does not replace the kept PDU of the
+same source, the same object and the same type. A receiver ignores a
+duplicate.
+
+**[proposed]** These rules apply to a type in which a new PDU replaces
+the PDU before it. The schema of a type states it if they do not apply.
+
+**[proposed]** A relay does not make this comparison. It drops only a
+PDU with a deduplication entry (RFC 6.2).
+
+**[proposed]** `T` is also the time for which a relay or a receiver
+keeps a deduplication entry.
+
+These rules put in order the PDUs that the network delivers out of
+order. They do not find a PDU with a false source or a false sequence
+number.
+
 ## 5. Authentication tag
 
 **[agreed]** If the flag Authenticated is set, an authentication tag
@@ -303,7 +343,10 @@ These are also in the RFC (section 14, question 25).
 - **[open]** The exact rule for the flag No Internet: which stations obey
   it, and whether it also applies to a trunk (RFC 8.2).
 - **[open]** How long a relay or a receiver keeps a deduplication entry
-  (RFC 6.2).
+  (RFC 6.2). This is the time `T` of section 4.6.
+- **[open]** The value of the window `W` of section 4.6. It is not less
+  than the number of PDUs that one source can send in the time `T`.
+- **[open]** Test vectors for the order of two PDUs.
 - **[open]** Test vectors for a PDU with an authentication tag.
 - **[open]** What a receiver does with a version that it does not know
   ([07-versions](07-versions.md) section 6).

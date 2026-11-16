@@ -161,6 +161,14 @@ when a second, independent implementation can be written from the document.
   obsolete designs, and many features that remain only for historical
   reasons. A single field can still convert without loss, as the classic
   symbol of 5.6 does.
+- **[agreed]** Tolerance of input that breaks a rule. If a rule forbids
+  a thing, a receiver treats that thing as invalid. The author's reason:
+  APRS had to weaken its specification for deployed implementations that
+  did not follow it. QUA Network starts with no deployed implementation,
+  so it does not need to. This is about QUA Network input. A gateway
+  still has to read legacy APRS traffic that breaks the APRS documents
+  (Appendix E). The author decided one case differently: a receiver does
+  not check the value of padding (7.1).
 
 A translation between APRS and QUA Network at a gateway can therefore lose
 information (section 14, question 10). The project still studies where
@@ -1786,8 +1794,28 @@ not count bit stuffing.
   earlier rule let a link add each byte value. A receiver then cannot
   tell padding from the next PDU. The author knows no link that needs a
   different padding byte.
-- **[proposed]** The largest link unit on an HDLC link is 1022 bytes.
-  The author takes Dire Wolf, QtSoundModem and pico_tnc as the
+- **[agreed]** A receiver does not check the value of the padding. A
+  unit with a padding byte that is not 0 stays valid. Dropped: a rule
+  that makes such a unit invalid. The author's reasons:
+  - Padding carries no information.
+  - A link can have no FEC and no checksum of its own, for example raw
+    FSK. On such a link, a bit error in the padding would lose each PDU
+    of the unit. The author does not accept this.
+- Each PDU has its own checksum, so a receiver does not need the padding
+  to find an error in a PDU. If a damaged padding byte has the low bit
+  set, the receiver reads an invalid PDU there and stops. The PDUs
+  before it stay valid.
+- **[agreed]** The largest link unit on an HDLC link is 1020 bytes. A
+  station does not send a larger unit on such a link. The value is 4
+  times the PDU limit of 255 bytes, so 4 PDUs of the largest size go in
+  one unit. It is below the limit of 1022 bytes that the references
+  give. An earlier proposal was 1022 bytes; the author chose 1020.
+- **[agreed]** A receiver or a relay drops a unit that is larger, with
+  each PDU in it. The author's reason: the rule forbids such a unit, so
+  a unit of that size shows a fault in its sender. This follows the
+  non-goal of 3.2.
+  [`docs/spec/08-pdu.md`](../spec/08-pdu.md) section 7.1 has the rule.
+- The author takes Dire Wolf, QtSoundModem and pico_tnc as the
   references. This was read in the source, at the commits above, and not
   run:
   - Dire Wolf accepts a frame of 15 to 2123 bytes (`src/ax25_pad.c`).
@@ -1802,10 +1830,10 @@ not count bit stuffing.
     longer frame. Its KISS buffer holds 1024 bytes after the escapes are
     removed, with the type byte (`kiss.c`). This is 1023 bytes of
     content from the host.
-- The value 1022 thus follows from two limits that do not depend on each
-  other: the KISS buffer of Dire Wolf in the worst case, and the receive
-  buffer of pico_tnc.
-- 1022 bytes take 6.8 s at 1200 bit/s (derived). The airtime budget
+- The limit of 1022 bytes thus follows from two buffers that do not
+  depend on each other: the KISS buffer of Dire Wolf in the worst case,
+  and the receive buffer of pico_tnc.
+- 1020 bytes take 6.8 s at 1200 bit/s (derived). The airtime budget
   (6.3) will limit a unit before this value does.
 - **[open]** A lower recommended size of a unit, for a slow link and for
   a channel with hidden stations. Of the hardware TNCs, only the
@@ -2149,6 +2177,8 @@ before any of it is treated as sound.
 39. The traffic mix of the old protocol read as the traffic mix of the
     new one, or its mix of contents in one packet read as the list of
     types of the new one (13.5).
+40. A receiver that accepts input that a rule forbids. Senders then
+    depend on it, and the rule no longer holds (3.2).
 
 ## 13. Measurements from the APRS-IS corpus
 
@@ -2380,8 +2410,8 @@ anything is decided on them. 13.5 states how to read the traffic mix.
 28. More than one PDU in a link unit (7.1):
     - A PDU that holds the content of several types of one source
       (design 3).
-    - The largest unit on an HDLC link, proposed as 1022 bytes, and a
-      lower recommended size.
+    - A recommended size of a unit that is lower than the largest unit
+      of 1020 bytes.
     - A station that holds PDUs back to make larger units.
 
 ## 15. Next steps

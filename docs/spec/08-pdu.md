@@ -261,6 +261,9 @@ the padding that it received.
    from that byte. It then does step 2 again.
 4. If that bit is 0, it stops. It does not use the bytes that remain.
 
+**[agreed]** A receiver does not check the value of the padding. A
+padding byte that is not 0 does not make the unit or a PDU invalid.
+
 **[agreed]** If a PDU of the unit is invalid, the receiver stops at
 that PDU. It does not use that PDU or the bytes after it. The PDUs
 before it stay valid.
@@ -273,7 +276,13 @@ one unit.
 transmission when it gets the channel. It does not hold a PDU back to
 pack it.
 
-The binding of a link gives the largest unit (RFC section 7).
+**[agreed]** The binding of a link gives the largest unit (RFC section
+7). The padding counts for the size of a unit. A sender MUST NOT send a
+unit that is larger than the largest unit of its link.
+
+**[agreed]** A unit that is larger than the largest unit of its link is
+invalid. A receiver or a relay drops it. It does not use a PDU of that
+unit.
 
 ## 8. Checksum
 
@@ -397,6 +406,8 @@ These are also in the RFC (section 14, question 25).
 - **[open]** The value of the window `W` of section 4.6. It is not less
   than the number of PDUs that one source can send in the time `T`.
 - **[open]** Test vectors for the order of two PDUs.
+- **[open]** Test vectors for a unit that is larger than the largest
+  unit of its link.
 - **[open]** Whether a station can hold a PDU back for a short time, to
   pack it with a later PDU (RFC 7.1).
 - **[open]** Test vectors for a PDU with an authentication tag.

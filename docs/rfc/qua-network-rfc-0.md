@@ -1834,8 +1834,10 @@ are derived:
 - A collision loses each PDU of the frame together.
 
 A simulation of p-persistent CSMA with 30 stations and one receiver
-agrees with these statements for groups of 2 and of 4 PDUs. It is not in
-the repository yet, so this RFC gives no figure from it.
+agrees with these statements for groups of 2 and of 4 PDUs.
+[`docs/research/04-packing-collisions.md`](../research/04-packing-collisions.md)
+has the model, the figures and the limits. It is a simulation with
+assumed parameters, not a measurement of a real channel.
 
 ### 7.2 Optional AX.25 encapsulation
 
@@ -2558,6 +2560,9 @@ commands.
   files from `vectors/` and compares.
 - `qua-icon-stats`: size of the candidate icon bitmap forms on the glyphs
   of BDF fonts.
+- `qua-channel-sim`: simulates the loss of PDUs on one channel with
+  p-persistent CSMA, with and without several PDUs in one frame (7.1).
+  It does not read the corpus.
 - `qua-make-vectors`: writes the vector files of the decimal number, the
   text compression, the hop hash, the PDU, the link unit, the relay, the
   Position type and the Object type. Each comes from

@@ -4,7 +4,7 @@
 |---|---|
 | Status | Draft. Not frozen. Items carry the labels **[agreed]**, **[proposed]** and **[open]** with the meaning given in the RFC. |
 | Rationale | [RFC draft 0, section 5.1](../rfc/qua-network-rfc-0.md#51-header) |
-| Vectors | [`vectors/pdu.json`](../../vectors/pdu.json), [`vectors/crc32c.json`](../../vectors/crc32c.json) |
+| Vectors | [`vectors/pdu.json`](../../vectors/pdu.json), [`vectors/pdu-unit.json`](../../vectors/pdu-unit.json), [`vectors/crc32c.json`](../../vectors/crc32c.json) |
 
 The key words MUST, MUST NOT, SHOULD, SHOULD NOT and MAY are used as in
 RFC 2119.
@@ -231,14 +231,49 @@ A source part therefore has 250 bytes at most, and a TLV area has 236
 bytes at most. An authentication tag makes both numbers smaller by its
 length.
 
-**[agreed]** A receiver ignores the bytes that a link gives after the
-PDU. A link can therefore add padding after a PDU.
-
 **[agreed]** If a link gives fewer bytes than the length of the PDU, the
 PDU is invalid.
 
+### 7.1 Link unit
+
+A link unit is the bytes that a link gives as one whole, for example the
+content of one HDLC frame.
+
+**[agreed]** A link unit can hold more than one PDU, if the binding of
+the link allows it (RFC section 7). The PDUs follow one after the other.
+No byte is between two PDUs.
+
+**[agreed]** The PDU limit applies to each PDU. It does not apply to the
+link unit.
+
+**[agreed]** A link can add padding after the last PDU of a unit. Each
+byte of padding is 0. A sender MUST NOT put a different byte after a
+PDU, unless it is the first byte of the next PDU.
+
 **[agreed]** The checksum does not cover padding. A relay does not send
 the padding that it received.
+
+**[agreed]** A receiver reads a link unit in these steps:
+
+1. It reads a PDU at the start of the unit.
+2. If no byte remains after that PDU, it stops.
+3. If the least significant bit of the next byte is 1, it reads a PDU
+   from that byte. It then does step 2 again.
+4. If that bit is 0, it stops. It does not use the bytes that remain.
+
+**[agreed]** If a PDU of the unit is invalid, the receiver stops at
+that PDU. It does not use that PDU or the bytes after it. The PDUs
+before it stay valid.
+
+**[agreed]** A relay handles each PDU of a unit alone. It can send the
+PDUs on in different units, and it can put PDUs of different units in
+one unit.
+
+**[agreed]** A station puts in one unit the PDUs that wait for
+transmission when it gets the channel. It does not hold a PDU back to
+pack it.
+
+The binding of a link gives the largest unit (RFC section 7).
 
 ## 8. Checksum
 
@@ -300,7 +335,7 @@ The keys of a valid PDU:
 | `not_radio`, `trailer_reserved`, `entry_count`, `hops_remaining` | The fields of the control byte ([09-hop-trace](09-hop-trace.md) section 4) |
 | `entries` | The entries, each as a number in 6 hexadecimal digits |
 | `length` | The length of the PDU in bytes |
-| `padding` | The bytes after the PDU |
+| `padding` | The bytes after the PDU. Each is 0. |
 
 The values of `invalid`:
 
@@ -333,6 +368,21 @@ table-driven CRC-32C. It takes the identifiers from
 `vectors/identifier.json` and the entries from `vectors/hop-hash.json`.
 `qua-check-vectors` checks the vectors against `pdu.py`.
 
+### 10.1 Link units
+
+`vectors/pdu-unit.json` has the test vectors of section 7.1. Each vector
+is one link unit:
+
+| Key | Value |
+|---|---|
+| `unit` | The bytes of the link unit |
+| `pdus` | The PDUs that a receiver reads, in their order, each as its bytes |
+| `rest` | The bytes that the receiver does not use |
+
+`qua-make-vectors` computes these vectors with `vectors_pdu.py`, which
+puts the PDUs and the other bytes together. `qua-check-vectors` checks
+them against `pdu.py`.
+
 ## 11. Open items
 
 These are also in the RFC (section 14, question 25).
@@ -347,6 +397,8 @@ These are also in the RFC (section 14, question 25).
 - **[open]** The value of the window `W` of section 4.6. It is not less
   than the number of PDUs that one source can send in the time `T`.
 - **[open]** Test vectors for the order of two PDUs.
+- **[open]** Whether a station can hold a PDU back for a short time, to
+  pack it with a later PDU (RFC 7.1).
 - **[open]** Test vectors for a PDU with an authentication tag.
 - **[open]** What a receiver does with a version that it does not know
   ([07-versions](07-versions.md) section 6).

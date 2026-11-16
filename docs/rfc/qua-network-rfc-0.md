@@ -330,7 +330,9 @@ length too. The specification file states what happens if the two differ
 A first decision of this revision made a PDU invalid if the link gave a
 different length, so a PDU could have no padding. The author replaced it.
 A link with packets of a fixed length has to fill the packet, and bytes
-after the PDU do not change how a receiver reads it.
+after the PDU do not change how a receiver reads it. A later decision
+limits padding to bytes of 0, because a link unit can hold more than one
+PDU (7.1).
 
 A frame that no relay has changed has 19 bytes that are not TLVs: the
 header of 14, the control byte of 5.9 and the checksum of 4. Each hop adds
@@ -1682,6 +1684,9 @@ by speed. It recommends a bitrate and lets the airtime budget do the rest.
 - **[agreed]** On a KISS TNC the PDU is the content of the HDLC frame. The TNC
   supplies flags, bit stuffing and the 16-bit FCS. There is no address,
   control or PID field.
+- **[agreed]** One HDLC frame can hold more than one PDU, one after the
+  other ("More than one PDU in a frame" below).
+  [`docs/spec/08-pdu.md`](../spec/08-pdu.md) section 7.1 has the rules.
 - **[proposed]** Coexistence with legacy APRS on the same channel relies on
   the first-byte rule of 5.1. A receiver takes each HDLC frame with a good
   FCS and looks at the low bit of the first byte: 1 is QUA Network, 0 is
@@ -1697,8 +1702,140 @@ by speed. It recommends a bitrate and lets the airtime budget do the rest.
   position to be a multiple of 7, which is the behaviour the first-byte
   rule depends on. This was read, not run. Dire Wolf's display, digipeater
   and IGate functions assume AX.25 content and may misbehave.
-- Consequence: a PDU on an HDLC link is at least 15 bytes. Any realistic PDU
-  is longer.
+- Two more TNCs were read in the source, not run:
+  - QtSoundModem (commit `9cd2735`, 2025-11-10, `ax25_l2.c`) drops a
+    received frame of less than 17 bytes with the FCS, which is 15 bytes
+    of content. It has an option "non-AX25 filter", which is off by
+    default. The effect of that option on the KISS output was not
+    determined.
+  - pico_tnc (commit `0711f6b`, 2025-08-22) is firmware for a hardware
+    TNC with a Raspberry Pi Pico. It drops a received frame of less than
+    18 bytes with the FCS, which is 16 bytes of content (`decode.c`). In
+    KISS mode, it passes a longer frame with a good FCS to the host and
+    does not look at the addresses (`decode.c`, `kiss.c`). A frame from
+    the host has no minimum length (`kiss.c`, `send.c`). Its monitor and
+    its digipeater read each frame as AX.25.
+- Consequence: a frame of 16 bytes or more passes each of the three
+  TNCs. The smallest PDU has 19 bytes (derived: a header of 14 bytes,
+  the control byte of the trailer and a checksum of 4 bytes;
+  [`docs/spec/08-pdu.md`](../spec/08-pdu.md) section 7). Each PDU is
+  therefore long enough.
+
+#### More than one PDU in a frame
+
+The idea is the author's. Most PDUs are small: a Position PDU with
+coordinates has 28 bytes. On a 1200 baud AFSK link, a transmission
+starts with a preamble (TXDELAY) of 200 to 500 ms. A PDU of 28 bytes
+takes 187 ms (derived: 150 bytes for each second, Appendix B). The
+preamble then takes more time than the PDU.
+
+Three designs were compared. The times are derived for 1200 bit/s, a
+preamble of 300 ms and 4 bytes of flags and FCS for each frame. They do
+not count bit stuffing.
+
+| Design | Cost of each more PDU | Two Position PDUs of 28 bytes | Six object positions of 37 bytes |
+|---|---|---|---|
+| Each PDU in its own transmission | A preamble | 1027 ms | 3440 ms |
+| 1. Several HDLC frames in one transmission | 3 bytes | 720 ms | Not derived |
+| 2. Several PDUs in one HDLC frame | 0 | 700 ms | 1807 ms |
+| 3. One PDU with one header and the content of several types | 17 bytes less | 600 ms | 1253 ms |
+
+- **[agreed]** The author chose design 2. It takes most of the gain. The
+  PDU stays the unit of exchange: deduplication, the hop trace, the
+  checksum and authentication do not change. A relay can also put the
+  PDUs of different sources in one frame.
+- Design 1 needs no rule of this protocol. A TNC that sends the frames
+  of its queue in one transmission gives almost the same result. In
+  design 1, one bit error loses one PDU. In design 2, it loses each PDU
+  of the frame, because the TNC drops a frame with a bad FCS.
+- Three TNCs do design 1 with the frames that wait in their queue. This
+  was read in the source, not run:
+  - Dire Wolf (commit `eda1383`, 2026-05-19, `src/xmit.c`) sends up to
+    256 frames of its queue in one transmission. A digipeated APRS frame
+    is the exception: it goes alone.
+  - QtSoundModem (commit `9cd2735`, 2025-11-10, `ax25_mod.c`) takes the
+    next frame of its queue at the end of each frame, and sends one flag
+    between them.
+  - pico_tnc (commit `0711f6b`, 2025-08-22, `send.c`) does the same. It
+    makes no new check of the carrier between the frames. The frames of
+    its digipeater go through the same queue, with no exception.
+- With a KISS TNC, the queue that waits for the channel is in the TNC,
+  and KISS does not tell the host when the channel is free. Design 1
+  therefore occurs there without a rule. Design 2 applies where one
+  program has several PDUs at one time: a source with two PDUs that are
+  due together, a relay that got several PDUs in one unit, and an
+  implementation that has the modem and the protocol together.
+- The Dire Wolf source gives a reason for its exception, in a comment
+  that it attributes to "Bob, WB4APR": an APRS digipeater can start to
+  repeat the first frame and transmit over the frames that follow. This
+  does not occur in design 2. A frame ends with its FCS, so a relay has
+  nothing to send before the frame ends.
+- **[agreed]** A station packs the PDUs that wait in its transmit queue
+  when it gets the channel. It does not hold a PDU back to pack it. The
+  author's reason: the PDUs wait there in any case, because of the
+  collision avoidance.
+- **[open]** A station that holds PDUs back to make larger units. The
+  author keeps this for a later study.
+- **[open]** Design 3, as a later addition. It joins only the content of
+  one source. The author's sketch is a second layer of TLVs around the
+  TLV areas. Its costs: a PDU then has more than one type (5.11), each
+  receiver has to implement it, and a trunk filter by type (8.2) cannot
+  take such a PDU apart (6.2). The figures of the table assume 2 bytes
+  for each part.
+- **[agreed]** Padding is only bytes of 0, after the last PDU. An
+  earlier rule let a link add each byte value. A receiver then cannot
+  tell padding from the next PDU. The author knows no link that needs a
+  different padding byte.
+- **[proposed]** The largest link unit on an HDLC link is 1022 bytes.
+  The author takes Dire Wolf, QtSoundModem and pico_tnc as the
+  references. This was read in the source, at the commits above, and not
+  run:
+  - Dire Wolf accepts a frame of 15 to 2123 bytes (`src/ax25_pad.c`).
+    Its KISS buffer holds a message of 2048 bytes with the escape bytes
+    (`src/kiss_frame.h`). This is 2045 bytes of content with no escape,
+    and 1022 bytes if each byte needs an escape (derived).
+  - QtSoundModem keeps 4097 bytes of a received frame at most
+    (`ax25_demod.c`), and its KISS input holds 10000 bytes
+    (`kiss_mode.c`). The 4097 bytes count the FCS.
+  - pico_tnc keeps 1024 bytes of a received frame with the FCS
+    (`tnc.h`, `decode.c`), which is 1022 bytes of content. It drops a
+    longer frame. Its KISS buffer holds 1024 bytes after the escapes are
+    removed, with the type byte (`kiss.c`). This is 1023 bytes of
+    content from the host.
+- The value 1022 thus follows from two limits that do not depend on each
+  other: the KISS buffer of Dire Wolf in the worst case, and the receive
+  buffer of pico_tnc.
+- 1022 bytes take 6.8 s at 1200 bit/s (derived). The airtime budget
+  (6.3) will limit a unit before this value does.
+- **[open]** A lower recommended size of a unit, for a slow link and for
+  a channel with hidden stations. Of the hardware TNCs, only the
+  firmware of pico_tnc was read (section 15, step 12).
+
+Collisions. A longer frame is on the channel for a longer time, so the
+question is whether design 2 causes more collisions. These statements
+are derived:
+
+- Between stations that hear each other, a collision occurs only at the
+  start of a transmission, in the time that a station needs to detect
+  the carrier. The length of the frame has no effect. Fewer
+  transmissions then give fewer collisions.
+- For a station that does not hear the others, a frame of the time `T`
+  is lost if a different transmission starts in the time `T` or in the
+  time of one transmission before it. A longer frame is lost more
+  often. The total airtime of the channel is lower with packing,
+  because each packed PDU saves one preamble. With `k` PDUs in each
+  frame, a preamble `P` and a data time `D` for each PDU, the load of
+  the channel changes from `P + D` to `P/k + D` for each PDU.
+- So if all stations pack, each PDU is lost less often. In a channel
+  with hidden stations, a station that packs loses a frame more often
+  than a station that does not pack. If only one station packs, it
+  loses its packed frames a little more often than it lost its short
+  frames, and each other station gains.
+- A collision loses each PDU of the frame together.
+
+A simulation of p-persistent CSMA with 30 stations and one receiver
+agrees with these statements for groups of 2 and of 4 PDUs. It is not in
+the repository yet, so this RFC gives no figure from it.
 
 ### 7.2 Optional AX.25 encapsulation
 
@@ -2238,6 +2375,12 @@ anything is decided on them. 13.5 states how to read the traffic mix.
     - Do the station capabilities and the queries of APRS get a form?
     - Which type numbers are for experiments?
     - The interval of each type, with the airtime budget of 6.3.
+28. More than one PDU in a link unit (7.1):
+    - A PDU that holds the content of several types of one source
+      (design 3).
+    - The largest unit on an HDLC link, proposed as 1022 bytes, and a
+      lower recommended size.
+    - A station that holds PDUs back to make larger units.
 
 ## 15. Next steps
 
@@ -2292,7 +2435,11 @@ anything is decided on them. 13.5 states how to read the traffic mix.
 12. Test the native HDLC binding on real equipment: send frames whose first
     byte has the low bit set through Dire Wolf and through hardware KISS
     TNCs, and confirm that they are transmitted and received intact, and
-    that legacy APRS software on the channel ignores them.
+    that legacy APRS software on the channel ignores them. Also find the
+    longest frame that each TNC passes, and whether it sends the frames
+    of its queue in one transmission. For Dire Wolf, QtSoundModem and
+    pico_tnc, this was read in the source (7.1). Other hardware TNCs and
+    a test on the air remain.
 13. Extend the icon measurement of 5.6 to the APRS symbol table drawn at
     16 by 16.
 14. Text compression (5.7; section 14, question 16). Done: the
@@ -2412,8 +2559,8 @@ commands.
 - `qua-icon-stats`: size of the candidate icon bitmap forms on the glyphs
   of BDF fonts.
 - `qua-make-vectors`: writes the vector files of the decimal number, the
-  text compression, the hop hash, the PDU, the relay, the Position type
-  and the Object type. Each comes from
+  text compression, the hop hash, the PDU, the link unit, the relay, the
+  Position type and the Object type. Each comes from
   a module that is independent of the module that `qua-check-vectors`
   checks.
 - `qua-icon-encode`: encodes a 16 by 16 picture as an icon bitmap field,

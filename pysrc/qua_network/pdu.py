@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """The parts of a PDU (docs/spec/08-pdu.md) and the hop trace
-(docs/spec/09-hop-trace.md): parse a PDU, and send one on as a relay.
+(docs/spec/09-hop-trace.md): parse a PDU, take a link unit apart, and send
+a PDU on as a relay.
 
 This follows the drafts, including their [proposed] rules. The TLV area is
 bytes that this module does not read. The length of the authentication tag
@@ -90,6 +91,21 @@ def parse(data, tag_length=None):
         "length": length,
         "padding": bytes(data[length:]),
     }
+
+
+def split(unit, tag_length=None):
+    """The PDUs of a link unit, each as its bytes, and the bytes that a
+    receiver does not use (section 7.1)."""
+    pdus = []
+    at = 0
+    while at < len(unit) and unit[at] & 1:
+        try:
+            length = parse(unit[at:], tag_length)["length"]
+        except PduError:
+            break
+        pdus.append(bytes(unit[at : at + length]))
+        at += length
+    return pdus, bytes(unit[at:])
 
 
 def relay(data, relay_identifier, not_radio=False, tag_length=None):

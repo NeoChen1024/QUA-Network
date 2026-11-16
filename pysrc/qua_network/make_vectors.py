@@ -16,7 +16,7 @@ from pathlib import Path
 
 import click
 
-NAMES = ("decimal-number", "text-compression", "hop-hash", "pdu", "pdu-relay", "position", "object")
+NAMES = ("decimal-number", "text-compression", "hop-hash", "pdu", "pdu-unit", "pdu-relay", "position", "object")
 
 
 def _rows(name, vectors_dir):
@@ -39,7 +39,12 @@ def _rows(name, vectors_dir):
     from qua_network import vectors_pdu
 
     ids = {v["text"]: int(v["value"], 16) for v in json.loads((vectors_dir / "identifier.json").read_text())}
-    make = {"hop-hash": vectors_pdu.hop_hash_vectors, "pdu": vectors_pdu.pdu_vectors, "pdu-relay": vectors_pdu.relay_vectors}
+    make = {
+        "hop-hash": vectors_pdu.hop_hash_vectors,
+        "pdu": vectors_pdu.pdu_vectors,
+        "pdu-unit": vectors_pdu.unit_vectors,
+        "pdu-relay": vectors_pdu.relay_vectors,
+    }
     return make[name](ids)
 
 

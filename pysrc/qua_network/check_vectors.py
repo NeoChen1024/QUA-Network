@@ -136,6 +136,14 @@ def check_pdu(v):
     return None
 
 
+def check_pdu_unit(v):
+    pdus, rest = pdu.split(bytes.fromhex(v["unit"]))
+    got = [p.hex().upper() for p in pdus]
+    if got != v["pdus"]:
+        return f"the receiver reads {len(got)} PDUs: {got}"
+    return None if rest.hex().upper() == v["rest"] else f"the rest is {rest.hex().upper()}"
+
+
 def check_pdu_relay(v):
     received = bytes.fromhex(v["received"])
     try:
@@ -203,6 +211,7 @@ CHECKS = {
     "crc32c.json": check_crc32c,
     "decimal-number.json": check_decimal_number,
     "pdu.json": check_pdu,
+    "pdu-unit.json": check_pdu_unit,
     "pdu-relay.json": check_pdu_relay,
     "position.json": check_position,
     "object.json": check_object,

@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
-"""The contents of vectors/hop-hash.json, vectors/pdu.json and
-vectors/pdu-relay.json, for docs/spec/08-pdu.md and docs/spec/09-hop-trace.md.
+"""The contents of vectors/hop-hash.json, vectors/pdu.json,
+vectors/pdu-unit.json and vectors/pdu-relay.json, for docs/spec/08-pdu.md and
+docs/spec/09-hop-trace.md.
 
 This is the path independent of pdu.py, crc.py and the hop hash of
 identifier.py, which qua-check-vectors checks against the files. It imports
@@ -144,7 +145,7 @@ def pdu_vectors(ids):
     note = "the bit Not Radio, and the reserved bit of the control byte"
     ok(note, src="N0CALL", seq=8, hop=2, remaining=1, entries=["N0CALL-7"], not_radio=1, tres=1)
     ok("3 bytes of padding after the PDU", **common, padding=bytes.fromhex("000000"))
-    ok("padding that is not 0", **common, remaining=2, entries=["N0CALL-7"], padding=bytes.fromhex("A55AFF"))
+    ok("1 byte of padding after a PDU with an entry", **common, remaining=2, entries=["N0CALL-7"], padding=b"\x00")
     big = dict(src="N0CALL-15", seq=0x1234, hop=3, typ=1)
     ok("a PDU of 255 bytes, the PDU limit: the source part has 250 bytes", **big, tlv=tlv_area(236))
     ok("padding does not count for the PDU limit", **big, tlv=tlv_area(236), padding=bytes.fromhex("000000"))
@@ -185,6 +186,52 @@ def pdu_vectors(ids):
     return out
 
 
+def unit_vectors(ids):
+    """Link units of 08-pdu section 7.1: the PDUs that a receiver reads, and
+    the bytes that it does not use."""
+    b = _Builder(ids)
+    out = []
+
+    def pdu(src, seq, tlv=TLV, typ=1, hop=3, **kw):
+        return b.close(b.source_part(src, seq, hop, tlv, typ) + b.trailer(kw.pop("remaining", hop), **kw))
+
+    def unit(note, pdus, rest=b""):
+        out.append(
+            {
+                "unit": (b"".join(pdus) + rest).hex().upper(),
+                "pdus": [p.hex().upper() for p in pdus],
+                "rest": rest.hex().upper(),
+                "note": note,
+            }
+        )
+
+    one = pdu("N0CALL-15", 0x1234)
+    two = pdu("N0CALL-15", 0x1235, tlv=b"", typ=2)
+    other = pdu("BV5AB-33", 7, remaining=2, entries=["N0CALL-7"])
+    least = pdu("N0CALL", 0, tlv=b"", typ=0, hop=0)
+    large = pdu("N0CALL-15", 0x1236, tlv=tlv_area(236))
+    unit("one PDU", [one])
+    unit("two PDUs of one source", [one, two])
+    unit("three PDUs of two sources; one has an entry", [one, other, two])
+    unit("twelve PDUs of 19 bytes", [least] * 12)
+    unit("two PDUs and 3 bytes of padding", [one, two], bytes(3))
+    unit("one PDU and 1 byte of padding", [one], bytes(1))
+    unit("a unit of 274 bytes: the PDU limit applies to each PDU", [large, least])
+    unit("padding, and then a PDU: the receiver stops at the padding", [one], bytes(1) + two)
+    unit("a byte that is not 0 and has the least significant bit 0", [one], b"\x02" + two)
+    flipped = bytearray(two)
+    flipped[5] ^= 0x01
+    unit("the second PDU has a wrong checksum: the receiver stops there", [one], bytes(flipped) + other)
+    unit("the second PDU is not complete", [one], two[:-1])
+    unit("a byte with the least significant bit 1 that starts no PDU", [one], b"\xa5\x5a\xff")
+    too_large = b.close(b.source_part("N0CALL-15", 0x1237, 3, tlv_area(237), 1) + b.trailer(3))
+    unit("the second PDU is larger than the PDU limit", [one], too_large + two)
+    unit("the first PDU is invalid: the receiver reads no PDU", [], bytes(flipped) + one)
+    unit("the first byte has the least significant bit 0", [], b"\x00" + one)
+    unit("no bytes", [])
+    return out
+
+
 def relay_vectors(ids):
     b = _Builder(ids)
     out = []
@@ -214,7 +261,7 @@ def relay_vectors(ids):
     rel("the first relay adds its entry", r0, "N0CALL-7", r1)
     rel("the second relay", r1, "BV5AB-33", r2)
     rel("the third relay; no hop remains after it", r2, "PJ4/KA1ABC", r3)
-    rel("a relay does not send the padding on", r0 + bytes.fromhex("A55AFF"), "N0CALL-7", r1)
+    rel("a relay does not send the padding on", r0 + bytes.fromhex("000000"), "N0CALL-7", r1)
     for n, note in ((244, "a PDU of 255 bytes with 2 entries"), (242, "a PDU of 253 bytes with 2 entries")):
         received = close(sized(n) + trailer(1, ["N0CALL-7", "BV5AB-33"]))
         sent = close(sized(n) + trailer(0, ["BV5AB-33", "PJ4/KA1ABC"]))

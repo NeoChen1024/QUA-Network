@@ -67,6 +67,9 @@ delta. For the first TLV of the area, the tag before is 0.
 **[agreed]** Tags therefore never decrease through the area. This is the
 canonical order of RFC 5.2; a TLV area cannot express any other.
 
+**[agreed]** The tag 0 is a valid tag. It is the tag of the object
+identifier in each type that can have one (RFC 5.11).
+
 **[agreed]** A delta of 0 repeats the tag. A tag MAY appear more than once
 where the definition of that TLV allows it.
 
@@ -90,7 +93,6 @@ unchanged, in place, when it relays or logs the PDU (RFC 5.2).
 - The size of the tag space, and with it the meaning of `D` = 14: invalid,
   or two extension bytes for deltas from 269. It waits for a count of the
   tags the protocol needs.
-- Whether tag 0 can be used.
 - Whether some bits of a tag say what a receiver does with a TLV it does not
   know (ignore it, or not act on the PDU), in the manner of CoAP option
   numbers.

@@ -2250,8 +2250,9 @@ anything is decided on them. 13.5 states how to read the traffic mix.
     the tag table of step 6.
 17. Move the topics of section 5 to `docs/spec/`, when most of the items
     of a topic are not open. Done: 5.1, 5.3 in two files, 5.9 and 5.10.
-    Of 5.11, the Position type is in `docs/spec/10-position.md`. The rules
-    for all types and the other types are not moved yet. 5.4 and 5.5 stay
+    Of 5.11, the Position type is in `docs/spec/10-position.md`, with
+    test vectors in `vectors/position.json`. The rules for all types and
+    the other types are not moved yet. 5.4 and 5.5 stay
     in the RFC for now.
 
 ## Appendix A. Transceiver packet limits
@@ -2352,7 +2353,8 @@ commands.
 - `qua-icon-stats`: size of the candidate icon bitmap forms on the glyphs
   of BDF fonts.
 - `qua-make-vectors`: writes the vector files of the decimal number, the
-  text compression, the hop hash, the PDU and the relay. Each comes from
+  text compression, the hop hash, the PDU, the relay and the Position
+  type. Each comes from
   a module that is independent of the module that `qua-check-vectors`
   checks.
 - `qua-icon-encode`: encodes a 16 by 16 picture as an icon bitmap field,

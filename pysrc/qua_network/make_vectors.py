@@ -2,8 +2,8 @@
 """Write the vector files that this package computes.
 
 Each file comes from a module that is independent of the module that
-qua-check-vectors checks against it: vectors_decimal.py, vectors_text.py and
-vectors_pdu.py. The text compression vectors need a C compiler and the
+qua-check-vectors checks against it: vectors_decimal.py, vectors_text.py,
+vectors_pdu.py and vectors_position.py. The text compression vectors need a C compiler and the
 submodule 3rdparty/Unishox2.
 
 An existing vector is a compatibility contract. A changed value in an
@@ -16,7 +16,7 @@ from pathlib import Path
 
 import click
 
-NAMES = ("decimal-number", "text-compression", "hop-hash", "pdu", "pdu-relay")
+NAMES = ("decimal-number", "text-compression", "hop-hash", "pdu", "pdu-relay", "position")
 
 
 def _rows(name, vectors_dir):
@@ -28,6 +28,10 @@ def _rows(name, vectors_dir):
         from qua_network import vectors_text
 
         return vectors_text.vectors()
+    if name == "position":
+        from qua_network import vectors_position
+
+        return vectors_position.vectors()
     from qua_network import vectors_pdu
 
     ids = {v["text"]: int(v["value"], 16) for v in json.loads((vectors_dir / "identifier.json").read_text())}

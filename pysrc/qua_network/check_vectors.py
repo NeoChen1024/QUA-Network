@@ -11,7 +11,7 @@ from pathlib import Path
 
 import click
 
-from qua_network import decimal_number, icon, identifier, pdu, usx
+from qua_network import decimal_number, icon, identifier, pdu, position, usx
 from qua_network.crc import crc32c
 
 
@@ -149,6 +149,31 @@ def check_pdu_relay(v):
     return None if got == bytes.fromhex(v["sent"]) else f"relay sends {got.hex().upper()}"
 
 
+def check_position(v):
+    area = bytes.fromhex(v["tlv"])
+    try:
+        got = position.decode(area)
+    except position.PositionError as e:
+        if "invalid" not in v:
+            return f"decoder rejects it: {e}"
+        return None if e.field == v["invalid"] else f"decoder gives the field {e.field}"
+    if "invalid" in v:
+        return "decoder accepts it"
+    if position.encode(got) != area:
+        return f"encode gives {position.encode(got).hex().upper()}"
+    for key in ("altitude", "uncertainty", "speed"):
+        if key in got:
+            got[key] = decimal_number.to_text(got[key])
+    if "time" in got:
+        got["time"] = str(got["time"])
+    if "object" in got:
+        got["object"] = identifier.decode(got["object"])
+    if "other" in got:
+        got["other"] = [[tag, value.hex().upper()] for tag, value in got["other"]]
+    want = {key: value for key, value in v.items() if key not in ("tlv", "note")}
+    return None if got == want else f"decode gives {got}"
+
+
 CHECKS = {
     "identifier.json": check_identifier,
     "hop-hash.json": check_hop_hash,
@@ -156,6 +181,7 @@ CHECKS = {
     "decimal-number.json": check_decimal_number,
     "pdu.json": check_pdu,
     "pdu-relay.json": check_pdu_relay,
+    "position.json": check_position,
     "text-compression.json": check_text_compression,
     "icon-colour.json": check_icon_colour,
     "icon-bitmap.json": check_icon_bitmap,

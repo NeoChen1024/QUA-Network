@@ -4,7 +4,7 @@
 |---|---|
 | Status | Draft. Not frozen. Items carry the labels **[agreed]**, **[proposed]** and **[open]** with the meaning given in the RFC. |
 | Rationale | [RFC draft 0, section 5.11](../rfc/qua-network-rfc-0.md#position-type) |
-| Vectors | None yet. |
+| Vectors | [`vectors/position.json`](../../vectors/position.json) |
 
 The key words MUST, MUST NOT, SHOULD, SHOULD NOT and MAY are used as in
 RFC 2119.
@@ -21,7 +21,7 @@ It does not specify these:
 - The decimal number ([05-decimal-number](05-decimal-number.md)).
 - The unit of each quantity and the form of a time
   ([06-numbers-units-text](06-numbers-units-text.md)).
-- The object name (RFC 5.11).
+- The Object type and the rules for an object (RFC 5.11).
 - The schema of every other type. A different type states its own tags
   for the fields of this file (RFC 5.11).
 
@@ -105,6 +105,17 @@ coordinates, the station was at the coordinates at that time.
 source that does not have a valid UTC time omits the TLV. A receiver
 then takes the time at which it received the PDU.
 
+### 3.7 Object identifier
+
+**[agreed]** The field has 8 bytes: an identifier in the format of
+[01-station-identifier](01-station-identifier.md), in the byte order of
+its section 7. A value that its section 5 rejects is invalid.
+
+**[agreed]** The field names an object that the source declared (RFC
+5.11). If a PDU has this field, the content of the PDU describes that
+object and not the source. Each rule of section 5 for the source then
+applies to the object.
+
 ## 4. Subgroups
 
 ### 4.1 Position subgroup
@@ -134,8 +145,12 @@ other.
 | 5 | Speed | 3.5 | 2, 3 or 4 | 0 or 1 |
 | 6 | Time | 3.6 | 8 | 0 or 1 |
 
-**[agreed]** A Position PDU also includes the object name (RFC 5.11).
-Its tag and its form are open.
+**[agreed]** A Position PDU can also hold the object identifier. Its tag
+is 0, so it is the first TLV of the area:
+
+| Tag | Field | Section | Bytes | In one PDU |
+|---|---|---|---|---|
+| 0 | Object identifier | 3.7 | 8 | 0 or 1 |
 
 **[agreed]** A Position PDU can have no coordinates. With such a PDU, a
 source states that its coordinates are not available.
@@ -146,6 +161,17 @@ PDU (RFC 5.11).
 
 **[agreed]** A PDU without coordinates MUST NOT have a horizontal
 uncertainty. It can have each of the other TLVs.
+
+**[agreed]** A TLV of these tables is invalid in each of these cases:
+
+- Its length is not a length that its table gives.
+- Its value is invalid by the section of its field. For a decimal
+  number, [05-decimal-number](05-decimal-number.md) section 6 also
+  applies.
+- Its tag occurs a second time in the PDU.
+
+A TLV with a tag that the tables do not give is not invalid. A decoder
+skips it ([03-tlv](03-tlv.md) section 4).
 
 A Position PDU with coordinates has 28 bytes at least: 14 for the
 header, 9 for the TLV of the coordinates, 1 for the control byte and 4
@@ -164,16 +190,62 @@ Position PDU has 18 bytes:
 | `22` `5A 00` | Tag 4, 2 bytes. Course 90. |
 | `12` `3E 00` | Tag 5, 2 bytes. Speed 62. |
 
-The integers of this example were packed with the `struct` module of
-Python. The first byte of each TLV was computed by hand from
-[03-tlv](03-tlv.md) section 2.
+This example is a copy of a vector of section 7. The file is
+authoritative.
 
-## 7. Open items
+## 7. Test vectors
+
+`vectors/position.json` has the test vectors. Each vector is the TLV
+area of a Position PDU. It is one of two kinds:
+
+| Kind | Keys | A conformant implementation |
+|---|---|---|
+| A valid area | `tlv` and the keys of the fields | Decodes `tlv` to the fields. It encodes the fields to `tlv`. |
+| An invalid area | `tlv`, `invalid` | Finds that the area or the field of `invalid` is invalid. |
+
+A valid area has a key only for a field that it has:
+
+| Key | Content |
+|---|---|
+| `tlv` | The bytes of the TLV area |
+| `latitude`, `longitude` | The integers of the coordinates (section 3.1) |
+| `altitude`, `uncertainty`, `speed` | The text form of the decimal number ([05-decimal-number](05-decimal-number.md) section 7) |
+| `course` | The integer of the course |
+| `time` | The count of the time, as a string of decimal digits |
+| `object` | The text form of the object identifier ([01-station-identifier](01-station-identifier.md) section 6) |
+| `other` | Each TLV with a tag that section 5 does not give, in the order of the area: the tag, and the bytes of the value |
+
+The time is a string, because some JSON readers do not keep each digit
+of an integer of 64 bits.
+
+The values of `invalid`:
+
+| `invalid` | Cause |
+|---|---|
+| `coordinates`, `altitude`, `uncertainty`, `course`, `speed`, `time`, `object` | The TLV of this field is invalid (section 5). |
+| `tlv area` | The area breaks [03-tlv](03-tlv.md) section 4. |
+
+Each invalid area has one cause only.
+
+The vectors have these limits:
+
+- A vector does not state what a receiver does with an invalid field.
+  That is open (section 8).
+- No vector has a TLV with an extension byte.
+- Some vectors follow **[proposed]** rules of this file and of
+  [03-tlv](03-tlv.md). They change if the rule changes.
+
+`qua-make-vectors` computes the vectors with `vectors_position.py`. This
+module packs the integers with the `struct` module of Python. It takes
+the decimal numbers from `vectors_decimal.py`. It writes the first byte
+of each TLV itself, and it has its own computation of an object
+identifier. `qua-check-vectors` checks the vectors against
+`position.py`. That module reads the area with `tlv.py`, the decimal
+numbers with `decimal_number.py` and the object identifier with
+`identifier.py`. The two paths do not import each other.
+
+## 8. Open items
 
 - **[open]** What a receiver does with a Position PDU that has a field
   with an invalid length or value. The question applies to every type
   (RFC section 14, question 27).
-- **[open]** The tag and the form of the object name.
-- **[open]** Whether tag 0 can be used ([03-tlv](03-tlv.md) section 5).
-  The tags of this file start at 1.
-- **[open]** Test vectors.

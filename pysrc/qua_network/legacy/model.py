@@ -32,10 +32,15 @@ class Finding(NamedTuple):
 class Scan:
     """What the tokenizer found in one line."""
 
-    __slots__ = ("line", "tokens", "findings", "_seen", "_missing", "unknown_format", "unread")
+    __slots__ = ("line", "tokens", "findings", "_seen", "_missing", "unknown_format", "unread", "repairs", "repaired")
 
-    def __init__(self, line):
+    def __init__(self, line, repairs=()):
         self.line = line
+        # Repairs that the caller asks for (docs/interop/01-record section
+        # 3.1). They are not a part of docs/legacy; the default is none.
+        self.repairs = frozenset(repairs)
+        # The repairs that applied, as (ID, start, end) of the repaired token.
+        self.repaired = []
         self.tokens = []
         self.findings = []
         self._seen = set()

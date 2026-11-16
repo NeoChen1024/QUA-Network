@@ -113,6 +113,8 @@ from qua_network.tnc2 import header_spans
 
 RECORD_LAYOUT = 0
 MODES = ("strict", "permissive")
+# 01-record section 3.1: the repairs of permissive mode.
+REPAIRS = ("repair.humidity-width",)
 
 # --- Section 4.3: record units ------------------------------------------
 #
@@ -456,7 +458,7 @@ class Decoder:
         self.received_res = received_res
         self.mode = mode
         self.strict = mode == "strict"
-        self.scan = tokenize(line)
+        self.scan = tokenize(line, repairs=() if self.strict else REPAIRS)
         self.findings = self.scan.findings
         self.notes = []
         self.read = set()  # tokens that the body reads, beyond READ (cmt.text)
@@ -1258,18 +1260,17 @@ class Decoder:
                 fs = self._in_info("ext.dirspd", "syntax")
                 w[name] = Pre(None, [(f, NONE) for f in fs] or [(f, NONE) for f in self.stop()])
         from_wind = wind is not None or self.cmp_wind is not None
-        # 12-values-weather section 6, amb.wx.hum100 and amb.wx.hum0: a
-        # token after a humidity of three digits is a field only if the
-        # three digits are the humidity.
-        hum100 = [(f, t.end) for t in self.toks("wx.hum") for f in self.on(("wx.hum",), t) if f.kind == "ambiguous"]
+        # 01-record section 3.1, repair.humidity-width: the repaired token
+        # and each token after it have the mark of the repair.
+        hum3 = [(rid, start) for rid, start, _ in self.scan.repaired if rid == "repair.humidity-width"]
 
-        def after_hum100(t):
-            return [(f, COMPUTABLE) for f, end in hum100 if t.start >= end]
+        def repaired(t):
+            return [(rid, COMPUTABLE) for rid, start in hum3 if t.start >= start]
 
         for name, rules in WX_FIELDS:
             toks = sorted((t for r in rules for t in self.toks(r) if t.depth == depth), key=lambda t: t.start)
             judged = [(f, effect_wx(f, t.rule)) for t in toks for f in self.on((t.rule,), t)]
-            judged += [j for t in toks for j in after_hum100(t)]
+            judged += [j for t in toks for j in repaired(t)]
             if name in w and from_wind:
                 # 12-values-weather section 2.2: the wind field is the first
                 # token; a later field is a repeated token.
@@ -1288,18 +1289,18 @@ class Decoder:
                 notes = [WX_NOTES[name]] if name in WX_NOTES else []
                 if name == "wind_direction" and v.n == 0:
                     notes.append(WDIR0)
-                # val.wx.hum: only the three digits `000` give a number
-                # below the range (10-values section 2.4).
-                w[name] = Pre(v, judged, frm, notes=notes, in_range=first.rule != "wx.hum" or v.n >= 1)
+                # val.wx.hum: only a repaired token of three digits gives a
+                # number outside 1 to 100 (10-values section 2.4).
+                w[name] = Pre(v, judged, frm, notes=notes, in_range=first.rule != "wx.hum" or 1 <= v.n <= 100)
             else:
                 w[name] = Pre(None, judged, frm, reasons=[v] if v else [])
         t = self.tok("wx.sw")
         if t is not None:
-            judged = [(f, effect_wx(f, "wx.sw")) for f in self.on(("wx.sw",), t)] + after_hum100(t)
+            judged = [(f, effect_wx(f, "wx.sw")) for f in self.on(("wx.sw",), t)] + repaired(t)
             w["software"] = Pre({"code": text(line[t.start : t.end])}, judged, [_ref(t)], notes=["amb.wx.tail"])
         t = self.tok("wx.unit")
         if t is not None:
-            w["unit"] = Pre({"bytes": text(line[t.start : t.end])}, after_hum100(t), [_ref(t)], notes=["amb.wx.tail"])
+            w["unit"] = Pre({"bytes": text(line[t.start : t.end])}, repaired(t), [_ref(t)], notes=["amb.wx.tail"])
         if not has_position:
             # No position body: the comment is here, and no value rule reads
             # the altitude or the no-archive marker in it.

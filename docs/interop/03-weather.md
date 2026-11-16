@@ -79,22 +79,19 @@ packet. These cases give a no-value object:
 - A finding has the effect `none`, or `computable` in strict mode
   ([12-values-weather section 6](../legacy/12-values-weather.md#6-effect-of-findings)).
 
-**[agreed]** The bytes `h100` give the humidity the effect `computable`
-([amb.wx.hum100](../legacy/06-weather.md#amb.wx.hum100)). In strict mode,
-`humidity` is a no-value object. In permissive mode, it is 100, with a
-mark.
+**[agreed]** A humidity of three digits, for example `h100`, has the
+repair `repair.humidity-width` in permissive mode
+([01-record section 3.1](01-record.md#31-repairs)):
 
-**[agreed]** Each field after `h100` has the same effect. In strict
-mode it is a no-value object. In permissive mode it has its value, with
-the mark of the humidity.
-
-**[agreed]** A humidity of three digits that start with `0`, for
-example `h078`, has the same rules
-([amb.wx.hum0](../legacy/06-weather.md#amb.wx.hum0)). In permissive
-mode, `humidity` is the number of the three digits, with a mark.
-
-**[proposed]** For the bytes `h000`, `humidity` is a no-value object in
-both modes. The number 0 is below the range.
+- In strict mode, the bytes `h100` give the humidity 10. The weather
+  data ends there. The bytes from the last `0` are the tail or the
+  comment.
+- In permissive mode, `humidity` is the number of the three digits,
+  with the mark `"repair.humidity-width"`.
+- In permissive mode, a number outside 1 to 100 gives a no-value object.
+  Its `why` is `["repair.humidity-width"]`.
+- In permissive mode, each weather field after the humidity, `software`
+  and `unit` have the same mark. The comment has no mark.
 
 **[proposed]** If a field occurs more than once, the field has the effect
 `computable`. In permissive mode, the field has the number of the first

@@ -108,10 +108,8 @@ def _element(scan, p, depth, rule, n, seen):
     return e
 
 
-def _hum3(b):
-    """Section 10: three bytes after `h` that are a humidity of three
-    digits: `100`, or three digits that start with `0`."""
-    return b == b"100" or (b[:1] == b"0" and b.isdigit())
+# docs/interop/01-record section 3.1: not a part of docs/legacy.
+REPAIR_HUMIDITY_WIDTH = "repair.humidity-width"
 
 
 def _elements(scan, p, end, depth, seen):
@@ -122,12 +120,12 @@ def _elements(scan, p, end, depth, seen):
         if el is None:
             break
         rule, width = el
-        if rule == "wx.hum" and p + 4 <= end and _hum3(line[p + 1 : p + 4]):
-            # Section 10, amb.wx.hum100 and amb.wx.hum0: the field has
-            # three digits. The other reading is two digits and text from
-            # the last digit.
+        if rule == "wx.hum" and REPAIR_HUMIDITY_WIDTH in scan.repairs and p + 4 <= end and line[p + 1 : p + 4].isdigit():
+            # The repair: `h` and three digits are one field. Without it
+            # (06 section 10), the field has two digits and the data ends
+            # at the third.
+            scan.repaired.append((REPAIR_HUMIDITY_WIDTH, p, p + 4))
             p = _element(scan, p, depth, rule, 3, seen)
-            scan.find(rule, "ambiguous", p - 1)
             continue
         n = _fixed(line, p + 1, end, rule, width)
         if n is None:

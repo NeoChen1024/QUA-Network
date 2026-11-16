@@ -82,7 +82,60 @@ interpretation of APRS12c:
 - Verdict `unknown-format`: The record has no body. The information field
   is in `undecoded`.
 
-The verdict of the tokenizer does not change between the modes.
+The verdict of the tokenizer does not change between the modes, unless
+a repair applies (3.1).
+
+### 3.1 Repairs
+
+**[agreed]** Permissive mode applies repairs. Strict mode applies no
+repair. A repair is not an interpretation of APRS12c, and it is not a
+part of [docs/legacy](../legacy/README.md).
+
+**[agreed]** A repair is for bytes of a sender that break a format that
+APRS12c specifies. Each repair has an ID that starts with `repair.`.
+Each repair names the entry of the
+[divergence catalogue](../legacy/divergence/README.md) that records
+these bytes.
+
+**[agreed]** A repair states the bytes that it applies to. It states
+the tokens that the tokenizer gives for these bytes in place of the
+tokens of docs/legacy. In permissive mode, the tokens, the findings and
+the verdict of a record are those of the tokenizer with the repairs.
+
+**[proposed]** A repair gives the effect `computable` to each value that
+it names. The mark of such a value is the ID of the repair.
+
+| ID | Bytes | Tokens with the repair | Values with the mark | Entry |
+|---|---|---|---|---|
+| <a id="repair.humidity-width"></a>`repair.humidity-width` | In weather data, an `h` at a place where a weather field can start, with three digits after it. | One `wx.hum` token of 4 bytes. The tokenizer reads the weather fields after it. | The humidity. Each weather field, the software code and the unit code after the token. | [div.humidity-width](../legacy/divergence/04-humidity-width.md) |
+
+**[agreed]** The humidity of `repair.humidity-width` is the number of
+the three digits. The range of
+[val.wx.hum](../legacy/12-values-weather.md#val.wx.hum) applies: 1 to
+100. A number outside the range gives no value
+([10-values section 2.4](../legacy/10-values.md#24-effects)). Thus the
+bytes `h255` and `h000` give no humidity. The three bytes `000` are not
+100. Only the two bytes `00` are 100.
+
+**[agreed]** The comment has no mark of a repair. With
+`repair.humidity-width`, the comment is the bytes after the weather data
+that the tokenizer reads with the repair. It can be different from the
+comment of strict mode. The author's reason: APRS12c says too little
+about a comment for a mark to have a clear meaning there.
+
+Without the repair, the bytes `h100` are the humidity 10, and the
+weather data ends at the last `0`
+([06 section 10](../legacy/06-weather.md#10-reviewed-exceptions)).
+Strict mode gives this.
+
+The repair can take a byte that the sender did not mean as a digit of
+the humidity: the first byte of a tail or of a comment that starts with
+a digit, after a humidity of two digits.
+
+An earlier draft had no repairs. The tokenizer itself read `h100`, and
+`h` with three digits that start with `0`, as a reviewed exception of
+docs/legacy, with the finding `ambiguous`. The author dropped that
+design. Its reasons did not agree with the general rules of docs/legacy.
 
 ## 4. Representation
 
@@ -111,7 +164,8 @@ kinds:
 `from` is the provenance (4.4). Each kind can also have `mark` (section 3).
 `mark` is a list. Each item is a finding, as `[rule, kind, offset]`, or
 the ID of a catalogue row whose effect is `computable`, for example
-`"amb.val.calm"`.
+`"amb.val.calm"`, or the ID of a repair (3.1), for example
+`"repair.humidity-width"`.
 
 A quantity has no member that names its record unit. Section 4.3 fixes the
 record unit of each field. A quantity also has no integer count. The count of
@@ -799,6 +853,8 @@ differ between the modes:
 
 ## 10. Open items
 
+- **[open]** Whether the rule for the table bytes `'a'`–`'j'`
+  (section 3) becomes a repair with an ID (3.1).
 - **[open]** The other uses, the encoder, the gateway mapping and the
   differential tests ([README section 5](README.md#5-open-items)).
 - **[proposed]** The order of the names in `uses`: `object`, `position`,

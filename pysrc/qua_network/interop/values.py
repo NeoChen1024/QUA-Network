@@ -702,9 +702,6 @@ def effect_wx(f, rule):
         return COMPUTABLE if rule == "wx.temp" else NONE
     if f.kind == "unstated":
         return KEPT if rule == "wx.sw" else COMPUTABLE
-    if f.kind == "ambiguous" and rule == "wx.hum":
-        # amb.wx.hum100, amb.wx.hum0: a humidity of three digits.
-        return COMPUTABLE
     return KEPT
 
 

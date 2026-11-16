@@ -20,6 +20,9 @@ different from the record of this project, or from another parser.
 - An entry can be a reason to change the record of
   [docs/interop](../../interop/README.md). The author decides each
   change.
+- An entry can be the reason for a repair of permissive mode
+  ([01-record section 3.1](../../interop/01-record.md#31-repairs)). The
+  entry then names the repair in its decision.
 - The numbered files list the places where APRS12c fails. If such a row
   exists for an entry, the entry links to it.
 
@@ -74,13 +77,19 @@ numbered file. An entry has these parts, as RFC Appendix E.3 lists them:
 | Run | Input files | Packets | Mode of the decoder | Decoder and tool at commit |
 |---|---|---|---|---|
 | r5 | `aprsis-20261104-03.log` to `aprsis-20261114-11.log`, 249 files | 84,560,319 | permissive | `25507fe` |
+| r6 | The files of run r5 | 84,560,319 | permissive | The commit that adds this run |
 
 **[proposed]** A run counts packets for each path, not for each cause.
 An entry gives the counts of its paths. The cause is what the inspected
 examples of the run show and what the code of the parser says. The count
 of one cause alone is not measured.
 
-The classes of run r5 are:
+Run r6 differs from run r5 in the humidity rule only
+([04-humidity-width.md](04-humidity-width.md)). Only that entry uses run
+r6. In run r6, three paths have counts that are different from run r5:
+`weather.humidity`, `weather.pressure` and `position.comment`.
+
+The classes of run r5 and of run r6 are the same:
 
 | Parser | `both` | `ours-only` | `theirs-only` | `neither` |
 |---|---|---|---|---|

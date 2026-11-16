@@ -25,9 +25,11 @@ READERS = {
 }
 
 
-def tokenize(line, readers=READERS):
-    """Return the Scan of one raw TNC2 line (bytes, no line terminator)."""
-    scan = Scan(line)
+def tokenize(line, readers=READERS, repairs=()):
+    """Return the Scan of one raw TNC2 line (bytes, no line terminator).
+    repairs names the repairs of docs/interop/01-record section 3.1 to
+    apply; with none, the result is the reading of docs/legacy."""
+    scan = Scan(line, repairs)
     sep = line.find(b":")
     if sep < 0:
         scan.residue(0, len(line), 0, "line.sep")

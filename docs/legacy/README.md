@@ -306,6 +306,17 @@ exception departs from these rules only if the author has reviewed it.
 The file records it as a reviewed exception (section 2), with the reason
 of the author.
 
+A reviewed exception is for a passage of APRS12c that does not say what
+it means (section 2). Thus bytes of a sender that break a format that
+APRS12c specifies are not a reviewed exception. The divergence catalogue
+records such bytes. The decoder of docs/interop can have a repair for
+them ([01-record section 3.1](../interop/01-record.md#31-repairs)).
+
+**[agreed]** The tokenizer applies a repair only if its caller asks for
+it by its ID. A repair is not a part of these files. The tools of this
+reading, `qua-legacy-tokenize`, `qua-legacy-fields` and
+`qua-legacy-examples`, ask for no repair.
+
 **[proposed]** **The general rules and values.** The seven rules tell what
 the tokenizer does. A value file (section 2) applies them to the value of
 a token as follows:

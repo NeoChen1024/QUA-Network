@@ -1327,7 +1327,7 @@ other fields are compact binary encodings of data.
   | Telemetry | Values that describe themselves (5.3). | At a fixed interval. | Telemetry report and its definition packets |
   | Message | Addressee, message identifier, text, acknowledgement, segment (6.5). | On an event. | Message, bulletin |
   | Identity and keys | The content of section 10. | Seldom. | None |
-  | Object | The identifier and the description of an object, and its end. | When an object starts and ends, and seldom between. | The name of an Object or an Item, and its kill flag |
+  | Object | The identifier and the description of an object, and its end. | Seldom, and when an object ends. | The name of an Object or an Item, and its kill flag |
 
 - **[proposed]** A receiver keeps, for each station, the most recent PDU
   of each type. A new PDU of a type replaces the earlier PDU of that type
@@ -1340,77 +1340,10 @@ other fields are compact binary encodings of data.
 - The packet class of 6.3 and of the trunk filters of 8.2 is the type.
 - **[agreed]** The content of an object has no type of its own. A PDU
   with content for an object has the type of that content, and it has
-  the object identifier in a TLV. If a PDU has an object identifier, its
-  content describes that object. If it has none, its content describes
-  the source.
-- **[agreed]** The Object and the Item of APRS are one thing here: a PDU
-  with an object identifier. The position of a repeater is a position
-  PDU with the identifier of the repeater. Its frequency is a station
-  information PDU with the same identifier.
-- **[agreed]** A source declares the start and the end of an object,
-  each with a PDU. The PDU of the start gives the object its identifier.
-- **[agreed]** An object identifier has the format of a station
-  identifier (5.8). In a TLV it has the same 8 bytes.
-- **[agreed]** The source of a PDU for an object is the station that
-  declared the object. The object identifier is not the source of a PDU.
-- **[agreed]** An object identifier belongs to the station that declared
-  it. Two stations can each declare an object with one identifier. These
-  are two objects. A receiver knows an object by the pair of the source
-  and the object identifier.
-- **[agreed]** An object can have a description in free text, for
-  example "Typhoon Champi". The identifier has only the characters of a
-  callsign, so it cannot hold such a name.
+  the object identifier in a TLV ("Objects" below).
 - **[proposed]** A receiver keeps the most recent PDU of each type for
   each object of a source, as it does for the source itself.
-- **[agreed]** The object identifier is at the start of the TLV area, or
-  near it. A reader of the PDU then sees at once that the content is for
-  an object.
-- **[agreed]** The object identifier has the tag 0 in each type that
-  can have it. It is then the first TLV of the area, and the first byte
-  of the area is `08`.
-- **[agreed]** One type, the Object type, declares the start and the
-  end. Its schema has the object identifier and the description in the
-  two forms of a string (5.7). An Object PDU that does not state the end
-  states that the object exists. A source sends it again at an interval.
-- **[proposed]** A TLV with no value states the end.
-- **[agreed]** A receiver that gets content for an object, and did not
-  get an Object PDU for it, makes the object. It has no description
-  until a later Object PDU gives one.
-- **[agreed]** An Object PDU can state a time after which the object no
-  longer exists. The field is optional. It is only a suggestion to a
-  receiver. A receiver can remove the object before that time, for
-  example if its store of PDUs is full.
-- **[open]** These parts of the object design:
-  - Which types can have the object identifier.
-  - How often a source repeats the Object PDU of the start and of the
-    end, and when a receiver removes an object that has no PDU of the
-    end and no such time. The author put these aside for now.
-
-Why the object identifier is in a TLV:
-
-- The other design made the object identifier the source of the PDU.
-  The object is then equal to a station for each receiver, and no type
-  needs a TLV for it. The author chose the TLV, and judges it to be only
-  a little better.
-- Two reasons were proposed for the TLV. The author rejected both, and
-  they are not reasons of this RFC:
-  - "A receiver that did not get the PDU of the start cannot tell the
-    object from a station." A station can easily send a false source on
-    radio, so this difference has no use.
-  - "A station can go around a rate limit for each source by declaring
-    objects." A rate limit does not stop a station on a high site that
-    sends new PDUs without limit.
-- With the TLV, the space of the object identifiers follows: an object
-  belongs to the station in the source field. The author states that
-  this is the natural choice.
-
-Dropped: the object name of an earlier revision, with no fixed form. It
-became the object identifier.
-
-An object as a type of its own for all its content was not adopted. Its
-schema would hold a position, a text and weather data together, which is
-the mix that a type prevents. The Object type above holds only the
-identifier, the description and the end.
+- **[open]** Which types can have the object identifier.
 
 #### Position type
 
@@ -1472,6 +1405,83 @@ reasons for its form.
 
 Dropped: a first decision of this revision made the coordinates a
 required TLV. The author replaced it, for the reason above.
+
+#### Objects
+
+Objects and the schema of the Object type are specified in
+[`docs/spec/11-object.md`](../spec/11-object.md). This part keeps the
+reasons and the dropped alternatives.
+
+Summary: a station gives an object an identifier in the format of a
+station identifier. No PDU declares the start of an object: the first
+PDU that a receiver gets for it makes the object. An Object PDU states
+that the object exists, and can give a description and an end time. An
+Object PDU with the End TLV states the end. A PDU of a different type
+refers to the object with the object identifier in its first TLV.
+
+- The Object and the Item of APRS are one thing here. The position of a
+  repeater is a position PDU with the identifier of the repeater. Its
+  frequency is a station information PDU with the same identifier.
+- The direction is the author's: an object has an identifier in the
+  format of a callsign, and a PDU declares its end.
+- The identifier has only the characters of a callsign. A name such as
+  "Typhoon Champi" does not fit, so the object has a description in free
+  text.
+- One type holds the description and the end. An Object PDU with the
+  End TLV replaces the Object PDU before it (the rule above for a new
+  PDU of a type). An owner can send an Object PDU again at an interval,
+  as a beacon.
+- The object identifier is at the start of the TLV area. A reader of
+  the PDU then sees at once that the content is for an object. With the
+  tag 0, the first byte of the area is `08`.
+- A receiver makes an object from a content PDU alone. The author's
+  reason: the receiver loses only the description for some time, and a
+  later Object PDU gives it.
+- The symbol of an object does not state its kind. In APRS, the symbol
+  is the only statement of the kind of an object. The author considers
+  a later field with a standard list of kinds, so that the two are not
+  bound together.
+- The end time is only a suggestion. The author's reason: a receiver
+  can remove an object earlier, for example if its store of PDUs is
+  full.
+
+Why the object identifier is in a TLV:
+
+- The other design made the object identifier the source of the PDU.
+  The object is then equal to a station for each receiver, and no type
+  needs a TLV for it. The author chose the TLV, and judges it to be only
+  a little better.
+- Two reasons were proposed for the TLV. The author rejected both, and
+  they are not reasons of this RFC:
+  - "A receiver that did not get the PDU of the start cannot tell the
+    object from a station." A station can easily send a false source on
+    radio, so this difference has no use.
+  - "A station can go around a rate limit for each source by declaring
+    objects." A rate limit does not stop a station on a high site that
+    sends new PDUs without limit.
+- With the TLV, the space of the object identifiers follows: an object
+  belongs to the station in the source field. The author states that
+  this is the natural choice.
+
+The author put these questions aside for now: how often an owner sends
+an Object PDU again, and when a receiver removes an object that has no
+End TLV and no end time.
+
+Dropped: the object name of an earlier revision, with no fixed form. It
+became the object identifier.
+
+Dropped: a PDU that declares the start of an object. It was part of the
+first direction of the author, who then removed it. A start step is
+necessary only if the object identifier is the source of a PDU, and
+this design does not do that. For each other station, the first PDU of
+an object is its start, unless that PDU states the end.
+
+Dropped: an object as a type of its own for all its content. Its schema
+would hold a position, a text and weather data together, which is the
+mix that a type prevents. The Object type holds only the identifier,
+the description, the end time and the end.
+
+#### Reasons for the rules of all types
 
 Why a PDU has one type:
 
@@ -2167,14 +2177,15 @@ anything is decided on them. 13.5 states how to read the traffic mix.
     - How long a relay or a receiver keeps a deduplication entry (6.2).
 26. The envelope that carries gateway provenance next to a PDU (8.3).
 27. PDU types (5.11):
-    - The list of types and the schema of each. The Position type has a
-      schema (`docs/spec/10-position.md`).
+    - The list of types and the schema of each. The Position type and
+      the Object type have a schema (`docs/spec/10-position.md`,
+      `docs/spec/11-object.md`).
     - What does a receiver do with a PDU whose known TLV has an invalid
       length or value, or that lacks a TLV that its schema requires?
     - The list of subgroups.
     - Which types can have the object identifier.
-    - The schema of the Object type, which declares the start and the
-      end of an object, and the open parts of the object design.
+    - The open items of the Object type (`docs/spec/11-object.md`),
+      with a field for the kind of an object.
     - Are the comment and the status text one field or two?
     - Is a bulletin a message to a group?
     - Do the station capabilities and the queries of APRS get a form?
@@ -2250,9 +2261,10 @@ anything is decided on them. 13.5 states how to read the traffic mix.
     the tag table of step 6.
 17. Move the topics of section 5 to `docs/spec/`, when most of the items
     of a topic are not open. Done: 5.1, 5.3 in two files, 5.9 and 5.10.
-    Of 5.11, the Position type is in `docs/spec/10-position.md`, with
-    test vectors in `vectors/position.json`. The rules for all types and
-    the other types are not moved yet. 5.4 and 5.5 stay
+    Of 5.11, the Position type is in `docs/spec/10-position.md` and the
+    Object type is in `docs/spec/11-object.md`, each with test vectors
+    in `vectors/`. The rules for all types and the other types are not
+    moved yet. 5.4 and 5.5 stay
     in the RFC for now.
 
 ## Appendix A. Transceiver packet limits
@@ -2353,8 +2365,8 @@ commands.
 - `qua-icon-stats`: size of the candidate icon bitmap forms on the glyphs
   of BDF fonts.
 - `qua-make-vectors`: writes the vector files of the decimal number, the
-  text compression, the hop hash, the PDU, the relay and the Position
-  type. Each comes from
+  text compression, the hop hash, the PDU, the relay, the Position type
+  and the Object type. Each comes from
   a module that is independent of the module that `qua-check-vectors`
   checks.
 - `qua-icon-encode`: encodes a 16 by 16 picture as an icon bitmap field,

@@ -21,7 +21,7 @@ It does not specify these:
 - The decimal number ([05-decimal-number](05-decimal-number.md)).
 - The unit of each quantity and the form of a time
   ([06-numbers-units-text](06-numbers-units-text.md)).
-- The Object type and the rules for an object (RFC 5.11).
+- The Object type and the rules for an object ([11-object](11-object.md)).
 - The schema of every other type. A different type states its own tags
   for the fields of this file (RFC 5.11).
 
@@ -107,12 +107,10 @@ then takes the time at which it received the PDU.
 
 ### 3.7 Object identifier
 
-**[agreed]** The field has 8 bytes: an identifier in the format of
-[01-station-identifier](01-station-identifier.md), in the byte order of
-its section 7. A value that its section 5 rejects is invalid.
+**[agreed]** The field is the object identifier
+([11-object](11-object.md) section 3). It has 8 bytes.
 
-**[agreed]** The field names an object that the source declared (RFC
-5.11). If a PDU has this field, the content of the PDU describes that
+**[agreed]** The field names an object of the source. If a PDU has this field, the content of the PDU describes that
 object and not the source. Each rule of section 5 for the source then
 applies to the object.
 
@@ -232,8 +230,8 @@ The vectors have these limits:
 - A vector does not state what a receiver does with an invalid field.
   That is open (section 8).
 - No vector has a TLV with an extension byte.
-- Some vectors follow **[proposed]** rules of this file and of
-  [03-tlv](03-tlv.md). They change if the rule changes.
+- Some vectors follow **[proposed]** rules of [03-tlv](03-tlv.md). They
+  change if the rule changes.
 
 `qua-make-vectors` computes the vectors with `vectors_position.py`. This
 module packs the integers with the `struct` module of Python. It takes

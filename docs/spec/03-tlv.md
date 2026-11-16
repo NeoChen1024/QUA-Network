@@ -68,7 +68,8 @@ delta. For the first TLV of the area, the tag before is 0.
 canonical order of RFC 5.2; a TLV area cannot express any other.
 
 **[agreed]** The tag 0 is a valid tag. It is the tag of the object
-identifier in each type that can have one (RFC 5.11).
+identifier in each type that can have one ([11-object](11-object.md)
+section 3).
 
 **[agreed]** A delta of 0 repeats the tag. A tag MAY appear more than once
 where the definition of that TLV allows it.

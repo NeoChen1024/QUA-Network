@@ -122,6 +122,7 @@ reserved bit.
 | Type byte | Type | Schema |
 |---|---|---|
 | 1 | Position | [10-position](10-position.md) |
+| 2 | Object | [11-object](11-object.md) |
 
 ### 4.4 Source length
 

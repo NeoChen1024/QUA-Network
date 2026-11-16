@@ -102,15 +102,16 @@ changes; link to it instead of restating formats, constants or figures here.
   evidence that either is correct.
 - Run `qua-check-vectors` after touching `vectors/`, a module that it checks
   (`identifier.py`, `icon.py`, `crc.py`, `usx.py`, `decimal_number.py`,
-  `pdu.py`, `tlv.py`, `position.py`), or any document table that quotes a
-  vector.
+  `pdu.py`, `tlv.py`, `position.py`, `object_pdu.py`), or any document table
+  that quotes a vector.
 - `icon_encode.py` produces `vectors/icon-bitmap.json` and is the path
   independent of `icon.py`. Neither imports the other.
 - `qua-make-vectors` writes the other computed vector files from
-  `vectors_decimal.py`, `vectors_text.py`, `vectors_pdu.py` and
-  `vectors_position.py`. These are the paths independent of
-  `decimal_number.py`, `usx.py`, `pdu.py`, `crc.py`, the hop hash of
-  `identifier.py`, `tlv.py` and `position.py`. They do not import those
+  `vectors_decimal.py`, `vectors_text.py`, `vectors_pdu.py`,
+  `vectors_position.py` and `vectors_object.py`. These are the paths
+  independent of `decimal_number.py`, `usx.py`, `pdu.py`, `crc.py`, the
+  hop hash of `identifier.py`, `tlv.py`, `position.py` and
+  `object_pdu.py`. They do not import those
   modules, and those modules do not import them.
 
 ## Data safety

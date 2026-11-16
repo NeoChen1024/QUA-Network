@@ -1925,6 +1925,7 @@ anything is decided on them.
     gateway can lose information (3.2). Which kinds of legacy packet does a
     gateway translate? What does it do with a legacy packet that has no QUA
     Network form? Who is the source of a translated PDU, and who issues
+| Resolution and size of the values of legacy packets, and the parts of a position report | `qua-legacy-values` |
     its sequence number (6.5)? A translated PDU has the flag Translated of
     5.1.
     How does a gateway round a value, and how much loss is reasonable
@@ -2293,6 +2294,10 @@ specification text if any, and the decision taken for QUA Network.
 
 The catalogue is in `docs/legacy/divergence/`, one file per entry. The
 comparison that finds the entries is specified in
+- `qua-legacy-values`: counts the values of the records over the corpus:
+  each quantity by its resolution and by its size, each code by its
+  content, and the position bodies by the parts that they have. This is
+  input to the tag tables (5.11; section 15, steps 6 and 16).
 `docs/interop/09-comparison.md`.
 
 ### E.4 Handling third-party code

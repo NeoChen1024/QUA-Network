@@ -516,8 +516,21 @@ these cases.
   the 2-byte format. It has no "not a number". A sender that has no value
   omits the TLV.
 
+- **[agreed]** A field does not limit the format. Each decimal field
+  allows 2, 3 and 4 bytes, and the sender gives the digits that its use
+  needs.
+
 `m` and `e` are unique for a value, because `m` has no factor of 10. The
 conversion to text moves the decimal point and needs no rounding.
+
+The length of a decimal number follows the digits of its value. A value
+with many digits uses 4 bytes, also in a field that does not need them.
+A conversion of units gives such values: 20 knots are 37.04 km/h, which
+needs 3 bytes. Two limits were considered, each in the definition of a
+field: a largest format, and a smallest exponent. The author dropped
+both. The reasons of the author: 4 bytes are not large, and the fields
+designed so far show that a PDU does not reach the limit of 255 bytes
+easily.
 
 An earlier decision of this revision had a format of 1 byte, with 4 bits
 for `e` and 4 bits for `m`. Zero and the two infinities were in it. The

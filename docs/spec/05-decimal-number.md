@@ -66,6 +66,10 @@ are `e` = −1, and the other 12 bits are `m` = 253. The value is 25.3.
 **[agreed]** A sender MUST use the shortest format that holds `m` and
 `e`.
 
+**[agreed]** Each field that is a decimal number allows each of the
+three formats. The definition of a field states no largest format and no
+smallest exponent. The sender gives the digits that its use needs.
+
 With these rules, `m` and `e` are unique for a value, and one value has
 one encoding.
 

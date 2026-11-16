@@ -114,7 +114,7 @@ from qua_network.tnc2 import header_spans
 RECORD_LAYOUT = 0
 MODES = ("strict", "permissive")
 # 01-record section 3.1: the repairs of permissive mode.
-REPAIRS = ("repair.humidity-width",)
+REPAIRS = ("repair.humidity-width", "repair.overlay-lowercase")
 
 # --- Section 4.3: record units ------------------------------------------
 #
@@ -1408,9 +1408,16 @@ class Decoder:
         if st is None or sc is None:
             return self.missing(frm)
         table, code = line[st.start], line[sc.start]
-        judged = [(f, effect_sym(f, table, table_rule)) for f in self.on((table_rule,), st) + self.on((code_rule,), sc)]
-        lower = table_rule == "cmp.table" or not self.strict
-        classic, _ = val_sym(table, code, lower)
+        # 01-record section 3.1, repair.overlay-lowercase: 'a'-'j' outside
+        # the compressed format gives the overlay digit. The tokens do not
+        # change; the syntax finding of the table byte has no effect.
+        repair = not self.strict and table_rule != "cmp.table" and 0x61 <= table <= 0x6A
+        judged = [(f, effect_sym(f)) for f in self.on((code_rule,), sc)]
+        if repair:
+            judged.append(("repair.overlay-lowercase", COMPUTABLE))
+        else:
+            judged += [(f, effect_sym(f)) for f in self.on((table_rule,), st)]
+        classic, _ = val_sym(table, code, table_rule == "cmp.table" or repair)
         if classic is None or not 0x21 <= code <= 0x7E:
             return Pre(None, judged, frm)
         return Pre({"chars": text(bytes((table, code))), "classic": classic}, judged, frm)

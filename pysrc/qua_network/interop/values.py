@@ -135,8 +135,8 @@ def val_sym(table, code, lower_overlay):
     """(classic number, overlay byte or None) of the table and code bytes.
 
     lower_overlay lets 'a'-'j' give the overlay '0'-'9': in cmp.table by
-    val.sym, in sym.table and mice.sym.table only in permissive mode
-    (01-record section 3). The classic number is that of RFC 5.6 and
+    val.sym, in sym.table and mice.sym.table only with the repair
+    repair.overlay-lowercase (01-record section 3.1). The classic number is that of RFC 5.6 and
     01-record section 7."""
     c = code - 33
     if table == 0x2F:
@@ -447,15 +447,9 @@ def effect_lat_level(f):
     return NONE if f.kind == "syntax" else KEPT
 
 
-def effect_sym(f, table_byte, table_rule):
-    """sym.table, sym.code and the compressed and Mic-E forms. 'a'-'j' in
-    sym.table or mice.sym.table is computable: permissive mode converts it
-    (01-record section 3)."""
-    if f.kind != "syntax":
-        return KEPT
-    if f.rule == table_rule and table_rule != "cmp.table" and 0x61 <= table_byte <= 0x6A:
-        return COMPUTABLE
-    return NONE
+def effect_sym(f):
+    """sym.table, sym.code and the compressed and Mic-E forms."""
+    return NONE if f.kind == "syntax" else KEPT
 
 
 def effect_cmp(f):

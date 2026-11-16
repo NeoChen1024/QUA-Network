@@ -62,12 +62,8 @@ gives the effect of each finding on a value.
 **[proposed]** The modes apply to each value separately. A record in
 strict mode can have values and no-value objects together.
 
-**[agreed]** Permissive mode also applies this rule, which is not an
-interpretation of APRS12c:
-
-- A table byte `'a'`–`'j'` in `sym.table` or `mice.sym.table` gives the
-  overlay `'0'`–`'9'`, as in the compressed format. RFC 5.6 requires this
-  conversion of a gateway. The `syntax` finding becomes a mark.
+**[agreed]** Permissive mode also applies repairs (3.1). A repair is not
+an interpretation of APRS12c.
 
 **[proposed]** The finding kinds have these consequences in both modes:
 
@@ -99,15 +95,26 @@ these bytes.
 
 **[agreed]** A repair states the bytes that it applies to. It states
 the tokens that the tokenizer gives for these bytes in place of the
-tokens of docs/legacy. In permissive mode, the tokens, the findings and
-the verdict of a record are those of the tokenizer with the repairs.
+tokens of docs/legacy. A repair can leave the tokens as they are. In
+permissive mode, the tokens, the findings and the verdict of a record
+are those of the tokenizer with the repairs.
 
 **[proposed]** A repair gives the effect `computable` to each value that
 it names. The mark of such a value is the ID of the repair.
 
 | ID | Bytes | Tokens with the repair | Values with the mark | Entry |
 |---|---|---|---|---|
+| <a id="repair.overlay-lowercase"></a>`repair.overlay-lowercase` | A table byte `'a'`–`'j'` in `sym.table` or `mice.sym.table`. | The tokens of docs/legacy. The `syntax` finding of the table byte stays. | The symbol. | [div.overlay-lowercase](../legacy/divergence/11-overlay-lowercase.md) |
 | <a id="repair.humidity-width"></a>`repair.humidity-width` | In weather data, an `h` at a place where a weather field can start, with three digits after it. | One `wx.hum` token of 4 bytes. The tokenizer reads the weather fields after it. | The humidity. Each weather field, the software code and the unit code after the token. | [div.humidity-width](../legacy/divergence/04-humidity-width.md) |
+
+**[agreed]** With `repair.overlay-lowercase`, the table byte gives the
+overlay `'0'`–`'9'`, as [val.sym](../legacy/10-values.md#val.sym) gives
+it for the compressed format. RFC 5.6 requires this conversion of a
+gateway. The `syntax` finding of the table byte has no effect on the
+symbol. The mark of the symbol is the ID of the repair.
+
+An earlier draft gave this rule in section 3, with no ID. The mark of
+the symbol was then the `syntax` finding.
 
 **[agreed]** The humidity of `repair.humidity-width` is the number of
 the three digits. The range of
@@ -839,22 +846,22 @@ differ between the modes:
  "lat": {"v": 50.05833333333333, "res": 0.00016666666666666666, "from": [["lat", 15, 23]],
          "mark": [["lat", "value", 17]]},
  "symbol": {"chars": "a-", "classic": 539, "from": [["sym.table", 23, 24], ["sym.code", 33, 34]],
-            "mark": [["sym.table", "syntax", 23]]}}
+            "mark": ["repair.overlay-lowercase"]}}
 ```
 
 - `lat`: The count is 49 · 6000 + 63 · 100 + 50 = 300350, with step 1.
   `v` is 300350 / 6000 degree, that is 50° 03.50' N. `res` is 1 / 6000
   degree. The permissive record also has the note `amb.val.minutes`.
-- `symbol`: `'a'` gives the overlay `'0'`, digit 1. `'-'` − 33 = 12. 94 +
-  12 · 37 + 1 = 539.
+- `symbol`: With `repair.overlay-lowercase` (3.1), `'a'` gives the
+  overlay `'0'`, digit 1. `'-'` − 33 = 12. 94 + 12 · 37 + 1 = 539. The
+  `syntax` finding stays in `findings`, and the verdict is `syntax` in
+  both modes.
 - `lon` is the same in both modes. The count is −432175, so `v` is
   −72.02916666666667 and `res` is 1 / 6000 degree. The finding has the
   rule ID `lat`, so it does not concern `val.lon`.
 
 ## 10. Open items
 
-- **[open]** Whether the rule for the table bytes `'a'`–`'j'`
-  (section 3) becomes a repair with an ID (3.1).
 - **[open]** The other uses, the encoder, the gateway mapping and the
   differential tests ([README section 5](README.md#5-open-items)).
 - **[proposed]** The order of the names in `uses`: `object`, `position`,

@@ -117,6 +117,12 @@ reserved bit.
 
 **[agreed]** One PDU has one type. The type byte gives it (RFC 5.11).
 
+**[agreed]** The types that have a value so far:
+
+| Type byte | Type | Schema |
+|---|---|---|
+| 1 | Position | [10-position](10-position.md) |
+
 ### 4.4 Source length
 
 **[agreed]** The source length counts the header and the TLV area. It

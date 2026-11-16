@@ -64,12 +64,31 @@ are three quantities.
 | Wind speed | Kilometre per hour | Decimal number |
 | Temperature | Degree Celsius | Not decided |
 | Pressure | Hectopascal | Not decided |
+| Horizontal uncertainty | Metre | Decimal number |
+| Course | Degree | An integer with a fixed scale |
 
 Wind speed is a speed. It has the unit and the form of speed.
+
+The definition of a field gives the scale and the size of an integer.
+[10-position](10-position.md) has the fields of a position.
 
 ## 4. Time
 
 **[agreed]** A time is an integer count from a fixed epoch in UTC.
+
+**[agreed]** The epoch is 1970-01-01, 00:00:00 UTC. The count is in
+seconds, as the time of a Unix system is.
+
+**[agreed]** The specification has no rule for a leap second. A source
+writes the count that its time source gives.
+
+**[agreed]** A time has no part of a second.
+
+**[agreed]** A time has 8 bytes: a signed integer of 64 bits in two's
+complement, in little-endian order.
+
+**[agreed]** A count below 0 is a time before the epoch. Each value of
+the integer is a valid time.
 
 ## 5. Precision
 
@@ -95,10 +114,7 @@ packet that the receiver has heard.
 
 ## 8. Open items
 
-- **[open]** The scale and the size of latitude and longitude. RFC 5.3
-  gives int32 in units of 1e-7 degree as an example.
 - **[open]** The form of temperature and of pressure.
-- **[open]** The epoch, the unit and the size of a time.
 - **[open]** The other quantities and their units (RFC section 15,
   step 16). The list of section 3 grows with the tag tables.
 - **[open]** What a receiver does with a string that is not valid UTF-8.

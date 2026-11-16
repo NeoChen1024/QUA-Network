@@ -424,6 +424,36 @@ hectopascal is the text form: `1013.2` is easier to read than `101320`.
 With two units for one quantity, one value has two encodings: 1000 pF and
 0.001 µF. This is the reason for the one-unit rule.
 
+Time:
+
+- **[agreed]** A time is the count of seconds of a Unix system, in UTC.
+  A station can get UTC from many sources. A continuous timescale, such
+  as GPS time, is not available everywhere.
+- **[agreed]** The specification has no rule for a leap second. A source
+  writes what its time source gives. The error is one second at most.
+- The reason is the author's: time sources do not behave in the same way
+  at a leap second. Examples are a GNSS receiver with NMEA output, the
+  UBX protocol, NTP and a long-wave time signal. A rule that makes every
+  station behave in one way needs a conversion for each time source.
+  Such conversions are easy to get wrong. The behaviour of the time
+  source is the simple choice.
+- How each of these sources behaves was not checked for this RFC. One
+  difference is recalled, not verified: some NTP servers repeat or step
+  one second, and some spread the leap second over many hours.
+- **[agreed]** A time has no part of a second. The delay of a PDU in the
+  network is not small enough for a part of a second to have a use.
+- **[agreed]** A time is a signed integer of 64 bits. The reason is the
+  author's: a PDU has much free space below the PDU limit, so there is
+  no need to save bytes in this field. The range of the field has no
+  end that matters in practice.
+- Dropped: a first decision of this revision made the time an unsigned
+  integer of 32 bits. It holds times up to the year 2106 (derived: 2^32
+  seconds from the epoch). The author replaced it, for the reason above.
+  The time TLV has 4 more bytes.
+- **[agreed]** A count below 0 is a time before the epoch, and each
+  value is valid. A receiver then needs no range check. No value is a
+  code for "no time": a device with no valid time omits the field.
+
 #### Decimal number
 
 The decimal number is specified in
@@ -1324,6 +1354,67 @@ An object as a type of its own was not adopted. Its schema would hold a
 position, a text and weather data together, which is the mix that a type
 prevents.
 
+#### Position type
+
+The fields of a position and the schema of the Position type are
+specified in [`docs/spec/10-position.md`](../spec/10-position.md). This
+part keeps the reasons and the dropped alternatives.
+
+Summary: a Position PDU can have the coordinates, the altitude, the
+horizontal uncertainty, the course, the speed and the time. Each is
+optional. The coordinates are two integers of 32 bits in units of 10^−7
+degree, in one TLV.
+
+- **[agreed]** The protocol has no field for these parts of a legacy
+  position report: the datum, the Mic-E message code, the NMEA source,
+  the age of the fix, and the values of a direction-finding report. A
+  gateway does not translate them (3.2).
+- **[agreed]** The comment, the symbol, the power, height and gain, the
+  range, the frequency and the messaging flag are not in the Position
+  type. They belong to the station information type.
+
+Why these forms:
+
+- The legacy formats give a position at several resolutions. The finest
+  is a fraction of a metre (section 13; `qua-legacy-values` gives the
+  counts). A unit of 10^−7 degree is finer than each of them. A unit of
+  10^−6 degree needs the same 8 bytes.
+- A unit of 10^−7 degree of latitude is about 1.1 cm (derived: one
+  degree of latitude is about 111 km). The author judges this to be
+  more than enough for a general protocol.
+- The latitude and the longitude are in one TLV, because a station never
+  sends one without the other. This saves one byte.
+- The course has a known range and one resolution, so it is an integer
+  (5.3). The altitude and the speed have a wide range, so they are
+  decimal numbers.
+- The course and the speed are two TLVs. In existing traffic, a speed
+  also occurs without a course. A TLV also holds one decimal number at
+  most.
+- A field that is not known is absent. APRS uses the course 0 for "not
+  known" and 360 for north. Here north is 0, and there is no such code.
+- The horizontal uncertainty replaces the position ambiguity of APRS,
+  which removes digits from the coordinates. An explicit field states
+  the uncertainty in metres, and the coordinates stay plain numbers
+  (5.3).
+- Existing reports mostly do not state the reference of an altitude. One
+  reference, the mean sea level, removes the question.
+- A Position PDU can have no coordinates. A station whose receiver has
+  no fix can then say so. Without this, its last coordinates stay on the
+  map of each receiver, with no sign that they are old. This agrees with
+  the rule above for an absent TLV: the new PDU replaces the earlier one
+  as a whole.
+
+Dropped: coordinates in units of 10^−5 degree, packed in 51 bits and 7
+bytes. The unit is about 1.1 m. It is coarser than a visible share of
+existing positions, and the two numbers do not end at a byte.
+
+Dropped: a first proposal of this revision left the time out, until the
+form of a time was decided. The author asked for the time. 5.3 has the
+reasons for its form.
+
+Dropped: a first decision of this revision made the coordinates a
+required TLV. The author replaced it, for the reason above.
+
 Why a PDU has one type:
 
 - Content with different rates does not travel together. A position
@@ -1834,6 +1925,7 @@ count they came from.
 | Payload length by data type | `qua-length-stats` |
 | Sending software and devices by destination callsign | `qua-tocall-stats` |
 | Source SSID classes | one-off script, not yet in the package |
+| Resolution and size of the values of legacy packets, and the parts of a position report | `qua-legacy-values` |
 | Repetition of free text, and its size under each Unishox2 preset | `qua-legacy-text` |
 | Agreement of the text compression with the Unishox2 library, and the use of each optional part of the format | `qua-legacy-usx-check` |
 
@@ -1925,7 +2017,6 @@ anything is decided on them.
     gateway can lose information (3.2). Which kinds of legacy packet does a
     gateway translate? What does it do with a legacy packet that has no QUA
     Network form? Who is the source of a translated PDU, and who issues
-| Resolution and size of the values of legacy packets, and the parts of a position report | `qua-legacy-values` |
     its sequence number (6.5)? A translated PDU has the flag Translated of
     5.1.
     How does a gateway round a value, and how much loss is reasonable
@@ -1998,7 +2089,10 @@ anything is decided on them.
     - How long a relay or a receiver keeps a deduplication entry (6.2).
 26. The envelope that carries gateway provenance next to a PDU (8.3).
 27. PDU types (5.11):
-    - The list of types and the schema of each.
+    - The list of types and the schema of each. The Position type has a
+      schema (`docs/spec/10-position.md`).
+    - What does a receiver do with a PDU whose known TLV has an invalid
+      length or value, or that lacks a TLV that its schema requires?
     - The list of subgroups.
     - Which types include the object name, and how a source states that
       an object no longer exists.
@@ -2077,7 +2171,9 @@ anything is decided on them.
     the tag table of step 6.
 17. Move the topics of section 5 to `docs/spec/`, when most of the items
     of a topic are not open. Done: 5.1, 5.3 in two files, 5.9 and 5.10.
-    Not moved yet: 5.11. 5.4 and 5.5 stay in the RFC for now.
+    Of 5.11, the Position type is in `docs/spec/10-position.md`. The rules
+    for all types and the other types are not moved yet. 5.4 and 5.5 stay
+    in the RFC for now.
 
 ## Appendix A. Transceiver packet limits
 
@@ -2198,6 +2294,10 @@ commands.
   packet gets a verdict.
 - `qua-legacy-decode`: gives the record of `docs/interop/` for each packet,
   or counts of the fields over the corpus.
+- `qua-legacy-values`: counts the values of the records over the corpus:
+  each quantity by its resolution and by its size, each code by its
+  content, and the position bodies by the parts that they have. This is
+  input to the tag tables (5.11; section 15, steps 6 and 16).
 - `qua-legacy-compare`: compares the records with the results of other
   parsers, for the divergence catalogue (Appendix E).
 - `qua-legacy-text`: measures the free text of the corpus: how often a
@@ -2294,10 +2394,6 @@ specification text if any, and the decision taken for QUA Network.
 
 The catalogue is in `docs/legacy/divergence/`, one file per entry. The
 comparison that finds the entries is specified in
-- `qua-legacy-values`: counts the values of the records over the corpus:
-  each quantity by its resolution and by its size, each code by its
-  content, and the position bodies by the parts that they have. This is
-  input to the tag tables (5.11; section 15, steps 6 and 16).
 `docs/interop/09-comparison.md`.
 
 ### E.4 Handling third-party code

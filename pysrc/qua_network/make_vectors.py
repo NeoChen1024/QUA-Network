@@ -3,8 +3,8 @@
 
 Each file comes from a module that is independent of the module that
 qua-check-vectors checks against it: vectors_decimal.py, vectors_text.py,
-vectors_pdu.py, vectors_position.py, vectors_object.py and vectors_name.py.
-The text compression vectors need a C compiler and the
+vectors_pdu.py, vectors_position.py, vectors_object.py, vectors_name.py and
+vectors_station.py. The text compression vectors need a C compiler and the
 submodule 3rdparty/Unishox2.
 
 An existing vector is a compatibility contract. A changed value in an
@@ -27,6 +27,7 @@ NAMES = (
     "position",
     "object",
     "name",
+    "station-information",
 )
 
 
@@ -47,6 +48,10 @@ def _rows(name, vectors_dir):
         from qua_network import vectors_name
 
         return vectors_name.vectors()
+    if name == "station-information":
+        from qua_network import vectors_station
+
+        return vectors_station.vectors()
     if name == "object":
         from qua_network import vectors_object
 

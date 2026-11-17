@@ -65,11 +65,18 @@ are three quantities.
 | Pressure | Hectopascal | Not decided |
 | Horizontal uncertainty | Metre | Decimal number |
 | Course | Degree | An integer with a fixed scale |
+| Transmitter power | Watt | Decimal number |
+| Antenna height | Metre | Decimal number |
+| Antenna gain | Decibel relative to an isotropic antenna (dBi) | Decimal number |
+| Antenna direction | Degree | An integer with a fixed scale |
+| Range | Kilometre | Decimal number |
 
 Wind speed is a speed. It has the unit and the form of speed.
 
 The definition of a field gives the scale and the size of an integer.
 [10-position](10-position.md) has the fields of a position.
+[12-station-information](12-station-information.md) has the fields of a
+station and its antenna.
 
 ## 4. Time
 

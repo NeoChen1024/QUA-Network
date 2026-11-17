@@ -1370,7 +1370,8 @@ other fields are compact binary encodings of data.
   | Type | Content | Sent | Legacy APRS use |
   |---|---|---|---|
   | Position | Coordinates, altitude, course, speed. | When the station moves. | Position report, Mic-E, compressed position |
-  | Station information | Symbol (5.6), comment or status text (5.7), frequency, software. | Seldom. | Comment, status report, frequency specification |
+  | Station information | Kind, device, software, transmitter power, antenna, range, symbol (5.6), comment (5.7). | Seldom. | Comment, power-height-gain extension, the device code of the destination address |
+  | Status | Status text (5.7), frequency. The name of the type is not decided. | When the content changes. | Status report, frequency specification |
   | Weather | Weather values, in the units of 5.3. The position subgroup. | At a fixed interval. | Weather report |
   | Telemetry | Values that describe themselves (5.3). | At a fixed interval. | Telemetry report and its definition packets |
   | Message | Addressee, message identifier, text, acknowledgement, segment (6.5). | On an event. | Message, bulletin |
@@ -1410,7 +1411,9 @@ degree, in one TLV.
   gateway does not translate them (3.2).
 - **[agreed]** The comment, the symbol, the power, height and gain, the
   range, the frequency and the messaging flag are not in the Position
-  type. They belong to the station information type.
+  type. They belong to the station information type. A later decision
+  moved the frequency to a type of its own ("Station information type"
+  below).
 
 Why these forms:
 
@@ -1469,7 +1472,7 @@ refers to the object with the object identifier in its first TLV.
 
 - The Object and the Item of APRS are one thing here. The position of a
   repeater is a position PDU with the identifier of the repeater. Its
-  frequency is a station information PDU with the same identifier.
+  frequency is a PDU of the status type with the same identifier.
 - The direction is the author's: an object has an identifier in the
   format of a callsign, and a PDU declares its end.
 - The identifier has only the characters of a callsign. A name such as
@@ -1544,13 +1547,87 @@ would hold a position, a text and weather data together, which is the
 mix that a type prevents. The Object type holds only the identifier,
 the description, the end time and the end.
 
+#### Station information type
+
+The fields and the schema of the Station information type are specified
+in [`docs/spec/12-station-information.md`](../spec/12-station-information.md).
+This part keeps the reasons and the dropped alternatives.
+
+Summary: a Station information PDU describes the station and its radio
+equipment. It has the kind of the station, the names of the device and
+of the software, the transmitter power, three values of the antenna and
+the range. Each field is optional. The symbol and the comment have no
+TLV in the schema so far.
+
+The kind:
+
+- The kind states how a station moves or what carries it: fixed,
+  pedestrian, land vehicle, satellite. The direction is the author's.
+- In APRS, the symbol is the only statement of the kind. 5.6 makes the
+  symbol display only, so the kind needs a field of its own.
+- The list has one axis only. The function of a station is not a kind:
+  a relay, a gateway and a weather station can each be fixed or mobile.
+  A list with both axes grows into a second symbol table.
+- A receiver reads a code that it does not know as "other". A later
+  minor version can then add a kind, and an old receiver still reads
+  the PDU. This is a rule for a later extension. It is not tolerance of
+  input that breaks a rule (3.2).
+
+Power, height, gain and direction:
+
+- APRS packs these four values into one digit each. The power is the
+  square of a digit, the height is a power of two, and the gain cannot
+  be negative. Here each value has its own TLV and its own unit.
+- The antenna height is above the ground at the antenna. APRS defines
+  the height above the average terrain. A station can measure the
+  height above the ground, and the altitude is in the Position type.
+- The power is in watts, the unit of daily use in amateur radio. The
+  settings of a LoRa transceiver are in dBm. One quantity has one unit
+  (5.3), so the type does not have both.
+
+The names of the device and of the software:
+
+- APRS states the device by a code in the destination address. One
+  person keeps the list of the codes. This type needs no list: the
+  maker of a device chooses its names. Two makers can choose one name.
+  The specification does not prevent that.
+- The format of a name is in
+  [`docs/spec/13-strings.md`](../spec/13-strings.md), section 4, with
+  the other string formats. A name has the digit table of a station
+  identifier (5.8), by the decision of the author. Its reason: the table saves space. A name has
+  8 bytes for 12 characters at most.
+- A name has no SSID, by the decision of the author. Each of the 12
+  digits is then a character of the name.
+- The digit table has no `.`. A version has `/` in its place.
+- A device field with one name has the model. A software field with
+  one name has the name of the software. This is the decision of the
+  author.
+- A name is for display and for diagnosis only. In APRS, software
+  derives the abilities of a station from the device code. A field for
+  an ability states it here.
+
+Dropped: free text for the device and the software, with the two tags
+of 5.7. It was the first proposal. The author replaced it with the
+names, which are shorter.
+
+Dropped: a name in the format of a station identifier with no change,
+which gives 11 characters and an SSID. The author removed the SSID. A
+name is therefore not a valid station identifier in general.
+
+Dropped: the status text and the frequency in this type. The kind, the
+device and the antenna almost never change. A status text and a
+frequency in use change more often. A new PDU of a type replaces the
+earlier PDU as a whole, so one changed status would send the whole
+description again. The two fields get a type of their own, by the
+decision of the author. That type has no schema so far.
+
 #### Reasons for the rules of all types
 
 Why a PDU has one type:
 
 - Content with different rates does not travel together. A position
-  changes when the station moves. A comment, a frequency and a symbol
-  almost never change. In APRS, a comment is part of each position
+  changes when the station moves. A comment and a symbol almost never
+  change. In APRS, a comment is part of each position
   report, so a station sends it again each time. 5.7 has the same
   observation.
 - An absent field has one meaning. In a PDU that can hold any mix of
@@ -2403,7 +2480,9 @@ anything is decided on them. 13.5 states how to read the traffic mix.
 27. PDU types (5.11):
     - The list of types and the schema of each. The Position type and
       the Object type have a schema (`docs/spec/10-position.md`,
-      `docs/spec/11-object.md`).
+      `docs/spec/11-object.md`). The Station information type has a
+      schema for a part of its fields
+      (`docs/spec/12-station-information.md`).
     - What does a receiver do with a PDU whose known TLV has an invalid
       length or value, or that lacks a TLV that its schema requires?
     - The list of subgroups.
@@ -2411,6 +2490,11 @@ anything is decided on them. 13.5 states how to read the traffic mix.
     - The open items of the Object type (`docs/spec/11-object.md`),
       with a field for the kind of an object.
     - Are the comment and the status text one field or two?
+    - The open items of the Station information type
+      (`docs/spec/12-station-information.md`): the TLVs of the symbol
+      and of the comment, and fields for the abilities of a station.
+    - The name and the schema of the type that holds the status text
+      and the frequency.
     - Is a bulletin a message to a group?
     - Do the station capabilities and the queries of APRS get a form?
     - Which type numbers are for experiments?

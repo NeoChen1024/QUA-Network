@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Status | Draft. Not frozen. Items carry the labels **[agreed]**, **[proposed]** and **[open]** with the meaning given in the RFC. |
-| Rationale | [RFC draft 0, section 5.7](../rfc/qua-network-rfc-0.md#57-text-compression) |
+| Rationale | [RFC draft 0, section 5.7](../rfc/qua-network-rfc-0.md#57-text-compression) for free text, and [section 5.11](../rfc/qua-network-rfc-0.md#station-information-type) for the name |
 | Vectors | [`vectors/name.json`](../../vectors/name.json) |
 
 The key words MUST, MUST NOT, SHOULD, SHOULD NOT and MAY are used as in
@@ -176,7 +176,8 @@ receiver do with an invalid string.
 ## 6. Open items
 
 - **[open]** A name has 12 characters at most. Is that sufficient for
-  each field that has a name?
+  each field that has a name
+  ([12-station-information](12-station-information.md))?
 - **[open]** What a receiver does with a free text that is not valid
   UTF-8.
 - **[open]** A limit for the length of a free text that is lower than

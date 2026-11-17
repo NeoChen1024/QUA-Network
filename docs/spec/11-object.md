@@ -267,5 +267,7 @@ do not import each other.
 - **[open]** A limit for the length of the description.
 - **[open]** A field that states the kind of an object, from a standard
   list (RFC 5.11). The symbol of an object does not state its kind.
+  [12-station-information](12-station-information.md) proposes the kind
+  field of a station for this use. Its list has only kinds of movement.
 - **[open]** What a receiver does with a description that is not valid
   UTF-8 ([13-strings](13-strings.md) section 6).

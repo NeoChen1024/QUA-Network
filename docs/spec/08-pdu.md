@@ -123,6 +123,7 @@ reserved bit.
 |---|---|---|
 | 1 | Position | [10-position](10-position.md) |
 | 2 | Object | [11-object](11-object.md) |
+| 3 | Station information | [12-station-information](12-station-information.md) |
 
 ### 4.4 Source length
 

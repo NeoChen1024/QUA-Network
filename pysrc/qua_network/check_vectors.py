@@ -11,7 +11,7 @@ from pathlib import Path
 
 import click
 
-from qua_network import decimal_number, icon, identifier, name_format, object_pdu, pdu, position, usx
+from qua_network import decimal_number, icon, identifier, name_format, object_pdu, pdu, position, station_info, usx
 from qua_network.crc import crc32c
 
 
@@ -227,6 +227,29 @@ def check_name(v):
     return None if got == value else f"encode gives 0x{got:016X}"
 
 
+def check_station_information(v):
+    area = bytes.fromhex(v["tlv"])
+    try:
+        got = station_info.decode(area)
+    except station_info.StationInfoError as e:
+        if "invalid" not in v:
+            return f"decoder rejects it: {e}"
+        return None if e.field == v["invalid"] else f"decoder gives the field {e.field}"
+    if "invalid" in v:
+        return "decoder accepts it"
+    if station_info.encode(got) != area:
+        return f"encode gives {station_info.encode(got).hex().upper()}"
+    for key in ("power", "height", "gain", "range"):
+        if key in got:
+            got[key] = decimal_number.to_text(got[key])
+    if "object" in got:
+        got["object"] = identifier.decode(got["object"])
+    if "other" in got:
+        got["other"] = [[tag, value.hex().upper()] for tag, value in got["other"]]
+    want = {key: value for key, value in v.items() if key not in ("tlv", "note")}
+    return None if got == want else f"decode gives {got}"
+
+
 CHECKS = {
     "identifier.json": check_identifier,
     "hop-hash.json": check_hop_hash,
@@ -238,6 +261,7 @@ CHECKS = {
     "position.json": check_position,
     "object.json": check_object,
     "name.json": check_name,
+    "station-information.json": check_station_information,
     "text-compression.json": check_text_compression,
     "icon-colour.json": check_icon_colour,
     "icon-bitmap.json": check_icon_bitmap,

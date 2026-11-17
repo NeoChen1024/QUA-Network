@@ -220,7 +220,7 @@ quantity, not the form of its bytes. Round-trip accuracy with APRS is not
 a goal.
 
 **[agreed]** If the specification names the unit of a quantity
-([docs/spec/06-numbers-units-text](../spec/06-numbers-units-text.md#3-units)),
+([docs/spec/06-numbers-units](../spec/06-numbers-units.md#3-units)),
 the record unit is that unit:
 
 | Quantity | Record unit |

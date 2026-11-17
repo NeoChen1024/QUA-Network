@@ -3,7 +3,8 @@
 
 Each file comes from a module that is independent of the module that
 qua-check-vectors checks against it: vectors_decimal.py, vectors_text.py,
-vectors_pdu.py, vectors_position.py and vectors_object.py. The text compression vectors need a C compiler and the
+vectors_pdu.py, vectors_position.py, vectors_object.py and vectors_name.py.
+The text compression vectors need a C compiler and the
 submodule 3rdparty/Unishox2.
 
 An existing vector is a compatibility contract. A changed value in an
@@ -16,7 +17,17 @@ from pathlib import Path
 
 import click
 
-NAMES = ("decimal-number", "text-compression", "hop-hash", "pdu", "pdu-unit", "pdu-relay", "position", "object")
+NAMES = (
+    "decimal-number",
+    "text-compression",
+    "hop-hash",
+    "pdu",
+    "pdu-unit",
+    "pdu-relay",
+    "position",
+    "object",
+    "name",
+)
 
 
 def _rows(name, vectors_dir):
@@ -32,6 +43,10 @@ def _rows(name, vectors_dir):
         from qua_network import vectors_position
 
         return vectors_position.vectors()
+    if name == "name":
+        from qua_network import vectors_name
+
+        return vectors_name.vectors()
     if name == "object":
         from qua_network import vectors_object
 

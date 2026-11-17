@@ -1,4 +1,4 @@
-# Numbers, units and text
+# Numbers and units
 
 | | |
 |---|---|
@@ -11,15 +11,14 @@ RFC 2119.
 
 ## 1. Scope
 
-This file specifies the form of a number, the unit of each quantity, the
-form of a time and the content of a string.
+This file specifies the form of a number, the unit of each quantity and
+the form of a time.
 
 It does not specify these:
 
 - The formats of the decimal number
   ([05-decimal-number](05-decimal-number.md)).
-- The compressed form of a string
-  ([04-text-compression](04-text-compression.md)).
+- The string formats and the free text ([13-strings](13-strings.md)).
 - The tag and the definition of each field (RFC 5.11).
 - How the specification chooses a unit (RFC 5.3).
 
@@ -97,14 +96,8 @@ does not show it with blanked digits.
 
 ## 6. Text
 
-**[agreed]** A string is UTF-8.
-
-**[agreed]** The format does not forbid a character in a free-text
-field. A text can hold control characters and other special characters.
-An implementation MUST be prepared for every character in such a field.
-
-**[proposed]** This rule applies when the implementation shows the text,
-writes it to a log or gives it to a different program.
+The rules of this section moved to [13-strings](13-strings.md) section
+5.1. The section keeps its number.
 
 ## 7. Telemetry
 
@@ -117,6 +110,5 @@ packet that the receiver has heard.
 - **[open]** The form of temperature and of pressure.
 - **[open]** The other quantities and their units (RFC section 15,
   step 16). The list of section 3 grows with the tag tables.
-- **[open]** What a receiver does with a string that is not valid UTF-8.
 - **[open]** The questions on telemetry values and on units are in the
   RFC (section 14, question 24).

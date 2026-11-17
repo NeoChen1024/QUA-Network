@@ -88,7 +88,7 @@ representable. Callsign validity is a separate matter.
 ## 7. Byte order
 
 **[agreed]** In a PDU, the identifier is 8 bytes in little-endian order
-([06-numbers-units-text](06-numbers-units-text.md) section 2).
+([06-numbers-units](06-numbers-units.md) section 2).
 
 **[agreed]** Where the identifier is the input of the hop hash, the input
 is these 8 bytes, as they are in a PDU

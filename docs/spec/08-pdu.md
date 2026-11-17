@@ -319,7 +319,7 @@ computes it again.
 ## 9. Byte order
 
 **[agreed]** Every integer of more than one byte in a PDU is in
-little-endian order ([06-numbers-units-text](06-numbers-units-text.md)
+little-endian order ([06-numbers-units](06-numbers-units.md)
 section 2).
 
 ## 10. Test vectors

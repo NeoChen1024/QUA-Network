@@ -397,12 +397,14 @@ are to be checked against them.
 
 ### 5.3 Numeric and text rules
 
-The rules of this topic are specified in two files:
+The rules of this topic are specified in three files:
 
-- [`docs/spec/06-numbers-units-text.md`](../spec/06-numbers-units-text.md):
-  the form of a number, the unit of each quantity, time and text.
+- [`docs/spec/06-numbers-units.md`](../spec/06-numbers-units.md):
+  the form of a number, the unit of each quantity and time.
 - [`docs/spec/05-decimal-number.md`](../spec/05-decimal-number.md): the
   decimal number.
+- [`docs/spec/13-strings.md`](../spec/13-strings.md): the list of the
+  string formats, the name and the free text.
 
 This section keeps the rules by which the specification chooses a unit,
 the reasons and the dropped alternatives.
@@ -916,9 +918,16 @@ and two colours cost two bytes more than the shape alone.
 ### 5.7 Text compression
 
 The compressed form of a string is specified in
-[`docs/spec/04-text-compression.md`](../spec/04-text-compression.md). This
+[`docs/spec/04-text-compression.md`](../spec/04-text-compression.md). The
+rules for a free-text field are specified in
+[`docs/spec/13-strings.md`](../spec/13-strings.md), section 5. This
 section keeps the decisions on the use of compression, the reasons and the
 dropped alternatives.
+
+Summary of the rules for a free-text field: the field has a passthrough
+form and a compressed form, and one tag for each. The compressed form
+starts with a length byte. A sender tries the compression and sends the
+shorter form. A decoder does not check that choice.
 
 - **[agreed]** Compression saves airtime. It is not a way to send content
   that does not fit the PDU limit in its uncompressed form. The
@@ -930,20 +939,8 @@ dropped alternatives.
   anything.
 - **[agreed]** The method is Unishox2, a codec designed for short Unicode
   strings.
-- **[agreed]** A sender SHOULD compress each string as a trial. It SHOULD
-  send the compressed form only if that form is strictly shorter than the
-  UTF-8 original. Otherwise it SHOULD send the string unchanged
-  (passthrough). Unishox2 can expand some inputs. Passthrough is therefore
-  always allowed.
-- **[agreed]** A compressed string starts with a length byte. The length
-  byte gives the length of the uncompressed string, in bytes. A
-  passthrough string has no length byte.
 - **[agreed]** Only a compressed field of variable length has a length
   byte. A TLV value is 255 bytes at most (5.2), so one byte is sufficient.
-- **[agreed]** The length byte counts as part of the compressed form when
-  the sender compares the lengths.
-- **[agreed]** A decoder does not run an encoder. It does not reject a
-  field because the sender did not choose the shortest form.
 - **[agreed]** The specification file lists each compressed string that
   is invalid (its section 7). A decoder gives no text for an invalid
   string.
@@ -953,13 +950,6 @@ dropped alternatives.
   the check of its signature fails (5.5).
 - **[open]** The form of the placeholder, and what the text form shows
   for such a PDU (section 14, question 16).
-- **[agreed]** Each free-text field has two tags: one for the passthrough
-  form and one for the compressed form. The tag states the form. The
-  string has no marker.
-- **[agreed]** The two tags of one field are adjacent numbers. The
-  uncompressed form has the passthrough tag. The TLV order of the
-  uncompressed form is then the order as sent.
-- **[agreed]** A PDU MUST NOT have both tags of one field.
 - **[agreed]** The specification pins the exact decoder behaviour of every
   compressed form that it allows. It does not pin an encoder. Two
   independent decoders give the same string for the same field.
@@ -973,6 +963,11 @@ dropped alternatives.
   visible in text.
 - The short Unicode symbol of 5.6 is not compressed; at 8 bytes or less
   there is nothing to gain.
+
+Unishox2 can expand some inputs. The passthrough form is therefore
+always allowed. The two tags of one field are adjacent numbers, and the
+uncompressed form has the passthrough tag. The TLV order of the
+uncompressed form is then the order as sent.
 
 An earlier revision proposed a marker in each text field that gave the
 form of the string. Two tags replace it and cost no byte. The author also
@@ -2496,7 +2491,7 @@ anything is decided on them. 13.5 states how to read the traffic mix.
     `vectors/decimal-number.json`, with encodings that a decoder rejects.
     Next: the questions on its use (section 14, question 24).
 16. List the quantities that the protocol carries, each with its unit,
-    in section 3 of `docs/spec/06-numbers-units-text.md`. This goes with
+    in section 3 of `docs/spec/06-numbers-units.md`. This goes with
     the tag table of step 6.
 17. Move the topics of section 5 to `docs/spec/`, when most of the items
     of a topic are not open. Done: 5.1, 5.3 in two files, 5.9 and 5.10.

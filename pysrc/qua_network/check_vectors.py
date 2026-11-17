@@ -11,7 +11,7 @@ from pathlib import Path
 
 import click
 
-from qua_network import decimal_number, icon, identifier, object_pdu, pdu, position, usx
+from qua_network import decimal_number, icon, identifier, name_format, object_pdu, pdu, position, usx
 from qua_network.crc import crc32c
 
 
@@ -205,6 +205,28 @@ def check_object(v):
     return None if got == want else f"decode gives {got}"
 
 
+def check_name(v):
+    if v.get("invalid") == "text":
+        try:
+            name_format.encode(v["text"])
+        except name_format.NameFormatError:
+            return None
+        return "encoder accepts it"
+    value = int.from_bytes(bytes.fromhex(v["bytes"]), "little")
+    try:
+        text = name_format.decode(value)
+    except name_format.NameFormatError as e:
+        return None if "invalid" in v else f"decoder rejects it: {e}"
+    if "invalid" in v:
+        return "decoder accepts it"
+    if text != v["text"]:
+        return f"decode gives {text}"
+    if value != int(v["value"], 16):
+        return "bytes are not the value in little-endian order"
+    got = name_format.encode(v["text"])
+    return None if got == value else f"encode gives 0x{got:016X}"
+
+
 CHECKS = {
     "identifier.json": check_identifier,
     "hop-hash.json": check_hop_hash,
@@ -215,6 +237,7 @@ CHECKS = {
     "pdu-relay.json": check_pdu_relay,
     "position.json": check_position,
     "object.json": check_object,
+    "name.json": check_name,
     "text-compression.json": check_text_compression,
     "icon-colour.json": check_icon_colour,
     "icon-bitmap.json": check_icon_bitmap,

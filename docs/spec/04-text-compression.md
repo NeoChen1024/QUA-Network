@@ -17,10 +17,8 @@ decoder gets the text from the bits, and which inputs are invalid.
 It does not specify these:
 
 - Which fields are free text.
-- How a field states that its string is compressed. The tag of the field
-  states it (RFC 5.7).
-- Which characters a text can have
-  ([06-numbers-units-text](06-numbers-units-text.md) section 6).
+- Which characters a text can have, the two forms of a free-text field
+  and the choice of the form ([13-strings](13-strings.md) section 5).
 
 Terms:
 
@@ -45,7 +43,8 @@ Sections 3 to 6 state this format. This file is the definition. The
 Unishox2 library is not (section 9).
 
 **[agreed]** A length byte comes before the compressed string. Its value
-`N` is the length of the text in bytes (RFC 5.7).
+`N` is the length of the text in bytes
+([13-strings](13-strings.md) section 5.2).
 
 **[agreed]** These rules apply to the compressed string:
 

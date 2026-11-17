@@ -20,7 +20,7 @@ It does not specify these:
 - The TLV container ([03-tlv](03-tlv.md)).
 - The decimal number ([05-decimal-number](05-decimal-number.md)).
 - The unit of each quantity and the form of a time
-  ([06-numbers-units-text](06-numbers-units-text.md)).
+  ([06-numbers-units](06-numbers-units.md)).
 - The Object type and the rules for an object ([11-object](11-object.md)).
 - The schema of every other type. A different type states its own tags
   for the fields of this file (RFC 5.11).
@@ -36,7 +36,7 @@ It does not specify these:
 
 ## 3. Fields
 
-Each field is the value of one TLV. [06-numbers-units-text](06-numbers-units-text.md)
+Each field is the value of one TLV. [06-numbers-units](06-numbers-units.md)
 section 3 gives the unit of each quantity.
 
 ### 3.1 Coordinates
@@ -97,7 +97,7 @@ negative, and an infinity is invalid.
 ### 3.6 Time
 
 **[agreed]** The field is a time
-([06-numbers-units-text](06-numbers-units-text.md) section 4). It is the
+([06-numbers-units](06-numbers-units.md) section 4). It is the
 time at which the content of the PDU was true. If the PDU has
 coordinates, the station was at the coordinates at that time.
 

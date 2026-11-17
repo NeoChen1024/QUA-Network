@@ -19,10 +19,10 @@ It does not specify these:
 - The format of an identifier
   ([01-station-identifier](01-station-identifier.md)).
 - The TLV container ([03-tlv](03-tlv.md)).
-- The compressed form of a string
+- The free text and its two forms ([13-strings](13-strings.md)
+  section 5), and the compressed string
   ([04-text-compression](04-text-compression.md)).
-- The form of a time and the content of a string
-  ([06-numbers-units-text](06-numbers-units-text.md)).
+- The form of a time ([06-numbers-units](06-numbers-units.md)).
 - Which types can have the object identifier. The schema of each type
   states it.
 
@@ -76,11 +76,11 @@ Each field is the value of one TLV.
 ### 4.2 Description
 
 **[agreed]** The field is a free text that describes the object, for
-example `Typhoon Champi`. It is a string
-([06-numbers-units-text](06-numbers-units-text.md) section 6).
+example `Typhoon Champi`. It is a free text
+([13-strings](13-strings.md) section 5).
 
-**[agreed]** The field has two tags, one for each form of the string
-(RFC 5.7):
+**[agreed]** The field has two tags, one for each form of the free text
+([13-strings](13-strings.md) section 5.2):
 
 - With the passthrough tag, the value is the text.
 - With the compressed tag, the value is a length byte and a compressed
@@ -92,7 +92,7 @@ description omits the TLV.
 ### 4.3 End time
 
 **[agreed]** The field is a time
-([06-numbers-units-text](06-numbers-units-text.md) section 4). The
+([06-numbers-units](06-numbers-units.md) section 4). The
 owner states that the object no longer exists after this time.
 
 **[agreed]** The field is a suggestion to a receiver. A receiver can
@@ -124,7 +124,8 @@ this TLV, the owner states that the object no longer exists.
 | 3 | End time | 4.3 | 8 | 0 or 1 |
 | 4 | End | 4.4 | 0 | 0 or 1 |
 
-**[agreed]** A PDU MUST NOT have both tags of the description (RFC 5.7).
+**[agreed]** A PDU MUST NOT have both tags of the description
+([13-strings](13-strings.md) section 5.2).
 
 **[agreed]** An Object PDU without the End TLV states that the object
 exists. The owner can send it again at an interval.
@@ -267,4 +268,4 @@ do not import each other.
 - **[open]** A field that states the kind of an object, from a standard
   list (RFC 5.11). The symbol of an object does not state its kind.
 - **[open]** What a receiver does with a description that is not valid
-  UTF-8 ([06-numbers-units-text](06-numbers-units-text.md) section 8).
+  UTF-8 ([13-strings](13-strings.md) section 6).

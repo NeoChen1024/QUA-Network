@@ -17,7 +17,7 @@ the encodings that are invalid, and its text form.
 It does not specify these:
 
 - Which fields are decimal numbers
-  ([06-numbers-units-text](06-numbers-units-text.md) section 3).
+  ([06-numbers-units](06-numbers-units.md) section 3).
 - The unit of a field (the same section).
 - Which fields allow an infinity.
 
@@ -45,7 +45,7 @@ format of 1 byte.
 1. The format is one integer of 16, 24 or 32 bits. `e` has its most
    significant bits, and `m` has the other bits.
 2. The integer is in little-endian order
-   ([06-numbers-units-text](06-numbers-units-text.md) section 2).
+   ([06-numbers-units](06-numbers-units.md) section 2).
 3. `e` and `m` are two's-complement integers.
 
 **[agreed]** The length of the TLV gives the format. A TLV therefore

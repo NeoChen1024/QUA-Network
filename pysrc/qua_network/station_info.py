@@ -11,6 +11,8 @@ has:
 - `software`, `version`: the names of the software, as text;
 - `power`, `height`, `gain`, `range`: decimal numbers as (m, e);
 - `direction`: an integer in degrees;
+- `symbol_classic`: the number of the classic form of the symbol;
+- `symbol_unicode`: the code points of the Unicode form of the symbol;
 - `object`: the value of the object identifier;
 - `other`: the TLVs with a tag that the specification does not give, each
   as (tag, value).
@@ -19,9 +21,9 @@ This follows the draft, including its [proposed] rules. This module is a
 research aid for checking vectors, not a reference implementation.
 """
 
-from qua_network import decimal_number, identifier, name_format, tlv
+from qua_network import decimal_number, identifier, name_format, symbol, tlv
 
-OBJECT, KIND, DEVICE, SOFTWARE, POWER, HEIGHT, GAIN, DIRECTION, RANGE = range(9)
+OBJECT, KIND, DEVICE, SOFTWARE, POWER, HEIGHT, GAIN, DIRECTION, RANGE, SYMBOL_CLASSIC, SYMBOL_UNICODE = range(11)
 NAMES = {
     OBJECT: "object",
     KIND: "kind",
@@ -32,6 +34,8 @@ NAMES = {
     GAIN: "gain",
     DIRECTION: "direction",
     RANGE: "range",
+    SYMBOL_CLASSIC: "symbol_classic",
+    SYMBOL_UNICODE: "symbol_unicode",
 }
 KINDS = ("other", "fixed", "portable", "pedestrian", "land vehicle", "watercraft", "aircraft", "balloon", "spacecraft")
 
@@ -94,6 +98,13 @@ def decode(area):
             out[name] = int.from_bytes(value, "little")
             if out[name] > 359:
                 raise StationInfoError(name, "the direction is above 359")
+        elif tag in (SYMBOL_CLASSIC, SYMBOL_UNICODE):
+            try:
+                out[name] = symbol.classic_decode(value) if tag == SYMBOL_CLASSIC else symbol.unicode_decode(value)
+            except symbol.SymbolError as e:
+                raise StationInfoError(name, str(e)) from None
+            if {SYMBOL_CLASSIC, SYMBOL_UNICODE} <= seen:
+                raise StationInfoError("symbol", "the PDU has both forms of the symbol")
         elif tag == OBJECT:
             if len(value) != 8:
                 raise StationInfoError(name, "the field does not have 8 bytes")
@@ -136,6 +147,10 @@ def encode(fields):
             tlvs.append((tag, decimal_number.encode(fields[NAMES[tag]])))
     if "direction" in fields:
         tlvs.append((DIRECTION, fields["direction"].to_bytes(2, "little")))
+    if "symbol_classic" in fields:
+        tlvs.append((SYMBOL_CLASSIC, symbol.classic_encode(fields["symbol_classic"])))
+    if "symbol_unicode" in fields:
+        tlvs.append((SYMBOL_UNICODE, symbol.unicode_encode(fields["symbol_unicode"])))
     if "object" in fields:
         tlvs.append((OBJECT, fields["object"].to_bytes(8, "little")))
     area = tlv.write(sorted(tlvs, key=lambda t: t[0]))

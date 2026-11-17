@@ -2,18 +2,20 @@
 """The contents of vectors/station-information.json, for
 docs/spec/12-station-information.md.
 
-This is the path independent of station_info.py, name_format.py and tlv.py, which
-qua-check-vectors checks against the file. It imports none of them. It
-takes the names from vectors_name.py, packs the integers with struct, and
-takes the decimal numbers and the object identifier from vectors_position.py. It
+This is the path independent of station_info.py, name_format.py, symbol.py
+and tlv.py, which qua-check-vectors checks against the file. It imports
+none of them. It takes the names from vectors_name.py and the symbols from
+vectors_symbol.py. It packs the integers with struct, and it takes the
+decimal numbers and the object identifier from vectors_position.py. It
 writes the first byte of each TLV itself, with the extension byte of a
-length from 13 to 255. It writes only a delta of 12 at most.
+delta from 13 to 268 and of a length from 13 to 255.
 """
 
 import struct
 
 from qua_network.vectors_name import name
 from qua_network.vectors_position import decimal, obj
+from qua_network.vectors_symbol import classic, classic_bytes, unicode_bytes
 
 DECIMALS = ((4, "power"), (5, "height"), (6, "gain"), (8, "range"))
 
@@ -23,12 +25,14 @@ def area(*tlvs):
     out = b""
     before = 0
     for tag, value in tlvs:
-        if not 0 <= tag - before <= 12 or len(value) > 255:
-            raise ValueError("the TLV has no encoding here")
-        if len(value) <= 12:
-            out += bytes((((tag - before) << 4) | len(value),))
-        else:
-            out += bytes((((tag - before) << 4) | 13, len(value) - 13))
+        delta, length = tag - before, len(value)
+        if not 0 <= delta <= 268 or length > 255:
+            raise ValueError("the TLV has no encoding")
+        out += bytes(((min(delta, 13) << 4) | min(length, 13),))
+        if delta >= 13:
+            out += bytes((delta - 13,))
+        if length >= 13:
+            out += bytes((length - 13,))
         out += value
         before = tag
     return out
@@ -62,6 +66,10 @@ def _valid():
                 tlvs.append(decimal(tag, fields[key]))
         if "direction" in fields:
             tlvs.append(direction(fields["direction"]))
+        if "symbol_classic" in fields:
+            tlvs.append((9, classic_bytes(fields["symbol_classic"])))
+        if "symbol_unicode" in fields:
+            tlvs.append((10, unicode_bytes(int(p, 16) for p in fields["symbol_unicode"])))
         if "object" in fields:
             tlvs.append(obj(fields["object"]))
         tlvs.sort(key=lambda t: t[0])
@@ -112,9 +120,9 @@ def _valid():
     ok("a range with a fraction", range="2.5")
     ok("a large range", range="3200")
     ok("each field", kind=1, **device, **software, power="25", height="12", gain="6", direction=90, range="40")
-    ok("a TLV with a tag that this file does not give, after the fields", kind=1, range="40", other=[(9, "AB")])
-    ok("two such TLVs with one tag, and one with no value", kind=3, other=[(10, "01"), (10, "02"), (13, "")])
-    ok("only a TLV with a tag that this file does not give", other=[(9, "0102030405060708")])
+    ok("a TLV with a tag that this file does not give, after the fields", kind=1, range="40", other=[(200, "AB")])
+    ok("two such TLVs with one tag, and one with no value", kind=3, other=[(201, "01"), (201, "02"), (204, "")])
+    ok("only a TLV with a tag that this file does not give", other=[(200, "0102030405060708")])
     ok("the information of an object", object="RPT1-B", kind=1, power="50", height="30", gain="6", range="60")
     ok(
         "each field for an object",
@@ -127,6 +135,22 @@ def _valid():
         gain="6",
         direction=180,
         range="60",
+    )
+    car = classic("/>")
+    ok("a symbol in the classic form: the characters /> of APRS, a car", symbol_classic=car)
+    ok("the largest number of the classic form", symbol_classic=3571)
+    ok("a symbol in the Unicode form with one code point: U+1F697", symbol_unicode=["1F697"])
+    ok("a symbol in the Unicode form with two code points: a flag", symbol_unicode=["1F1F9", "1F1FC"])
+    ok("a kind and a symbol: the two fields are independent", kind=5, symbol_classic=car)
+    ok("each field, with a symbol in the classic form", kind=4, **device, **software, power="5", range="15", symbol_classic=car)
+    ok(
+        "each field, with a symbol in the Unicode form",
+        kind=4,
+        **device,
+        **software,
+        power="5",
+        range="15",
+        symbol_unicode=["1F697"],
     )
     return out
 
@@ -174,6 +198,17 @@ def _invalid():
     bad("the object identifier has 7 bytes", "object", (0, obj("RPT1-B")[1][:7]), kind(1))
     bad("the object identifier is the reserved value 0", "object", (0, bytes(8)), kind(1))
     bad("the object identifier occurs two times", "object", obj("RPT1-B"), obj("TYPHOON"), kind(1))
+    car, auto = (9, classic_bytes(classic("/>"))), (10, unicode_bytes((0x1F697,)))
+    bad("the classic form has the number 3572", "symbol_classic", (9, classic_bytes(3572)))
+    bad("the classic form has 1 byte", "symbol_classic", (9, b"\x0c"))
+    bad("the classic form has 4 bytes", "symbol_classic", (9, b"\x0c\x00\x00\x00"))
+    bad("the classic form occurs two times", "symbol_classic", car, car)
+    bad("the Unicode form has 2 bytes", "symbol_unicode", (10, b"\x41\x00"))
+    bad("the Unicode form has 12 bytes", "symbol_unicode", (10, unicode_bytes((0x41, 0x42, 0x43))))
+    bad("the Unicode form has the variation selector U+FE0F", "symbol_unicode", (10, unicode_bytes((0x2600, 0xFE0F))))
+    bad("the Unicode form has a surrogate", "symbol_unicode", (10, unicode_bytes((0xD83D,))))
+    bad("the Unicode form occurs two times", "symbol_unicode", auto, auto)
+    bad("the PDU has both forms of the symbol", "symbol", car, auto)
     whole = area(names(2, "EXAMPLE", "HT1"))
     bad("the value of the device is beyond the end of the area", "tlv area", whole[:-1])
     bad("the extension byte of the length is beyond the end of the area", "tlv area", whole[:1])

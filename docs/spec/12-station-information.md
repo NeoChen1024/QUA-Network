@@ -21,6 +21,7 @@ It does not specify these:
 - The decimal number ([05-decimal-number](05-decimal-number.md)).
 - The unit of each quantity
   ([06-numbers-units](06-numbers-units.md)).
+- The two forms of a symbol ([14-symbol](14-symbol.md)).
 - The rules for an object ([11-object](11-object.md)).
 - The status text and the frequency of a station. They belong to a
   different type, which has no schema so far (RFC 5.11).
@@ -146,6 +147,12 @@ infinity is invalid.
 ([11-object](11-object.md) section 3). It has 8 bytes. If a PDU has this
 field, the content of the PDU describes that object and not the source.
 
+### 3.11 Symbol
+
+**[agreed]** The symbol of the station is a field of this type. It has
+the classic form or the Unicode form ([14-symbol](14-symbol.md)). Each
+form has its own tag.
+
 ## 4. Station information type
 
 **[agreed]** The type byte of a Station information PDU is 3
@@ -165,18 +172,29 @@ field, the content of the PDU describes that object and not the source.
 | 7 | Antenna direction | 3.8 | 2 | 0 or 1 |
 | 8 | Range | 3.9 | 2, 3 or 4 | 0 or 1 |
 
+**[agreed]** A Station information PDU can also hold the symbol:
+
+| Tag | Field | Section | Bytes | In one PDU |
+|---|---|---|---|---|
+| 9 | Symbol, classic form | 3.11 | 2 | 0 or 1 |
+| 10 | Symbol, Unicode form | 3.11 | 4 or 8 | 0 or 1 |
+
+**[agreed]** A PDU MUST NOT have both tags of the symbol
+([14-symbol](14-symbol.md) section 3).
+
 **[agreed]** Each TLV is optional. A source omits the TLV of a field for
 which it has no value.
 
-**[proposed]** A TLV of this table is invalid in each of these cases:
+**[proposed]** A TLV of these tables is invalid in each of these cases:
 
-- Its length is not a length that the table gives.
+- Its length is not a length that its table gives.
 - Its value is invalid by the section of its field. For a decimal
   number, [05-decimal-number](05-decimal-number.md) section 6 also
   applies.
 - Its tag occurs a second time in the PDU.
+- It is the second form of the symbol in the PDU.
 
-A TLV with a tag that the table does not give is not invalid. A decoder
+A TLV with a tag that the tables do not give is not invalid. A decoder
 skips it ([03-tlv](03-tlv.md) section 4).
 
 ## 5. Example
@@ -220,6 +238,8 @@ A valid area has a key only for a field that it has:
 | `software`, `version` | The names of the software (section 3.4) |
 | `power`, `height`, `gain`, `range` | The text form of the decimal number ([05-decimal-number](05-decimal-number.md) section 7) |
 | `direction` | The integer of the antenna direction |
+| `symbol_classic` | The number of the classic form of the symbol |
+| `symbol_unicode` | The code points of the Unicode form of the symbol, each as a string of hexadecimal digits |
 | `object` | The text form of the object identifier ([01-station-identifier](01-station-identifier.md) section 6) |
 | `other` | Each TLV with a tag that section 4 does not give, in the order of the area: the tag, and the bytes of the value |
 
@@ -227,7 +247,8 @@ The values of `invalid`:
 
 | `invalid` | Cause |
 |---|---|
-| `kind`, `device`, `software`, `power`, `height`, `gain`, `direction`, `range`, `object` | The TLV of this field is invalid (section 4). |
+| `kind`, `device`, `software`, `power`, `height`, `gain`, `direction`, `range`, `symbol_classic`, `symbol_unicode`, `object` | The TLV of this field is invalid (section 4). |
+| `symbol` | The PDU has both forms of the symbol. |
 | `tlv area` | The area breaks [03-tlv](03-tlv.md) section 4. |
 
 Each invalid area has one cause only.
@@ -238,22 +259,26 @@ The vectors have these limits:
   That is open (section 7).
 - Some vectors follow **[proposed]** rules of this file and of
   [03-tlv](03-tlv.md). They change if the rule changes.
+- A vector with a tag that section 4 does not give has a tag of 200 or
+  more. A later tag of the schema then does not change the vector.
 
 `qua-make-vectors` computes the vectors with `vectors_station.py`. This
 module packs the integers with the `struct` module of Python. It takes
-the names from `vectors_name.py`, the decimal numbers from
-`vectors_decimal.py` and the object identifier from
-`vectors_position.py`. It writes the first byte and the extension byte
-of each TLV itself. `qua-check-vectors` checks the vectors against
+the names from `vectors_name.py`, the symbols from `vectors_symbol.py`,
+the decimal numbers from `vectors_decimal.py` and the object identifier
+from `vectors_position.py`. It writes the first byte and the extension
+bytes of each TLV itself. `qua-check-vectors` checks the vectors against
 `station_info.py`. That module reads the area with `tlv.py`, the names
-with `name_format.py`, the decimal numbers with `decimal_number.py` and
-the object identifier with `identifier.py`. The two paths do not import
-each other.
+with `name_format.py`, the symbols with `symbol.py`, the decimal numbers
+with `decimal_number.py` and the object identifier with `identifier.py`.
+The two paths do not import each other.
 
 ## 7. Open items
 
 - **[open]** The fields of RFC 5.11 that have no TLV in this schema so
-  far: the symbol, the comment and the messaging flag.
+  far: the comment and the messaging flag.
+- **[open]** The icon ([02-icon](02-icon.md)) has no tag in this schema
+  so far.
 - **[open]** Fields for the abilities of a station, such as "relays" or
   "is a gateway". The kind and the names do not state them.
 - **[open]** The text form of the kind for the canonical text of RFC

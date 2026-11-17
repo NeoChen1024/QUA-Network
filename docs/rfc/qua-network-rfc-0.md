@@ -708,22 +708,23 @@ item of 5.7, for the reason given there.
 
 ### 5.6 Symbols
 
-A station's symbol is one field with two forms. A PDU carries one of them.
+The two forms of a symbol are specified in
+[`docs/spec/14-symbol.md`](../spec/14-symbol.md). The icon is specified in
+[`docs/spec/02-icon.md`](../spec/02-icon.md). This section keeps the rules
+for a gateway, the reasons and the dropped alternatives.
 
-- **[agreed]** **Classic form.** An APRS symbol, as one unsigned 16-bit
-  number. APRS has 94 symbol codes (ASCII 33 to 126) in each of two tables,
-  and a symbol of the alternate table can carry one overlay character, `0`
-  to `9` or `A` to `Z`. That is 94 + 94 * 37 = 3,572 symbols:
+Summary: a station's symbol has one of two forms, and a PDU carries one of
+them. The classic form is an APRS symbol as one unsigned 16-bit number.
+The Unicode form is one or two Unicode code points of 32 bits each, which
+a receiver draws with the emoji presentation. Each form has its own tag.
 
-  | Symbol | Number |
-  |---|---|
-  | Primary table (`/`), code `c` | `c - 33`, from 0 to 93 |
-  | Alternate table (`\`), code `c`, overlay digit `d` | `94 + (c - 33) * 37 + d`, from 94 to 3,571 |
+The classic form:
 
-  The overlay digit `d` uses the digit table of 5.8: 0 for no overlay, 1 to
-  10 for `0` to `9`, 11 to 36 for `A` to `Z`. Numbers from 3,572 upward are
-  invalid. Every valid number is a different symbol, and conversion in both
-  directions is arithmetic, with no mapping table.
+- APRS has 94 symbol codes (ASCII 33 to 126) in each of two tables, and a
+  symbol of the alternate table can carry one overlay character, `0` to
+  `9` or `A` to `Z`. That is 94 + 94 * 37 = 3,572 symbols. The number of
+  the classic form counts them. The overlay digit uses the digit table of
+  5.8. Conversion in both directions is arithmetic, with no mapping table.
 - **[agreed]** Every valid legacy symbol crosses a gateway in both
   directions without loss. A legacy symbol that is not valid (a table
   character other than `/`, `\`, `0` to `9` or `A` to `Z`, or a code outside
@@ -739,30 +740,51 @@ A station's symbol is one field with two forms. A PDU carries one of them.
   table character is lower case, so nothing else is affected.
 - **[proposed]** In canonical text the classic form is written as the two
   APRS characters, table or overlay first: `/>`, `\k`, `L#`.
-- **[agreed]** **Unicode form.** A short UTF-8 string: a single symbol or
-  emoji, an emoji sequence made of a few code points, or ordinary text such
-  as a two-letter label. Receivers render it as text.
-- **[agreed]** The Unicode form has a length limit expressed in bytes, because
-  bytes are what airtime depends on and the check is trivial. **[proposed]**
-  The limit is 8 bytes. That holds a single emoji, an emoji with a variation
-  selector or a skin-tone modifier, a keycap, a two-letter regional flag, or
-  a short text label. Longer sequences (multi-person ZWJ sequences,
-  subdivision flags) do not fit; the icon below covers what they were for.
-- **[proposed]** The string MUST be valid UTF-8 and MUST NOT contain control
-  characters. Beyond that it is opaque to the protocol: no normalisation is
-  required and no sequence is interpreted. Two different strings are two
-  different symbols, even if some renderer draws them alike. Senders SHOULD
-  use fully-qualified emoji sequences as published by Unicode.
-- **[agreed]** The symbol is display only, in both forms. Software MUST NOT
-  derive behaviour from it. What a station is and what a packet contains are
-  stated by the fields present (a weather TLV, a digipeater capability), not
-  by the picture. This removes the APRS coupling in which a symbol such as
-  `_` also announces the payload format.
-- **[proposed]** A receiver that cannot draw a Unicode symbol draws the parts
-  it can, or a generic placeholder. New Unicode versions therefore need no
-  protocol change.
-- In canonical text the Unicode form uses the ordinary string escaping rule
-  of 5.4, so the text representation stays printable ASCII.
+
+The Unicode form:
+
+- The form is two code points at most, each as an unsigned integer of 32
+  bits. The direction is the author's.
+- A receiver draws the form with the emoji presentation, which is the
+  presentation that the variation selector U+FE0F asks for. This is
+  fixed, and the PDU does not hold a variation selector. The direction is
+  the author's.
+- A symbol of one code point has 4 bytes, and a symbol of two code points
+  has 8 bytes. The common case, one emoji, then costs 4 bytes, and no
+  special value is necessary for an absent second code point.
+- A variation selector is not a valid code point of the form. An emoji
+  with a selector and the same emoji without it would be two encodings of
+  one symbol.
+- Two code points hold these: one emoji, an emoji with a skin-tone
+  modifier, a flag of two regional indicators, a keycap (a digit and
+  U+20E3), and a label of two characters.
+- Two code points do not hold these: a sequence with the joiner U+200D,
+  a subdivision flag, and a label of three characters or more. The icon
+  below covers what they were for.
+- **[open]** Where the emoji presentation applies in a symbol of two
+  code points. In a keycap, Unicode puts U+FE0F between the digit and
+  U+20E3. An emoji with a modifier has no U+FE0F.
+- Dropped: one tag for both forms, with the length of the TLV as the
+  statement of the form. The lengths 2, 4 and 8 do not overlap, so this
+  is possible. The author rejected it: the two forms are not related,
+  and one tag is not the place for two unrelated kinds of content.
+
+Both forms:
+
+- The symbol is display only, in both forms. What a station is and what a
+  packet contains are stated by the fields present (a weather TLV, a
+  digipeater capability), not by the picture. This removes the APRS
+  coupling in which a symbol such as `_` also announces the payload format.
+- A receiver that cannot draw a Unicode symbol draws the parts it can, or
+  a generic placeholder. New Unicode versions therefore need no protocol
+  change.
+- In canonical text the Unicode form is the string of its code points. It
+  uses the ordinary string escaping rule of 5.4, so the text
+  representation stays printable ASCII.
+- Dropped: a UTF-8 string with a limit of 8 bytes as the Unicode form.
+  The author replaced it with the two code points. That form also held
+  a label of 8 ASCII characters at most. In that form, an emoji with
+  U+FE0F and the same emoji without it were two symbols.
 - **[agreed]** Fonts are outside the scope of this specification. A device
   MAY use any font. As a convenience for embedded designs, which need a
   bitmap font that includes CJK characters, two starting points are GNU
@@ -1556,8 +1578,8 @@ This part keeps the reasons and the dropped alternatives.
 Summary: a Station information PDU describes the station and its radio
 equipment. It has the kind of the station, the names of the device and
 of the software, the transmitter power, three values of the antenna and
-the range. Each field is optional. The symbol and the comment have no
-TLV in the schema so far.
+the range. Each field is optional. The schema also has the two forms of
+the symbol (5.6). The comment has no TLV in the schema so far.
 
 The kind:
 
@@ -2415,7 +2437,10 @@ anything is decided on them. 13.5 states how to read the traffic mix.
 13. Decided: the binding of a link decides its packed format (8.2). The
     number stays, so that the other numbers do not change.
 14. Recommended sizes per packet class (6.3).
-15. The byte limit of the Unicode symbol form, proposed as 8 (5.6).
+15. The Unicode form of a symbol (5.6). Decided: one or two code points
+    of 32 bits each, with the emoji presentation
+    (`docs/spec/14-symbol.md`). This remains: where the emoji
+    presentation applies in a symbol of two code points.
 16. Unishox2 (5.7). The preset is decided, and the specification file
     `docs/spec/04-text-compression.md` states the decoder. These remain:
     - A receiver shows a placeholder for an invalid compressed string.
@@ -2491,8 +2516,8 @@ anything is decided on them. 13.5 states how to read the traffic mix.
       with a field for the kind of an object.
     - Are the comment and the status text one field or two?
     - The open items of the Station information type
-      (`docs/spec/12-station-information.md`): the TLVs of the symbol
-      and of the comment, and fields for the abilities of a station.
+      (`docs/spec/12-station-information.md`): the TLV of the comment,
+      and fields for the abilities of a station.
     - The name and the schema of the type that holds the status text
       and the frequency.
     - Is a bulletin a message to a group?

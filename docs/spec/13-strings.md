@@ -48,8 +48,9 @@ field that holds a string has one of them.
 A station identifier with an SSID of 2 characters has 10 characters at
 most before the SSID.
 
-The Unicode form of a symbol is also a string. It has no specification
-file so far (RFC 5.6).
+The Unicode form of a symbol is not a string format. It is two code
+points at most, each as an integer ([14-symbol](14-symbol.md) section
+5).
 
 ## 4. Name
 
@@ -182,4 +183,3 @@ receiver do with an invalid string.
   UTF-8.
 - **[open]** A limit for the length of a free text that is lower than
   the limit of the TLV.
-- **[open]** A specification of the Unicode form of a symbol (RFC 5.6).

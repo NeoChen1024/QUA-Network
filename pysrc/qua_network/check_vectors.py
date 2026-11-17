@@ -11,7 +11,7 @@ from pathlib import Path
 
 import click
 
-from qua_network import decimal_number, icon, identifier, name_format, object_pdu, pdu, position, station_info, usx
+from qua_network import decimal_number, icon, identifier, name_format, object_pdu, pdu, position, station_info, symbol, usx
 from qua_network.crc import crc32c
 
 
@@ -227,6 +227,28 @@ def check_name(v):
     return None if got == value else f"encode gives 0x{got:016X}"
 
 
+def check_symbol(v):
+    data = bytes.fromhex(v["bytes"])
+    classic = v["form"] == "classic"
+    try:
+        got = symbol.classic_decode(data) if classic else symbol.unicode_decode(data)
+    except symbol.SymbolError as e:
+        return None if "invalid" in v else f"decoder rejects it: {e}"
+    if "invalid" in v:
+        return "decoder accepts it"
+    if classic:
+        if got != v["number"]:
+            return f"decode gives {got}"
+        if symbol.classic_chars(got) != v["chars"] or symbol.classic_number(v["chars"]) != got:
+            return f"the characters of {got} are {symbol.classic_chars(got)}"
+        back = symbol.classic_encode(got)
+    else:
+        if [f"{p:04X}" for p in got] != v["points"]:
+            return f"decode gives {got}"
+        back = symbol.unicode_encode(got)
+    return None if back == data else f"encode gives {back.hex().upper()}"
+
+
 def check_station_information(v):
     area = bytes.fromhex(v["tlv"])
     try:
@@ -242,6 +264,8 @@ def check_station_information(v):
     for key in ("power", "height", "gain", "range"):
         if key in got:
             got[key] = decimal_number.to_text(got[key])
+    if "symbol_unicode" in got:
+        got["symbol_unicode"] = [f"{p:04X}" for p in got["symbol_unicode"]]
     if "object" in got:
         got["object"] = identifier.decode(got["object"])
     if "other" in got:
@@ -261,6 +285,7 @@ CHECKS = {
     "position.json": check_position,
     "object.json": check_object,
     "name.json": check_name,
+    "symbol.json": check_symbol,
     "station-information.json": check_station_information,
     "text-compression.json": check_text_compression,
     "icon-colour.json": check_icon_colour,

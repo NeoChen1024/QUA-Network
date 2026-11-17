@@ -41,7 +41,8 @@ section 3 gives the unit of each quantity.
 
 ### 3.1 Kind
 
-**[agreed]** The field has 1 byte: an unsigned integer. It is a code for
+**[agreed]** The field is a `uint8`
+([06-numbers-units](06-numbers-units.md) section 2.1). It is a code for
 the kind of the station.
 
 **[agreed]** The kinds and their codes:
@@ -123,12 +124,11 @@ relative to an isotropic antenna (dBi). The value can be negative.
 
 ### 3.8 Antenna direction
 
-**[agreed]** The field has 2 bytes: an unsigned integer of 16 bits in
-little-endian order. The unit is 1 degree. The value is from 0 to 359. A
-larger value is invalid.
+**[agreed]** The field is an angle
+([06-numbers-units](06-numbers-units.md) section 2.2). It has 2 bytes.
 
 **[agreed]** The value is the direction of the largest gain of the
-antenna. It is counted clockwise from true north. North is 0.
+antenna.
 
 **[agreed]** A source with an antenna that has no direction omits the
 TLV.

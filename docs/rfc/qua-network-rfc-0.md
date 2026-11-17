@@ -400,7 +400,9 @@ are to be checked against them.
 The rules of this topic are specified in three files:
 
 - [`docs/spec/06-numbers-units.md`](../spec/06-numbers-units.md):
-  the form of a number, the unit of each quantity and time.
+  the form of a number, the integer types, the angle, the unit of each
+  quantity and time. Its section 2.3 lists each number type of the
+  specification.
 - [`docs/spec/05-decimal-number.md`](../spec/05-decimal-number.md): the
   decimal number.
 - [`docs/spec/13-strings.md`](../spec/13-strings.md): the list of the
@@ -414,6 +416,16 @@ with a fixed scale, for example latitude and longitude as int32 in units
 of 1e-7 degree, or it is a decimal number (below). One quantity has one
 unit. Temperature is in degrees Celsius, speed is in kilometres per hour
 and pressure is in hectopascals. Strings are UTF-8.
+
+The specification names its integer types `uint8`, `uint16`, `uint32`,
+`uint64`, `int32` and `int64`. These are the names of the C language with
+no `_t`, by the decision of the author. The definition of a field names
+the type, so the size, the sign and the byte order are stated one time.
+
+An angle is a type of its own: a `uint16` in degrees from 0 to 359,
+counted clockwise from true north. The course and the antenna direction
+are angles, and a wind direction can be one. Before, each of these
+fields stated the same rules again. The name "angle" is the author's.
 
 How the specification chooses a unit:
 

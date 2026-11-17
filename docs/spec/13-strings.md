@@ -68,9 +68,8 @@ character is that of the callsign in
 a character of the name. The value of a name is therefore not the value
 of the station identifier with the same characters.
 
-**[agreed]** A name is 8 bytes: its value as an unsigned integer of 64
-bits in little-endian order
-([06-numbers-units](06-numbers-units.md) section 2).
+**[agreed]** A name is 8 bytes: its value as a `uint64`
+([06-numbers-units](06-numbers-units.md) section 2.1).
 
 **[proposed]** A name is invalid in each of these cases:
 

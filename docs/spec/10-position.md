@@ -42,8 +42,8 @@ section 3 gives the unit of each quantity.
 ### 3.1 Coordinates
 
 **[agreed]** The field has 8 bytes: the latitude, then the longitude.
-Each is a signed integer of 32 bits in two's complement, in little-endian
-order. The unit of each is 10^−7 degree.
+Each is an `int32` ([06-numbers-units](06-numbers-units.md) section
+2.1). The unit of each is 10^−7 degree.
 
 **[agreed]** A latitude north of the equator is positive. A longitude
 east of the prime meridian is positive.
@@ -77,12 +77,11 @@ field states an uncertainty.
 
 ### 3.4 Course
 
-**[agreed]** The field has 2 bytes: an unsigned integer of 16 bits in
-little-endian order. The unit is 1 degree. The value is from 0 to 359. A
-larger value is invalid.
+**[agreed]** The field is an angle
+([06-numbers-units](06-numbers-units.md) section 2.2). It has 2 bytes.
 
 **[agreed]** The course is the direction in which the station moves
-over the ground. It is counted clockwise from true north. North is 0.
+over the ground.
 
 **[agreed]** The field has no code for a course that is not known. A
 source that does not know its course omits the TLV.

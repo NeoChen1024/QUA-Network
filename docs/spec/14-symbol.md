@@ -44,8 +44,8 @@ MUST NOT derive behaviour from it.
 
 ## 4. Classic form
 
-**[agreed]** The field has 2 bytes: an unsigned integer of 16 bits in
-little-endian order.
+**[agreed]** The field is a `uint16`
+([06-numbers-units](06-numbers-units.md) section 2.1). It has 2 bytes.
 
 **[agreed]** The number of a symbol, with `c` as the ASCII value of the
 symbol code:
@@ -73,7 +73,8 @@ Each valid number is one symbol, and each symbol has one number.
 ## 5. Unicode form
 
 **[agreed]** The field has one or two Unicode code points. Each code
-point is an unsigned integer of 32 bits in little-endian order.
+point is a `uint32` ([06-numbers-units](06-numbers-units.md) section
+2.1).
 
 **[agreed]** The field has 4 or 8 bytes. With 4 bytes, it has one code
 point. With 8 bytes, it has two, in the order of the text.
